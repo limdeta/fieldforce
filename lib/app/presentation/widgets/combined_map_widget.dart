@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:latlong2/latlong.dart';
 import '../../../features/navigation/map/presentation/widgets/map_widget.dart';
 import '../../../features/navigation/tracking/domain/entities/user_track.dart';
-import '../../../features/navigation/tracking/domain/services/location_tracking_service.dart';
 import '../../../features/shop/domain/entities/route.dart' as shop;
 import '../utils/coordinate_converter.dart';
 
@@ -25,14 +24,8 @@ class CombinedMapWidget extends StatelessWidget {
   /// Callback при долгом нажатии (в удобных LatLng координатах)
   final void Function(LatLng)? onLongPress;
   
-  /// Сервис отслеживания (для трекинга)
-  final LocationTrackingService? trackingService;
-  
-  /// Показывать ли текущий трек пользователя
-  final bool showUserTrack;
-  
-  /// Исторические треки для отображения
-  final List<UserTrack> historicalTracks;
+  /// Трек для отображения (может быть null)
+  final UserTrack? track;
   
   /// Точки полилинии маршрута (для отображения построенного пути)
   final List<LatLng> routePolylinePoints;
@@ -44,10 +37,10 @@ class CombinedMapWidget extends StatelessWidget {
     this.initialZoom,
     this.onTap,
     this.onLongPress,
-    this.trackingService,
-    this.showUserTrack = false,
-    this.historicalTracks = const [],
+    this.track,
     this.routePolylinePoints = const [],
+    // Для обратной совместимости - DEPRECATED
+    @Deprecated('Use track parameter instead') List<UserTrack>? historicalTracks,
   });
 
   @override
@@ -59,9 +52,7 @@ class CombinedMapWidget extends StatelessWidget {
       initialZoom: initialZoom,
       onTap: CoordinateConverter.convertLatLngCallback(onTap),
       onLongPress: CoordinateConverter.convertLatLngCallback(onLongPress),
-      trackingService: trackingService,
-      showUserTrack: showUserTrack,
-      historicalTracks: historicalTracks,
+      track: track,
       routePolylinePoints: routePolylinePoints,
     );
   }

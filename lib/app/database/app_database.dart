@@ -6,6 +6,7 @@ import 'package:path/path.dart' as p;
 import 'package:sqlite3_flutter_libs/sqlite3_flutter_libs.dart';
 import 'package:sqlite3/sqlite3.dart';
 
+import '../config/app_config.dart';
 import 'tables/user_table.dart';
 import 'tables/employee_table.dart';
 import 'tables/route_table.dart';
@@ -88,7 +89,9 @@ LazyDatabase _openConnection() {
   return LazyDatabase(() async {
     final dbFolder = await getApplicationDocumentsDirectory();
     print('=== DB FOLDER: ${dbFolder.path}');
-    final file = File(p.join(dbFolder.path, 'app_database.db'));
+    
+    // Используем имя базы данных из конфигурации (fieldforce_dev.db, fieldforce_test.db, fieldforce.db)
+    final file = File(p.join(dbFolder.path, AppConfig.databaseName));
     print('=== DB FILE: ${file.path}');
     
     // Обеспечиваем поддержку SQLite на всех платформах
@@ -98,9 +101,17 @@ LazyDatabase _openConnection() {
     
     sqlite3.tempDirectory = dbFolder.path;
     
+    print('🗃️ Создаем базу данных: ${AppConfig.databaseName}');
+    print('📊 Детальное логирование: ${AppConfig.enableDetailedLogging}');
+    print('🌍 Окружение: ${AppConfig.environment}');
+    
+    // ВРЕМЕННО: отключаем логирование для тестов полностью
+    final shouldLog = AppConfig.enableDetailedLogging && 
+                     !AppConfig.databaseName.contains('test');
+    
     return NativeDatabase.createInBackground(
       file,
-      logStatements: false,
+      logStatements: shouldLog,
     );
   });
 }

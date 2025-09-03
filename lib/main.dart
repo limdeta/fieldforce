@@ -10,19 +10,12 @@ import 'package:fieldforce/app/presentation/widgets/dev_data_loading_overlay.dar
 import 'app/config/app_config.dart';
 import 'app/service_locator.dart';
 import 'app/fixtures/dev_fixture_orchestrator.dart';
-import 'app/fixtures/app_user_fixture_service.dart';
 import 'app/providers/selected_route_provider.dart';
+import 'app/providers/work_day_provider.dart';
 import 'features/navigation/tracking/presentation/providers/user_tracks_provider.dart';
 import 'app/services/app_lifecycle_manager.dart';
 import 'app/services/simple_update_service.dart';
-import 'features/authentication/data/fixtures/user_fixture_service.dart';
-import 'features/authentication/domain/repositories/user_repository.dart';
 import 'features/shop/presentation/routes_page.dart';
-import 'features/shop/data/fixtures/route_fixture_service.dart';
-import 'features/shop/data/fixtures/trading_points_fixture_service.dart';
-import 'features/shop/domain/repositories/route_repository.dart';
-import 'features/shop/domain/repositories/employee_repository.dart';
-import 'app/domain/repositories/app_user_repository.dart';
 import 'features/shop/presentation/product_catalog_page.dart';
 import 'features/shop/presentation/product_categories_page.dart';
 import 'features/shop/presentation/promotions_page.dart';
@@ -40,15 +33,7 @@ void main() async {
   if (AppConfig.isDev) {
     print('🔧 Dev режим - создаем тестовые данные...');
     try {
-      final orchestrator = DevFixtureOrchestrator(
-        UserFixtureService(GetIt.instance<UserRepository>()),
-        AppUserFixtureService(
-          employeeRepository: GetIt.instance<EmployeeRepository>(),
-          appUserRepository: GetIt.instance<AppUserRepository>(),
-        ),
-        RouteFixtureService(GetIt.instance<RouteRepository>()),
-        TradingPointsFixtureService(),
-      );
+      final orchestrator = DevFixtureOrchestratorFactory.create();
       await orchestrator.createFullDevDataset();
       print('✅ Dev данные созданы');
     } catch (error) {
@@ -68,6 +53,7 @@ class fieldforceApp extends StatelessWidget {
       providers: [
         ChangeNotifierProvider.value(value: GetIt.instance<SelectedRouteProvider>()),
         ChangeNotifierProvider.value(value: GetIt.instance<UserTracksProvider>()),
+        ChangeNotifierProvider(create: (_) => WorkDayProvider()),
       ],
       child: DevDataLoadingOverlay(
         child: UpgraderWrapper(

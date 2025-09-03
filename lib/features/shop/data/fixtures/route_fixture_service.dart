@@ -25,8 +25,8 @@ class RouteFixtureService {
   
   /// Создает все dev фикстуры для торгового представителя
   Future<void> createDevFixtures(Employee employee) async {
-    // Удаляем старые данные пользователя если есть
-  await _clearEmployeeData(employee);
+    // Для dev фикстур пропускаем очистку - данные уже очищены на уровне базы
+    // await _clearEmployeeData(employee);
     
     // Создаем вчерашний маршрут (завершенный)
   final yesterdayRoute = _createYesterdayRoute(employee);
@@ -400,18 +400,6 @@ class RouteFixtureService {
     );
   }
 
-  /// Очищает данные пользователя (для dev среды)
-  Future<void> _clearEmployeeData(Employee employee) async {
-    try {
-  final routes = await _repository.watchEmployeeRoutes(employee).first;
-      for (final route in routes) {
-        await _repository.deleteRoute(route);
-      }
-    } catch (e) {
-      // Нет старых данных для очистки
-    }
-  }
-  
   /// Форматирует дату для отображения
   String _formatDate(DateTime date) {
     final months = [

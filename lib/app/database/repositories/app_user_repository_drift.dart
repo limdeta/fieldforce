@@ -128,7 +128,6 @@ class AppUserRepositoryDrift implements AppUserRepository {
   @override
   Future<Either<Failure, AppUser?>> getAppUserByExternalId(String externalId) async {
     try {
-      print('🔍 [AppUserRepo] Поиск AppUser по externalId: $externalId');
 
       // 1. Находим User по externalId
       final userResult = await userRepository.getUserByExternalId(externalId);
@@ -138,7 +137,6 @@ class AppUserRepositoryDrift implements AppUserRepository {
           return null;
         },
         (user) {
-          print('✅ [AppUserRepo] User найден: ${user.externalId} (ID: ${user.id})');
           return user;
         },
       );
@@ -156,7 +154,6 @@ class AppUserRepositoryDrift implements AppUserRepository {
           return const Right(null);
         },
         (appUser) {
-          print('✅ [AppUserRepo] AppUser найден по externalId $externalId: ${appUser.fullName}');
           return Right(appUser);
         },
       );

@@ -162,7 +162,6 @@ class UserTrackRepositoryDrift implements UserTrackRepository {
         return Left(const NotFoundFailure('User not found in database'));
       }
       
-      print('✅ Найден внутренний ID пользователя: $userId');
 
       // Сохраняем основную запись UserTrack
       final userTrackCompanion = UserTracksCompanion.insert(
@@ -177,7 +176,6 @@ class UserTrackRepositoryDrift implements UserTrackRepository {
       );
 
       final userTrackId = await _database.into(_database.userTracks).insert(userTrackCompanion);
-      print('✅ UserTrack сохранен с ID: $userTrackId');
 
       // Сохраняем сегменты CompactTrack
       for (int i = 0; i < track.segments.length; i++) {
@@ -192,7 +190,6 @@ class UserTrackRepositoryDrift implements UserTrackRepository {
         await _database.into(_database.compactTracks).insert(compactTrackCompanion);
       }
       
-      print('✅ Сохранено ${track.segments.length} сегментов CompactTrack');
 
       // Возвращаем трек с новым ID
       final savedTrack = UserTrack(
@@ -311,7 +308,6 @@ class UserTrackRepositoryDrift implements UserTrackRepository {
         final dynamic appUser = user;
         if (appUser.employee != null) {
           final employee = appUser.employee as domain.Employee;
-          print('✅ Извлечен Employee из AppUser: ${employee.id} (${employee.fullName})');
           
           final result = await _employeeRepository.getInternalIdForNavigationUser(employee);
           return result.fold(

@@ -1,7 +1,7 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter/widgets.dart';
 import 'package:get_it/get_it.dart';
-import '../../features/navigation/tracking/domain/services/location_tracking_service.dart';
+import 'location_tracking_service.dart';
 import '../../features/navigation/tracking/domain/entities/user_track.dart';
 import '../../features/authentication/domain/usecases/get_current_session_usecase.dart';
 import '../../features/authentication/domain/entities/session_state.dart';
@@ -170,10 +170,7 @@ class AppLifecycleManager with WidgetsBindingObserver {
     }
 
     try {
-      final success = await _trackingService.startTracking(
-        user: user,
-        routeId: routeId,
-      );
+      final success = await _trackingService.startTracking();
 
       if (success) {
         _log('Автоматический трекинг рабочего дня начат');

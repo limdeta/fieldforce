@@ -22,7 +22,7 @@ import 'package:fieldforce/features/shop/domain/usecases/get_employee_trading_po
 import 'package:fieldforce/app/database/repositories/trading_point_repository_drift.dart';
 import 'package:fieldforce/app/domain/repositories/app_user_repository.dart';
 import 'package:fieldforce/features/shop/data/di/route_di.dart';
-import 'package:fieldforce/features/navigation/tracking/domain/services/location_tracking_service.dart';
+import 'package:fieldforce/app/services/location_tracking_service.dart';
 import 'package:fieldforce/features/navigation/tracking/domain/repositories/user_track_repository.dart';
 import 'package:fieldforce/features/navigation/tracking/presentation/usecases/get_user_tracks_usecase.dart';
 import 'package:fieldforce/features/navigation/tracking/presentation/providers/user_tracks_provider.dart';

@@ -1,6 +1,6 @@
 import 'package:get_it/get_it.dart';
-import 'package:fieldforce/app/test_service_locator.dart';
-import 'package:fieldforce/app/database/app_database.dart';
+import '../../lib/app/test_service_locator.dart';
+import '../../lib/app/database/app_database.dart';
 
 class GlobalTestManager {
   static GlobalTestManager? _instance;
@@ -10,10 +10,20 @@ class GlobalTestManager {
   
   bool _isInitialized = false;
   
+  /// Статический метод для удобства
+  static Future<void> initialize() async {
+    await instance.initializeGlobal();
+  }
+  
+  /// Статический метод для удобства
+  static Future<void> cleanup() async {
+    await instance.disposeGlobal();
+  }
+  
   Future<void> initializeGlobal() async {
     if (_isInitialized) return;
     
-    await TestServiceLocator.initialize();
+    await TestServiceLocator.setup();
     _isInitialized = true;
   }
   

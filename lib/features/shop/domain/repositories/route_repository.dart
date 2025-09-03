@@ -10,6 +10,7 @@ import 'package:fieldforce/shared/failures.dart';
 /// Будет реализован в data слое через Drift database.
 abstract class RouteRepository {
   Stream<List<domain.Route>> watchEmployeeRoutes(Employee employee);
+  Future<List<domain.Route>> getEmployeeRoutes(Employee employee);
   Future<List<domain.Route>> getAllRoutes();
   Future<Either<NotFoundFailure, domain.Route>> getRouteById(int routeId);
   Future<Either<EntityCreationFailure, domain.Route>> saveRoute(domain.Route route, Employee? employee);

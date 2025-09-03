@@ -6,7 +6,8 @@ import 'package:fieldforce/features/shop/domain/entities/route.dart' as shop;
 import 'package:fieldforce/features/shop/presentation/route_detail_page.dart';
 import 'package:fieldforce/app/presentation/widgets/combined_map_widget.dart';
 import 'package:fieldforce/app/providers/selected_route_provider.dart';
-import 'package:fieldforce/features/navigation/tracking/presentation/providers/user_tracks_provider.dart';
+import 'package:fieldforce/app/providers/work_day_provider.dart';
+import 'package:fieldforce/features/navigation/tracking/domain/entities/user_track.dart';
 import 'bloc/sales_rep_home_bloc.dart';
 import 'bloc/sales_rep_home_event.dart';
 import 'bloc/sales_rep_home_state.dart';
@@ -92,8 +93,22 @@ class SalesRepHomeView extends StatelessWidget {
 
   /// Карта с маршрутом и треками
   Widget _buildMapArea(BuildContext context, SalesRepHomeState state) {
-    return Consumer2<SelectedRouteProvider, UserTracksProvider>(
-      builder: (context, selectedRouteProvider, tracksProvider, child) {
+    return Consumer2<SelectedRouteProvider, WorkDayProvider>(
+      builder: (context, selectedRouteProvider, workDayProvider, child) {
+        // Инициализируем WorkDayProvider при первом рендере
+        if (workDayProvider.workDays.isEmpty) {
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            workDayProvider.loadWorkDays().then((_) {
+              // Выбираем сегодняшний день по умолчанию
+              final todayWorkDay = workDayProvider.todayWorkDay;
+              if (todayWorkDay != null) {
+                workDayProvider.selectWorkDay(todayWorkDay);
+              }
+            });
+          });
+          return const Center(child: CircularProgressIndicator());
+        }
+        
         shop.Route? routeToShow;
         List<LatLng> routePolylinePoints = [];
         
@@ -102,11 +117,28 @@ class SalesRepHomeView extends StatelessWidget {
           routePolylinePoints = state.routePolylinePoints;
         }
         
-        final tracks = tracksProvider.userTracks;
+        // Получаем выбранный рабочий день
+        final selectedWorkDay = workDayProvider.selectedWorkDay;
+        
+        // Определяем трек для отображения
+        UserTrack? trackToShow;
+        if (selectedWorkDay != null) {
+          if (selectedWorkDay.isToday && workDayProvider.activeTrack != null) {
+            // Сегодня: показываем активный трек
+            trackToShow = workDayProvider.activeTrack;
+            print('🗺️ SalesRepHomePage: Отображаем активный трек для сегодня: ${trackToShow?.id} (${trackToShow?.totalPoints} точек)');
+          } else {
+            // Другие дни: показываем actualTrack из WorkDay
+            trackToShow = selectedWorkDay.actualTrack;
+            print('🗺️ SalesRepHomePage: Отображаем actualTrack для даты ${selectedWorkDay.date}: ${trackToShow?.id} (${trackToShow?.totalPoints} точек)');
+          }
+        } else {
+          print('⚠️ SalesRepHomePage: selectedWorkDay == null');
+        }
         
         return CombinedMapWidget(
           route: routeToShow,
-          historicalTracks: tracks,
+          track: trackToShow,
           onTap: (point) {
             print('Нажатие на карту: ${point.latitude}, ${point.longitude}');
           },

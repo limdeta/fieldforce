@@ -34,25 +34,63 @@ class RouteRepositoryDrift implements RouteRepository {
   
   @override
   Stream<List<domain.Route>> watchEmployeeRoutes(Employee employee) async* {
+    print('🔍 Начинаем отслеживание маршрутов для сотрудника ${employee.fullName}');
+    
     try {
       final employeeId = employee.id;
 
       final query = _database.select(_database.routes)
         ..where((route) => route.employeeId.equals(employeeId));
       
+      print('🔍 Настраиваем watch query для employee_id: $employeeId');
+      
       yield* query.watch().asyncMap((routesData) async {
+        print('🔍 Получили ${routesData.length} маршрутов от watch');
         final routesList = <domain.Route>[];
         
         for (final routeData in routesData) {
+          print('🔍 Загружаем маршрут: ${routeData.name}');
           final points = await _loadRoutePoints(routeData.id);
           final route = RouteMapper.fromDb(routeData, points);
           routesList.add(route);
         }
         
+        print('✅ Завершили загрузку ${routesList.length} маршрутов');
         return routesList;
       });
     } catch (e) {
+      print('❌ Ошибка в watchEmployeeRoutes: $e');
       yield [];
+    }
+  }
+
+  @override
+  Future<List<domain.Route>> getEmployeeRoutes(Employee employee) async {
+    print('🔍 Получаем маршруты для сотрудника ${employee.fullName} (одноразово)');
+    
+    try {
+      final employeeId = employee.id;
+
+      final query = _database.select(_database.routes)
+        ..where((route) => route.employeeId.equals(employeeId));
+      
+      final routesData = await query.get();
+      print('🔍 Получили ${routesData.length} маршрутов из базы');
+      
+      final routesList = <domain.Route>[];
+      
+      for (final routeData in routesData) {
+        print('🔍 Загружаем маршрут: ${routeData.name}');
+        final points = await _loadRoutePoints(routeData.id);
+        final route = RouteMapper.fromDb(routeData, points);
+        routesList.add(route);
+      }
+      
+      print('✅ Загружено ${routesList.length} маршрутов для ${employee.fullName}');
+      return routesList;
+    } catch (e) {
+      print('❌ Ошибка получения маршрутов для ${employee.fullName}: $e');
+      return [];
     }
   }
 
@@ -139,20 +177,42 @@ class RouteRepositoryDrift implements RouteRepository {
 
   // Вспомогательные методы
   Future<List<domain.PointOfInterest>> _loadRoutePoints(int routeId) async {
-    final pointsQuery = _database.select(_database.pointsOfInterest)
-      ..where((point) => point.routeId.equals(routeId));
+    print('🔍 Начинаем загрузку точек для маршрута $routeId');
     
-    final dbPoints = await pointsQuery.get();
-    final points = <domain.PointOfInterest>[];
-    
-    for (final dbPoint in dbPoints) {
-      // Простая имплементация для basic PointOfInterest
-      // В будущем можно расширить для TradingPointOfInterest
-      final point = _createBasicPoint(dbPoint);
-      points.add(point);
+    try {
+      final pointsQuery = _database.select(_database.pointsOfInterest)
+        ..where((point) => point.routeId.equals(routeId));
+      
+      print('🔍 Выполняем SQL запрос...');
+      // Добавляем timeout для предотвращения зависания
+      final dbPoints = await pointsQuery.get()
+        .timeout(const Duration(seconds: 5), onTimeout: () {
+          print('⏰ TIMEOUT при загрузке точек для маршрута $routeId');
+          return <db.PointOfInterestData>[];
+        });
+      
+      print('✅ Получили ${dbPoints.length} точек для маршрута $routeId');
+      final points = <domain.PointOfInterest>[];
+      
+      for (final dbPoint in dbPoints) {
+        try {
+          print('🔍 Обрабатываем точку: ${dbPoint.name}');
+          // Простая имплементация для basic PointOfInterest
+          // В будущем можно расширить для TradingPointOfInterest
+          final point = _createBasicPoint(dbPoint);
+          points.add(point);
+        } catch (e) {
+          print('⚠️ Ошибка создания точки ${dbPoint.name}: $e');
+          // Продолжаем с остальными точками
+        }
+      }
+      
+      print('✅ Завершили загрузку ${points.length} точек для маршрута $routeId');
+      return points;
+    } catch (e) {
+      print('❌ Ошибка загрузки точек для маршрута $routeId: $e');
+      return <domain.PointOfInterest>[];
     }
-    
-    return points;
   }
 
   domain.PointOfInterest _createBasicPoint(db.PointOfInterestData dbPoint) {

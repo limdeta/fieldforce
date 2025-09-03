@@ -10,6 +10,7 @@ import 'package:fieldforce/features/navigation/tracking/presentation/providers/u
 import 'package:fieldforce/features/navigation/map/domain/entities/map_point.dart';
 import 'package:fieldforce/features/navigation/path_predictor/osrm_path_prediction_service.dart';
 import 'package:fieldforce/features/shop/domain/entities/point_of_interest.dart';
+import 'package:fieldforce/features/navigation/tracking/data/fixtures/track_fixtures.dart';
 import 'sales_rep_home_event.dart';
 import 'sales_rep_home_state.dart';
 
@@ -229,10 +230,10 @@ class SalesRepHomeBloc extends Bloc<SalesRepHomeEvent, SalesRepHomeState> {
   }
 
   /// Обновление списка маршрутов (от stream)
-  void _onRoutesUpdated(
+  Future<void> _onRoutesUpdated(
     RoutesUpdatedEvent event,
     Emitter<SalesRepHomeState> emit,
-  ) {
+  ) async {
     if (event.routes.isEmpty) {
       emit(const SalesRepHomeLoaded(
         currentRoute: null,
@@ -259,6 +260,23 @@ class SalesRepHomeBloc extends Bloc<SalesRepHomeEvent, SalesRepHomeState> {
       showRoutePanel: state is SalesRepHomeLoaded ? (state as SalesRepHomeLoaded).showRoutePanel : true,
       isBuildingRoute: state is SalesRepHomeLoaded ? (state as SalesRepHomeLoaded).isBuildingRoute : false,
     ));
+
+    // 🎯 АВТОЗАПУСК GPS ТРЕКИНГА для найденного маршрута
+    if (routeToDisplay != null) {
+      print('🚀 SalesRepHomeBloc: Запускаем GPS трекинг для маршрута ${routeToDisplay.name} (ID: ${routeToDisplay.id})');
+      try {
+        final success = await TrackFixtures.continueOrStartTodaysTrack(
+          routeId: routeToDisplay.id?.toString() ?? 'unknown',
+        );
+        if (success) {
+          print('✅ SalesRepHomeBloc: GPS трекинг успешно запущен');
+        } else {
+          print('❌ SalesRepHomeBloc: Не удалось запустить GPS трекинг');
+        }
+      } catch (e) {
+        print('❌ SalesRepHomeBloc: Ошибка запуска GPS трекинга: $e');
+      }
+    }
   }
 
   /// Синхронизация треков с маршрутом

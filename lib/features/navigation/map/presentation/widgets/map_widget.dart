@@ -7,7 +7,6 @@ import '../../../../../app/domain/adapters/route_map_adapter.dart';
 import '../../data/repositories/osm_map_service.dart';
 import '../../../../shop/domain/entities/route.dart' as domain;
 import '../../../../../app/services/user_initialization_service.dart';
-import '../../../tracking/domain/services/location_tracking_service.dart';
 import '../../../tracking/domain/entities/user_track.dart';
 import 'route_polyline.dart';
 
@@ -19,14 +18,8 @@ class MapWidget extends StatefulWidget {
   final Function(MapPoint)? onTap;
   final Function(MapPoint)? onLongPress;
   
-  /// Сервис трекинга для отображения пути пользователя (опционально)
-  final LocationTrackingService? trackingService;
-  
-  /// Показывать ли трек пользователя на карте
-  final bool showUserTrack;
-  
-  /// Исторические GPS треки для отображения
-  final List<UserTrack> historicalTracks;
+  /// Трек для отображения (может быть null)
+  final UserTrack? track;
   
   final List<LatLng> routePolylinePoints;
 
@@ -37,9 +30,7 @@ class MapWidget extends StatefulWidget {
     this.initialZoom,
     this.onTap,
     this.onLongPress,
-    this.trackingService,
-    this.showUserTrack = false,
-    this.historicalTracks = const [],
+    this.track,
     this.routePolylinePoints = const [],
   });
 
@@ -314,8 +305,8 @@ class _MapWidgetState extends State<MapWidget> {
               maxZoom: _mapService.maxZoom.toDouble(),
             ),
             
-            // Слой GPS треков (polylines) - отображаем треки для выбранного маршрута
-            if (widget.historicalTracks.isNotEmpty)
+            // Слой GPS трека (polyline) - простое отображение одного трека
+            if (widget.track != null)
               PolylineLayer(polylines: _buildTrackPolylines()),
             
             // Слой маршрута (построенного через OSRM)
@@ -345,14 +336,6 @@ class _MapWidgetState extends State<MapWidget> {
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          // Кнопка трекинга (если включена)
-          if (widget.trackingService != null)
-            _buildTrackingButton(),
-          
-          // Интервал между группами кнопок
-          if (widget.trackingService != null)
-            const SizedBox(height: 16),
-          
           // Кнопка текущего положения
           FloatingActionButton(
             mini: true,
@@ -391,25 +374,6 @@ class _MapWidgetState extends State<MapWidget> {
     );
   }
 
-  /// Строит кнопку быстрого доступа к трекингу
-  Widget _buildTrackingButton() {
-    return StreamBuilder<bool>(
-      stream: widget.trackingService!.trackUpdateStream.map((track) => track.isActive),
-      initialData: widget.trackingService!.isTracking,
-      builder: (context, snapshot) {
-        final isTracking = snapshot.data ?? false;
-        
-        return FloatingActionButton(
-          heroTag: "tracking",
-          onPressed: _onTrackingPressed,
-          backgroundColor: isTracking ? Colors.red : Colors.green,
-          foregroundColor: Colors.white,
-          child: Icon(isTracking ? Icons.stop : Icons.play_arrow),
-        );
-      },
-    );
-  }
-
   /// Обработчик кнопки текущего положения
   void _onLocationPressed() {
     // TODO: Получить текущее положение пользователя и переместить карту
@@ -433,70 +397,6 @@ class _MapWidgetState extends State<MapWidget> {
     final newZoom = (currentZoom - 1).clamp(_mapService.minZoom.toDouble(), _mapService.maxZoom.toDouble());
     _mapController.move(_mapController.camera.center, newZoom);
     _saveMapState(); // Сохраняем новое состояние
-  }
-
-  /// Обработчик кнопки трекинга
-  void _onTrackingPressed() {
-    // Здесь можно показать диалог управления трекингом
-    // или выполнить быстрое действие (старт/стоп)
-    if (widget.trackingService!.isTracking) {
-      // Показываем диалог остановки трекинга
-      _showTrackingStopDialog();
-    } else {
-      // Показываем диалог начала трекинга
-      _showTrackingStartDialog();
-    }
-  }
-
-  void _showTrackingStartDialog() {
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Начать запись маршрута?'),
-        content: const Text(
-          'Будет начата запись вашего пути с помощью GPS. '
-          'Убедитесь, что у приложения есть разрешение на геолокацию.',
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(),
-            child: const Text('Отмена'),
-          ),
-          ElevatedButton(
-            onPressed: () async {
-              Navigator.of(context).pop();
-              // Запуск трекинга (здесь нужно получить userId)
-              // await widget.trackingService!.startTracking(userId: currentUserId);
-            },
-            child: const Text('Начать'),
-          ),
-        ],
-      ),
-    );
-  }
-
-  void _showTrackingStopDialog() {
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Остановить запись?'),
-        content: const Text('Запись маршрута будет остановлена и сохранена.'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(),
-            child: const Text('Отмена'),
-          ),
-          ElevatedButton(
-            onPressed: () async {
-              Navigator.of(context).pop();
-              await widget.trackingService!.stopTracking();
-            },
-            style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
-            child: const Text('Остановить'),
-          ),
-        ],
-      ),
-    );
   }
 
   /// Создает маркеры начала/конца GPS треков - ВРЕМЕННО ОТКЛЮЧЕНО ДЛЯ ОПТИМИЗАЦИИ
@@ -540,72 +440,57 @@ class _MapWidgetState extends State<MapWidget> {
   // Кэш для оптимизации полилиний треков
   static final Map<String, List<Polyline>> _polylineCache = {};
   
-  /// Создает полилинии для отображения GPS треков пользователя (МАКСИМАЛЬНО оптимизировано для слабых устройств)
+  /// Создает полилинии для отображения одного GPS трека (оптимизировано)
   List<Polyline> _buildTrackPolylines() {
-    final polylines = <Polyline>[];
-
-    for (final track in widget.historicalTracks) {
-      // Создаем уникальный ключ для кэширования
-      final cacheKey = '${track.id}_${track.status.name}_${track.segments.length}';
-      
-      // Проверяем кэш
-      if (_polylineCache.containsKey(cacheKey)) {
-        polylines.addAll(_polylineCache[cacheKey]!);
-        continue;
-      }
-
-      // АГРЕССИВНАЯ оптимизация: максимальное прореживание точек для слабых устройств
-      final allPoints = <LatLng>[];
-      int totalPoints = 0;
-      
-      for (final segment in track.segments) {
-        totalPoints += segment.pointCount;
-      }
-      
-      // Агрессивное прореживание: для слабых устройств оставляем максимум 50-100 точек
-      final maxPoints = 75; // Максимум точек для отображения
-      final skipFactor = totalPoints > maxPoints ? (totalPoints / maxPoints).ceil() : 1;
-      
-      // Убираем избыточные логи для dev режима
-      // print('🚀 MapWidget: Трек ${track.id} - оптимизация: $totalPoints точек → макс $maxPoints (пропуск каждые $skipFactor)');
-      
-      for (final segment in track.segments) {
-        for (int i = 0; i < segment.pointCount; i += skipFactor) {
-          final (lat, lng) = segment.getCoordinates(i);
-          allPoints.add(LatLng(lat, lng));
-        }
-        // Всегда добавляем последнюю точку сегмента для целостности маршрута
-        if (segment.pointCount > 0 && skipFactor > 1) {
-          final (lat, lng) = segment.getCoordinates(segment.pointCount - 1);
-          if (allPoints.isEmpty || 
-              allPoints.last.latitude != lat || 
-              allPoints.last.longitude != lng) {
-            allPoints.add(LatLng(lat, lng));
-          }
-        }
-      }
-
-      if (allPoints.isEmpty) continue;
-
-      // HOT PINK для всех треков (как было установлено ранее)
-      const trackColor = Color(0xFFFF1493); // HOT PINK
-      const strokeWidth = 4.0;
-
-      final polyline = Polyline(
-        points: allPoints,
-        strokeWidth: strokeWidth,
-        color: trackColor.withOpacity(0.8),
-      );
-
-      // Кэшируем результат
-      _polylineCache[cacheKey] = [polyline];
-      polylines.add(polyline);
-      
-      // Убираем избыточные логи для dev режима
-      // print('⚡ MapWidget: Трек ${track.id} закэширован: ${allPoints.length} точек (оптимизировано для слабых устройств)');
+    final track = widget.track;
+    if (track == null) {
+      print('🗺️ MapWidget: _buildTrackPolylines() - track == null');
+      return [];
     }
 
-    return polylines;
+    print('🗺️ MapWidget: _buildTrackPolylines() - track ID: ${track.id}, сегментов: ${track.segments.length}');
+
+    final allPoints = <LatLng>[];
+    int totalPoints = 0;
+    
+    for (final segment in track.segments) {
+      totalPoints += segment.pointCount.toInt();
+    }
+    
+    print('🗺️ MapWidget: Всего точек в треке: $totalPoints');
+    
+    // Оптимизация: прореживание точек для слабых устройств
+    final maxPoints = 75;
+    final skipFactor = totalPoints > maxPoints ? (totalPoints / maxPoints).ceil() : 1;
+    
+    for (final segment in track.segments) {
+      for (int i = 0; i < segment.pointCount; i += skipFactor) {
+        final (lat, lng) = segment.getCoordinates(i);
+        allPoints.add(LatLng(lat, lng));
+      }
+      // Всегда добавляем последнюю точку сегмента
+      if (segment.pointCount > 0 && skipFactor > 1) {
+        final (lat, lng) = segment.getCoordinates(segment.pointCount.toInt() - 1);
+        if (allPoints.isEmpty || 
+            allPoints.last.latitude != lat || 
+            allPoints.last.longitude != lng) {
+          allPoints.add(LatLng(lat, lng));
+        }
+      }
+    }
+
+    if (allPoints.isEmpty) return [];
+
+    const trackColor = Color(0xFFFF1493); // HOT PINK
+    const strokeWidth = 4.0;
+
+    final polyline = Polyline(
+      points: allPoints,
+      strokeWidth: strokeWidth,
+      color: trackColor.withOpacity(0.8),
+    );
+
+    return [polyline];
   }
   
   /// Очищает кэш полилиний при изменении треков (оптимизация памяти)
@@ -619,8 +504,8 @@ class _MapWidgetState extends State<MapWidget> {
   @override
   void didUpdateWidget(MapWidget oldWidget) {
     super.didUpdateWidget(oldWidget);
-    // Очищаем кэш при изменении треков
-    if (oldWidget.historicalTracks.length != widget.historicalTracks.length) {
+    // Очищаем кэш при изменении трека
+    if (oldWidget.track?.id != widget.track?.id) {
       _clearPolylineCache();
     }
   }

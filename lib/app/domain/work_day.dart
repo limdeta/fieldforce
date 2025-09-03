@@ -1,4 +1,4 @@
-import '../../features/shop//domain/entities/route.dart';
+import '../../features/shop/domain/entities/route.dart' as shop;
 import '../../features/navigation/tracking/domain/entities/user_track.dart';
 
 /// Рабочий день - объединяет маршрут (план) и GPS трек (факт)
@@ -9,7 +9,7 @@ class WorkDay {
   final int id;
   final int userId;
   final DateTime date;
-  final Route? plannedRoute;
+  final shop.Route? plannedRoute;
   /// Фактический GPS трек (может быть null если день еще не начался)
   final UserTrack? actualTrack;
   final WorkDayStatus status;
@@ -33,7 +33,7 @@ class WorkDay {
     int? id,
     int? userId,
     DateTime? date,
-    Route? plannedRoute,
+    shop.Route? plannedRoute,
     UserTrack? actualTrack,
     WorkDayStatus? status,
     DateTime? startTime,

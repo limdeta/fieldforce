@@ -3,16 +3,23 @@ import 'package:fieldforce/features/navigation/tracking/domain/entities/navigati
 import 'dart:async';
 import '../../domain/entities/user_track.dart';
 import '../usecases/get_user_tracks_usecase.dart';
+import '../../../../../app/services/location_tracking_service.dart';
+import 'package:get_it/get_it.dart';
 
-/// Provider для управления состоянием треков пользователя (ОПТИМИЗИРОВАННО для производительности)
+/// Provider для управления состоянием треков пользователя
+/// Объединяет исторические треки из БД с активным треком от LocationTrackingService
 class UserTracksProvider extends ChangeNotifier {
   final GetUserTracksUseCase _getUserTracksUseCase;
+  late final LocationTrackingService _locationTrackingService;
   
   List<UserTrack> _userTracks = [];
   UserTrack? _activeTrack;
   List<UserTrack> _completedTracks = [];
   bool _isLoading = false;
   String? _error;
+  
+  // Подписка на активный трек
+  StreamSubscription<UserTrack>? _activeTrackSubscription;
   
   // Кэширование для предотвращения повторных запросов
   NavigationUser? _lastLoadedUser;
@@ -23,7 +30,10 @@ class UserTracksProvider extends ChangeNotifier {
   Timer? _debounceTimer;
   static const Duration _debounceDelay = Duration(milliseconds: 300);
   
-  UserTracksProvider(this._getUserTracksUseCase);
+  UserTracksProvider(this._getUserTracksUseCase) {
+    _locationTrackingService = GetIt.instance<LocationTrackingService>();
+    _subscribeToActiveTrack();
+  }
   
   // Getters
   List<UserTrack> get userTracks => _userTracks;
@@ -126,9 +136,45 @@ class UserTracksProvider extends ChangeNotifier {
     notifyListeners();
   }
 
+  /// Подписывается на активный трек от LocationTrackingService
+  void _subscribeToActiveTrack() {
+    _activeTrackSubscription = _locationTrackingService.trackUpdateStream.listen(
+      (activeTrack) {
+        print('📡 UserTracksProvider: Получен активный трек ${activeTrack.id} (${activeTrack.totalPoints} точек)');
+        _updateActiveTrack(activeTrack);
+      },
+      onError: (error) {
+        print('❌ UserTracksProvider: Ошибка получения активного трека: $error');
+      },
+    );
+  }
+
+  /// УПРОЩЕННАЯ ЛОГИКА: Просто обновляем трек без объединения
+  void _updateActiveTrack(UserTrack activeTrack) {
+    print('📡 UserTracksProvider: Получен активный трек ${activeTrack.id} (${activeTrack.totalPoints} точек)');
+    
+    // Ищем трек с таким же ID в списке
+    final existingIndex = _userTracks.indexWhere((track) => track.id == activeTrack.id);
+    
+    if (existingIndex != -1) {
+      // Обновляем существующий трек
+      _userTracks[existingIndex] = activeTrack;
+      print('📊 UserTracksProvider: Обновлен трек ${activeTrack.id} (${activeTrack.totalPoints} точек)');
+    } else {
+      // Добавляем новый трек
+      _userTracks.add(activeTrack);
+      print('📊 UserTracksProvider: Добавлен новый трек ${activeTrack.id} (${activeTrack.totalPoints} точек)');
+    }
+    
+    _activeTrack = activeTrack;
+    notifyListeners();
+  }
+
+  /// Обновляет существующий активный трек в списке (СОХРАНЯЯ ОБЪЕДИНЕНИЕ)
   @override
   void dispose() {
     _debounceTimer?.cancel(); // Очищаем таймер при удалении провайдера
+    _activeTrackSubscription?.cancel(); // Очищаем подписку на активный трек
     super.dispose();
   }
 }
