@@ -1,6 +1,6 @@
 import 'package:get_it/get_it.dart';
-import '../../lib/app/test_service_locator.dart';
-import '../../lib/app/database/app_database.dart';
+import 'package:fieldforce/app/di/test_service_locator.dart';
+import 'package:fieldforce/app/database/app_database.dart';
 
 class GlobalTestManager {
   static GlobalTestManager? _instance;
@@ -23,7 +23,7 @@ class GlobalTestManager {
   Future<void> initializeGlobal() async {
     if (_isInitialized) return;
     
-    await TestServiceLocator.setup();
+    await setupTestServiceLocator();
     _isInitialized = true;
   }
   

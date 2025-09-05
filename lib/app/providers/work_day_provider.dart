@@ -1,10 +1,10 @@
+import 'package:fieldforce/app/domain/entities/work_day.dart';
+import 'package:fieldforce/app/services/app_session_service.dart';
+import 'package:fieldforce/features/navigation/tracking/domain/services/location_tracking_service_base.dart';
+import 'package:fieldforce/features/navigation/tracking/domain/entities/user_track.dart';
 import 'package:flutter/foundation.dart';
 import 'package:get_it/get_it.dart';
-import '../domain/work_day.dart';
-import '../services/location_tracking_service.dart';
-import '../services/app_session_service.dart';
-import '../../features/shop/domain/entities/route.dart' as shop;
-import '../../features/navigation/tracking/domain/entities/user_track.dart';
+import 'package:fieldforce/app/domain/usecases/get_work_days_for_user_usecase.dart';
 
 extension ListExtensions<T> on Iterable<T> {
   T? get firstOrNull => isEmpty ? null : first;
@@ -13,8 +13,9 @@ extension ListExtensions<T> on Iterable<T> {
 /// Provider для управления рабочими днями
 /// Объединяет маршруты и треки в логические единицы WorkDay
 class WorkDayProvider extends ChangeNotifier {
-  final LocationTrackingService _trackingService = GetIt.instance<LocationTrackingService>();
-  
+  final LocationTrackingServiceBase _trackingService = GetIt.instance<LocationTrackingServiceBase>();
+  final GetWorkDaysForUserUseCase _getWorkDaysForUser = GetIt.instance<GetWorkDaysForUserUseCase>();
+
   List<WorkDay> _workDays = [];
   WorkDay? _selectedWorkDay;
   UserTrack? _activeTrack;
@@ -69,40 +70,18 @@ class WorkDayProvider extends ChangeNotifier {
     }
   }
 
-  /// Создаем новый рабочий день
-  Future<WorkDay> createWorkDay({
-    required DateTime date,
-    shop.Route? plannedRoute,
-  }) async {
-    final session = AppSessionService.currentSession;
-    if (session == null) throw Exception('Нет активной сессии');
-
-    final workDay = WorkDay(
-      id: DateTime.now().millisecondsSinceEpoch, // Временный ID
-      userId: session.appUser.employee.id,
-      date: date,
-      plannedRoute: plannedRoute,
-      actualTrack: null,
-      status: WorkDayStatus.planned,
-    );
-
-    _workDays.add(workDay);
-    notifyListeners();
-    return workDay;
-  }
-
   /// Начинаем рабочий день (запускаем трекинг)
   Future<bool> startWorkDay(WorkDay workDay) async {
     if (!workDay.canStart) return false;
 
     // Запускаем GPS трекинг
-    final success = await _trackingService.startTracking();
+    final success = await _trackingService.startTracking(workDay.user);
     if (!success) return false;
 
     // Обновляем статус
     final updatedWorkDay = workDay.copyWith(
       status: WorkDayStatus.active,
-      startTime: DateTime.now(),
+      startTime: DateTime.now(), user: workDay.user,
     );
 
     _updateWorkDay(updatedWorkDay);
@@ -113,7 +92,7 @@ class WorkDayProvider extends ChangeNotifier {
       
       // Обновляем actualTrack в текущем WorkDay
       if (_selectedWorkDay?.isToday == true) {
-        final updated = _selectedWorkDay!.copyWith(actualTrack: track);
+        final updated = _selectedWorkDay!.copyWith(track: track, user: workDay.user);
         _updateWorkDay(updated);
       }
     });
@@ -128,7 +107,7 @@ class WorkDayProvider extends ChangeNotifier {
     final updatedWorkDay = workDay.copyWith(
       status: WorkDayStatus.completed,
       endTime: DateTime.now(),
-      actualTrack: _activeTrack,
+      track: _activeTrack, user: workDay.user,
     );
     
     _updateWorkDay(updatedWorkDay);
@@ -162,47 +141,23 @@ class WorkDayProvider extends ChangeNotifier {
   /// Загружаем рабочие дни из базы данных
   Future<void> loadWorkDays() async {
     print('📅 WorkDayProvider: Загружаем рабочие дни...');
-    // TODO: Загрузка из repository
-    // Пока создаем моковые данные
-    _createMockWorkDays();
-    print('✅ WorkDayProvider: Загружено ${_workDays.length} рабочих дней');
+    final session = AppSessionService.currentSession;
+    if (session == null) {
+      print('❌ WorkDayProvider: Нет активной сессии');
+      _workDays = [];
+      notifyListeners();
+      return;
+    }
+    final user = session.appUser;
+    print('📊 WorkDayProvider: Загружаем WorkDay для пользователя ${user.fullName}');
+    try {
+      final workDays = await _getWorkDaysForUser(user);
+      _workDays = workDays;
+      print('✅ WorkDayProvider: Загружено ${_workDays.length} рабочих дней');
+    } catch (e) {
+      print('❌ WorkDayProvider: Ошибка загрузки рабочих дней: $e');
+      _workDays = [];
+    }
     notifyListeners();
-  }
-
-  void _createMockWorkDays() {
-    final today = DateTime.now();
-    final yesterday = today.subtract(const Duration(days: 1));
-    final tomorrow = today.add(const Duration(days: 1));
-
-    _workDays = [
-      // Вчера - завершен
-      WorkDay(
-        id: 1,
-        userId: 279,
-        date: yesterday,
-        plannedRoute: null, // Был без плана
-        actualTrack: null, // Трека не было
-        status: WorkDayStatus.completed,
-      ),
-      // Сегодня - активный
-      WorkDay(
-        id: 2,
-        userId: 279,
-        date: today,
-        plannedRoute: null, // Будет заполнен из fixtures
-        actualTrack: null, // Будет обновлен из активного трека
-        status: WorkDayStatus.active,
-        startTime: today.subtract(const Duration(hours: 2)),
-      ),
-      // Завтра - запланирован
-      WorkDay(
-        id: 3,
-        userId: 279,
-        date: tomorrow,
-        plannedRoute: null, // Будет заполнен из fixtures
-        actualTrack: null,
-        status: WorkDayStatus.planned,
-      ),
-    ];
   }
 }

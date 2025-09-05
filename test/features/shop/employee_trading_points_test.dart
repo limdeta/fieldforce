@@ -34,7 +34,7 @@ void main() {
       final createResult = await employeeRepository.createEmployee(employee);
       
       // Получаем сотрудника с присвоенным ID
-      late final savedEmployee;
+      late final Employee savedEmployee;
       createResult.fold(
         (failure) => fail('Failed to create employee: ${failure.message}'),
         (emp) => savedEmployee = emp,
@@ -73,7 +73,7 @@ void main() {
 
       // Сохраняем сотрудника и торговые точки в базу
       final createResult = await employeeRepository.createEmployee(employee);
-      late final savedEmployee;
+      late final Employee savedEmployee;
       createResult.fold(
         (failure) => fail('Failed to create employee: ${failure.message}'),
         (emp) => savedEmployee = emp,

@@ -1,3 +1,4 @@
+import 'package:fieldforce/features/navigation/tracking/domain/enums/track_status.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
@@ -5,7 +6,7 @@ import '../../domain/entities/map_point.dart';
 import '../../domain/repositories/map_service.dart';
 import '../../../../../app/domain/adapters/route_map_adapter.dart';
 import '../../data/repositories/osm_map_service.dart';
-import '../../../../shop/domain/entities/route.dart' as domain;
+import '../../../../../app/domain/entities/route.dart' as domain;
 import '../../../../../app/services/user_initialization_service.dart';
 import '../../../tracking/domain/entities/user_track.dart';
 import 'route_polyline.dart';
@@ -142,11 +143,8 @@ class _MapWidgetState extends State<MapWidget> {
 
   /// Создает маркер для точки интереса
   Marker _buildMarkerForPOI(dynamic poi) {
-    // Используем адаптер для получения цвета и иконки
     final colorName = RouteMapAdapter.getMarkerColorByStatus(poi.status);
     final iconName = RouteMapAdapter.getMarkerIconByType(poi.type);
-    
-    // Преобразуем названия в Flutter объекты
     Color markerColor = _getColorFromName(colorName);
     IconData markerIcon = _getIconFromName(iconName);
 
@@ -247,7 +245,7 @@ class _MapWidgetState extends State<MapWidget> {
             Text('Статус: ${RouteMapAdapter.getStatusDisplayText(poi.status)}'),
             if (poi.plannedArrivalTime != null) ...[
               const SizedBox(height: 4),
-              Text('Планируемое время: ${poi.plannedArrivalTime}'),
+              Text('Планируем����е время: ${poi.plannedArrivalTime}'),
             ],
             const SizedBox(height: 16),
             Row(
@@ -298,7 +296,6 @@ class _MapWidgetState extends State<MapWidget> {
             },
           ),
           children: [
-            // Слой тайлов карты
             TileLayer(
               urlTemplate: _mapService.getTileUrl(0, 0, 0).replaceAll('/0/0/0.png', '/{z}/{x}/{y}.png'),
               userAgentPackageName: 'com.fieldforce.app.fieldforce',
@@ -312,16 +309,14 @@ class _MapWidgetState extends State<MapWidget> {
             // Слой маршрута (построенного через OSRM)
             if (widget.routePolylinePoints.isNotEmpty)
               RoutePolyline(points: widget.routePolylinePoints),
-            
-            // Слой маркеров маршрута
+
             if (widget.route != null)
               MarkerLayer(
                 markers: _buildRouteMarkers(),
               ),
           ],
         ),
-        
-        // Кнопки управления картой
+
         _buildMapControls(context),
       ],
     );
@@ -331,8 +326,7 @@ class _MapWidgetState extends State<MapWidget> {
   Widget _buildMapControls(BuildContext context) {
     return Positioned(
       right: 16,
-      // Адаптивный отступ снизу: базовый отступ + место для кнопки "Построить маршрут" (если есть)
-      bottom: 88, // 16 базовый + 48 кнопка + 16 padding + 8 доп. отступ = 88
+      bottom: 88,
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
@@ -347,8 +341,7 @@ class _MapWidgetState extends State<MapWidget> {
           ),
           
           const SizedBox(height: 8),
-          
-          // Кнопка увеличения
+
           FloatingActionButton(
             mini: true,
             heroTag: "zoom_in",
@@ -399,48 +392,18 @@ class _MapWidgetState extends State<MapWidget> {
     _saveMapState(); // Сохраняем новое состояние
   }
 
-  /// Создает маркеры начала/конца GPS треков - ВРЕМЕННО ОТКЛЮЧЕНО ДЛЯ ОПТИМИЗАЦИИ
-  /*
-  List<Marker> _buildTrackMarkers() {
-    final markers = <Marker>[];
+  /// Создает маркеры начала/конца GPS треков (не реализовано)
+  // List<Marker> _buildTrackMarkers() {
+  //   final markers = <Marker>[];
+  //   return markers;
+  // }
 
-    for (final track in widget.historicalTracks) {
-      if (track.points.isEmpty) continue;
-
-      final firstPoint = track.points.first;
-      final lastPoint = track.points.last;
-
-      markers.addAll([
-        // Начало трека
-        Marker(
-          point: LatLng(firstPoint.latitude, firstPoint.longitude),
-          child: const Icon(
-            Icons.play_arrow,
-            color: Colors.green,
-            size: 20,
-          ),
-        ),
-        // Конец трека (только для завершенных)
-        if (track.status == TrackStatus.completed)
-          Marker(
-            point: LatLng(lastPoint.latitude, lastPoint.longitude),
-            child: const Icon(
-              Icons.stop,
-              color: Colors.red,
-              size: 20,
-            ),
-          ),
-      ]);
-    }
-
-    return markers;
-  }
-  */
 
   // Кэш для оптимизации полилиний треков
   static final Map<String, List<Polyline>> _polylineCache = {};
   
-  /// Создает полилинии для отображения одного GPS трека (оптимизировано)
+  /// Создает полилинии для отображения GPS трека
+  /// Отдельно рисует сохраненные сегменты и live буфер
   List<Polyline> _buildTrackPolylines() {
     final track = widget.track;
     if (track == null) {
@@ -450,49 +413,74 @@ class _MapWidgetState extends State<MapWidget> {
 
     print('🗺️ MapWidget: _buildTrackPolylines() - track ID: ${track.id}, сегментов: ${track.segments.length}');
 
-    final allPoints = <LatLng>[];
+    final polylines = <Polyline>[];
     int totalPoints = 0;
-    
-    for (final segment in track.segments) {
+
+    // 1. Рисуем сохраненные сегменты из БД
+    // 2. Рисуем live буфер
+    for (int segmentIndex = 0; segmentIndex < track.segments.length; segmentIndex++) {
+      final segment = track.segments[segmentIndex];
       totalPoints += segment.pointCount.toInt();
-    }
-    
-    print('🗺️ MapWidget: Всего точек в треке: $totalPoints');
-    
-    // Оптимизация: прореживание точек для слабых устройств
-    final maxPoints = 75;
-    final skipFactor = totalPoints > maxPoints ? (totalPoints / maxPoints).ceil() : 1;
-    
-    for (final segment in track.segments) {
+
+      if (segment.isEmpty) continue;
+
+      final segmentPoints = <LatLng>[];
+
+      // Прореживание для производительности (только для больших сегментов)
+      final maxPointsPerSegment = 100;
+      final skipFactor = segment.pointCount > maxPointsPerSegment
+          ? (segment.pointCount / maxPointsPerSegment).ceil()
+          : 1;
+
+      // Добавляем точки сегмента
       for (int i = 0; i < segment.pointCount; i += skipFactor) {
         final (lat, lng) = segment.getCoordinates(i);
-        allPoints.add(LatLng(lat, lng));
+        segmentPoints.add(LatLng(lat, lng));
       }
-      // Всегда добавляем последнюю точку сегмента
-      if (segment.pointCount > 0 && skipFactor > 1) {
+
+      // Всегда добавляем последнюю точку сегмента для точности
+      if (segment.pointCount > 1 && skipFactor > 1) {
         final (lat, lng) = segment.getCoordinates(segment.pointCount.toInt() - 1);
-        if (allPoints.isEmpty || 
-            allPoints.last.latitude != lat || 
-            allPoints.last.longitude != lng) {
-          allPoints.add(LatLng(lat, lng));
+        if (segmentPoints.isEmpty ||
+            segmentPoints.last.latitude != lat ||
+            segmentPoints.last.longitude != lng) {
+          segmentPoints.add(LatLng(lat, lng));
         }
       }
+
+      if (segmentPoints.length < 2) continue;
+
+      final isLiveSegment = track.isSegmentLive(segmentIndex);
+
+      Color segmentColor;
+      double strokeWidth;
+      double opacity;
+
+      if (isLiveSegment) {
+        // Живой сегмент из буфера - яркий, динамичный
+        segmentColor = const Color(0xFFFF006A); // Ярко-зеленый
+        strokeWidth = 5.0;
+        opacity = 0.9;
+      } else {
+        // Сохраненный сегмент из БД - стабильный цвет
+        segmentColor = const Color(0xFFFF1493); // Hot Pink
+        strokeWidth = 4.0;
+        opacity = 0.7;
+      }
+
+      final polyline = Polyline(
+        points: segmentPoints,
+        strokeWidth: strokeWidth,
+        color: segmentColor.withOpacity(opacity),
+      );
+
+      polylines.add(polyline);
     }
 
-    if (allPoints.isEmpty) return [];
-
-    const trackColor = Color(0xFFFF1493); // HOT PINK
-    const strokeWidth = 4.0;
-
-    final polyline = Polyline(
-      points: allPoints,
-      strokeWidth: strokeWidth,
-      color: trackColor.withOpacity(0.8),
-    );
-
-    return [polyline];
+    print('🗺️ MapWidget: Всего точек в треке: $totalPoints, полилиний: ${polylines.length}');
+    return polylines;
   }
-  
+
   /// Очищает кэш полилиний при изменении треков (оптимизация памяти)
   void _clearPolylineCache() {
     if (_polylineCache.isNotEmpty) {

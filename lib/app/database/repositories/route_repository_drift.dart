@@ -1,13 +1,13 @@
+import 'package:fieldforce/app/database/database.dart';
+import 'package:fieldforce/app/domain/entities/point_of_interest.dart';
+import 'package:fieldforce/app/domain/entities/route.dart';
+import 'package:fieldforce/app/domain/repositories/route_repository.dart';
 import 'package:fieldforce/features/shop/domain/entities/employee.dart';
+import 'package:fieldforce/shared/either.dart';
 import 'package:fieldforce/shared/failures.dart';
 
-import '../../../../features/shop/domain/entities/route.dart' as domain;
-import '../../../features/shop/domain/entities/point_of_interest.dart' as domain;
-import '../../../features/shop/domain/repositories/route_repository.dart';
-import '../../../../shared/either.dart';
 import 'package:latlong2/latlong.dart';
 import '../app_database.dart' as db;
-import '../mappers/route_mapper.dart';
 
 class RouteRepositoryDrift implements RouteRepository {
   final db.AppDatabase _database;
@@ -15,10 +15,10 @@ class RouteRepositoryDrift implements RouteRepository {
   RouteRepositoryDrift(this._database);
 
   @override
-  Future<List<domain.Route>> getAllRoutes() async {
+  Future<List<Route>> getAllRoutes() async {
     try {
       final allRoutes = await _database.select(_database.routes).get();
-      final routesList = <domain.Route>[];
+      final routesList = <Route>[];
       
       for (final routeData in allRoutes) {
         final points = await _loadRoutePoints(routeData.id);
@@ -33,69 +33,31 @@ class RouteRepositoryDrift implements RouteRepository {
   }
   
   @override
-  Stream<List<domain.Route>> watchEmployeeRoutes(Employee employee) async* {
-    print('🔍 Начинаем отслеживание маршрутов для сотрудника ${employee.fullName}');
-    
+  Stream<List<Route>> watchEmployeeRoutes(Employee employee) async* {
     try {
       final employeeId = employee.id;
 
       final query = _database.select(_database.routes)
         ..where((route) => route.employeeId.equals(employeeId));
       
-      print('🔍 Настраиваем watch query для employee_id: $employeeId');
-      
       yield* query.watch().asyncMap((routesData) async {
-        print('🔍 Получили ${routesData.length} маршрутов от watch');
-        final routesList = <domain.Route>[];
+        final routesList = <Route>[];
         
         for (final routeData in routesData) {
-          print('🔍 Загружаем маршрут: ${routeData.name}');
           final points = await _loadRoutePoints(routeData.id);
           final route = RouteMapper.fromDb(routeData, points);
           routesList.add(route);
         }
         
-        print('✅ Завершили загрузку ${routesList.length} маршрутов');
         return routesList;
       });
     } catch (e) {
-      print('❌ Ошибка в watchEmployeeRoutes: $e');
       yield [];
     }
   }
 
   @override
-  Future<List<domain.Route>> getEmployeeRoutes(Employee employee) async {
-    print('🔍 Получаем маршруты для сотрудника ${employee.fullName} (одноразово)');
-    
-    try {
-      final employeeId = employee.id;
-
-      final query = _database.select(_database.routes)
-        ..where((route) => route.employeeId.equals(employeeId));
-      
-      final routesData = await query.get();
-      print('🔍 Получили ${routesData.length} маршрутов из базы');
-      
-      final routesList = <domain.Route>[];
-      
-      for (final routeData in routesData) {
-        print('🔍 Загружаем маршрут: ${routeData.name}');
-        final points = await _loadRoutePoints(routeData.id);
-        final route = RouteMapper.fromDb(routeData, points);
-        routesList.add(route);
-      }
-      
-      print('✅ Загружено ${routesList.length} маршрутов для ${employee.fullName}');
-      return routesList;
-    } catch (e) {
-      print('❌ Ошибка получения маршрутов для ${employee.fullName}: $e');
-      return [];
-    }
-  }
-
-  @override
-  Future<Either<NotFoundFailure, domain.Route>> getRouteById(int routeId) async {
+  Future<Either<NotFoundFailure, Route>> getRouteById(int routeId) async {
     try {
       final query = _database.select(_database.routes)
         ..where((route) => route.id.equals(routeId));
@@ -114,8 +76,8 @@ class RouteRepositoryDrift implements RouteRepository {
   }
 
   @override
-  Future<Either<EntityCreationFailure, domain.Route>> saveRoute(
-    domain.Route route, 
+  Future<Either<EntityCreationFailure, Route>> saveRoute(
+    Route route,
     Employee? employee,
   ) async {
     try {
@@ -135,8 +97,8 @@ class RouteRepositoryDrift implements RouteRepository {
   }
 
   @override
-  Future<Either<EntityUpdateFailure, domain.Route>> updateRoute(
-    domain.Route route, 
+  Future<Either<EntityUpdateFailure, Route>> updateRoute(
+    Route route,
     Employee? employee,
   ) async {
     try {
@@ -162,7 +124,7 @@ class RouteRepositoryDrift implements RouteRepository {
   }
 
   @override
-  Future<void> deleteRoute(domain.Route route) async {
+  Future<void> deleteRoute(Route route) async {
     if (route.id != null) {
       await _deleteRoutePoints(route.id!);
       await (_database.delete(_database.routes)
@@ -176,46 +138,24 @@ class RouteRepositoryDrift implements RouteRepository {
   }
 
   // Вспомогательные методы
-  Future<List<domain.PointOfInterest>> _loadRoutePoints(int routeId) async {
-    print('🔍 Начинаем загрузку точек для маршрута $routeId');
+  Future<List<PointOfInterest>> _loadRoutePoints(int routeId) async {
+    final pointsQuery = _database.select(_database.pointsOfInterest)
+      ..where((point) => point.routeId.equals(routeId));
     
-    try {
-      final pointsQuery = _database.select(_database.pointsOfInterest)
-        ..where((point) => point.routeId.equals(routeId));
-      
-      print('🔍 Выполняем SQL запрос...');
-      // Добавляем timeout для предотвращения зависания
-      final dbPoints = await pointsQuery.get()
-        .timeout(const Duration(seconds: 5), onTimeout: () {
-          print('⏰ TIMEOUT при загрузке точек для маршрута $routeId');
-          return <db.PointOfInterestData>[];
-        });
-      
-      print('✅ Получили ${dbPoints.length} точек для маршрута $routeId');
-      final points = <domain.PointOfInterest>[];
-      
-      for (final dbPoint in dbPoints) {
-        try {
-          print('🔍 Обрабатываем точку: ${dbPoint.name}');
-          // Простая имплементация для basic PointOfInterest
-          // В будущем можно расширить для TradingPointOfInterest
-          final point = _createBasicPoint(dbPoint);
-          points.add(point);
-        } catch (e) {
-          print('⚠️ Ошибка создания точки ${dbPoint.name}: $e');
-          // Продолжаем с остальными точками
-        }
-      }
-      
-      print('✅ Завершили загрузку ${points.length} точек для маршрута $routeId');
-      return points;
-    } catch (e) {
-      print('❌ Ошибка загрузки точек для маршрута $routeId: $e');
-      return <domain.PointOfInterest>[];
+    final dbPoints = await pointsQuery.get();
+    final points = <PointOfInterest>[];
+    
+    for (final dbPoint in dbPoints) {
+      // Простая имплементация для basic PointOfInterest
+      // В будущем можно расширить для TradingPointOfInterest
+      final point = _createBasicPoint(dbPoint);
+      points.add(point as PointOfInterest);
     }
+    
+    return points;
   }
 
-  domain.PointOfInterest _createBasicPoint(db.PointOfInterestData dbPoint) {
+  BasicPointOfInterest _createBasicPoint(db.PointOfInterestData dbPoint) {
     // Временная реализация базовой точки интереса
     // Нужно будет создать конкретную имплементацию PointOfInterest
     return BasicPointOfInterest(
@@ -230,7 +170,7 @@ class RouteRepositoryDrift implements RouteRepository {
     );
   }
 
-  Future<void> _saveRoutePoints(List<domain.PointOfInterest> points, int routeId) async {
+  Future<void> _saveRoutePoints(List<PointOfInterest> points, int routeId) async {
     for (final point in points) {
       final pointCompanion = RouteMapper.pointToDb(point, routeId);
       final pointId = await _database.into(_database.pointsOfInterest).insert(pointCompanion);
@@ -259,7 +199,7 @@ class RouteRepositoryDrift implements RouteRepository {
 }
 
 // Временная базовая имплементация PointOfInterest
-class BasicPointOfInterest implements domain.PointOfInterest {
+class BasicPointOfInterest implements PointOfInterest {
   @override
   final int? id;
   @override
@@ -273,9 +213,9 @@ class BasicPointOfInterest implements domain.PointOfInterest {
   @override
   final DateTime? updatedAt;
   @override
-  final domain.VisitStatus status;
+  final VisitStatus status;
   @override
-  final domain.PointType type;
+  final PointType type;
   @override
   final String? notes;
 
@@ -313,8 +253,8 @@ class BasicPointOfInterest implements domain.PointOfInterest {
   String get displayName => name;
 
   @override
-  domain.PointOfInterest copyWith({
-    domain.VisitStatus? status,
+  PointOfInterest copyWith({
+    VisitStatus? status,
     DateTime? actualArrivalTime,
     DateTime? actualDepartureTime,
     String? notes,
@@ -333,10 +273,10 @@ class BasicPointOfInterest implements domain.PointOfInterest {
   }
 
   @override
-  bool get isVisited => status == domain.VisitStatus.completed;
+  bool get isVisited => status == VisitStatus.completed;
 
   @override
-  bool get isCurrentlyAt => status == domain.VisitStatus.arrived;
+  bool get isCurrentlyAt => status == VisitStatus.arrived;
 
   @override
   bool get isOnTime => true; // Упрощенная логика

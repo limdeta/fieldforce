@@ -44,7 +44,7 @@ class AppConfig {
   // Feature Flags
   static bool get useMockData => isDev;
   static bool get enableDebugTools => isDev || isTest;
-  static bool get enableDetailedLogging => isDev && !isTest; // Только для dev, НЕ для тестов
+  static bool get enableDetailedLogging => !isProd;
   static bool get checkForUpdates => isDev; // Включено только для dev пока
   
 

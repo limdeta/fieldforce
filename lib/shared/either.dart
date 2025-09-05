@@ -72,3 +72,11 @@ class Right<L, R> extends Either<L, R> {
   @override
   int get hashCode => value.hashCode;
 }
+
+Future<T> unwrapOrThrow<T, F>(Future<Either<F, T>> future, String errorPrefix) async {
+  final result = await future;
+  return result.fold(
+        (failure) => throw Exception('$errorPrefix: ${failure.toString()}'),
+        (value) => value,
+  );
+}

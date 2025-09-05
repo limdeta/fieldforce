@@ -74,7 +74,6 @@ class SyncService {
     }
   }
 
-  /// Сохраняет торговые точки в локальной базе данных
   Future<Either<Failure, void>> _saveTradingPointsLocally(List<TradingPoint> tradingPoints) async {
     try {
       // TODO: Возможно в будущем добавить batch операции для производительности
@@ -99,9 +98,8 @@ class SyncService {
     }
   }
 
-  /// Полная синхронизация всех сущностей
+
   Future<Either<Failure, void>> syncAll() async {
-    // Пока только торговые точки, в будущем добавим другие сущности
     final tradingPointsResult = await syncTradingPoints();
     
     // TODO: Добавить синхронизацию других сущностей
@@ -111,7 +109,6 @@ class SyncService {
     return tradingPointsResult;
   }
 
-  /// Получает статус последней синхронизации
   Future<Either<Failure, DateTime?>> getLastSyncTime() async {
     try {
       // Получаем все торговые точки и находим самую свежую по updatedAt
@@ -144,7 +141,6 @@ class SyncService {
     }
   }
 
-  /// Проверяет, нужна ли синхронизация торговых точек
   Future<Either<Failure, bool>> shouldSyncTradingPoints() async {
     try {
       final lastSyncResult = await getLastSyncTime();
@@ -152,12 +148,10 @@ class SyncService {
       return lastSyncResult.fold(
         (failure) => Left(failure),
         (lastSyncTime) async {
-          // Если локальных данных нет - нужна полная синхронизация
           if (lastSyncTime == null) {
             return Right(true);
           }
-          
-          // Проверяем есть ли обновления на сервере
+
           final hasUpdatesResult = await _checkForUpdatesOnServer(lastSyncTime);
           return hasUpdatesResult;
         },

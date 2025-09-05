@@ -1,5 +1,6 @@
 import 'package:equatable/equatable.dart';
-import 'package:fieldforce/features/shop/domain/entities/route.dart' as shop;
+import 'package:fieldforce/app/domain/entities/route.dart' as shop;
+import 'package:fieldforce/features/navigation/tracking/domain/entities/user_track.dart';
 
 /// События для SalesRepHome BLoC
 /// 
@@ -47,6 +48,16 @@ class BuildRouteEvent extends SalesRepHomeEvent {
 }
 
 /// Обновление списка маршрутов (от stream)
+/// Обновление активного трека (от LocationTrackingService)
+class ActiveTrackUpdatedEvent extends SalesRepHomeEvent {
+  final UserTrack? activeTrack;
+
+  const ActiveTrackUpdatedEvent(this.activeTrack);
+
+  @override
+  List<Object?> get props => [activeTrack];
+}
+
 class RoutesUpdatedEvent extends SalesRepHomeEvent {
   final List<shop.Route> routes;
 

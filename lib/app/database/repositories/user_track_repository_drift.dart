@@ -1,14 +1,14 @@
 import 'dart:convert';
 import 'package:drift/drift.dart';
 import 'package:fieldforce/app/database/database.dart';
-import '../../../../shared/either.dart';
-import '../../../../shared/failures.dart';
-import '../../../../features/navigation/tracking/domain/entities/navigation_user.dart';
-import '../../../../features/navigation/tracking/domain/entities/user_track.dart';
-import '../../../../features/navigation/tracking/domain/entities/compact_track.dart';
-import '../../../../features/navigation/tracking/domain/repositories/user_track_repository.dart';
-import '../../../features/shop/domain/entities/employee.dart' as domain;
-import '../mappers/user_track_mapper.dart';
+import 'package:fieldforce/features/navigation/tracking/domain/entities/compact_track.dart';
+import 'package:fieldforce/features/navigation/tracking/domain/entities/navigation_user.dart';
+import 'package:fieldforce/features/navigation/tracking/domain/entities/user_track.dart';
+import 'package:fieldforce/features/navigation/tracking/domain/repositories/user_track_repository.dart';
+import 'package:fieldforce/shared/either.dart';
+import 'package:fieldforce/shared/failures.dart';
+import 'package:fieldforce/features/shop/domain/entities/employee.dart' as domain;
+import 'package:fieldforce/app/database/mappers/user_track_mapper.dart';
 
 class UserTrackRepositoryDrift implements UserTrackRepository {
   final AppDatabase _database;
@@ -154,11 +154,8 @@ class UserTrackRepositoryDrift implements UserTrackRepository {
   @override
   Future<Either<Failure, UserTrack>> saveUserTrack(UserTrack track) async {
     try {
-      print('💾 Начало сохранения UserTrack для пользователя: ${track.user.id} (${track.user.fullName})');
-      
       final userId = await _getUserInternalId(track.user);
       if (userId == null) {
-        print('❌ Пользователь не найден в базе данных: ${track.user.id} (${track.user.fullName})');
         return Left(const NotFoundFailure('User not found in database'));
       }
       
@@ -207,7 +204,6 @@ class UserTrackRepositoryDrift implements UserTrackRepository {
 
       return Right(savedTrack);
     } catch (e) {
-      print('❌ Критическая ошибка при сохранении UserTrack: $e');
       return Left(DatabaseFailure('Failed to save UserTrack: $e'));
     }
   }
@@ -263,6 +259,26 @@ class UserTrackRepositoryDrift implements UserTrackRepository {
   }
 
   @override
+  Future<Either<Failure, UserTrack>> saveOrUpdateUserTrack(UserTrack track) async {
+    try {
+      // Проверяем существует ли трек в БД
+      final existingTrackResult = await getUserTrackById(track.id);
+
+      if (existingTrackResult.isRight()) {
+        // Трек существует - делаем UPDATE
+        print('🔄 Repository: Трек ${track.id} существует в БД, делаем UPDATE');
+        return await updateUserTrack(track);
+      } else {
+        // Трек не существует - делаем INSERT
+        print('🆕 Repository: Трек ${track.id} не найден в БД, делаем INSERT');
+        return await saveUserTrack(track);
+      }
+    } catch (e) {
+      return Left(DatabaseFailure('Failed to saveOrUpdate UserTrack: $e'));
+    }
+  }
+
+  @override
   Future<Either<Failure, void>> deleteUserTrack(UserTrack track) async {
     try {
       // Удаляем сегменты (каскадно удалятся из-за onDelete: KeyAction.cascade)
@@ -312,32 +328,25 @@ class UserTrackRepositoryDrift implements UserTrackRepository {
           final result = await _employeeRepository.getInternalIdForNavigationUser(employee);
           return result.fold(
             (failure) {
-              print('❌ Ошибка получения внутреннего ID из AppUser.employee: ${failure.message}');
               return null;
             },
             (id) {
-              print('✅ Получен внутренний ID из AppUser.employee: $id');
               return id;
             },
           );
         }
       } catch (e) {
-        print('❌ Ошибка извлечения Employee из AppUser: $e');
         return null;
       }
     }
-    
-    // Приводим NavigationUser к Employee
+
     if (user is! domain.Employee) {
-      print('❌ Пользователь не является Employee: ${user.runtimeType}');
       return null;
     }
-    
-    
+
     final result = await _employeeRepository.getInternalIdForNavigationUser(user);
     return result.fold(
       (failure) {
-        print('❌ Ошибка получения внутреннего ID: ${failure.message}');
         return null;
       },
       (id) {

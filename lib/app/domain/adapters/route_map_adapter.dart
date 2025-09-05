@@ -1,7 +1,9 @@
-import '../../../features/navigation/map/domain/entities/map_point.dart';
-import '../../../features/navigation/map/domain/entities/map_bounds.dart';
-import '../../../features/shop/domain/entities/route.dart' as domain;
-import '../../../features/shop/domain/entities/point_of_interest.dart';
+import 'package:fieldforce/app/domain/entities/point_of_interest.dart';
+import 'package:fieldforce/features/navigation/map/domain/entities/map_bounds.dart';
+import 'package:fieldforce/features/navigation/map/domain/entities/map_point.dart';
+
+import '../entities/route.dart' as domain;
+
 
 /// Адаптер для преобразования данных между модулями Route и Map
 class RouteMapAdapter {
@@ -25,7 +27,6 @@ class RouteMapAdapter {
         'plannedArrivalTime': poi.plannedArrivalTime?.toIso8601String(),
         'actualArrivalTime': poi.actualArrivalTime?.toIso8601String(),
         'notes': poi.notes,
-        // Удаляем проверку TradingPointOfInterest пока не разберемся с типами
       },
     );
   }

@@ -1,18 +1,17 @@
 import 'package:fieldforce/features/navigation/tracking/domain/entities/navigation_user.dart';
 
-import 'compact_track.dart';
-import '../../../../shop/domain/entities/route.dart';
 import '../enums/track_status.dart';
+import 'compact_track.dart';
 
 /// Трек (путь) пользователя за определенный период времени с сегментацией
-/// 
+///
 /// Представляет собой коллекцию сегментов GPS треков, где каждый сегмент
 /// может соответствовать:
 /// - Движению между точками маршрута
-/// - Остановке у клиента  
+/// - Остановке у клиента
 /// - Временному интервалу
 /// - Изменению активности (движение/остановка)
-/// 
+///
 /// Сегментация обеспечивает:
 /// - Высокую производительность (ленивая загрузка сегментов)
 /// - Удобный анализ (отдельная статистика по движению/остановкам)
@@ -21,18 +20,22 @@ class UserTrack {
   final int id;
   final NavigationUser user;
   final TrackStatus status;
-  
+
   final DateTime startTime;
   final DateTime? endTime;
-  
+
   /// Сегменты трека для оптимальной производительности и анализа
   final List<CompactTrack> segments;
-  
+
+  /// Индекс живого сегмента (который еще может изменяться)
+  /// Если null - нет живого сегмента, все сегменты сохранены в БД
+  final int? liveSegmentIndex;
+
   /// Кешированные метаданные для быстрого доступа
   final int totalPoints;
   final double totalDistanceKm;
   final Duration totalDuration;
-  
+
   final Map<String, dynamic>? metadata;
 
   const UserTrack({
@@ -42,6 +45,7 @@ class UserTrack {
     required this.startTime,
     this.endTime,
     required this.segments,
+    this.liveSegmentIndex,
     required this.totalPoints,
     required this.totalDistanceKm,
     required this.totalDuration,
@@ -57,7 +61,7 @@ class UserTrack {
   }) {
     final startTime = track.isEmpty ? DateTime.now() : track.getTimestamp(0);
     final endTime = track.isEmpty ? null : track.getTimestamp(track.pointCount - 1);
-    
+
     return UserTrack(
       id: id,
       user: user,
@@ -75,7 +79,6 @@ class UserTrack {
   factory UserTrack.fromSegments({
     required int id,
     required NavigationUser user,
-    Route? route,
     required List<CompactTrack> segments,
     TrackStatus status = TrackStatus.completed,
     Map<String, dynamic>? metadata,
@@ -144,7 +147,6 @@ class UserTrack {
   factory UserTrack.empty({
     required int id,
     required NavigationUser user,
-    Route? route,
     TrackStatus status = TrackStatus.active,
     Map<String, dynamic>? metadata,
   }) {
@@ -168,6 +170,14 @@ class UserTrack {
   bool get isNotEmpty => !isEmpty;
   int get segmentCount => segments.length;
 
+  /// Проверяет является ли сегмент по индексу живым
+  bool isSegmentLive(int segmentIndex) {
+    return liveSegmentIndex == segmentIndex;
+  }
+
+  /// Есть ли живой сегмент в треке
+  bool get hasLiveSegment => liveSegmentIndex != null;
+
   CompactTrack get fullTrack => CompactTrack.merge(segments);
 
   CompactTrack getSegment(int index) {
@@ -179,22 +189,21 @@ class UserTrack {
 
   List<CompactTrack> getSegmentsInTimeRange(DateTime start, DateTime end) {
     final result = <CompactTrack>[];
-    
+
     for (final segment in segments) {
       if (segment.isEmpty) continue;
-      
+
       final segmentStart = segment.getTimestamp(0);
       final segmentEnd = segment.getTimestamp(segment.pointCount - 1);
-      
+
       // Проверяем пересечение временных интервалов
       if (segmentStart.isBefore(end) && segmentEnd.isAfter(start)) {
         result.add(segment);
       }
     }
-    
+
     return result;
   }
-
 
   /// Добавляет новый сегмент к треку (для активных треков)
   UserTrack addSegment(CompactTrack segment) {
@@ -225,13 +234,13 @@ class UserTrack {
   /// Завершает трек (устанавливает endTime)
   UserTrack complete() {
     if (isCompleted) return this;
-    
-    final finalEndTime = isEmpty 
-        ? DateTime.now() 
-        : segments.last.isEmpty 
+
+    final finalEndTime = isEmpty
+        ? DateTime.now()
+        : segments.last.isEmpty
             ? DateTime.now()
             : segments.last.getTimestamp(segments.last.pointCount - 1);
-    
+
     return copyWith(endTime: finalEndTime);
   }
 
@@ -241,16 +250,16 @@ class UserTrack {
     double movingDistance = 0.0;
     Duration movingTime = Duration.zero;
     Duration stationaryTime = Duration.zero;
-    
+
     for (final segment in segments) {
       if (segment.isEmpty) continue;
-      
+
       final distance = segment.getTotalDistance() / 1000; // в км
       final duration = segment.getDuration();
-      
+
       // Считаем сегмент движением если средняя скорость > 2 км/ч
       final avgSpeed = duration.inSeconds > 0 ? (distance / duration.inHours) : 0.0;
-      
+
       if (avgSpeed > 2.0) {
         movingSegments++;
         movingDistance += distance;
@@ -260,7 +269,7 @@ class UserTrack {
         stationaryTime += duration;
       }
     }
-    
+
     return TrackStatistics(
       totalSegments: segments.length,
       movingSegments: movingSegments,
@@ -278,11 +287,11 @@ class UserTrack {
   UserTrack copyWith({
     int? id,
     NavigationUser? user,
-    Route? route,
     TrackStatus? status,
     DateTime? startTime,
     DateTime? endTime,
     List<CompactTrack>? segments,
+    int? liveSegmentIndex,
     int? totalPoints,
     double? totalDistanceKm,
     Duration? totalDuration,
@@ -295,6 +304,7 @@ class UserTrack {
       startTime: startTime ?? this.startTime,
       endTime: endTime ?? this.endTime,
       segments: segments ?? this.segments,
+      liveSegmentIndex: liveSegmentIndex ?? this.liveSegmentIndex,
       totalPoints: totalPoints ?? this.totalPoints,
       totalDistanceKm: totalDistanceKm ?? this.totalDistanceKm,
       totalDuration: totalDuration ?? this.totalDuration,
@@ -346,15 +356,15 @@ class TrackStatistics {
 
   /// Процент времени в движении
   double get movingTimePercentage {
-    return totalDuration.inSeconds > 0 
-        ? (movingTime.inSeconds / totalDuration.inSeconds) * 100 
+    return totalDuration.inSeconds > 0
+        ? (movingTime.inSeconds / totalDuration.inSeconds) * 100
         : 0.0;
   }
 
   /// Процент времени в остановках
   double get stationaryTimePercentage {
-    return totalDuration.inSeconds > 0 
-        ? (stationaryTime.inSeconds / totalDuration.inSeconds) * 100 
+    return totalDuration.inSeconds > 0
+        ? (stationaryTime.inSeconds / totalDuration.inSeconds) * 100
         : 0.0;
   }
 

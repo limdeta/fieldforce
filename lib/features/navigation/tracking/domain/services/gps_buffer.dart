@@ -17,23 +17,17 @@ class GpsBuffer {
   Timer? _flushTimer;
   DateTime? _lastFlushTime;
   
-  // Настройки буферизации
-  static const int _maxBufferSize = 20; // Максимум точек в буфере
-  static const Duration _maxBufferTime = Duration(seconds: 30); // Максимальное время буферизации
-  static const double _minDistanceMeters = 3.0; // Минимальное расстояние между точками
-  
+  // УЛУЧШЕННЫЕ настройки буферизации для работы с умной сегментацией
+  static const int _maxBufferSize = 50; // Увеличено до 50 точек (было 20)
+  static const Duration _maxBufferTime = Duration(minutes: 10); // Увеличено до 10 минут (было 30 сек)
+  static const double _minDistanceMeters = 2.0; // Уменьшено до 2м для более точного трека
+
   Position? _lastPosition;
-  
-  /// Стрим обновлений буфера для UI
+
   Stream<CompactTrack> get updateStream => _updateController.stream;
-  
-  /// Текущее количество точек в буфере
   int get pointCount => _builder.pointCount;
-  
-  /// Есть ли данные в буфере
   bool get hasData => _builder.pointCount > 0;
-  
-  /// Добавляет GPS точку в буфер
+
   void addPoint(Position position) {
     // Фильтруем точки по расстоянию
     if (_lastPosition != null) {
@@ -60,11 +54,8 @@ class GpsBuffer {
     );
     
     _lastPosition = position;
-    
-    // Уведомляем UI об обновлении
+
     _notifyUpdate();
-    
-    // Проверяем необходимость флаша
     _checkFlushConditions();
   }
   
@@ -83,22 +74,18 @@ class GpsBuffer {
   CompactTrack getCurrentSegment() {
     return _builder.build();
   }
-  
-  /// Очищает буфер
+
   void clear() {
     _builder.clear();
     _lastPosition = null;
     _cancelFlushTimer();
   }
-  
-  /// Освобождает ресурсы
+
   void dispose() {
     _cancelFlushTimer();
     _updateController.close();
   }
-  
-  // Приватные методы
-  
+
   void _notifyUpdate() {
     if (_builder.pointCount > 0) {
       _updateController.add(_builder.build());
@@ -120,15 +107,14 @@ class GpsBuffer {
         return;
       }
     }
-    
-    // Планируем флаш через максимальное время
+
     _scheduleFlushTimer();
   }
   
   void _scheduleFlush() {
     _cancelFlushTimer();
     
-    // Небольшая задержка для группировки точек
+    // задержка для группировки точек
     _flushTimer = Timer(const Duration(milliseconds: 100), () {
       if (_builder.pointCount > 0) {
         flush(); // Просто флашим буфер, сохранение будет в TrackManager

@@ -6,7 +6,6 @@ import '../repositories/session_repository.dart';
 
 class GetCurrentSessionUseCase {
   final SessionRepository sessionRepository;
-
   const GetCurrentSessionUseCase({
     required this.sessionRepository,
   });

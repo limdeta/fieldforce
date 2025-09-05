@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:get_it/get_it.dart';
-import '../../domain/app_session.dart';
+import '../../domain/entities/app_session.dart';
 import '../../domain/usecases/get_current_app_session_usecase.dart';
 import '../../../features/authentication/domain/usecases/logout_usecase.dart';
 import '../../services/app_session_service.dart';

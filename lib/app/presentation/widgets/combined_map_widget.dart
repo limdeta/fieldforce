@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:latlong2/latlong.dart';
 import '../../../features/navigation/map/presentation/widgets/map_widget.dart';
 import '../../../features/navigation/tracking/domain/entities/user_track.dart';
-import '../../../features/shop/domain/entities/route.dart' as shop;
+import '../../domain/entities/route.dart' as shop;
 import '../utils/coordinate_converter.dart';
 
 /// Комбинированный виджет карты для app-слоя
@@ -11,17 +11,14 @@ import '../utils/coordinate_converter.dart';
 class CombinedMapWidget extends StatelessWidget {
   /// Маршрут для отображения
   final shop.Route? route;
-  
-  /// Центр карты (в удобных LatLng координатах)
+
   final LatLng? center;
-  
-  /// Начальный зум
   final double? initialZoom;
   
-  /// Callback при тапе на карту (в удобных LatLng координатах)
+  /// Callback при тапе на карту
   final void Function(LatLng)? onTap;
   
-  /// Callback при долгом нажатии (в удобных LatLng координатах)
+  /// Callback при долгом нажатии
   final void Function(LatLng)? onLongPress;
   
   /// Трек для отображения (может быть null)
@@ -39,8 +36,6 @@ class CombinedMapWidget extends StatelessWidget {
     this.onLongPress,
     this.track,
     this.routePolylinePoints = const [],
-    // Для обратной совместимости - DEPRECATED
-    @Deprecated('Use track parameter instead') List<UserTrack>? historicalTracks,
   });
 
   @override

@@ -120,7 +120,7 @@ class TestFactories {
     return TradingPoint(
       externalId: externalId ?? 'tp_${timestamp}_${DateTime.now().microsecond}',
       name: name ?? 'Торговая точка ${DateTime.now().microsecond}',
-      inn: inn ?? '${timestamp.toString().substring(0, 10)}',
+      inn: inn ?? timestamp.toString().substring(0, 10),
     );
   }
 

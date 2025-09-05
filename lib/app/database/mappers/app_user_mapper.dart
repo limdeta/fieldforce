@@ -1,4 +1,4 @@
-import 'package:fieldforce/app/domain/app_user.dart';
+import 'package:fieldforce/app/domain/entities/app_user.dart';
 import 'package:fieldforce/app/database/app_database.dart' as db;
 import 'package:fieldforce/features/shop/domain/entities/employee.dart';
 import 'package:fieldforce/features/authentication/domain/entities/user.dart';

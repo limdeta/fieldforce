@@ -4,6 +4,7 @@ enum TrackStatus {
   completed,
   cancelled;
 
+  // TODO А может ли у трека вообще быть статус или это тупое хранилище?
   String get displayName {
     switch (this) {
       case TrackStatus.active:

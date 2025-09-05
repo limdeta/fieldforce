@@ -1,6 +1,6 @@
 import 'package:flutter/foundation.dart';
 import 'package:get_it/get_it.dart';
-import '../../features/shop/domain/entities/route.dart' as domain;
+import '../domain/entities/route.dart' as domain;
 import '../services/user_preferences_service.dart';
 
 /// Provider для управления состоянием выбранного маршрута

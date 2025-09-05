@@ -5091,6 +5091,649 @@ class AppUsersCompanion extends UpdateCompanion<AppUserData> {
   }
 }
 
+class $WorkDaysTable extends WorkDays
+    with TableInfo<$WorkDaysTable, WorkDayData> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $WorkDaysTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _idMeta = const VerificationMeta('id');
+  @override
+  late final GeneratedColumn<int> id = GeneratedColumn<int>(
+    'id',
+    aliasedName,
+    false,
+    hasAutoIncrement: true,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'PRIMARY KEY AUTOINCREMENT',
+    ),
+  );
+  static const VerificationMeta _userMeta = const VerificationMeta('user');
+  @override
+  late final GeneratedColumn<int> user = GeneratedColumn<int>(
+    'user',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _dateMeta = const VerificationMeta('date');
+  @override
+  late final GeneratedColumn<DateTime> date = GeneratedColumn<DateTime>(
+    'date',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _routeIdMeta = const VerificationMeta(
+    'routeId',
+  );
+  @override
+  late final GeneratedColumn<int> routeId = GeneratedColumn<int>(
+    'route_id',
+    aliasedName,
+    true,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _trackIdMeta = const VerificationMeta(
+    'trackId',
+  );
+  @override
+  late final GeneratedColumn<int> trackId = GeneratedColumn<int>(
+    'track_id',
+    aliasedName,
+    true,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _statusMeta = const VerificationMeta('status');
+  @override
+  late final GeneratedColumn<String> status = GeneratedColumn<String>(
+    'status',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+    defaultValue: const Constant('planned'),
+  );
+  static const VerificationMeta _startTimeMeta = const VerificationMeta(
+    'startTime',
+  );
+  @override
+  late final GeneratedColumn<DateTime> startTime = GeneratedColumn<DateTime>(
+    'start_time',
+    aliasedName,
+    true,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _endTimeMeta = const VerificationMeta(
+    'endTime',
+  );
+  @override
+  late final GeneratedColumn<DateTime> endTime = GeneratedColumn<DateTime>(
+    'end_time',
+    aliasedName,
+    true,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _metadataMeta = const VerificationMeta(
+    'metadata',
+  );
+  @override
+  late final GeneratedColumn<String> metadata = GeneratedColumn<String>(
+    'metadata',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _createdAtMeta = const VerificationMeta(
+    'createdAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> createdAt = GeneratedColumn<DateTime>(
+    'created_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: false,
+    defaultValue: currentDateAndTime,
+  );
+  static const VerificationMeta _updatedAtMeta = const VerificationMeta(
+    'updatedAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> updatedAt = GeneratedColumn<DateTime>(
+    'updated_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: false,
+    defaultValue: currentDateAndTime,
+  );
+  @override
+  List<GeneratedColumn> get $columns => [
+    id,
+    user,
+    date,
+    routeId,
+    trackId,
+    status,
+    startTime,
+    endTime,
+    metadata,
+    createdAt,
+    updatedAt,
+  ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'work_days';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<WorkDayData> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('id')) {
+      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
+    }
+    if (data.containsKey('user')) {
+      context.handle(
+        _userMeta,
+        user.isAcceptableOrUnknown(data['user']!, _userMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_userMeta);
+    }
+    if (data.containsKey('date')) {
+      context.handle(
+        _dateMeta,
+        date.isAcceptableOrUnknown(data['date']!, _dateMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_dateMeta);
+    }
+    if (data.containsKey('route_id')) {
+      context.handle(
+        _routeIdMeta,
+        routeId.isAcceptableOrUnknown(data['route_id']!, _routeIdMeta),
+      );
+    }
+    if (data.containsKey('track_id')) {
+      context.handle(
+        _trackIdMeta,
+        trackId.isAcceptableOrUnknown(data['track_id']!, _trackIdMeta),
+      );
+    }
+    if (data.containsKey('status')) {
+      context.handle(
+        _statusMeta,
+        status.isAcceptableOrUnknown(data['status']!, _statusMeta),
+      );
+    }
+    if (data.containsKey('start_time')) {
+      context.handle(
+        _startTimeMeta,
+        startTime.isAcceptableOrUnknown(data['start_time']!, _startTimeMeta),
+      );
+    }
+    if (data.containsKey('end_time')) {
+      context.handle(
+        _endTimeMeta,
+        endTime.isAcceptableOrUnknown(data['end_time']!, _endTimeMeta),
+      );
+    }
+    if (data.containsKey('metadata')) {
+      context.handle(
+        _metadataMeta,
+        metadata.isAcceptableOrUnknown(data['metadata']!, _metadataMeta),
+      );
+    }
+    if (data.containsKey('created_at')) {
+      context.handle(
+        _createdAtMeta,
+        createdAt.isAcceptableOrUnknown(data['created_at']!, _createdAtMeta),
+      );
+    }
+    if (data.containsKey('updated_at')) {
+      context.handle(
+        _updatedAtMeta,
+        updatedAt.isAcceptableOrUnknown(data['updated_at']!, _updatedAtMeta),
+      );
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {id};
+  @override
+  List<Set<GeneratedColumn>> get uniqueKeys => [
+    {user, date},
+  ];
+  @override
+  WorkDayData map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return WorkDayData(
+      id: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}id'],
+      )!,
+      user: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}user'],
+      )!,
+      date: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}date'],
+      )!,
+      routeId: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}route_id'],
+      ),
+      trackId: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}track_id'],
+      ),
+      status: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}status'],
+      )!,
+      startTime: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}start_time'],
+      ),
+      endTime: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}end_time'],
+      ),
+      metadata: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}metadata'],
+      ),
+      createdAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}created_at'],
+      )!,
+      updatedAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}updated_at'],
+      )!,
+    );
+  }
+
+  @override
+  $WorkDaysTable createAlias(String alias) {
+    return $WorkDaysTable(attachedDatabase, alias);
+  }
+}
+
+class WorkDayData extends DataClass implements Insertable<WorkDayData> {
+  final int id;
+  final int user;
+  final DateTime date;
+  final int? routeId;
+  final int? trackId;
+  final String status;
+  final DateTime? startTime;
+  final DateTime? endTime;
+  final String? metadata;
+  final DateTime createdAt;
+  final DateTime updatedAt;
+  const WorkDayData({
+    required this.id,
+    required this.user,
+    required this.date,
+    this.routeId,
+    this.trackId,
+    required this.status,
+    this.startTime,
+    this.endTime,
+    this.metadata,
+    required this.createdAt,
+    required this.updatedAt,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['id'] = Variable<int>(id);
+    map['user'] = Variable<int>(user);
+    map['date'] = Variable<DateTime>(date);
+    if (!nullToAbsent || routeId != null) {
+      map['route_id'] = Variable<int>(routeId);
+    }
+    if (!nullToAbsent || trackId != null) {
+      map['track_id'] = Variable<int>(trackId);
+    }
+    map['status'] = Variable<String>(status);
+    if (!nullToAbsent || startTime != null) {
+      map['start_time'] = Variable<DateTime>(startTime);
+    }
+    if (!nullToAbsent || endTime != null) {
+      map['end_time'] = Variable<DateTime>(endTime);
+    }
+    if (!nullToAbsent || metadata != null) {
+      map['metadata'] = Variable<String>(metadata);
+    }
+    map['created_at'] = Variable<DateTime>(createdAt);
+    map['updated_at'] = Variable<DateTime>(updatedAt);
+    return map;
+  }
+
+  WorkDaysCompanion toCompanion(bool nullToAbsent) {
+    return WorkDaysCompanion(
+      id: Value(id),
+      user: Value(user),
+      date: Value(date),
+      routeId: routeId == null && nullToAbsent
+          ? const Value.absent()
+          : Value(routeId),
+      trackId: trackId == null && nullToAbsent
+          ? const Value.absent()
+          : Value(trackId),
+      status: Value(status),
+      startTime: startTime == null && nullToAbsent
+          ? const Value.absent()
+          : Value(startTime),
+      endTime: endTime == null && nullToAbsent
+          ? const Value.absent()
+          : Value(endTime),
+      metadata: metadata == null && nullToAbsent
+          ? const Value.absent()
+          : Value(metadata),
+      createdAt: Value(createdAt),
+      updatedAt: Value(updatedAt),
+    );
+  }
+
+  factory WorkDayData.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return WorkDayData(
+      id: serializer.fromJson<int>(json['id']),
+      user: serializer.fromJson<int>(json['user']),
+      date: serializer.fromJson<DateTime>(json['date']),
+      routeId: serializer.fromJson<int?>(json['routeId']),
+      trackId: serializer.fromJson<int?>(json['trackId']),
+      status: serializer.fromJson<String>(json['status']),
+      startTime: serializer.fromJson<DateTime?>(json['startTime']),
+      endTime: serializer.fromJson<DateTime?>(json['endTime']),
+      metadata: serializer.fromJson<String?>(json['metadata']),
+      createdAt: serializer.fromJson<DateTime>(json['createdAt']),
+      updatedAt: serializer.fromJson<DateTime>(json['updatedAt']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'id': serializer.toJson<int>(id),
+      'user': serializer.toJson<int>(user),
+      'date': serializer.toJson<DateTime>(date),
+      'routeId': serializer.toJson<int?>(routeId),
+      'trackId': serializer.toJson<int?>(trackId),
+      'status': serializer.toJson<String>(status),
+      'startTime': serializer.toJson<DateTime?>(startTime),
+      'endTime': serializer.toJson<DateTime?>(endTime),
+      'metadata': serializer.toJson<String?>(metadata),
+      'createdAt': serializer.toJson<DateTime>(createdAt),
+      'updatedAt': serializer.toJson<DateTime>(updatedAt),
+    };
+  }
+
+  WorkDayData copyWith({
+    int? id,
+    int? user,
+    DateTime? date,
+    Value<int?> routeId = const Value.absent(),
+    Value<int?> trackId = const Value.absent(),
+    String? status,
+    Value<DateTime?> startTime = const Value.absent(),
+    Value<DateTime?> endTime = const Value.absent(),
+    Value<String?> metadata = const Value.absent(),
+    DateTime? createdAt,
+    DateTime? updatedAt,
+  }) => WorkDayData(
+    id: id ?? this.id,
+    user: user ?? this.user,
+    date: date ?? this.date,
+    routeId: routeId.present ? routeId.value : this.routeId,
+    trackId: trackId.present ? trackId.value : this.trackId,
+    status: status ?? this.status,
+    startTime: startTime.present ? startTime.value : this.startTime,
+    endTime: endTime.present ? endTime.value : this.endTime,
+    metadata: metadata.present ? metadata.value : this.metadata,
+    createdAt: createdAt ?? this.createdAt,
+    updatedAt: updatedAt ?? this.updatedAt,
+  );
+  WorkDayData copyWithCompanion(WorkDaysCompanion data) {
+    return WorkDayData(
+      id: data.id.present ? data.id.value : this.id,
+      user: data.user.present ? data.user.value : this.user,
+      date: data.date.present ? data.date.value : this.date,
+      routeId: data.routeId.present ? data.routeId.value : this.routeId,
+      trackId: data.trackId.present ? data.trackId.value : this.trackId,
+      status: data.status.present ? data.status.value : this.status,
+      startTime: data.startTime.present ? data.startTime.value : this.startTime,
+      endTime: data.endTime.present ? data.endTime.value : this.endTime,
+      metadata: data.metadata.present ? data.metadata.value : this.metadata,
+      createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
+      updatedAt: data.updatedAt.present ? data.updatedAt.value : this.updatedAt,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('WorkDayData(')
+          ..write('id: $id, ')
+          ..write('user: $user, ')
+          ..write('date: $date, ')
+          ..write('routeId: $routeId, ')
+          ..write('trackId: $trackId, ')
+          ..write('status: $status, ')
+          ..write('startTime: $startTime, ')
+          ..write('endTime: $endTime, ')
+          ..write('metadata: $metadata, ')
+          ..write('createdAt: $createdAt, ')
+          ..write('updatedAt: $updatedAt')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(
+    id,
+    user,
+    date,
+    routeId,
+    trackId,
+    status,
+    startTime,
+    endTime,
+    metadata,
+    createdAt,
+    updatedAt,
+  );
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is WorkDayData &&
+          other.id == this.id &&
+          other.user == this.user &&
+          other.date == this.date &&
+          other.routeId == this.routeId &&
+          other.trackId == this.trackId &&
+          other.status == this.status &&
+          other.startTime == this.startTime &&
+          other.endTime == this.endTime &&
+          other.metadata == this.metadata &&
+          other.createdAt == this.createdAt &&
+          other.updatedAt == this.updatedAt);
+}
+
+class WorkDaysCompanion extends UpdateCompanion<WorkDayData> {
+  final Value<int> id;
+  final Value<int> user;
+  final Value<DateTime> date;
+  final Value<int?> routeId;
+  final Value<int?> trackId;
+  final Value<String> status;
+  final Value<DateTime?> startTime;
+  final Value<DateTime?> endTime;
+  final Value<String?> metadata;
+  final Value<DateTime> createdAt;
+  final Value<DateTime> updatedAt;
+  const WorkDaysCompanion({
+    this.id = const Value.absent(),
+    this.user = const Value.absent(),
+    this.date = const Value.absent(),
+    this.routeId = const Value.absent(),
+    this.trackId = const Value.absent(),
+    this.status = const Value.absent(),
+    this.startTime = const Value.absent(),
+    this.endTime = const Value.absent(),
+    this.metadata = const Value.absent(),
+    this.createdAt = const Value.absent(),
+    this.updatedAt = const Value.absent(),
+  });
+  WorkDaysCompanion.insert({
+    this.id = const Value.absent(),
+    required int user,
+    required DateTime date,
+    this.routeId = const Value.absent(),
+    this.trackId = const Value.absent(),
+    this.status = const Value.absent(),
+    this.startTime = const Value.absent(),
+    this.endTime = const Value.absent(),
+    this.metadata = const Value.absent(),
+    this.createdAt = const Value.absent(),
+    this.updatedAt = const Value.absent(),
+  }) : user = Value(user),
+       date = Value(date);
+  static Insertable<WorkDayData> custom({
+    Expression<int>? id,
+    Expression<int>? user,
+    Expression<DateTime>? date,
+    Expression<int>? routeId,
+    Expression<int>? trackId,
+    Expression<String>? status,
+    Expression<DateTime>? startTime,
+    Expression<DateTime>? endTime,
+    Expression<String>? metadata,
+    Expression<DateTime>? createdAt,
+    Expression<DateTime>? updatedAt,
+  }) {
+    return RawValuesInsertable({
+      if (id != null) 'id': id,
+      if (user != null) 'user': user,
+      if (date != null) 'date': date,
+      if (routeId != null) 'route_id': routeId,
+      if (trackId != null) 'track_id': trackId,
+      if (status != null) 'status': status,
+      if (startTime != null) 'start_time': startTime,
+      if (endTime != null) 'end_time': endTime,
+      if (metadata != null) 'metadata': metadata,
+      if (createdAt != null) 'created_at': createdAt,
+      if (updatedAt != null) 'updated_at': updatedAt,
+    });
+  }
+
+  WorkDaysCompanion copyWith({
+    Value<int>? id,
+    Value<int>? user,
+    Value<DateTime>? date,
+    Value<int?>? routeId,
+    Value<int?>? trackId,
+    Value<String>? status,
+    Value<DateTime?>? startTime,
+    Value<DateTime?>? endTime,
+    Value<String?>? metadata,
+    Value<DateTime>? createdAt,
+    Value<DateTime>? updatedAt,
+  }) {
+    return WorkDaysCompanion(
+      id: id ?? this.id,
+      user: user ?? this.user,
+      date: date ?? this.date,
+      routeId: routeId ?? this.routeId,
+      trackId: trackId ?? this.trackId,
+      status: status ?? this.status,
+      startTime: startTime ?? this.startTime,
+      endTime: endTime ?? this.endTime,
+      metadata: metadata ?? this.metadata,
+      createdAt: createdAt ?? this.createdAt,
+      updatedAt: updatedAt ?? this.updatedAt,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (id.present) {
+      map['id'] = Variable<int>(id.value);
+    }
+    if (user.present) {
+      map['user'] = Variable<int>(user.value);
+    }
+    if (date.present) {
+      map['date'] = Variable<DateTime>(date.value);
+    }
+    if (routeId.present) {
+      map['route_id'] = Variable<int>(routeId.value);
+    }
+    if (trackId.present) {
+      map['track_id'] = Variable<int>(trackId.value);
+    }
+    if (status.present) {
+      map['status'] = Variable<String>(status.value);
+    }
+    if (startTime.present) {
+      map['start_time'] = Variable<DateTime>(startTime.value);
+    }
+    if (endTime.present) {
+      map['end_time'] = Variable<DateTime>(endTime.value);
+    }
+    if (metadata.present) {
+      map['metadata'] = Variable<String>(metadata.value);
+    }
+    if (createdAt.present) {
+      map['created_at'] = Variable<DateTime>(createdAt.value);
+    }
+    if (updatedAt.present) {
+      map['updated_at'] = Variable<DateTime>(updatedAt.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('WorkDaysCompanion(')
+          ..write('id: $id, ')
+          ..write('user: $user, ')
+          ..write('date: $date, ')
+          ..write('routeId: $routeId, ')
+          ..write('trackId: $trackId, ')
+          ..write('status: $status, ')
+          ..write('startTime: $startTime, ')
+          ..write('endTime: $endTime, ')
+          ..write('metadata: $metadata, ')
+          ..write('createdAt: $createdAt, ')
+          ..write('updatedAt: $updatedAt')
+          ..write(')'))
+        .toString();
+  }
+}
+
 abstract class _$AppDatabase extends GeneratedDatabase {
   _$AppDatabase(QueryExecutor e) : super(e);
   $AppDatabaseManager get managers => $AppDatabaseManager(this);
@@ -5108,6 +5751,7 @@ abstract class _$AppDatabase extends GeneratedDatabase {
   late final $UserTracksTable userTracks = $UserTracksTable(this);
   late final $CompactTracksTable compactTracks = $CompactTracksTable(this);
   late final $AppUsersTable appUsers = $AppUsersTable(this);
+  late final $WorkDaysTable workDays = $WorkDaysTable(this);
   @override
   Iterable<TableInfo<Table, Object?>> get allTables =>
       allSchemaEntities.whereType<TableInfo<Table, Object?>>();
@@ -5123,6 +5767,7 @@ abstract class _$AppDatabase extends GeneratedDatabase {
     userTracks,
     compactTracks,
     appUsers,
+    workDays,
   ];
   @override
   StreamQueryUpdateRules get streamUpdateRules => const StreamQueryUpdateRules([
@@ -9642,6 +10287,311 @@ typedef $$AppUsersTableProcessedTableManager =
       AppUserData,
       PrefetchHooks Function({bool employeeId, bool userId})
     >;
+typedef $$WorkDaysTableCreateCompanionBuilder =
+    WorkDaysCompanion Function({
+      Value<int> id,
+      required int user,
+      required DateTime date,
+      Value<int?> routeId,
+      Value<int?> trackId,
+      Value<String> status,
+      Value<DateTime?> startTime,
+      Value<DateTime?> endTime,
+      Value<String?> metadata,
+      Value<DateTime> createdAt,
+      Value<DateTime> updatedAt,
+    });
+typedef $$WorkDaysTableUpdateCompanionBuilder =
+    WorkDaysCompanion Function({
+      Value<int> id,
+      Value<int> user,
+      Value<DateTime> date,
+      Value<int?> routeId,
+      Value<int?> trackId,
+      Value<String> status,
+      Value<DateTime?> startTime,
+      Value<DateTime?> endTime,
+      Value<String?> metadata,
+      Value<DateTime> createdAt,
+      Value<DateTime> updatedAt,
+    });
+
+class $$WorkDaysTableFilterComposer
+    extends Composer<_$AppDatabase, $WorkDaysTable> {
+  $$WorkDaysTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<int> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get user => $composableBuilder(
+    column: $table.user,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get date => $composableBuilder(
+    column: $table.date,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get routeId => $composableBuilder(
+    column: $table.routeId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get trackId => $composableBuilder(
+    column: $table.trackId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get status => $composableBuilder(
+    column: $table.status,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get startTime => $composableBuilder(
+    column: $table.startTime,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get endTime => $composableBuilder(
+    column: $table.endTime,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get metadata => $composableBuilder(
+    column: $table.metadata,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get updatedAt => $composableBuilder(
+    column: $table.updatedAt,
+    builder: (column) => ColumnFilters(column),
+  );
+}
+
+class $$WorkDaysTableOrderingComposer
+    extends Composer<_$AppDatabase, $WorkDaysTable> {
+  $$WorkDaysTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<int> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get user => $composableBuilder(
+    column: $table.user,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get date => $composableBuilder(
+    column: $table.date,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get routeId => $composableBuilder(
+    column: $table.routeId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get trackId => $composableBuilder(
+    column: $table.trackId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get status => $composableBuilder(
+    column: $table.status,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get startTime => $composableBuilder(
+    column: $table.startTime,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get endTime => $composableBuilder(
+    column: $table.endTime,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get metadata => $composableBuilder(
+    column: $table.metadata,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get updatedAt => $composableBuilder(
+    column: $table.updatedAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+}
+
+class $$WorkDaysTableAnnotationComposer
+    extends Composer<_$AppDatabase, $WorkDaysTable> {
+  $$WorkDaysTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<int> get id =>
+      $composableBuilder(column: $table.id, builder: (column) => column);
+
+  GeneratedColumn<int> get user =>
+      $composableBuilder(column: $table.user, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get date =>
+      $composableBuilder(column: $table.date, builder: (column) => column);
+
+  GeneratedColumn<int> get routeId =>
+      $composableBuilder(column: $table.routeId, builder: (column) => column);
+
+  GeneratedColumn<int> get trackId =>
+      $composableBuilder(column: $table.trackId, builder: (column) => column);
+
+  GeneratedColumn<String> get status =>
+      $composableBuilder(column: $table.status, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get startTime =>
+      $composableBuilder(column: $table.startTime, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get endTime =>
+      $composableBuilder(column: $table.endTime, builder: (column) => column);
+
+  GeneratedColumn<String> get metadata =>
+      $composableBuilder(column: $table.metadata, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get createdAt =>
+      $composableBuilder(column: $table.createdAt, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get updatedAt =>
+      $composableBuilder(column: $table.updatedAt, builder: (column) => column);
+}
+
+class $$WorkDaysTableTableManager
+    extends
+        RootTableManager<
+          _$AppDatabase,
+          $WorkDaysTable,
+          WorkDayData,
+          $$WorkDaysTableFilterComposer,
+          $$WorkDaysTableOrderingComposer,
+          $$WorkDaysTableAnnotationComposer,
+          $$WorkDaysTableCreateCompanionBuilder,
+          $$WorkDaysTableUpdateCompanionBuilder,
+          (
+            WorkDayData,
+            BaseReferences<_$AppDatabase, $WorkDaysTable, WorkDayData>,
+          ),
+          WorkDayData,
+          PrefetchHooks Function()
+        > {
+  $$WorkDaysTableTableManager(_$AppDatabase db, $WorkDaysTable table)
+    : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$WorkDaysTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$WorkDaysTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$WorkDaysTableAnnotationComposer($db: db, $table: table),
+          updateCompanionCallback:
+              ({
+                Value<int> id = const Value.absent(),
+                Value<int> user = const Value.absent(),
+                Value<DateTime> date = const Value.absent(),
+                Value<int?> routeId = const Value.absent(),
+                Value<int?> trackId = const Value.absent(),
+                Value<String> status = const Value.absent(),
+                Value<DateTime?> startTime = const Value.absent(),
+                Value<DateTime?> endTime = const Value.absent(),
+                Value<String?> metadata = const Value.absent(),
+                Value<DateTime> createdAt = const Value.absent(),
+                Value<DateTime> updatedAt = const Value.absent(),
+              }) => WorkDaysCompanion(
+                id: id,
+                user: user,
+                date: date,
+                routeId: routeId,
+                trackId: trackId,
+                status: status,
+                startTime: startTime,
+                endTime: endTime,
+                metadata: metadata,
+                createdAt: createdAt,
+                updatedAt: updatedAt,
+              ),
+          createCompanionCallback:
+              ({
+                Value<int> id = const Value.absent(),
+                required int user,
+                required DateTime date,
+                Value<int?> routeId = const Value.absent(),
+                Value<int?> trackId = const Value.absent(),
+                Value<String> status = const Value.absent(),
+                Value<DateTime?> startTime = const Value.absent(),
+                Value<DateTime?> endTime = const Value.absent(),
+                Value<String?> metadata = const Value.absent(),
+                Value<DateTime> createdAt = const Value.absent(),
+                Value<DateTime> updatedAt = const Value.absent(),
+              }) => WorkDaysCompanion.insert(
+                id: id,
+                user: user,
+                date: date,
+                routeId: routeId,
+                trackId: trackId,
+                status: status,
+                startTime: startTime,
+                endTime: endTime,
+                metadata: metadata,
+                createdAt: createdAt,
+                updatedAt: updatedAt,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
+              .toList(),
+          prefetchHooksCallback: null,
+        ),
+      );
+}
+
+typedef $$WorkDaysTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AppDatabase,
+      $WorkDaysTable,
+      WorkDayData,
+      $$WorkDaysTableFilterComposer,
+      $$WorkDaysTableOrderingComposer,
+      $$WorkDaysTableAnnotationComposer,
+      $$WorkDaysTableCreateCompanionBuilder,
+      $$WorkDaysTableUpdateCompanionBuilder,
+      (WorkDayData, BaseReferences<_$AppDatabase, $WorkDaysTable, WorkDayData>),
+      WorkDayData,
+      PrefetchHooks Function()
+    >;
 
 class $AppDatabaseManager {
   final _$AppDatabase _db;
@@ -9670,4 +10620,6 @@ class $AppDatabaseManager {
       $$CompactTracksTableTableManager(_db, _db.compactTracks);
   $$AppUsersTableTableManager get appUsers =>
       $$AppUsersTableTableManager(_db, _db.appUsers);
+  $$WorkDaysTableTableManager get workDays =>
+      $$WorkDaysTableTableManager(_db, _db.workDays);
 }

@@ -5,7 +5,7 @@ import 'package:fieldforce/features/navigation/tracking/domain/entities/navigati
 import '../../domain/entities/compact_track.dart';
 import '../../domain/entities/compact_track_builder.dart';
 import '../../domain/entities/user_track.dart';
-import '../../../../shop/domain/entities/route.dart';
+import '../../../../../app/domain/entities/route.dart';
 
 /// Сервис для создания GPS треков из различных форматов данных
 /// 
@@ -173,7 +173,6 @@ class TrackFixtureService {
     return UserTrack.fromSegments(
       id: trackId,
       user: user,
-      route: route,
       segments: segments,
       metadata: {
         'source': 'coordinates_with_stops',

@@ -18,3 +18,4 @@ export 'tables/route_table.dart';
 export 'tables/point_of_interest_table.dart';
 export 'tables/trading_point_table.dart';
 export 'tables/trading_point_entity_table.dart';
+export 'tables/work_day_table.dart';

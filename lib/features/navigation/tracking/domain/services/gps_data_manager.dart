@@ -5,12 +5,8 @@ import 'mock_gps_data_source.dart';
 
 /// Режимы GPS трекинга
 enum GpsMode {
-  /// Реальный GPS
   real,
-  /// Мок данные для тестирования
-  mock,
-  /// Гибридный режим (исторические данные + мок продолжение)
-  hybrid
+  mock
 }
 
 /// Конфигурация для режима тестирования GPS
@@ -55,25 +51,20 @@ class GpsDataManager {
   GpsDataSource? _currentSource;
   GpsMode _currentMode = GpsMode.real;
   GpsTestConfig? _testConfig;
-  
-  // Singleton pattern
+
   static final GpsDataManager _instance = GpsDataManager._internal();
   factory GpsDataManager() => _instance;
   GpsDataManager._internal();
-  
-  /// Текущий режим GPS
+
   GpsMode get currentMode => _currentMode;
-  
-  /// Текущий источник данных
   GpsDataSource? get currentSource => _currentSource;
   
   /// Инициализирует GPS с указанным режимом
   Future<void> initialize({
     required GpsMode mode,
-    GpsTestConfig? testConfig,
+    GpsTestConfig testConfig = GpsTestConfig.defaultTest,
   }) async {
     await _disposeCurrentSource();
-    
     _currentMode = mode;
     _testConfig = testConfig;
     
@@ -85,62 +76,54 @@ class GpsDataManager {
         
       case GpsMode.mock:
         final mockSource = MockGpsDataSource(
-          speedMultiplier: testConfig?.speedMultiplier ?? 1.0,
-          addGpsNoise: testConfig?.addGpsNoise ?? true,
-          baseAccuracy: testConfig?.baseAccuracy ?? 5.0,
+          speedMultiplier: testConfig.speedMultiplier,
+          addGpsNoise: testConfig.addGpsNoise,
+          baseAccuracy: testConfig.baseAccuracy,
         );
-        
-        if (testConfig?.mockDataPath != null) {
-          await mockSource.loadRoute(testConfig!.mockDataPath!);
-          
-          if (testConfig.startProgress != null) {
-            mockSource.setProgress(testConfig.startProgress!);
-          }
+
+        await mockSource.loadRoute(testConfig.mockDataPath!);
+
+        if (testConfig.startProgress != null) {
+          mockSource.setProgress(testConfig.startProgress!);
         }
-        
+
         _currentSource = mockSource;
-        print('🎭 $_tag: Инициализирован мок GPS с конфигурацией: ${testConfig?.mockDataPath}');
+        print('🎭 $_tag: Инициализирован мок GPS с конфигурацией: ${testConfig.mockDataPath}');
+        // mockSource.resume();
         break;
-        
-      case GpsMode.hybrid:
-        // TODO: Реализовать гибридный режим (исторические + мок)
-        throw UnimplementedError('Гибридный режим пока не реализован');
     }
   }
-  
-  /// Быстрая настройка для режима разработки/тестирования
+
   Future<void> initializeForDevelopment({
     GpsTestConfig? config,
   }) async {
     final testConfig = config ?? GpsTestConfig.defaultTest;
     await initialize(mode: GpsMode.mock, testConfig: testConfig);
   }
-  
-  /// Быстрая настройка для демонстрации
+
   Future<void> initializeForDemo() async {
     await initialize(mode: GpsMode.mock, testConfig: GpsTestConfig.fastTest);
   }
-  
-  /// Переключиться на реальный GPS
+
   Future<void> switchToRealGps() async {
     await initialize(mode: GpsMode.real);
   }
-  
-  /// Переключиться на мок GPS с заданной конфигурацией
+
   Future<void> switchToMockGps(GpsTestConfig config) async {
     await initialize(mode: GpsMode.mock, testConfig: config);
   }
-  
-  /// Получить стрим позиций
+
   Stream<Position> getPositionStream({required LocationSettings settings}) {
     if (_currentSource == null) {
       throw StateError('GPS источник не инициализирован. Вызовите initialize() сначала.');
     }
-    
-    return _currentSource!.getPositionStream(settings: settings);
+    print('🌍 GpsDataManager: getPositionStream() вызван, _currentSource: ${_currentSource.runtimeType}');
+    return _currentSource!.getPositionStream(settings: settings).map((position) {
+      print('🌍 GpsDataManager: Передаем позицию ${position.latitude}, ${position.longitude}');
+      return position;
+    });
   }
-  
-  /// Проверить разрешения
+
   Future<bool> checkPermissions() async {
     if (_currentSource == null) {
       throw StateError('GPS источник не инициализирован');
@@ -148,8 +131,7 @@ class GpsDataManager {
     
     return _currentSource!.checkPermissions();
   }
-  
-  /// Получить текущую позицию
+
   Future<Position> getCurrentPosition({required LocationSettings settings}) async {
     if (_currentSource == null) {
       throw StateError('GPS источник не инициализирован');
@@ -165,11 +147,9 @@ class GpsDataManager {
     }
     return null;
   }
-  
-  /// Освободить ресурсы
+
   Future<void> dispose() async {
     await _disposeCurrentSource();
-    print('🔄 $_tag: Менеджер GPS освобожден');
   }
   
   /// Освобождает текущий источник данных
@@ -179,8 +159,7 @@ class GpsDataManager {
       _currentSource = null;
     }
   }
-  
-  /// Получить описание текущей конфигурации
+
   Map<String, dynamic> getConfigInfo() {
     return {
       'mode': _currentMode.toString(),
@@ -195,8 +174,7 @@ class GpsDataManager {
       'playbackInfo': getPlaybackInfo(),
     };
   }
-  
-  /// Приостанавливает мок GPS (если используется)
+
   void pauseMockGps() {
     if (_currentMode == GpsMode.mock && _currentSource is MockGpsDataSource) {
       final mockSource = _currentSource as MockGpsDataSource;
@@ -204,13 +182,84 @@ class GpsDataManager {
       print('⏸️ $_tag: Мок GPS приостановлен');
     }
   }
-  
-  /// Возобновляет мок GPS (если используется)
+
   void resumeMockGps() {
     if (_currentMode == GpsMode.mock && _currentSource is MockGpsDataSource) {
       final mockSource = _currentSource as MockGpsDataSource;
       mockSource.resume();
       print('▶️ $_tag: Мок GPS возобновлен');
     }
+  }
+
+  /// Управление mock GPS ��отоком (если источник поддерживает)
+  void pauseMockStream() {
+    if (_currentSource is MockGpsDataSource) {
+      (_currentSource as MockGpsDataSource).pauseStream();
+    }
+  }
+
+  void resumeMockStream() {
+    if (_currentSource is MockGpsDataSource) {
+      (_currentSource as MockGpsDataSource).resumeStream();
+    }
+  }
+
+  void stopMockStream() {
+    if (_currentSource is MockGpsDataSource) {
+      (_currentSource as MockGpsDataSource).stopStream();
+    }
+  }
+
+  void throwMockError([dynamic error]) {
+    if (_currentSource is MockGpsDataSource) {
+      (_currentSource as MockGpsDataSource).throwError(error);
+    }
+  }
+
+  /// Включить GPS (start)
+  Future<bool> startGps() async {
+    try {
+      // Для mock: resume поток
+      if (_currentSource is MockGpsDataSource) {
+        print('▶️ $_tag: Используется Mock GPS, возобновление потока...');
+        await Future.delayed(const Duration(seconds: 1));
+        (_currentSource as MockGpsDataSource).resumeStream();
+        return true;
+      }
+
+      // Для реального GPS: проверяем разрешения и подписываемся на поток
+      print('🌍 $_tag: Используется реальный GPS, проверка разрешений...');
+      print(_currentSource);
+      // Defensive timeout already implemented in underlying checkPermissions if desired
+      final hasPermission = await checkPermissions().timeout(
+        const Duration(seconds: 15),
+        onTimeout: () {
+          print('⏱️ $_tag: checkPermissions() timed out');
+          return false;
+        },
+      );
+
+      print('🌍 $_tag: checkPermissions() returned: $hasPermission');
+      if (hasPermission) {
+        print('✅ $_tag: Location permission granted — GPS started');
+        // Subscribe to stream or other start logic here
+        return true;
+      } else {
+        print('❌ $_tag: Location permission denied - cannot start real GPS');
+        return false;
+      }
+    } catch (e, st) {
+      print('❗ $_tag: Exception while starting GPS: $e\n$st');
+      return false;
+    }
+  }
+
+  /// Отключить GPS (stop)
+  void stopGps() {
+    if (_currentSource == null) return;
+    if (_currentSource is MockGpsDataSource) {
+      (_currentSource as MockGpsDataSource).pauseStream();
+    }
+    //gpsState.value = GpsToggleState.off;
   }
 }

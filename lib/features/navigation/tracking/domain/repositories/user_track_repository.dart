@@ -17,10 +17,15 @@ abstract interface class UserTrackRepository {
   
   Future<Either<Failure, UserTrack?>> getActiveUserTrack(NavigationUser user);
   
+  /// Создает новый трек (INSERT)
   Future<Either<Failure, UserTrack>> saveUserTrack(UserTrack track);
   
+  /// Обновляет существующий трек (UPDATE)
   Future<Either<Failure, UserTrack>> updateUserTrack(UserTrack track);
   
+  /// Универсальный метод - сам определяет нужен INSERT или UPDATE
+  Future<Either<Failure, UserTrack>> saveOrUpdateUserTrack(UserTrack track);
+
   Future<Either<Failure, void>> deleteUserTrack(UserTrack track);
   
   // Future<Either<Failure, List<UserTrack>>> getTracksByRoute(Route route);

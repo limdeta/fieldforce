@@ -1,33 +1,29 @@
 import 'dart:async';
+import 'package:fieldforce/app/domain/entities/point_of_interest.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:get_it/get_it.dart';
 import 'package:latlong2/latlong.dart';
-import 'package:fieldforce/features/shop/domain/entities/route.dart' as shop;
-import 'package:fieldforce/features/shop/domain/repositories/route_repository.dart';
+import 'package:fieldforce/app/domain/entities/route.dart' as shop;
+import 'package:fieldforce/app/domain/repositories/route_repository.dart';
 import 'package:fieldforce/app/services/app_session_service.dart';
 import 'package:fieldforce/app/providers/selected_route_provider.dart';
 import 'package:fieldforce/features/navigation/tracking/presentation/providers/user_tracks_provider.dart';
+import 'package:fieldforce/features/navigation/tracking/domain/services/location_tracking_service_base.dart';
 import 'package:fieldforce/features/navigation/map/domain/entities/map_point.dart';
 import 'package:fieldforce/features/navigation/path_predictor/osrm_path_prediction_service.dart';
-import 'package:fieldforce/features/shop/domain/entities/point_of_interest.dart';
-import 'package:fieldforce/features/navigation/tracking/data/fixtures/track_fixtures.dart';
 import 'sales_rep_home_event.dart';
 import 'sales_rep_home_state.dart';
 
 /// BLoC для главной страницы торгового представителя
-/// 
-/// Управляет состоянием страницы и обрабатывает бизнес-логику:
-/// - Загрузка маршрутов пользователя
-/// - Выбор и синхронизация маршрутов
-/// - Построение маршрутов
-/// - Управление UI состоянием
 class SalesRepHomeBloc extends Bloc<SalesRepHomeEvent, SalesRepHomeState> {
   final RouteRepository _routeRepository = GetIt.instance<RouteRepository>();
   final SelectedRouteProvider _selectedRouteProvider = GetIt.instance<SelectedRouteProvider>();
   final UserTracksProvider _userTracksProvider = GetIt.instance<UserTracksProvider>();
+  final LocationTrackingServiceBase _trackingService = GetIt.instance<LocationTrackingServiceBase>();
 
   StreamSubscription<List<shop.Route>>? _routesSubscription;
   StreamSubscription? _selectedRouteSubscription;
+  StreamSubscription? _activeTrackSubscription;
 
   SalesRepHomeBloc() : super(const SalesRepHomeInitial()) {
     // Регистрируем обработчики событий
@@ -38,6 +34,56 @@ class SalesRepHomeBloc extends Bloc<SalesRepHomeEvent, SalesRepHomeState> {
     on<BuildRouteEvent>(_onBuildRoute);
     on<RoutesUpdatedEvent>(_onRoutesUpdated);
     on<SyncTracksWithRouteEvent>(_onSyncTracksWithRoute);
+    on<ActiveTrackUpdatedEvent>(_onActiveTrackUpdated);
+
+    // Подписываемся на активный трек сразу при создании блока
+    _setupActiveTrackListener();
+  }
+
+  /// Обработчик обновления активного трека
+  void _onActiveTrackUpdated(
+    ActiveTrackUpdatedEvent event,
+    Emitter<SalesRepHomeState> emit,
+  ) {
+    if (state is SalesRepHomeLoaded) {
+      final currentState = state as SalesRepHomeLoaded;
+      final oldTrack = currentState.activeTrack;
+      final newTrack = event.activeTrack;
+
+      print('🔄 SalesRepHomeBloc: Получили новый активный трек: ${newTrack?.id} (${newTrack?.totalPoints} точек)');
+      print('🔄 SalesRepHomeBloc: Старый трек в состоянии: ${oldTrack?.id} (${oldTrack?.totalPoints} точек)');
+
+      // ОТЛАДКА: Детально проверяем что в новом треке
+      if (newTrack != null) {
+        int totalPointsInNewTrack = 0;
+        for (final segment in newTrack.segments) {
+          totalPointsInNewTrack += segment.pointCount.toInt();
+          print('🔍 SalesRepHomeBloc: Новый трек сегмент  ${segment.pointCount} точек');
+        }
+        print('🔍 SalesRepHomeBloc: Новый трек реально содержит: $totalPointsInNewTrack точек');
+      }
+
+      final newState = currentState.copyWith(activeTrack: newTrack);
+      print('🔄 SalesRepHomeBloc: Emit нового состояния с треком ${newState.activeTrack?.id} (${newState.activeTrack?.totalPoints} точек)');
+      emit(newState);
+    }
+  }
+
+  /// Настройка слушателя активного трека
+  void _setupActiveTrackListener() {
+    _activeTrackSubscription?.cancel();
+
+    _activeTrackSubscription = _trackingService.trackUpdateStream.listen(
+      (activeTrack) {
+        print('🎯 SalesRepHomeBloc: ПРЯМОЕ получение трека из trackUpdateStream: ${activeTrack.id} (${activeTrack.totalPoints} точек)');
+        add(ActiveTrackUpdatedEvent(activeTrack));
+      },
+      onError: (error) {
+        print('⚠️ SalesRepHomeBloc: Ошибка прямой подписки на трек: $error');
+      },
+    );
+
+    print('✅ SalesRepHomeBloc: Настроена ПРЯМАЯ подписка на trackUpdateStream');
   }
 
   /// Инициализация BLoC
@@ -48,7 +94,6 @@ class SalesRepHomeBloc extends Bloc<SalesRepHomeEvent, SalesRepHomeState> {
     emit(const SalesRepHomeLoading(message: 'Инициализация...'));
 
     try {
-      // Проверяем сессию пользователя
       final sessionResult = await AppSessionService.getCurrentAppSession();
       if (sessionResult.isLeft()) {
         emit(const SalesRepHomeError(
@@ -67,20 +112,15 @@ class SalesRepHomeBloc extends Bloc<SalesRepHomeEvent, SalesRepHomeState> {
         return;
       }
 
-      // Если есть предварительно выбранный маршрут
       if (event.preselectedRoute != null) {
         await _selectedRouteProvider.setSelectedRoute(event.preselectedRoute!);
         add(SyncTracksWithRouteEvent(event.preselectedRoute!));
       } else {
-        // Загружаем все треки пользователя
         await _userTracksProvider.loadUserTracks(session.appUser);
       }
 
-      // Настраиваем слушатели
       _setupRouteStreamListener(session);
       _setupSelectedRouteListener();
-
-      // Загружаем маршруты
       add(const LoadUserRoutesEvent());
 
     } catch (e) {
@@ -99,15 +139,12 @@ class SalesRepHomeBloc extends Bloc<SalesRepHomeEvent, SalesRepHomeState> {
     try {
       final sessionResult = await AppSessionService.getCurrentAppSession();
       final session = sessionResult.fold((l) => throw Exception('No session'), (r) => r);
-      
+
       if (session == null) {
         throw Exception('Session is null');
       }
 
-      // Получаем маршруты один раз для инициализации
-      // Далее будут использоваться updates из stream
       emit(const SalesRepHomeLoading(message: 'Загрузка маршрутов...'));
-      
     } catch (e) {
       emit(SalesRepHomeError(
         message: 'Ошибка загрузки маршрутов: $e',
@@ -116,7 +153,6 @@ class SalesRepHomeBloc extends Bloc<SalesRepHomeEvent, SalesRepHomeState> {
     }
   }
 
-  /// Выбор маршрута
   Future<void> _onSelectRoute(
     SelectRouteEvent event,
     Emitter<SalesRepHomeState> emit,
@@ -124,13 +160,15 @@ class SalesRepHomeBloc extends Bloc<SalesRepHomeEvent, SalesRepHomeState> {
     try {
       await _selectedRouteProvider.setSelectedRoute(event.route);
       add(SyncTracksWithRouteEvent(event.route));
-      
-      // Обновляем состояние если оно загружено
+
       if (state is SalesRepHomeLoaded) {
         final currentState = state as SalesRepHomeLoaded;
         emit(currentState.copyWith(currentRoute: event.route));
       }
+
+      print('🎉 SalesRepHomeBloc._onSelectRoute: Переключение маршрута завершено успешно');
     } catch (e) {
+      print('❌ SalesRepHomeBloc._onSelectRoute: Критическая ошибка: $e');
       emit(SalesRepHomeError(
         message: 'Ошибка выбора маршрута: $e',
         currentRoute: (state is SalesRepHomeLoaded) ? (state as SalesRepHomeLoaded).currentRoute : null,
@@ -138,7 +176,6 @@ class SalesRepHomeBloc extends Bloc<SalesRepHomeEvent, SalesRepHomeState> {
     }
   }
 
-  /// Переключение панели маршрута
   void _onToggleRoutePanel(
     ToggleRoutePanelEvent event,
     Emitter<SalesRepHomeState> emit,
@@ -149,102 +186,75 @@ class SalesRepHomeBloc extends Bloc<SalesRepHomeEvent, SalesRepHomeState> {
     }
   }
 
-  /// Построение маршрута
   Future<void> _onBuildRoute(
     BuildRouteEvent event,
     Emitter<SalesRepHomeState> emit,
   ) async {
     if (state is! SalesRepHomeLoaded) return;
-    
+
     final currentState = state as SalesRepHomeLoaded;
     final currentRoute = currentState.currentRoute;
-    
     if (currentRoute == null) return;
 
-    print('🚀 Построение маршрута начато для ${currentRoute.pointsOfInterest.length} точек');
-
-    // Устанавливаем флаг построения маршрута
     emit(currentState.copyWith(isBuildingRoute: true));
 
     try {
       final pathPredictionService = GetIt.instance<OsrmPathPredictionService>();
-      
-      // Находим последнюю завершенную точку (индекс начала маршрута)
+
       int lastCompletedIndex = -1;
       for (int i = 0; i < currentRoute.pointsOfInterest.length; i++) {
         if (currentRoute.pointsOfInterest[i].status == VisitStatus.completed) {
           lastCompletedIndex = i;
         }
       }
-      
-      // Если есть завершенные точки, начинаем с последней завершенной
-      // Иначе начинаем с первой точки
+
       final startIndex = lastCompletedIndex >= 0 ? lastCompletedIndex : 0;
       final routePoints = currentRoute.pointsOfInterest.sublist(startIndex);
-      
+
       if (routePoints.length < 2) {
-        print('⚠️ Недостаточно точек для построения маршрута (нужно минимум 2, есть ${routePoints.length})');
+        print('⚠️ Недостаточно точек для построения маршрута');
         emit(currentState.copyWith(isBuildingRoute: false));
         return;
       }
 
-      print('🎯 Строим маршрут от точки ${startIndex + 1} до конца: ${routePoints.length} точек');
-
-      // Преобразуем в MapPoint для OSRM сервиса
       final mapPoints = routePoints.map((poi) => MapPoint(
         latitude: poi.coordinates.latitude,
         longitude: poi.coordinates.longitude,
       )).toList();
 
-      // Вызываем OSRM сервис
       final result = await pathPredictionService.predictRouteGeometry(mapPoints);
-      
+
       if (result.routePoints.isNotEmpty) {
-        final polylinePoints = result.routePoints.map((point) => 
+        final polylinePoints = result.routePoints.map((point) =>
           LatLng(point.latitude, point.longitude)
         ).toList();
-        
-        print('✅ Маршрут построен успешно: ${polylinePoints.length} точек');
-        
-        // Обновляем состояние с новой полилинией
+
         emit(currentState.copyWith(
           isBuildingRoute: false,
           routePolylinePoints: polylinePoints,
         ));
       } else {
-        print('❌ OSRM вернул пустой результат');
         emit(currentState.copyWith(isBuildingRoute: false));
-        emit(SalesRepHomeError(
-          message: 'Не удалось построить маршрут: сервис вернул пустой результат',
-          currentRoute: currentRoute,
-        ));
       }
     } catch (e) {
       print('❌ Ошибка построения маршрута: $e');
       emit(currentState.copyWith(isBuildingRoute: false));
-      emit(SalesRepHomeError(
-        message: 'Ошибка построения маршрута: $e',
-        currentRoute: currentRoute,
-      ));
     }
   }
 
-  /// Обновление списка маршрутов (от stream)
   Future<void> _onRoutesUpdated(
     RoutesUpdatedEvent event,
     Emitter<SalesRepHomeState> emit,
   ) async {
     if (event.routes.isEmpty) {
       emit(const SalesRepHomeLoaded(
-        currentRoute: null,
         availableRoutes: [],
       ));
       return;
     }
 
     shop.Route? routeToDisplay;
-    
-    // Если маршрут не выбран, выбираем автоматически
+
     if (_selectedRouteProvider.selectedRoute == null) {
       routeToDisplay = _findCurrentRoute(event.routes);
       if (routeToDisplay != null) {
@@ -260,26 +270,8 @@ class SalesRepHomeBloc extends Bloc<SalesRepHomeEvent, SalesRepHomeState> {
       showRoutePanel: state is SalesRepHomeLoaded ? (state as SalesRepHomeLoaded).showRoutePanel : true,
       isBuildingRoute: state is SalesRepHomeLoaded ? (state as SalesRepHomeLoaded).isBuildingRoute : false,
     ));
-
-    // 🎯 АВТОЗАПУСК GPS ТРЕКИНГА для найденного маршрута
-    if (routeToDisplay != null) {
-      print('🚀 SalesRepHomeBloc: Запускаем GPS трекинг для маршрута ${routeToDisplay.name} (ID: ${routeToDisplay.id})');
-      try {
-        final success = await TrackFixtures.continueOrStartTodaysTrack(
-          routeId: routeToDisplay.id?.toString() ?? 'unknown',
-        );
-        if (success) {
-          print('✅ SalesRepHomeBloc: GPS трекинг успешно запущен');
-        } else {
-          print('❌ SalesRepHomeBloc: Не удалось запустить GPS трекинг');
-        }
-      } catch (e) {
-        print('❌ SalesRepHomeBloc: Ошибка запуска GPS трекинга: $e');
-      }
-    }
   }
 
-  /// Синхронизация треков с маршрутом
   Future<void> _onSyncTracksWithRoute(
     SyncTracksWithRouteEvent event,
     Emitter<SalesRepHomeState> emit,
@@ -287,11 +279,10 @@ class SalesRepHomeBloc extends Bloc<SalesRepHomeEvent, SalesRepHomeState> {
     try {
       final sessionResult = await AppSessionService.getCurrentAppSession();
       final session = sessionResult.fold((l) => null, (r) => r);
-      
+
       if (session != null) {
         final routeDate = event.route.startTime ?? DateTime.now();
-        await _userTracksProvider.loadUserTracksForDate(session.appUser, routeDate);
-        
+        await _userTracksProvider.loadUserTrackForDate(session.appUser, routeDate);
         print('✅ Треки синхронизированы с маршрутом: ${event.route.name}');
       }
     } catch (e) {
@@ -299,7 +290,6 @@ class SalesRepHomeBloc extends Bloc<SalesRepHomeEvent, SalesRepHomeState> {
     }
   }
 
-  /// Настройка слушателя stream маршрутов
   void _setupRouteStreamListener(session) {
     _routesSubscription?.cancel();
     _routesSubscription = _routeRepository
@@ -307,13 +297,12 @@ class SalesRepHomeBloc extends Bloc<SalesRepHomeEvent, SalesRepHomeState> {
         .listen(
           (routes) => add(RoutesUpdatedEvent(routes)),
           onError: (error) {
-            add(LoadUserRoutesEvent()); // Retry через event
+            add(const LoadUserRoutesEvent());
             print('⚠️ Ошибка загрузки маршрутов: $error');
           },
         );
   }
 
-  /// Настройка слушателя выбранного маршрута
   void _setupSelectedRouteListener() {
     _selectedRouteSubscription?.cancel();
     _selectedRouteProvider.addListener(() {
@@ -324,13 +313,10 @@ class SalesRepHomeBloc extends Bloc<SalesRepHomeEvent, SalesRepHomeState> {
     });
   }
 
-  /// Поиск текущего маршрута (активный или сегодняшний)
   shop.Route? _findCurrentRoute(List<shop.Route> routes) {
-    // Ищем активный маршрут
     var activeRoute = routes.where((r) => r.status == shop.RouteStatus.active).firstOrNull;
     if (activeRoute != null) return activeRoute;
-    
-    // Ищем сегодняшний маршрут
+
     final today = DateTime.now();
     var todayRoute = routes.where((r) {
       if (r.startTime == null) return false;
@@ -338,10 +324,8 @@ class SalesRepHomeBloc extends Bloc<SalesRepHomeEvent, SalesRepHomeState> {
              r.startTime!.month == today.month &&
              r.startTime!.day == today.day;
     }).firstOrNull;
-    
+
     if (todayRoute != null) return todayRoute;
-    
-    // Возвращаем первый доступный
     return routes.isNotEmpty ? routes.first : null;
   }
 
@@ -349,6 +333,7 @@ class SalesRepHomeBloc extends Bloc<SalesRepHomeEvent, SalesRepHomeState> {
   Future<void> close() {
     _routesSubscription?.cancel();
     _selectedRouteSubscription?.cancel();
+    _activeTrackSubscription?.cancel();
     return super.close();
   }
 }

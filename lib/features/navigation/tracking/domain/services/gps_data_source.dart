@@ -8,14 +8,8 @@ import 'package:geolocator/geolocator.dart';
 abstract class GpsDataSource {
   /// Стрим позиций GPS
   Stream<Position> getPositionStream({required LocationSettings settings});
-  
-  /// Проверка разрешений
   Future<bool> checkPermissions();
-  
-  /// Получить текущую позицию
   Future<Position> getCurrentPosition({required LocationSettings settings});
-  
-  /// Освобождение ресурсов
   Future<void> dispose();
 }
 
@@ -29,10 +23,18 @@ class RealGpsDataSource implements GpsDataSource {
   @override
   Future<bool> checkPermissions() async {
     try {
-      LocationPermission permission = await Geolocator.checkPermission();
-      
+      print('🔐 RealGpsDataSource: checkPermissions() start');
+      // Protect against platform hangups with a short timeout
+      LocationPermission permission = await Geolocator
+          .checkPermission()
+          .timeout(const Duration(seconds: 5));
+
       if (permission == LocationPermission.denied) {
-        permission = await Geolocator.requestPermission();
+        print('🔐 RealGpsDataSource: requesting permission...');
+        permission = await Geolocator
+            .requestPermission()
+            .timeout(const Duration(seconds: 10));
+        print('🔐 RealGpsDataSource: request result = $permission');
       }
       
       return permission == LocationPermission.whileInUse || 

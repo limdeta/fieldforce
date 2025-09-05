@@ -1,6 +1,6 @@
-import '../../../features/shop/domain/entities/employee.dart' as domain;
+import 'package:fieldforce/features/shop/domain/entities/employee.dart' as domain;
 import 'package:drift/drift.dart';
-import '../app_database.dart' as db;
+import 'package:fieldforce/app/database/app_database.dart' as db;
 
 class EmployeeMapper {
   static domain.Employee fromDb(db.EmployeeData dbEmployee) {

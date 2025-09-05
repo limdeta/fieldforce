@@ -6,7 +6,6 @@ import 'package:path/path.dart' as p;
 import 'package:sqlite3_flutter_libs/sqlite3_flutter_libs.dart';
 import 'package:sqlite3/sqlite3.dart';
 
-import '../config/app_config.dart';
 import 'tables/user_table.dart';
 import 'tables/employee_table.dart';
 import 'tables/route_table.dart';
@@ -17,6 +16,7 @@ import 'tables/employee_trading_point_assignment_table.dart';
 import 'tables/user_track_table.dart';
 import 'tables/compact_track_table.dart';
 import 'tables/app_user_table.dart';
+import 'tables/work_day_table.dart';
 
 part 'app_database.g.dart';
 
@@ -31,10 +31,12 @@ part 'app_database.g.dart';
   UserTracks,
   CompactTracks,
   AppUsers,
+  WorkDays,
 ])
 class AppDatabase extends _$AppDatabase {
-  AppDatabase() : super(_openConnection());
-  
+  AppDatabase() : super(_openConnection('app_database.db'));
+  AppDatabase.withFile(String dbFileName) : super(_openConnection(dbFileName));
+
   // Конструктор для тестов
   AppDatabase.forTesting(DatabaseConnection super.connection);
 
@@ -85,33 +87,20 @@ class AppDatabase extends _$AppDatabase {
   );
 }
 
-LazyDatabase _openConnection() {
+LazyDatabase _openConnection(String dbFileName) {
   return LazyDatabase(() async {
     final dbFolder = await getApplicationDocumentsDirectory();
-    print('=== DB FOLDER: ${dbFolder.path}');
-    
-    // Используем имя базы данных из конфигурации (fieldforce_dev.db, fieldforce_test.db, fieldforce.db)
-    final file = File(p.join(dbFolder.path, AppConfig.databaseName));
-    print('=== DB FILE: ${file.path}');
-    
+    print('=== DB FOLDER: [32m${dbFolder.path}[0m');
+    final file = File(p.join(dbFolder.path, dbFileName));
+    print('=== DB FILE: [32m${file.path}[0m');
     // Обеспечиваем поддержку SQLite на всех платформах
     if (Platform.isAndroid) {
       await applyWorkaroundToOpenSqlite3OnOldAndroidVersions();
     }
-    
     sqlite3.tempDirectory = dbFolder.path;
-    
-    print('🗃️ Создаем базу данных: ${AppConfig.databaseName}');
-    print('📊 Детальное логирование: ${AppConfig.enableDetailedLogging}');
-    print('🌍 Окружение: ${AppConfig.environment}');
-    
-    // ВРЕМЕННО: отключаем логирование для тестов полностью
-    final shouldLog = AppConfig.enableDetailedLogging && 
-                     !AppConfig.databaseName.contains('test');
-    
     return NativeDatabase.createInBackground(
       file,
-      logStatements: shouldLog,
+      logStatements: false,
     );
   });
 }

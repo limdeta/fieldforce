@@ -1,10 +1,9 @@
 import 'package:equatable/equatable.dart';
 import 'package:latlong2/latlong.dart';
-import 'package:fieldforce/features/shop/domain/entities/route.dart' as shop;
+import 'package:fieldforce/app/domain/entities/route.dart' as shop;
+import 'package:fieldforce/features/navigation/tracking/domain/entities/user_track.dart';
 
 /// Состояния для SalesRepHome BLoC
-/// 
-/// Состояния представляют текущее состояние UI
 abstract class SalesRepHomeState extends Equatable {
   const SalesRepHomeState();
 
@@ -33,7 +32,8 @@ class SalesRepHomeLoaded extends SalesRepHomeState {
   final List<shop.Route> availableRoutes;
   final bool showRoutePanel;
   final bool isBuildingRoute;
-  final List<LatLng> routePolylinePoints; // Точки полилинии маршрута
+  final List<LatLng> routePolylinePoints;
+  final UserTrack? activeTrack;
 
   const SalesRepHomeLoaded({
     this.currentRoute,
@@ -41,6 +41,7 @@ class SalesRepHomeLoaded extends SalesRepHomeState {
     this.showRoutePanel = true,
     this.isBuildingRoute = false,
     this.routePolylinePoints = const [],
+    this.activeTrack,
   });
 
   /// Создание копии состояния с измененными полями
@@ -50,6 +51,7 @@ class SalesRepHomeLoaded extends SalesRepHomeState {
     bool? showRoutePanel,
     bool? isBuildingRoute,
     List<LatLng>? routePolylinePoints,
+    UserTrack? activeTrack,
   }) {
     return SalesRepHomeLoaded(
       currentRoute: currentRoute ?? this.currentRoute,
@@ -57,6 +59,7 @@ class SalesRepHomeLoaded extends SalesRepHomeState {
       showRoutePanel: showRoutePanel ?? this.showRoutePanel,
       isBuildingRoute: isBuildingRoute ?? this.isBuildingRoute,
       routePolylinePoints: routePolylinePoints ?? this.routePolylinePoints,
+      activeTrack: activeTrack ?? this.activeTrack,
     );
   }
 
@@ -67,13 +70,19 @@ class SalesRepHomeLoaded extends SalesRepHomeState {
     showRoutePanel,
     isBuildingRoute,
     routePolylinePoints,
+
+    // Это заставит Equatable считать состояния разными при изменении количества точек
+    // тут нужно кидать TrackPointsAddedEvent
+    activeTrack?.id,
+    activeTrack?.totalPoints,
+    activeTrack?.segments.length,
   ];
 }
 
 /// Состояние ошибки
 class SalesRepHomeError extends SalesRepHomeState {
   final String message;
-  final shop.Route? currentRoute; // Сохраняем текущий маршрут при ошибке
+  final shop.Route? currentRoute;
   final bool canRetry;
 
   const SalesRepHomeError({
@@ -89,7 +98,7 @@ class SalesRepHomeError extends SalesRepHomeState {
 /// Состояние успешного построения маршрута
 class SalesRepHomeRouteBuilt extends SalesRepHomeState {
   final shop.Route route;
-  final List<dynamic> routePoints; // Полилиния маршрута
+  final List<dynamic> routePoints;
 
   const SalesRepHomeRouteBuilt({
     required this.route,

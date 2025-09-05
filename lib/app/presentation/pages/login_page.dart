@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:fieldforce/app/service_locator.dart';
+import 'package:fieldforce/app/di/service_locator.dart';
 import 'package:fieldforce/app/services/app_session_service.dart';
 import 'package:fieldforce/app/services/user_initialization_service.dart';
 import 'package:fieldforce/features/authentication/domain/entities/user.dart';
@@ -56,10 +56,10 @@ class LoginPageView extends StatelessWidget {
     String targetRoute;
     switch (role) {
       case UserRole.admin:
-        targetRoute = '/admin';
+        targetRoute = '/sales-home';
         break;
       case UserRole.manager:
-        targetRoute = '/home';
+        targetRoute = '/sales-home';
         break;
       case UserRole.user:
         targetRoute = '/sales-home';

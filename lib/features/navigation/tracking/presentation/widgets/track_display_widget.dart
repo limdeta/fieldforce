@@ -1,7 +1,7 @@
+import 'package:fieldforce/features/navigation/tracking/domain/entities/user_track.dart';
+import 'package:fieldforce/features/navigation/tracking/domain/enums/track_status.dart';
 import 'package:flutter/material.dart';
 import 'package:latlong2/latlong.dart';
-import '../../domain/entities/user_track.dart';
-import '../../domain/enums/track_status.dart';
 
 /// Виджет для отображения треков на карте
 /// Обрабатывает логику преобразования треков в polylines для карты
@@ -98,9 +98,7 @@ class TrackPolyline {
     required this.strokeWidth,
   });
   
-  /// Проверяет, является ли трек активным
+
   bool get isActive => trackStatus.isActive;
-  
-  /// Проверяет, является ли трек завершенным
   bool get isCompleted => trackStatus == TrackStatus.completed;
 }

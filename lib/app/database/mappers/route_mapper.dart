@@ -1,16 +1,18 @@
-import '../../../../features/shop/domain/entities/route.dart' as domain;
-import '../../../features/shop/domain/entities/point_of_interest.dart' as domain;
-import '../../../features/shop/domain/entities/trading_point_of_interest.dart' as domain;
-import '../../../features/shop/domain/entities/trading_point.dart' as domain;
+
+
 import 'package:drift/drift.dart';
-import '../app_database.dart' as db;
+import 'package:fieldforce/app/database/app_database.dart';
+import 'package:fieldforce/app/domain/entities/point_of_interest.dart';
+import 'package:fieldforce/app/domain/entities/route.dart';
+import 'package:fieldforce/app/domain/entities/trading_point_of_interest.dart';
+import 'package:fieldforce/features/shop/domain/entities/trading_point.dart';
 
 class RouteMapper {
-  static domain.Route fromDb(
-    db.RouteData dbRoute,
-    List<domain.PointOfInterest> pointsOfInterest,
+  static Route fromDb(
+    RouteData dbRoute,
+    List<PointOfInterest> pointsOfInterest,
   ) {
-    return domain.Route(
+    return Route(
       id: dbRoute.id,
       name: dbRoute.name,
       description: dbRoute.description,
@@ -23,8 +25,8 @@ class RouteMapper {
     );
   }
 
-  static db.RoutesCompanion toDb(domain.Route route, {int? employeeId}) {
-    return db.RoutesCompanion.insert(
+  static RoutesCompanion toDb(Route route, {int? employeeId}) {
+    return RoutesCompanion.insert(
       name: route.name,
       description: route.description != null 
         ? Value(route.description!)
@@ -45,11 +47,11 @@ class RouteMapper {
     );
   }
 
-  static db.PointsOfInterestCompanion pointToDb(
-    domain.PointOfInterest point,
+  static PointsOfInterestCompanion pointToDb(
+    PointOfInterest point,
     int routeId,
   ) {
-    return db.PointsOfInterestCompanion.insert(
+    return PointsOfInterestCompanion.insert(
       routeId: routeId,
       name: point.name,
       description: point.description != null 
@@ -65,64 +67,64 @@ class RouteMapper {
     );
   }
 
-  static db.TradingPointsCompanion? tradingPointToDb(
-    domain.PointOfInterest point,
+  static TradingPointsCompanion? tradingPointToDb(
+    PointOfInterest point,
     int pointOfInterestId,
   ) {
-    if (point is domain.TradingPointOfInterest) {
+    if (point is TradingPointOfInterest) {
       // Для упрощения, пока оставлю базовые поля
-      return db.TradingPointsCompanion.insert(
+      return TradingPointsCompanion.insert(
         pointOfInterestId: pointOfInterestId,
       );
     }
     return null;
   }
 
-  static domain.RouteStatus _stringToRouteStatus(String status) {
-    return domain.RouteStatus.values.firstWhere(
+  static RouteStatus _stringToRouteStatus(String status) {
+    return RouteStatus.values.firstWhere(
       (s) => s.name == status,
-      orElse: () => domain.RouteStatus.planned,
+      orElse: () => RouteStatus.planned,
     );
   }
 
-  static String _routeStatusToString(domain.RouteStatus status) {
+  static String _routeStatusToString(RouteStatus status) {
     return status.name;
   }
 
-  static domain.VisitStatus _stringToVisitStatus(String status) {
-    return domain.VisitStatus.values.firstWhere(
+  static VisitStatus _stringToVisitStatus(String status) {
+    return VisitStatus.values.firstWhere(
       (s) => s.name == status,
-      orElse: () => domain.VisitStatus.planned,
+      orElse: () => VisitStatus.planned,
     );
   }
 
-  static String _visitStatusToString(domain.VisitStatus status) {
+  static String _visitStatusToString(VisitStatus status) {
     return status.name;
   }
 
-  static domain.PointType _stringToPointType(String type) {
-    return domain.PointType.values.firstWhere(
+  static PointType _stringToPointType(String type) {
+    return PointType.values.firstWhere(
       (t) => t.name == type,
-      orElse: () => domain.PointType.regular,
+      orElse: () => PointType.regular,
     );
   }
 
-  static String _pointTypeToString(domain.PointType type) {
+  static String _pointTypeToString(PointType type) {
     return type.name;
   }
 
   // Public методы для использования в репозитории
-  static domain.VisitStatus stringToVisitStatus(String status) {
+  static VisitStatus stringToVisitStatus(String status) {
     return _stringToVisitStatus(status);
   }
 
-  static domain.PointType stringToPointType(String type) {
+  static PointType stringToPointType(String type) {
     return _stringToPointType(type);
   }
 
   // Методы для работы с TradingPoint сущностями
-  static domain.TradingPoint tradingPointFromDb(db.TradingPointEntity dbEntity) {
-    return domain.TradingPoint(
+  static TradingPoint tradingPointFromDb(TradingPointEntity dbEntity) {
+    return TradingPoint(
       id: dbEntity.id,
       externalId: dbEntity.externalId,
       name: dbEntity.name,
@@ -132,8 +134,8 @@ class RouteMapper {
     );
   }
 
-  static db.TradingPointEntitiesCompanion tradingPointToCompanion(domain.TradingPoint point) {
-    return db.TradingPointEntitiesCompanion.insert(
+  static TradingPointEntitiesCompanion tradingPointToCompanion(TradingPoint point) {
+    return TradingPointEntitiesCompanion.insert(
       externalId: point.externalId,
       name: point.name,
       inn: point.inn != null 

@@ -1,16 +1,17 @@
+import 'package:fieldforce/features/navigation/tracking/domain/services/location_tracking_service_base.dart';
+import 'package:fieldforce/features/navigation/tracking/domain/entities/user_track.dart';
+import 'package:fieldforce/features/navigation/tracking/domain/usecases/get_user_track_for_date_usecase.dart';
+import 'package:fieldforce/features/navigation/tracking/domain/usecases/get_user_tracks_usecase.dart';
 import 'package:flutter/foundation.dart';
 import 'package:fieldforce/features/navigation/tracking/domain/entities/navigation_user.dart';
 import 'dart:async';
-import '../../domain/entities/user_track.dart';
-import '../usecases/get_user_tracks_usecase.dart';
-import '../../../../../app/services/location_tracking_service.dart';
 import 'package:get_it/get_it.dart';
 
-/// Provider для управления состоянием треков пользователя
-/// Объединяет исторические треки из БД с активным треком от LocationTrackingService
+
 class UserTracksProvider extends ChangeNotifier {
   final GetUserTracksUseCase _getUserTracksUseCase;
-  late final LocationTrackingService _locationTrackingService;
+  final GetUserTrackForDateUseCase _getUserTrackForDateUseCase;
+  late final LocationTrackingServiceBase _locationTrackingService;
   
   List<UserTrack> _userTracks = [];
   UserTrack? _activeTrack;
@@ -30,8 +31,8 @@ class UserTracksProvider extends ChangeNotifier {
   Timer? _debounceTimer;
   static const Duration _debounceDelay = Duration(milliseconds: 300);
   
-  UserTracksProvider(this._getUserTracksUseCase) {
-    _locationTrackingService = GetIt.instance<LocationTrackingService>();
+  UserTracksProvider(this._getUserTracksUseCase, this._getUserTrackForDateUseCase) {
+    _locationTrackingService = GetIt.instance<LocationTrackingServiceBase>();
     _subscribeToActiveTrack();
   }
   
@@ -85,39 +86,31 @@ class UserTracksProvider extends ChangeNotifier {
     });
   }
   
-  /// Загружает треки пользователя для конкретного дня
-  Future<void> loadUserTracksForDate(NavigationUser user, DateTime date) async {
+  Future<void> loadUserTrackForDate(NavigationUser user, DateTime date) async {
     _isLoading = true;
     _error = null;
     notifyListeners();
-    
-    final result = await _getUserTracksUseCase.call(user);
-    
+    final result = await _getUserTrackForDateUseCase.call(user, date);
     result.fold(
       (failure) {
-        _error = 'Ошибка загрузки треков: $failure';
+        _error = 'Ошибка загрузки трека: $failure';
         _isLoading = false;
-        print('❌ UserTracksProvider: Ошибка загрузки треков для даты: $failure');
+        print('❌ UserTracksProvider: Ошибка загрузки трека для даты: $failure');
         notifyListeners();
       },
-      (allTracks) {
-        // Фильтруем треки по дню
-        final targetDate = DateTime(date.year, date.month, date.day);
-        final filteredTracks = allTracks.where((track) {
-          final trackDate = DateTime(
-            track.startTime.year, 
-            track.startTime.month, 
-            track.startTime.day
-          );
-          return trackDate.isAtSameMomentAs(targetDate);
-        }).toList();
-        
-        _userTracks = filteredTracks;
-        _activeTrack = filteredTracks.where((track) => track.status.isActive).firstOrNull;
-        _completedTracks = filteredTracks.where((track) => track.status.name == 'completed').toList();
+      (track) {
+        if (track != null) {
+          _userTracks = [track];
+          _activeTrack = track.status.isActive ? track : null;
+          _completedTracks = track.status.name == 'completed' ? [track] : [];
+          print('✅ UserTracksProvider: Найден трек за дату ${date.day}.${date.month}.${date.year}');
+        } else {
+          _userTracks = [];
+          _activeTrack = null;
+          _completedTracks = [];
+          print('⚠️ UserTracksProvider: Нет трека за дату ${date.day}.${date.month}.${date.year}');
+        }
         _isLoading = false;
-        
-        print('✅ UserTracksProvider: Загружено ${filteredTracks.length} треков для ${date.day}.${date.month}.${date.year}');
         notifyListeners();
       },
     );
@@ -151,19 +144,12 @@ class UserTracksProvider extends ChangeNotifier {
 
   /// УПРОЩЕННАЯ ЛОГИКА: Просто обновляем трек без объединения
   void _updateActiveTrack(UserTrack activeTrack) {
-    print('📡 UserTracksProvider: Получен активный трек ${activeTrack.id} (${activeTrack.totalPoints} точек)');
-    
-    // Ищем трек с таким же ID в списке
     final existingIndex = _userTracks.indexWhere((track) => track.id == activeTrack.id);
     
     if (existingIndex != -1) {
-      // Обновляем существующий трек
       _userTracks[existingIndex] = activeTrack;
-      print('📊 UserTracksProvider: Обновлен трек ${activeTrack.id} (${activeTrack.totalPoints} точек)');
     } else {
-      // Добавляем новый трек
       _userTracks.add(activeTrack);
-      print('📊 UserTracksProvider: Добавлен новый трек ${activeTrack.id} (${activeTrack.totalPoints} точек)');
     }
     
     _activeTrack = activeTrack;

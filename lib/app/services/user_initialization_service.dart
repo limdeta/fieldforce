@@ -24,7 +24,7 @@ class UserInitializationService {
       await _loadUserSpecificSettings(user, preferencesService);
 
     } catch (e) {
-      print('❌ Ошибка инициализации настроек пользователя: $e');
+      throw('❌ Ошибка инициализации настроек пользователя: $e');
     }
   }
   
@@ -37,8 +37,6 @@ class UserInitializationService {
 
     final isDarkTheme = preferencesService.getDarkTheme();
     final fontSize = preferencesService.getFontSize();
-    
-    print('🎨 Пользовательские настройки: тема=${isDarkTheme ? "темная" : "светлая"}, шрифт=${fontSize}px');
   }
   
   /// Очищает пользовательские настройки (при выходе)
@@ -56,10 +54,9 @@ class UserInitializationService {
       
       _currentUser = null;
       _isInitialized = false;
-      
-      print('✅ Настройки очищены');
+
     } catch (e) {
-      print('❌ Ошибка очистки настроек: $e');
+      throw('❌ Ошибка очистки настроек: $e');
     }
   }
 
@@ -72,7 +69,7 @@ class UserInitializationService {
         return GetIt.instance<UserPreferencesService>();
       }
     } catch (e) {
-      print('⚠️ UserPreferencesService не доступен: $e');
+      throw('⚠️ UserPreferencesService не доступен: $e');
     }
     return null;
   }

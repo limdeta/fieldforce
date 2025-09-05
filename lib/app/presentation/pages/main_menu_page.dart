@@ -1,7 +1,7 @@
+import 'package:fieldforce/app/services/simple_update_service.dart';
+import 'package:fieldforce/features/authentication/domain/usecases/logout_usecase.dart';
 import 'package:flutter/material.dart';
 import 'package:get_it/get_it.dart';
-import '../../services/app_user_logout_service.dart';
-import '../../services/simple_update_service.dart';
 
 /// Элемент меню
 class MenuItem {
@@ -246,9 +246,7 @@ class _MainMenuPageState extends State<MainMenuPage> {
     if (shouldLogout != true) return;
 
     try {
-      final logoutService = GetIt.instance<AppUserLogoutService>();
-      final result = await logoutService.logoutAppUser();
-
+      final result = await GetIt.instance<LogoutUseCase>()();
       if (mounted) {
         result.fold(
           (failure) {

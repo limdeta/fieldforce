@@ -1,10 +1,10 @@
 import 'dart:convert';
 import 'package:drift/drift.dart';
-import '../../../../features/navigation/tracking/domain/entities/user_track.dart';
-import '../../../../features/navigation/tracking/domain/entities/compact_track.dart';
-import '../../../../features/navigation/tracking/domain/enums/track_status.dart';
-import '../../../../features/navigation/tracking/domain/entities/navigation_user.dart';
-import '../app_database.dart';
+import 'package:fieldforce/features/navigation/tracking/domain/entities/user_track.dart';
+import 'package:fieldforce/features/navigation/tracking/domain/entities/compact_track.dart';
+import 'package:fieldforce/features/navigation/tracking/domain/enums/track_status.dart';
+import 'package:fieldforce/features/navigation/tracking/domain/entities/navigation_user.dart';
+import 'package:fieldforce/app/database/app_database.dart';
 
 class UserTrackMapper {
   /// Преобразует UserTrack из базы данных в доменную модель

@@ -1,13 +1,16 @@
+import 'package:fieldforce/app/presentation/pages/route_detail_page.dart';
+import 'package:fieldforce/app/presentation/widgets/app_tracking_button.dart';
+import 'package:fieldforce/features/navigation/tracking/presentation/providers/user_tracks_provider.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:provider/provider.dart';
-import 'package:fieldforce/features/shop/domain/entities/route.dart' as shop;
-import 'package:fieldforce/features/shop/presentation/route_detail_page.dart';
+import 'package:fieldforce/app/domain/entities/route.dart' as shop;
 import 'package:fieldforce/app/presentation/widgets/combined_map_widget.dart';
 import 'package:fieldforce/app/providers/selected_route_provider.dart';
 import 'package:fieldforce/app/providers/work_day_provider.dart';
 import 'package:fieldforce/features/navigation/tracking/domain/entities/user_track.dart';
+import 'package:fieldforce/features/navigation/tracking/domain/services/gps_data_manager.dart';
 import 'bloc/sales_rep_home_bloc.dart';
 import 'bloc/sales_rep_home_event.dart';
 import 'bloc/sales_rep_home_state.dart';
@@ -20,25 +23,35 @@ import 'bloc/sales_rep_home_state.dart';
 /// - Events отправляются в BLoC для выполнения действий
 class SalesRepHomePage extends StatelessWidget {
   final shop.Route? selectedRoute;
+  final GpsDataManager gpsDataManager; // добавляем зависимость
 
   const SalesRepHomePage({
     super.key,
     this.selectedRoute,
+    required this.gpsDataManager,
   });
 
   @override
   Widget build(BuildContext context) {
+    // Читаем аргументы из именованного роута
+    final args = ModalRoute.of(context)?.settings.arguments as Map<String, dynamic>?;
+    final selectedRouteFromArgs = args?['selectedRoute'] as shop.Route?;
+
+    // Используем аргумент из роута или переданный через конструктор
+    final routeToUse = selectedRouteFromArgs ?? selectedRoute;
+
     return BlocProvider(
       create: (context) => SalesRepHomeBloc()
-        ..add(SalesRepHomeInitializeEvent(preselectedRoute: selectedRoute)),
-      child: const SalesRepHomeView(),
+        ..add(SalesRepHomeInitializeEvent(preselectedRoute: routeToUse)),
+      child: SalesRepHomeView(gpsDataManager: gpsDataManager),
     );
   }
 }
 
 /// View компонент для отображения состояния
 class SalesRepHomeView extends StatelessWidget {
-  const SalesRepHomeView({super.key});
+  final GpsDataManager gpsDataManager;
+  const SalesRepHomeView({super.key, required this.gpsDataManager});
 
   @override
   Widget build(BuildContext context) {
@@ -68,9 +81,15 @@ class SalesRepHomeView extends StatelessWidget {
         builder: (context, state) {
           return Stack(
             children: [
-              // Карта - основной контент
               _buildMapArea(context, state),
-              
+
+              if (state is SalesRepHomeLoaded)
+                Positioned(
+                  top: MediaQuery.of(context).padding.top + 70,
+                  right: 16,
+                  child: const AppTrackingButton(),
+                ),
+
               // Верхняя панель
               if (state is SalesRepHomeLoaded && state.currentRoute != null)
                 _buildTopPanel(context, state),
@@ -93,56 +112,82 @@ class SalesRepHomeView extends StatelessWidget {
 
   /// Карта с маршрутом и треками
   Widget _buildMapArea(BuildContext context, SalesRepHomeState state) {
-    return Consumer2<SelectedRouteProvider, WorkDayProvider>(
-      builder: (context, selectedRouteProvider, workDayProvider, child) {
+    return BlocBuilder<SalesRepHomeBloc, SalesRepHomeState>(
+      builder: (context, blocState) {
+        print('🏗️ MapArea builder: Вызван с состоянием ${blocState.runtimeType}');
+
+        if (blocState is SalesRepHomeLoaded && blocState.activeTrack != null) {
+          print('🗺️ MapArea builder: Активный трек в BLoC состоянии: ${blocState.activeTrack!.id} (${blocState.activeTrack!.totalPoints} точек)');
+        }
+
         // Инициализируем WorkDayProvider при первом рендере
-        if (workDayProvider.workDays.isEmpty) {
-          WidgetsBinding.instance.addPostFrameCallback((_) {
-            workDayProvider.loadWorkDays().then((_) {
-              // Выбираем сегодняшний день по умолчанию
-              final todayWorkDay = workDayProvider.todayWorkDay;
-              if (todayWorkDay != null) {
-                workDayProvider.selectWorkDay(todayWorkDay);
+        return Consumer2<SelectedRouteProvider, WorkDayProvider>(
+          builder: (context, selectedRouteProvider, workDayProvider, child) {
+            if (workDayProvider.workDays.isEmpty) {
+              WidgetsBinding.instance.addPostFrameCallback((_) {
+                workDayProvider.loadWorkDays().then((_) {
+                  final todayWorkDay = workDayProvider.todayWorkDay;
+                  if (todayWorkDay != null) {
+                    workDayProvider.selectWorkDay(todayWorkDay);
+                  }
+                });
+              });
+              return const Center(child: CircularProgressIndicator());
+            }
+
+            //  Синхронизируем WorkDayProvider с выбранным маршрутом
+            WidgetsBinding.instance.addPostFrameCallback((_) {
+              final selectedRoute = selectedRouteProvider.selectedRoute;
+              final currentSelectedWorkDay = workDayProvider.selectedWorkDay;
+
+              if (selectedRoute != null) {
+                final matchingWorkDay = workDayProvider.workDays.firstWhere(
+                  (wd) => wd.route?.id == selectedRoute.id,
+                  orElse: () => workDayProvider.todayWorkDay ?? workDayProvider.workDays.first,
+                );
+
+                if (currentSelectedWorkDay?.id != matchingWorkDay.id) {
+                  print('🔄 SalesRepHomePage: Синхронизируем WorkDay с маршрутом "${selectedRoute.name}"');
+                  workDayProvider.selectWorkDay(matchingWorkDay);
+                }
               }
             });
-          });
-          return const Center(child: CircularProgressIndicator());
-        }
-        
-        shop.Route? routeToShow;
-        List<LatLng> routePolylinePoints = [];
-        
-        if (state is SalesRepHomeLoaded) {
-          routeToShow = state.currentRoute;
-          routePolylinePoints = state.routePolylinePoints;
-        }
-        
-        // Получаем выбранный рабочий день
-        final selectedWorkDay = workDayProvider.selectedWorkDay;
-        
-        // Определяем трек для отображения
-        UserTrack? trackToShow;
-        if (selectedWorkDay != null) {
-          if (selectedWorkDay.isToday && workDayProvider.activeTrack != null) {
-            // Сегодня: показываем активный трек
-            trackToShow = workDayProvider.activeTrack;
-            print('🗺️ SalesRepHomePage: Отображаем активный трек для сегодня: ${trackToShow?.id} (${trackToShow?.totalPoints} точек)');
-          } else {
-            // Другие дни: показываем actualTrack из WorkDay
-            trackToShow = selectedWorkDay.actualTrack;
-            print('🗺️ SalesRepHomePage: Отображаем actualTrack для даты ${selectedWorkDay.date}: ${trackToShow?.id} (${trackToShow?.totalPoints} точек)');
-          }
-        } else {
-          print('⚠️ SalesRepHomePage: selectedWorkDay == null');
-        }
-        
-        return CombinedMapWidget(
-          route: routeToShow,
-          track: trackToShow,
-          onTap: (point) {
-            print('Нажатие на карту: ${point.latitude}, ${point.longitude}');
+
+            shop.Route? routeToShow;
+            List<LatLng> routePolylinePoints = [];
+            UserTrack? finalTrack;
+
+            if (blocState is SalesRepHomeLoaded) {
+              routeToShow = blocState.currentRoute;
+              routePolylinePoints = blocState.routePolylinePoints;
+
+              finalTrack = blocState.activeTrack;
+
+              if (finalTrack != null) {
+                print('🗺️ MapArea: Используем активный трек из ПАРАМЕТРА blocState: ${finalTrack.id} (${finalTrack.totalPoints} точек)');
+              } else {
+                // Fallback: получаем трек из выбранного WorkDay только если нет активного трека в BLoC
+                final selectedWorkDay = workDayProvider.selectedWorkDay;
+                if (selectedWorkDay != null && selectedWorkDay.track != null) {
+                  finalTrack = selectedWorkDay.track;
+                  if (finalTrack != null) {
+                    print('🗺️ MapArea: Используем трек из выбранного WorkDay: ${finalTrack.id} (${finalTrack.totalPoints} точек)');
+                  }
+                } else {
+                  print('🗺️ MapArea: Нет трека для отображения');
+                }
+              }
+            }
+
+            return CombinedMapWidget(
+              route: routeToShow,
+              track: finalTrack,
+              onTap: (point) {
+                print('Нажатие на карту: ${point.latitude}, ${point.longitude}');
+              },
+              routePolylinePoints: routePolylinePoints,
+            );
           },
-          routePolylinePoints: routePolylinePoints,
         );
       },
     );

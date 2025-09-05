@@ -1,9 +1,11 @@
-import 'package:fieldforce/app/domain/app_user.dart';
+import 'package:fieldforce/app/domain/entities/app_user.dart';
 import 'package:fieldforce/app/domain/repositories/app_user_repository.dart';
 import 'package:fieldforce/app/database/app_database.dart';
 import 'package:fieldforce/app/database/mappers/app_user_mapper.dart';
 import 'package:fieldforce/app/database/repositories/employee_repository_drift.dart';
 import 'package:fieldforce/app/database/repositories/user_repository_drift.dart';
+import 'package:fieldforce/features/authentication/domain/entities/user.dart';
+import 'package:fieldforce/features/shop/domain/entities/employee.dart';
 import 'package:fieldforce/shared/either.dart';
 import 'package:fieldforce/shared/failures.dart';
 
@@ -17,24 +19,6 @@ class AppUserRepositoryDrift implements AppUserRepository {
     required this.employeeRepository,
     required this.userRepository,
   });
-
-  Future<AppUserData?> _getAppUserByEmployeeId(int employeeId) async {
-    final query = database.select(database.appUsers)..where((au) => au.employeeId.equals(employeeId));
-    return await query.getSingleOrNull();
-  }
-
-  Future<AppUserData?> _getAppUserByUserId(int userId) async {
-    final query = database.select(database.appUsers)..where((au) => au.userId.equals(userId));
-    return await query.getSingleOrNull();
-  }
-
-  Future<int> _insertAppUser(AppUsersCompanion appUser) async {
-    return await database.into(database.appUsers).insert(appUser);
-  }
-
-  Future<int> _deleteAppUser(int employeeId) async {
-    return await (database.delete(database.appUsers)..where((au) => au.employeeId.equals(employeeId))).go();
-  }
 
   @override
   Future<Either<Failure, AppUser>> getAppUserByEmployeeId(int employeeId) async {
@@ -99,17 +83,16 @@ class AppUserRepositoryDrift implements AppUserRepository {
   }
 
   @override
-  Future<Either<Failure, AppUser>> createAppUser({
-    required int employeeId,
-    required int userId,
-  }) async {
+  Future<Either<Failure, AppUser>> createAppUser(Employee employee, User user) async {
     try {
+      if (employee.id == 0 || user.id == null) {
+        return Left(EntityCreationFailure('Некорректные id для создания AppUser: employee.id=${employee.id}, user.id=${user.id}'));
+      }
       await _insertAppUser(AppUserMapper.toDb(
-        employeeId: employeeId,
-        userId: userId,
+        employeeId: employee.id,
+        userId: user.id!,
       ));
-
-      return await getAppUserByEmployeeId(employeeId);
+      return await getAppUserByEmployeeId(employee.id);
     } catch (e) {
       return Left(EntityCreationFailure('Не удалось создать AppUser: $e'));
     }
@@ -133,7 +116,6 @@ class AppUserRepositoryDrift implements AppUserRepository {
       final userResult = await userRepository.getUserByExternalId(externalId);
       final authUser = userResult.fold(
         (failure) {
-          print('❌ [AppUserRepo] User не найден по externalId $externalId: ${failure.message}');
           return null;
         },
         (user) {
@@ -142,7 +124,6 @@ class AppUserRepositoryDrift implements AppUserRepository {
       );
 
       if (authUser?.id == null) {
-        print('❌ [AppUserRepo] User не найден или ID null для externalId: $externalId');
         return const Right(null);
       }
 
@@ -150,7 +131,6 @@ class AppUserRepositoryDrift implements AppUserRepository {
       final appUserResult = await getAppUserByUserId(authUser!.id!);
       return appUserResult.fold(
         (failure) {
-          print('❌ [AppUserRepo] AppUser не найден для userId ${authUser.id}: ${failure.message}');
           return const Right(null);
         },
         (appUser) {
@@ -158,7 +138,6 @@ class AppUserRepositoryDrift implements AppUserRepository {
         },
       );
     } catch (e) {
-      print('❌ [AppUserRepo] Ошибка при поиске AppUser по externalId $externalId: $e');
       return Left(DatabaseFailure('Ошибка поиска AppUser: $e'));
     }
   }
@@ -171,5 +150,23 @@ class AppUserRepositoryDrift implements AppUserRepository {
     } catch (e) {
       return Left(DatabaseFailure('Ошибка проверки существования AppUser: $e'));
     }
+  }
+
+  Future<AppUserData?> _getAppUserByEmployeeId(int employeeId) async {
+    final query = database.select(database.appUsers)..where((au) => au.employeeId.equals(employeeId));
+    return await query.getSingleOrNull();
+  }
+
+  Future<AppUserData?> _getAppUserByUserId(int userId) async {
+    final query = database.select(database.appUsers)..where((au) => au.userId.equals(userId));
+    return await query.getSingleOrNull();
+  }
+
+  Future<int> _insertAppUser(AppUsersCompanion appUser) async {
+    return await database.into(database.appUsers).insert(appUser);
+  }
+
+  Future<int> _deleteAppUser(int employeeId) async {
+    return await (database.delete(database.appUsers)..where((au) => au.employeeId.equals(employeeId))).go();
   }
 }

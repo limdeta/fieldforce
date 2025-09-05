@@ -1,6 +1,6 @@
-import '../../../../features/authentication/domain/entities/user.dart' as domain;
-import '../../../../features/authentication/domain/value_objects/phone_number.dart';
-import '../app_database.dart' as db;
+import 'package:fieldforce/features/authentication/domain/value_objects/phone_number.dart';
+import 'package:fieldforce/features/authentication/domain/entities/user.dart' as domain;
+import 'package:fieldforce/app/database/app_database.dart' as db;
 
 class UserMapper {
   static domain.User fromDb(db.UserData dbUser) {
