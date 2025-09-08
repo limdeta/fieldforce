@@ -71,7 +71,7 @@ class TrackDisplayWidget {
   static double _getTrackStrokeWidth(TrackStatus status) {
     switch (status) {
       case TrackStatus.active:
-        return 4.0; // Активный трек - толще
+        return 3.0;
       case TrackStatus.completed:
         return 2.5;
       case TrackStatus.paused:

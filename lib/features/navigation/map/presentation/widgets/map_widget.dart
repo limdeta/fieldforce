@@ -407,11 +407,8 @@ class _MapWidgetState extends State<MapWidget> {
   List<Polyline> _buildTrackPolylines() {
     final track = widget.track;
     if (track == null) {
-      print('🗺️ MapWidget: _buildTrackPolylines() - track == null');
       return [];
     }
-
-    print('🗺️ MapWidget: _buildTrackPolylines() - track ID: ${track.id}, сегментов: ${track.segments.length}');
 
     final polylines = <Polyline>[];
     int totalPoints = 0;
@@ -458,7 +455,7 @@ class _MapWidgetState extends State<MapWidget> {
 
       if (isLiveSegment) {
         // Живой сегмент из буфера - яркий, динамичный
-        segmentColor = const Color(0xFFFF006A); // Ярко-зеленый
+        segmentColor = const Color(0xFFFF006A);
         strokeWidth = 5.0;
         opacity = 0.9;
       } else {
@@ -475,6 +472,28 @@ class _MapWidgetState extends State<MapWidget> {
       );
 
       polylines.add(polyline);
+    }
+
+    // Add connecting line between last saved segment and live segment
+    if (track.segments.length >= 2) {
+      final lastSavedIndex = track.segments.length - 2;
+      final liveIndex = track.segments.length - 1;
+
+      final lastSavedSegment = track.segments[lastSavedIndex];
+      final liveSegment = track.segments[liveIndex];
+
+      if (lastSavedSegment.isNotEmpty && liveSegment.isNotEmpty) {
+        final (lat1, lng1) = lastSavedSegment.getCoordinates(lastSavedSegment.pointCount.toInt() - 1);
+        final (lat2, lng2) = liveSegment.getCoordinates(0);
+
+        polylines.add(
+          Polyline(
+            points: [LatLng(lat1, lng1), LatLng(lat2, lng2)],
+            color: const Color(0xFFFF1493),
+            strokeWidth: 3.0,
+          ),
+        );
+      }
     }
 
     print('🗺️ MapWidget: Всего точек в треке: $totalPoints, полилиний: ${polylines.length}');

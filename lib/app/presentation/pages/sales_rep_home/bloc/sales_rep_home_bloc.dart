@@ -47,24 +47,8 @@ class SalesRepHomeBloc extends Bloc<SalesRepHomeEvent, SalesRepHomeState> {
   ) {
     if (state is SalesRepHomeLoaded) {
       final currentState = state as SalesRepHomeLoaded;
-      final oldTrack = currentState.activeTrack;
       final newTrack = event.activeTrack;
-
-      print('🔄 SalesRepHomeBloc: Получили новый активный трек: ${newTrack?.id} (${newTrack?.totalPoints} точек)');
-      print('🔄 SalesRepHomeBloc: Старый трек в состоянии: ${oldTrack?.id} (${oldTrack?.totalPoints} точек)');
-
-      // ОТЛАДКА: Детально проверяем что в новом треке
-      if (newTrack != null) {
-        int totalPointsInNewTrack = 0;
-        for (final segment in newTrack.segments) {
-          totalPointsInNewTrack += segment.pointCount.toInt();
-          print('🔍 SalesRepHomeBloc: Новый трек сегмент  ${segment.pointCount} точек');
-        }
-        print('🔍 SalesRepHomeBloc: Новый трек реально содержит: $totalPointsInNewTrack точек');
-      }
-
       final newState = currentState.copyWith(activeTrack: newTrack);
-      print('🔄 SalesRepHomeBloc: Emit нового состояния с треком ${newState.activeTrack?.id} (${newState.activeTrack?.totalPoints} точек)');
       emit(newState);
     }
   }
@@ -75,15 +59,12 @@ class SalesRepHomeBloc extends Bloc<SalesRepHomeEvent, SalesRepHomeState> {
 
     _activeTrackSubscription = _trackingService.trackUpdateStream.listen(
       (activeTrack) {
-        print('🎯 SalesRepHomeBloc: ПРЯМОЕ получение трека из trackUpdateStream: ${activeTrack.id} (${activeTrack.totalPoints} точек)');
         add(ActiveTrackUpdatedEvent(activeTrack));
       },
       onError: (error) {
         print('⚠️ SalesRepHomeBloc: Ошибка прямой подписки на трек: $error');
       },
     );
-
-    print('✅ SalesRepHomeBloc: Настроена ПРЯМАЯ подписка на trackUpdateStream');
   }
 
   /// Инициализация BLoC
@@ -165,8 +146,7 @@ class SalesRepHomeBloc extends Bloc<SalesRepHomeEvent, SalesRepHomeState> {
         final currentState = state as SalesRepHomeLoaded;
         emit(currentState.copyWith(currentRoute: event.route));
       }
-
-      print('🎉 SalesRepHomeBloc._onSelectRoute: Переключение маршрута завершено успешно');
+      // print('SalesRepHomeBloc._onSelectRoute: Переключение маршрута успешно');
     } catch (e) {
       print('❌ SalesRepHomeBloc._onSelectRoute: Критическая ошибка: $e');
       emit(SalesRepHomeError(
@@ -283,7 +263,7 @@ class SalesRepHomeBloc extends Bloc<SalesRepHomeEvent, SalesRepHomeState> {
       if (session != null) {
         final routeDate = event.route.startTime ?? DateTime.now();
         await _userTracksProvider.loadUserTrackForDate(session.appUser, routeDate);
-        print('✅ Треки синхронизированы с маршрутом: ${event.route.name}');
+        // print('✅ Треки синхронизированы с маршрутом: ${event.route.name}');
       }
     } catch (e) {
       print('⚠️ Ошибка синхронизации треков: $e');

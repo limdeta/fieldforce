@@ -252,8 +252,6 @@ class SyncService {
             return Right(null);
           }
           
-          print('Выполняем синхронизацию торговых точек...');
-          
           // 2. Получаем только обновленные данные
           final updatedDataResult = await _fetchUpdatedTradingPointsOnly();
           
