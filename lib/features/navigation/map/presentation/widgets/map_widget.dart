@@ -1,3 +1,5 @@
+import 'dart:math';
+
 import 'package:fieldforce/features/navigation/tracking/domain/enums/track_status.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
@@ -453,13 +455,12 @@ class _MapWidgetState extends State<MapWidget> {
       double strokeWidth;
       double opacity;
 
+      // TODO вынести в настройки а не хардкодить
       if (isLiveSegment) {
-        // Живой сегмент из буфера - яркий, динамичный
         segmentColor = const Color(0xFFFF006A);
         strokeWidth = 5.0;
         opacity = 0.9;
       } else {
-        // Сохраненный сегмент из БД - стабильный цвет
         segmentColor = const Color(0xFFFF1493); // Hot Pink
         strokeWidth = 4.0;
         opacity = 0.7;
@@ -474,30 +475,43 @@ class _MapWidgetState extends State<MapWidget> {
       polylines.add(polyline);
     }
 
-    // Add connecting line between last saved segment and live segment
-    if (track.segments.length >= 2) {
-      final lastSavedIndex = track.segments.length - 2;
-      final liveIndex = track.segments.length - 1;
+    // Cоединяем разные сегменты
+    for (int i = 0; i < track.segments.length - 1; i++) {
+      final currentSegment = track.segments[i];
+      final nextSegment = track.segments[i + 1];
 
-      final lastSavedSegment = track.segments[lastSavedIndex];
-      final liveSegment = track.segments[liveIndex];
+      if (currentSegment.isNotEmpty && nextSegment.isNotEmpty) {
+        final (lat1, lng1) = currentSegment.getCoordinates(currentSegment.pointCount.toInt() - 1);
+        final (lat2, lng2) = nextSegment.getCoordinates(0);
 
-      if (lastSavedSegment.isNotEmpty && liveSegment.isNotEmpty) {
-        final (lat1, lng1) = lastSavedSegment.getCoordinates(lastSavedSegment.pointCount.toInt() - 1);
-        final (lat2, lng2) = liveSegment.getCoordinates(0);
+        // Calculate distance between segments
+        final distance = _calculateDistance(lat1, lng1, lat2, lng2);
 
-        polylines.add(
-          Polyline(
-            points: [LatLng(lat1, lng1), LatLng(lat2, lng2)],
-            color: const Color(0xFFFF1493),
-            strokeWidth: 3.0,
-          ),
-        );
+        // Соединяем если не дальше километра TODO вынести в настройки
+        if (distance < 1000) {
+          polylines.add(
+            Polyline(
+              points: [LatLng(lat1, lng1), LatLng(lat2, lng2)],
+              color: const Color(0xFFFF1493),
+              strokeWidth: 4.0,
+            ),
+          );
+        }
       }
     }
-
-    print('🗺️ MapWidget: Всего точек в треке: $totalPoints, полилиний: ${polylines.length}');
     return polylines;
+  }
+
+  /// Calculate distance between two points in meters using Haversine formula
+  double _calculateDistance(double lat1, double lng1, double lat2, double lng2) {
+    const double earthRadius = 6371000; // Earth's radius in meters
+    final double dLat = (lat2 - lat1) * (pi / 180);
+    final double dLng = (lng2 - lng1) * (pi / 180);
+    final double a = sin(dLat / 2) * sin(dLat / 2) +
+        cos(lat1 * (pi / 180)) * cos(lat2 * (pi / 180)) *
+            sin(dLng / 2) * sin(dLng / 2);
+    final double c = 2 * asin(sqrt(a));
+    return earthRadius * c;
   }
 
   /// Очищает кэш полилиний при изменении треков (оптимизация памяти)
