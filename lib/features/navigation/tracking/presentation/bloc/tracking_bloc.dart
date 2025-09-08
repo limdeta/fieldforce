@@ -78,11 +78,16 @@ class TrackingBloc extends Bloc<TrackingEvent, TrackingState> {
     try {
       print('🚀 Запуск трекинга для пользователя: ${_currentUser!.id}');
 
-      // Используем autoStartTracking - он сам решит создавать новый трек или продолжать существующий
-      // TODO а нужен ли нам автостарт вообще? Может просто startTracking?
-      final success = await _trackingService.autoStartTracking(user: _currentUser!);
+      bool success;
+      if (!_trackingService.isTracking) {
+        // Если трекинг не активен, запускаем автостарт
+        success = await _trackingService.autoStartTracking(user: _currentUser!);
+      } else {
+        // Если трекинг был на паузе, явно возобновляем
+        success = await _trackingService.resumeTracking();
+      }
 
-      if (success) {
+      if (success || _trackingService.isTracking) {
         emit(TrackingOn());
       } else {
         emit(TrackingOff());

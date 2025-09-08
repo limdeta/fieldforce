@@ -92,7 +92,7 @@ class TrackManager {
     UserTrack? existingTrack;
     if (tracksResult.isRight()) {
       final tracks = tracksResult.getOrElse(() => []);
-      // Ищем активный или паузированный трек
+      // Ищем активный или трек на паузе
       existingTrack = tracks.where((track) =>
         track.status == TrackStatus.active || track.status == TrackStatus.paused
       ).firstOrNull;
