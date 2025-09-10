@@ -26,13 +26,11 @@ import 'package:fieldforce/features/shop/domain/usecases/get_employee_trading_po
 import 'package:fieldforce/app/database/repositories/trading_point_repository_drift.dart';
 import 'package:fieldforce/app/domain/repositories/app_user_repository.dart';
 import 'package:fieldforce/features/navigation/tracking/domain/repositories/user_track_repository.dart';
-import 'package:fieldforce/features/navigation/tracking/presentation/providers/user_tracks_provider.dart';
 import 'package:fieldforce/features/navigation/path_predictor/osrm_path_prediction_service.dart';
 import 'package:fieldforce/app/config/app_config.dart';
 import 'package:fieldforce/app/services/app_lifecycle_manager.dart';
 import 'package:fieldforce/app/domain/usecases/load_user_routes_usecase.dart';
 import 'package:fieldforce/app/domain/repositories/route_repository.dart';
-import 'package:fieldforce/app/providers/selected_route_provider.dart';
 import 'package:fieldforce/app/services/user_preferences_service.dart';
 import 'package:fieldforce/features/navigation/tracking/domain/services/location_tracking_service_base.dart';
 import 'package:fieldforce/features/navigation/tracking/domain/services/location_tracking_service.dart';
@@ -55,8 +53,7 @@ Future<void> setupServiceLocator() async {
       return service;
     },
   );
-  
-  getIt.registerLazySingleton<SelectedRouteProvider>(() => SelectedRouteProvider());
+
   getIt.registerLazySingleton<AppDatabase>(() => AppDatabase.withFile(AppConfig.databaseName));
   getIt.registerLazySingleton<WorkDayRepository>(
     () => WorkDayRepository(getIt<AppDatabase>()),
@@ -185,13 +182,6 @@ Future<void> setupServiceLocator() async {
   // Tracking presentation layer
   getIt.registerLazySingleton<GetUserTracksUseCase>(
     () => GetUserTracksUseCase(getIt<UserTrackRepository>()),
-  );
-
-  getIt.registerLazySingleton<UserTracksProvider>(
-    () => UserTracksProvider(
-      getIt<GetUserTracksUseCase>(),
-      getIt<GetUserTrackForDateUseCase>(),
-    ),
   );
 
   // Presentation layer UseCases

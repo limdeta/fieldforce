@@ -27,13 +27,11 @@ import 'package:fieldforce/features/shop/domain/usecases/get_employee_trading_po
 import 'package:fieldforce/app/database/repositories/trading_point_repository_drift.dart';
 import 'package:fieldforce/app/domain/repositories/app_user_repository.dart';
 import 'package:fieldforce/features/navigation/tracking/domain/repositories/user_track_repository.dart';
-import 'package:fieldforce/features/navigation/tracking/presentation/providers/user_tracks_provider.dart';
 import 'package:fieldforce/features/navigation/path_predictor/osrm_path_prediction_service.dart';
 import 'package:fieldforce/app/config/app_config.dart';
 import 'package:fieldforce/app/services/app_lifecycle_manager.dart';
 import 'package:fieldforce/app/domain/usecases/load_user_routes_usecase.dart';
 import 'package:fieldforce/app/domain/repositories/route_repository.dart';
-import 'package:fieldforce/app/providers/selected_route_provider.dart';
 import 'package:fieldforce/app/services/user_preferences_service.dart';
 import 'package:fieldforce/app/database/repositories/work_day_repository.dart';
 import '../../features/navigation/tracking/domain/services/location_tracking_service_base.dart';
@@ -55,7 +53,6 @@ Future<void> setupTestServiceLocator() async {
     },
   );
 
-  _getIt.registerLazySingleton<SelectedRouteProvider>(() => SelectedRouteProvider());
   _getIt.registerSingleton<AppDatabase>(AppDatabase.withFile(AppConfig.databaseName));
   _getIt.registerLazySingleton<WorkDayRepository>(
     () => WorkDayRepository(_getIt<AppDatabase>()),
@@ -179,13 +176,6 @@ Future<void> setupTestServiceLocator() async {
 
   _getIt.registerLazySingleton<GetUserTracksUseCase>(
     () => GetUserTracksUseCase(_getIt<UserTrackRepository>()),
-  );
-
-  _getIt.registerLazySingleton<UserTracksProvider>(
-    () => UserTracksProvider(
-      _getIt<GetUserTracksUseCase>(),
-      _getIt<GetUserTrackForDateUseCase>(),
-    ),
   );
 
   _getIt.registerLazySingleton<LoadUserRoutesUseCase>(

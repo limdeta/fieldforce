@@ -1,6 +1,3 @@
-import 'dart:math';
-
-import 'package:fieldforce/features/navigation/tracking/domain/enums/track_status.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
@@ -404,130 +401,125 @@ class _MapWidgetState extends State<MapWidget> {
   // Кэш для оптимизации полилиний треков
   static final Map<String, List<Polyline>> _polylineCache = {};
   
+  // Конфигурация цветов и стилей треков
+  static const Color _trackColor = Colors.pink; // HOT PINK для всех линий трека
+  static const Color _connectionLineColor = Colors.pink; // HOT PINK и для соединений
+  static const double _trackStrokeWidth = 4.0;
+  static const double _connectionStrokeWidth = 4.0; // Одинаковая толщина
+  static const double _connectionOpacity = 1.0; // Без прозрачности
+
   /// Создает полилинии для отображения GPS трека
-  /// Отдельно рисует сохраненные сегменты и live буфер
   List<Polyline> _buildTrackPolylines() {
     final track = widget.track;
     if (track == null) {
       return [];
     }
 
+    // Создаем кэш-ключ с учетом live сегмента
+    String cacheKey;
+    if (track.liveSegmentIndex != null) {
+      // Для треков с live сегментом учитываем totalPoints для инвалидации при новых точках
+      cacheKey = '${track.id}_${track.segments.length}_${track.totalPoints}_live${track.liveSegmentIndex}';
+    } else {
+      // Для завершенных треков используем стабильный ключ
+      cacheKey = '${track.id}_${track.segments.length}';
+    }
+    
+    // Проверяем кэш
+    if (_polylineCache.containsKey(cacheKey)) {
+      return _polylineCache[cacheKey]!;
+    }
+
     final polylines = <Polyline>[];
-    int totalPoints = 0;
 
-    // 1. Рисуем сохраненные сегменты из БД
-    // 2. Рисуем live буфер
-    for (int segmentIndex = 0; segmentIndex < track.segments.length; segmentIndex++) {
-      final segment = track.segments[segmentIndex];
-      totalPoints += segment.pointCount.toInt();
+    // 1. Рендерим основные сегменты
+    for (int i = 0; i < track.segments.length; i++) {
+      final segment = track.segments[i];
+      if (segment.pointCount < 2) continue; // Нужно минимум 2 точки для линии
 
-      if (segment.isEmpty) continue;
-
-      final segmentPoints = <LatLng>[];
-
-      // Прореживание для производительности (только для больших сегментов)
-      final maxPointsPerSegment = 100;
-      final skipFactor = segment.pointCount > maxPointsPerSegment
-          ? (segment.pointCount / maxPointsPerSegment).ceil()
-          : 1;
-
-      // Добавляем точки сегмента
-      for (int i = 0; i < segment.pointCount; i += skipFactor) {
-        final (lat, lng) = segment.getCoordinates(i);
-        segmentPoints.add(LatLng(lat, lng));
+      // Извлекаем координаты из CompactTrack
+      final points = <LatLng>[];
+      for (int j = 0; j < segment.pointCount; j++) {
+        final (lat, lng) = segment.getCoordinates(j);
+        points.add(LatLng(lat, lng));
       }
 
-      // Всегда добавляем последнюю точку сегмента для точности
-      if (segment.pointCount > 1 && skipFactor > 1) {
-        final (lat, lng) = segment.getCoordinates(segment.pointCount.toInt() - 1);
-        if (segmentPoints.isEmpty ||
-            segmentPoints.last.latitude != lat ||
-            segmentPoints.last.longitude != lng) {
-          segmentPoints.add(LatLng(lat, lng));
-        }
-      }
-
-      if (segmentPoints.length < 2) continue;
-
-      final isLiveSegment = track.isSegmentLive(segmentIndex);
-
-      Color segmentColor;
-      double strokeWidth;
-      double opacity;
-
-      // TODO вынести в настройки а не хардкодить
-      if (isLiveSegment) {
-        segmentColor = const Color(0xFFFF006A);
-        strokeWidth = 5.0;
-        opacity = 0.9;
-      } else {
-        segmentColor = const Color(0xFFFF1493); // Hot Pink
-        strokeWidth = 4.0;
-        opacity = 0.7;
-      }
-
-      final polyline = Polyline(
-        points: segmentPoints,
-        strokeWidth: strokeWidth,
-        color: segmentColor.withOpacity(opacity),
+      // Все сегменты одинакового цвета HOT PINK
+      polylines.add(
+        Polyline(
+          points: points,
+          strokeWidth: _trackStrokeWidth,
+          color: _trackColor,
+        ),
       );
-
-      polylines.add(polyline);
     }
 
-    // Cоединяем разные сегменты
-    for (int i = 0; i < track.segments.length - 1; i++) {
-      final currentSegment = track.segments[i];
-      final nextSegment = track.segments[i + 1];
+    // 2. Добавляем соединительные линии между сегментами
+    final connectionLines = _buildConnectionLines(track);
+    polylines.addAll(connectionLines);
 
-      if (currentSegment.isNotEmpty && nextSegment.isNotEmpty) {
-        final (lat1, lng1) = currentSegment.getCoordinates(currentSegment.pointCount.toInt() - 1);
-        final (lat2, lng2) = nextSegment.getCoordinates(0);
-
-        // Calculate distance between segments
-        final distance = _calculateDistance(lat1, lng1, lat2, lng2);
-
-        // Соединяем если не дальше километра TODO вынести в настройки
-        if (distance < 1000) {
-          polylines.add(
-            Polyline(
-              points: [LatLng(lat1, lng1), LatLng(lat2, lng2)],
-              color: const Color(0xFFFF1493),
-              strokeWidth: 4.0,
-            ),
-          );
-        }
-      }
-    }
+    // Кэшируем результат
+    _polylineCache[cacheKey] = polylines;
     return polylines;
   }
 
-  /// Calculate distance between two points in meters using Haversine formula
-  double _calculateDistance(double lat1, double lng1, double lat2, double lng2) {
-    const double earthRadius = 6371000; // Earth's radius in meters
-    final double dLat = (lat2 - lat1) * (pi / 180);
-    final double dLng = (lng2 - lng1) * (pi / 180);
-    final double a = sin(dLat / 2) * sin(dLat / 2) +
-        cos(lat1 * (pi / 180)) * cos(lat2 * (pi / 180)) *
-            sin(dLng / 2) * sin(dLng / 2);
-    final double c = 2 * asin(sqrt(a));
-    return earthRadius * c;
+  /// Создает соединительные линии между сегментами
+  List<Polyline> _buildConnectionLines(UserTrack track) {
+    final connectionLines = <Polyline>[];
+    
+    for (int i = 0; i < track.segments.length - 1; i++) {
+      final currentSegment = track.segments[i];
+      final nextSegment = track.segments[i + 1];
+      
+      if (currentSegment.pointCount == 0 || nextSegment.pointCount == 0) continue;
+      
+      // Получаем последнюю точку текущего сегмента
+      final (endLat, endLng) = currentSegment.getCoordinates(currentSegment.pointCount - 1);
+      
+      // Получаем первую точку следующего сегмента
+      final (startLat, startLng) = nextSegment.getCoordinates(0);
+      
+      // Создаем соединительную линию того же цвета и толщины
+      connectionLines.add(
+        Polyline(
+          points: [
+            LatLng(endLat, endLng),
+            LatLng(startLat, startLng),
+          ],
+          strokeWidth: _connectionStrokeWidth,
+          color: _connectionLineColor.withOpacity(_connectionOpacity),
+        ),
+      );
+    }
+    
+    return connectionLines;
   }
 
   /// Очищает кэш полилиний при изменении треков (оптимизация памяти)
   void _clearPolylineCache() {
     if (_polylineCache.isNotEmpty) {
       _polylineCache.clear();
-      print('🧹 MapWidget: Кэш полилиний очищен для экономии памяти');
     }
   }
 
   @override
   void didUpdateWidget(MapWidget oldWidget) {
     super.didUpdateWidget(oldWidget);
+    
     // Очищаем кэш при изменении трека
     if (oldWidget.track?.id != widget.track?.id) {
       _clearPolylineCache();
+    }
+    // Также очищаем кэш если изменилось количество точек в live треке
+    else if (oldWidget.track != null && widget.track != null) {
+      final oldTrack = oldWidget.track!;
+      final newTrack = widget.track!;
+      
+      // Если есть live сегмент и изменилось количество точек - очищаем кэш
+      if (newTrack.liveSegmentIndex != null && 
+          oldTrack.totalPoints != newTrack.totalPoints) {
+        _clearPolylineCache();
+      }
     }
   }
 

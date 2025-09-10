@@ -25,6 +25,13 @@ class TrackManager {
 
   final StreamController<UserTrack> _trackUpdateController = StreamController<UserTrack>.broadcast();
   
+  // Кэширование для UI трека, чтобы избежать постоянного пересоздания
+  UserTrack? _cachedUITrack;
+  int _lastBufferPointCount = 0;
+  
+  // Throttling для UI обновлений
+  DateTime? _lastUIUpdateTime;
+  
   TrackManager(this._repository) {
     // Подписываемся на обновления буфера
     _bufferSubscription = _buffer.updateStream.listen(_onBufferUpdate);
@@ -40,11 +47,23 @@ class TrackManager {
   UserTrack? get currentTrackForUI {
     if (_currentTrack == null) return null;
     
+    // Получаем текущий буфер
+    final bufferSegment = _buffer.getCurrentSegment();
+    final currentBufferPointCount = bufferSegment.pointCount;
+    
+    // Если буфер не изменился значительно, возвращаем кэшированный трек
+    if (_cachedUITrack != null && 
+        _lastBufferPointCount == currentBufferPointCount &&
+        _cachedUITrack!.segments.length - 1 == _currentTrack!.segments.length) {
+      return _cachedUITrack;
+    }
+    
     // Объединяем сохранённые сегменты с буфером
     final savedSegments = _currentTrack!.segments;
-    final bufferSegment = _buffer.getCurrentSegment();
     
     if (bufferSegment.isEmpty) {
+      _cachedUITrack = _currentTrack;
+      _lastBufferPointCount = 0;
       return _currentTrack;
     }
 
@@ -61,13 +80,16 @@ class TrackManager {
       totalDuration += segment.getDuration();
     }
     
-    return _currentTrack!.copyWith(
+    _cachedUITrack = _currentTrack!.copyWith(
       segments: allSegments,
       liveSegmentIndex: liveSegmentIndex, // Указываем какой сегмент живой
       totalPoints: totalPoints,
       totalDistanceKm: totalDistance / 1000,
       totalDuration: totalDuration,
     );
+    
+    _lastBufferPointCount = currentBufferPointCount;
+    return _cachedUITrack;
   }
 
   /// Единый метод запуска трекинг�� - автоматически определяет нужно ли создавать новый трек или продолжать существующий
@@ -117,6 +139,11 @@ class TrackManager {
     }
 
     _buffer.clear();
+    
+    // Очищаем кэш UI трека
+    _cachedUITrack = null;
+    _lastBufferPointCount = 0;
+    
     return true;
   }
 
@@ -181,10 +208,25 @@ class TrackManager {
   
   // Приватные методы
   void _onBufferUpdate(CompactTrack bufferSegment) {
-    // При обновлении буфера уведомляем UI
-    final trackForUI = currentTrackForUI;
-    if (trackForUI != null) {
-      _trackUpdateController.add(trackForUI);
+    // ИЗМЕНЕНО: Отправляем обновления в UI чаще для более плавной отрисовки
+    // Отправляем при каждой новой точке, но с учетом времени для throttling
+    final now = DateTime.now();
+    final timeSinceLastUpdate = _lastUIUpdateTime != null 
+        ? now.difference(_lastUIUpdateTime!)
+        : Duration.zero;
+    
+    // Отправляем обновления не чаще чем раз в 500мс ИЛИ при каждой 3-й точке
+    final shouldUpdate = bufferSegment.pointCount > 0 && (
+      timeSinceLastUpdate.inMilliseconds >= 500 || 
+      bufferSegment.pointCount % 3 == 0
+    );
+    
+    if (shouldUpdate) {
+      final trackForUI = currentTrackForUI;
+      if (trackForUI != null) {
+        _trackUpdateController.add(trackForUI);
+        _lastUIUpdateTime = now;
+      }
     }
 
     // НОВАЯ ЛОГИКА: Умная сегментация

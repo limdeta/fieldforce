@@ -48,16 +48,6 @@ class BuildRouteEvent extends SalesRepHomeEvent {
 }
 
 /// Обновление списка маршрутов (от stream)
-/// Обновление активного трека (от LocationTrackingService)
-class ActiveTrackUpdatedEvent extends SalesRepHomeEvent {
-  final UserTrack? activeTrack;
-
-  const ActiveTrackUpdatedEvent(this.activeTrack);
-
-  @override
-  List<Object?> get props => [activeTrack];
-}
-
 class RoutesUpdatedEvent extends SalesRepHomeEvent {
   final List<shop.Route> routes;
 
@@ -67,7 +57,17 @@ class RoutesUpdatedEvent extends SalesRepHomeEvent {
   List<Object> get props => [routes];
 }
 
-/// Синхронизация треков с выбранным маршрутом
+/// Обновление активного трека (от LocationTrackingService)
+class ActiveTrackUpdatedEvent extends SalesRepHomeEvent {
+  final UserTrack activeTrack;
+
+  const ActiveTrackUpdatedEvent(this.activeTrack);
+
+  @override
+  List<Object> get props => [activeTrack];
+}
+
+/// Синхронизация треков с маршрутом
 class SyncTracksWithRouteEvent extends SalesRepHomeEvent {
   final shop.Route route;
 
