@@ -261,16 +261,11 @@ class UserTrackRepositoryDrift implements UserTrackRepository {
   @override
   Future<Either<Failure, UserTrack>> saveOrUpdateUserTrack(UserTrack track) async {
     try {
-      // Проверяем существует ли трек в БД
       final existingTrackResult = await getUserTrackById(track.id);
 
       if (existingTrackResult.isRight()) {
-        // Трек существует - делаем UPDATE
-        print('🔄 Repository: Трек ${track.id} существует в БД, делаем UPDATE');
         return await updateUserTrack(track);
       } else {
-        // Трек не существует - делаем INSERT
-        print('🆕 Repository: Трек ${track.id} не найден в БД, делаем INSERT');
         return await saveUserTrack(track);
       }
     } catch (e) {
@@ -316,7 +311,6 @@ class UserTrackRepositoryDrift implements UserTrackRepository {
     }
   }
 
-  /// Получает внутренний database ID пользователя через EmployeeRepository
   Future<int?> _getUserInternalId(NavigationUser user) async {
     if (user.runtimeType.toString().contains('AppUser')) {
       try {

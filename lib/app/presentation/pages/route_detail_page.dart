@@ -251,7 +251,7 @@ class RouteDetailPage extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
       decoration: BoxDecoration(
-        color: _getRouteStatusColor(status).withOpacity(0.1),
+        color: _getRouteStatusColor(status).withValues(alpha: 0.1),
         borderRadius: BorderRadius.circular(12),
         border: Border.all(
           color: _getRouteStatusColor(status),
@@ -273,7 +273,7 @@ class RouteDetailPage extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
       decoration: BoxDecoration(
-        color: _getPointStatusColor(status).withOpacity(0.1),
+        color: _getPointStatusColor(status).withValues(alpha: 0.1),
         borderRadius: BorderRadius.circular(8),
         border: Border.all(
           color: _getPointStatusColor(status),

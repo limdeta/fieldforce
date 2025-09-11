@@ -1,13 +1,11 @@
 import 'dart:async';
 import 'package:fieldforce/features/navigation/tracking/domain/services/location_tracking_service_base.dart';
-import 'package:flutter/foundation.dart';
-import 'package:flutter/material.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:get_it/get_it.dart';
 import 'package:fieldforce/features/navigation/tracking/domain/entities/navigation_user.dart';
-import '../entities/user_track.dart';
-import '../enums/track_status.dart';
-import '../repositories/user_track_repository.dart';
+import 'package:fieldforce/features/navigation/tracking/domain/entities/user_track.dart';
+import 'package:fieldforce/features/navigation/tracking/domain/entities/compact_track.dart';
+import 'package:fieldforce/features/navigation/tracking/domain/repositories/user_track_repository.dart';
 import 'gps_data_manager.dart';
 import 'track_manager.dart';
 import 'package:fieldforce/app/services/app_session_service.dart';
@@ -62,6 +60,8 @@ class LocationTrackingService implements LocationTrackingServiceBase  {
   Stream<Position> get positionStream => _positionController.stream;
   @override
   Stream<UserTrack> get trackUpdateStream => _trackManager.trackUpdateStream;
+  
+  Stream<CompactTrack> get liveBufferStream => _trackManager.liveBufferStream;
   Stream<bool> get trackingStateStream => _trackingStateController.stream;
   Stream<bool> get pauseStateStream => _pauseStateController.stream;
   
@@ -78,7 +78,7 @@ class LocationTrackingService implements LocationTrackingServiceBase  {
     try {
       return await _gpsDataManager.checkPermissions();
     } catch (e) {
-      print('$_tag: Ошибка проверки разрешений: $e');
+      // Ошибка проверки разрешений
       return false;
     }
   }
@@ -88,13 +88,13 @@ class LocationTrackingService implements LocationTrackingServiceBase  {
   Future<bool> startTracking(NavigationUser user) async {
     try {
       if (isTracking) {
-        print('$_tag: Трекинг уже запущен');
+        // Трекинг уже запущен
         return false;
       }
 
       final hasPermission = await checkPermissions();
       if (!hasPermission) {
-        print('$_tag: Нет разрешений на геолокацию');
+        // Нет разрешений на геолокацию
         return false;
       }
 
@@ -102,7 +102,7 @@ class LocationTrackingService implements LocationTrackingServiceBase  {
       final success = await _trackManager.startTracking(user: user);
 
       if (!success) {
-        print('$_tag: Не удалось запустить трек менеджер');
+        // Не удалось запустить трек менеджер
         return false;
       }
       
@@ -119,31 +119,31 @@ class LocationTrackingService implements LocationTrackingServiceBase  {
       }
 
       // Запускаем GPS источник данных
-      print('$_tag: 🚀 Запускаем GPS источник данных...');
+      // Запускаем GPS источник данных...
       final gpsStarted = await _gpsDataManager.startGps();
       if (!gpsStarted) {
-        print('$_tag: ❌ Не удалось запустить GPS источник данных');
+        // Не удалось запустить GPS источник данных
         return false;
       }
-      print('$_tag: ✅ GPS источник данных запущен');
+      // GPS источник данных запущен
 
       // Запускаем подписку на GPS
-      print('$_tag: 📡 Создаем подписку на GPS поток...');
+      // Создаем подписку на GPS поток...
       _positionSubscription = _gpsDataManager.getPositionStream(
         settings: _locationSettings,
       ).listen(_onPositionUpdate, onError: _onPositionError);
-      print('$_tag: ✅ Подписка на GPS поток создана');
+      // Подписка на GPS поток создана
 
       final trackId = _trackManager.currentTrackForUI?.id;
       if (trackId != null) {
-        print('$_tag: Продолжение трекинга для трека $trackId');
+        // Продолжение трекинга для трека
       } else {
-        print('$_tag: Трекинг запущен для пользователя ${user.id}');
+        // Трекинг запущен для пользователя
       }
       return true;
       
     } catch (e) {
-      print('$_tag: Ошибка запуска трекинга: $e');
+      // Ошибка запуска трекинга
       return false;
     }
   }
@@ -151,13 +151,12 @@ class LocationTrackingService implements LocationTrackingServiceBase  {
   /// Автоматический запуск трекинга - упрощенная версия, просто вызывает startTracking
   @override
   Future<bool> autoStartTracking({required NavigationUser user}) async {
-    print('$_tag: Автозапуск трекинга для пользователя ${user.id}');
+    // Автозапуск трекинга для пользователя
 
     // Получаем ID пользователя для логирования
     final currentSession = AppSessionService.currentSession;
     if (currentSession?.appUser.employee != null) {
-      final userId = currentSession!.appUser.employee.id;
-      print('✅ Получен внутренний ID из AppUser.employee: $userId');
+      currentSession!.appUser.employee.id;
     }
 
     // Вся логика поиска существующих треков теперь в TrackManager.startTracking
@@ -169,7 +168,7 @@ class LocationTrackingService implements LocationTrackingServiceBase  {
   Future<bool> stopTracking() async {
     try {
       await _positionSubscription?.cancel();
-      print('$_tag: Продолжение трек��нга для трека');
+        // Продолжение трекинга для трека
 
       if (_trackManager.currentTrackForUI != null) {
         await _trackManager.stopTracking();
@@ -179,11 +178,11 @@ class LocationTrackingService implements LocationTrackingServiceBase  {
       _trackingStateController.add(false);
       _pauseStateController.add(false);
       
-      print('$_tag: Трекинг остановлен');
+      // Трекинг остановлен
       return true;
       
     } catch (e) {
-      print('$_tag: Ошибка остановки трекинга: $e');
+      // Ошибка остановки трекинга
       return false;
     }
   }
@@ -193,7 +192,7 @@ class LocationTrackingService implements LocationTrackingServiceBase  {
   Future<bool> pauseTracking() async {
     try {
       if (!isActive) {
-        print('$_tag: Трекинг не активен');
+        // Трекинг не активен
         return false;
       }
       
@@ -202,7 +201,7 @@ class LocationTrackingService implements LocationTrackingServiceBase  {
       _isActive = false;
       _pauseStateController.add(true);
       
-      print('$_tag: Трекинг поставлен на паузу');
+      // Трекинг поставлен на паузу
       return true;
       
     } catch (e) {
@@ -216,7 +215,7 @@ class LocationTrackingService implements LocationTrackingServiceBase  {
   Future<bool> resumeTracking() async {
     try {
       if (!isPaused) {
-        print('$_tag: Трекинг не на паузе');
+        // Трекинг не на паузе
         return false;
       }
       

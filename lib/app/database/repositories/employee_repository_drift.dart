@@ -1,9 +1,9 @@
-import '../../../features/shop/domain/entities/employee.dart' as domain;
-import '../../../features/shop/domain/repositories/employee_repository.dart';
-import '../../../../shared/either.dart';
-import '../../../../shared/failures.dart';
-import '../app_database.dart' as db;
-import '../mappers/employee_mapper.dart';
+import 'package:fieldforce/features/shop/domain/repositories/employee_repository.dart';
+import 'package:fieldforce/features/shop/domain/entities/employee.dart' as domain;
+import 'package:fieldforce/app/database/app_database.dart' as db;
+import 'package:fieldforce/shared/either.dart';
+import 'package:fieldforce/shared/failures.dart';
+import 'package:fieldforce/app/database/mappers/employee_mapper.dart';
 
 class EmployeeRepositoryDrift implements EmployeeRepository {
   final db.AppDatabase _database;
@@ -86,28 +86,16 @@ class EmployeeRepositoryDrift implements EmployeeRepository {
     }
   }
 
-  /// Получает внутренний database ID сотрудника для NavigationUser
   @override
   Future<Either<Failure, int?>> getInternalIdForNavigationUser(domain.Employee navigationUser) async {
     try {
-      // Поскольку Employee уже реализует NavigationUser и содержит database ID
-      // просто возвращаем его id (если он не 0, что означает еще не сохранен)
       final id = navigationUser.id == 0 ? null : navigationUser.id;
-      
-/*      if (id == null) {
-        print('❌ Employee ID равен 0 - объект не сохранен в базе!');
-      } else {
-        print('✅ Employee ID корректен: $id');
-      }*/
-      
       return Right(id);
     } catch (e) {
-      print('❌ Ошибка в getInternalIdForNavigationUser: $e');
       return Left(DatabaseFailure('Failed to get internal ID: $e'));
     }
   }
 
-  /// Создает NavigationUser на основе database ID
   @override
   Future<Either<Failure, domain.Employee?>> getNavigationUserById(int id) async {
     try {

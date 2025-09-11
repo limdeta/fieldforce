@@ -1,193 +1,246 @@
+import 'package:fieldforce/features/navigation/tracking/domain/entities/compact_track.dart';
+import 'package:fieldforce/features/navigation/tracking/presentation/bloc/tracking_bloc.dart';
 import 'package:fieldforce/app/presentation/pages/route_detail_page.dart';
+import 'package:fieldforce/app/services/app_session_service.dart';
+import 'package:fieldforce/features/navigation/tracking/domain/entities/navigation_user.dart';
+import 'package:fieldforce/features/navigation/tracking/presentation/bloc/user_tracks_bloc.dart';
+import 'package:fieldforce/app/presentation/widgets/combined_map_widget.dart';
 import 'package:fieldforce/app/presentation/widgets/app_tracking_button.dart';
-import 'package:fieldforce/features/navigation/tracking/presentation/providers/user_tracks_provider.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:latlong2/latlong.dart';
-import 'package:provider/provider.dart';
 import 'package:fieldforce/app/domain/entities/route.dart' as shop;
-import 'package:fieldforce/app/presentation/widgets/combined_map_widget.dart';
-import 'package:fieldforce/app/providers/selected_route_provider.dart';
-import 'package:fieldforce/app/providers/work_day_provider.dart';
-import 'package:fieldforce/features/navigation/tracking/domain/entities/user_track.dart';
 import 'package:fieldforce/features/navigation/tracking/domain/services/gps_data_manager.dart';
 import 'bloc/sales_rep_home_bloc.dart';
-import 'bloc/sales_rep_home_event.dart';
+import 'bloc/sales_rep_home_event.dart' as home_events;
 import 'bloc/sales_rep_home_state.dart';
 
 /// Главная страница торгового представителя с BLoC архитектурой
-/// 
-/// Использует BLoC паттерн:
-/// - BLoC управляет состоянием и бизнес-логикой
-/// - View реагирует на изменения состояния
-/// - Events отправляются в BLoC для выполнения действий
 class SalesRepHomePage extends StatelessWidget {
-  final shop.Route? selectedRoute;
-  final GpsDataManager gpsDataManager; // добавляем зависимость
+  final GpsDataManager gpsDataManager;
 
   const SalesRepHomePage({
     super.key,
-    this.selectedRoute,
     required this.gpsDataManager,
   });
 
   @override
   Widget build(BuildContext context) {
-    // Читаем аргументы из именованного роута
-    final args = ModalRoute.of(context)?.settings.arguments as Map<String, dynamic>?;
-    final selectedRouteFromArgs = args?['selectedRoute'] as shop.Route?;
+    // Получаем аргументы маршрута
+    final arguments = ModalRoute.of(context)?.settings.arguments as Map<String, dynamic>?;
+    final preselectedRoute = arguments?['selectedRoute'] as shop.Route?;
 
-    // Используем аргумент из роута или переданный через конструктор
-    final routeToUse = selectedRouteFromArgs ?? selectedRoute;
-
-    return BlocProvider(
-      create: (context) => SalesRepHomeBloc()
-        ..add(SalesRepHomeInitializeEvent(preselectedRoute: routeToUse)),
+    return MultiBlocProvider(
+      providers: [
+        // Основные блоки
+        BlocProvider<SalesRepHomeBloc>(
+          create: (context) => SalesRepHomeBloc()
+            ..add(home_events.SalesRepHomeInitializeEvent(preselectedRoute: preselectedRoute)),
+        ),
+        BlocProvider<UserTracksBloc>(
+          create: (context) => UserTracksBloc(),
+        ),
+        // TrackingBloc для управления трекингом
+        BlocProvider<TrackingBloc>(
+          create: (context) {
+            final bloc = TrackingBloc();
+            // Устанавливаем пользователя из сессии
+            final currentSession = AppSessionService.currentSession;
+            if (currentSession?.appUser != null) {
+              bloc.setUser(currentSession!.appUser);
+              // TrackingBloc создан с пользователем
+            } else {
+              // TrackingBloc создан без пользователя
+            }
+            return bloc;
+          },
+        ),
+      ],
       child: SalesRepHomeView(gpsDataManager: gpsDataManager),
     );
   }
 }
 
-/// View компонент для отображения состояния
-class SalesRepHomeView extends StatelessWidget {
+class SalesRepHomeView extends StatefulWidget {
   final GpsDataManager gpsDataManager;
   const SalesRepHomeView({super.key, required this.gpsDataManager});
 
   @override
+  State<SalesRepHomeView> createState() => _SalesRepHomeViewState();
+}
+
+class _SalesRepHomeViewState extends State<SalesRepHomeView> {
+  NavigationUser? _user;
+  bool _initialized = false;
+  
+  // Кэширование последней известной позиции пользователя
+  LatLng? _cachedUserLocation;
+  double? _cachedUserBearing;
+
+  @override
+  void initState() {
+    super.initState();
+    _initializeUser();
+  }
+
+  Future<void> _initializeUser() async {
+    final sessionResult = await AppSessionService.getCurrentAppSession();
+    final session = sessionResult.fold((l) => null, (r) => r);
+    if (session != null && !_initialized) {
+      setState(() {
+        _user = session.appUser;
+        _initialized = true;
+      });
+      
+      // Инициализируем треки для пользователя
+      if (mounted) {
+        context.read<UserTracksBloc>().add(LoadUserTracksEvent(_user!));
+      }
+    }
+  }
+
+  @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: BlocConsumer<SalesRepHomeBloc, SalesRepHomeState>(
-        listener: (context, state) {
-          // Обработка side effects (снэкбары, навигация, etc.)
-          if (state is SalesRepHomeError) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(
-                content: Text(state.message),
-                backgroundColor: Colors.red,
-                action: state.canRetry
-                    ? SnackBarAction(
-                        label: 'Повторить',
-                        onPressed: () {
-                          context.read<SalesRepHomeBloc>().add(
-                            const SalesRepHomeInitializeEvent(),
-                          );
-                        },
-                      )
-                    : null,
-              ),
+      body: MultiBlocListener(
+        listeners: [
+          // Слушаем обновления треков
+          BlocListener<UserTracksBloc, UserTracksState>(
+            listener: (context, state) {
+              if (state is UserTracksLoaded && state.activeTrack != null) {
+                // Уведомляем SalesRepHomeBloc об обновлении трека
+                context.read<SalesRepHomeBloc>().add(home_events.ActiveTrackUpdatedEvent(state.activeTrack!));
+              }
+            },
+          ),
+          // Слушаем обновления позиции из TrackingBloc
+          BlocListener<TrackingBloc, TrackingState>(
+            listener: (context, state) {
+              if (state is TrackingOn && state.latitude != null && state.longitude != null) {
+                setState(() {
+                  _cachedUserLocation = LatLng(state.latitude!, state.longitude!);
+                  _cachedUserBearing = state.bearing;
+                });
+                // TODO: Debug - стрелка исчезает при переключении маршрутов. 
+                // Проблема: BlocBuilder<UserTracksBloc> пересоздается и сбрасывает кэшированную позицию.
+                // Нужно вынести CombinedMapWidget из BlocBuilder<UserTracksBloc> или использовать Provider для позиции.
+              }
+            },
+          ),
+          // Обработка ошибок
+          BlocListener<SalesRepHomeBloc, SalesRepHomeState>(
+            listener: (context, state) {
+              if (state is SalesRepHomeError) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: Text(state.message),
+                    backgroundColor: Colors.red,
+                    action: state.canRetry
+                        ? SnackBarAction(
+                            label: 'Повторить',
+                            onPressed: () {
+                              context.read<SalesRepHomeBloc>().add(
+                                const home_events.SalesRepHomeInitializeEvent(),
+                              );
+                            },
+                          )
+                        : null,
+                  ),
+                );
+              }
+            },
+          ),
+          // Слушаем изменения маршрута для синхронизации треков
+          BlocListener<SalesRepHomeBloc, SalesRepHomeState>(
+            listener: (context, state) {
+              if (state is SalesRepHomeLoaded && state.currentRoute != null && _user != null) {
+                // Route changed
+                
+                // Синхронизируем треки с новым маршрутом
+                _syncTracksWithRoute(state.currentRoute!);
+              }
+            },
+          ),
+        ],
+        child: BlocBuilder<SalesRepHomeBloc, SalesRepHomeState>(
+          builder: (context, state) {
+            return Stack(
+              children: [
+                // Основная карта
+                _buildMapArea(context, state),
+
+                // Кнопка трекинга
+                if (state is SalesRepHomeLoaded)
+                  Positioned(
+                    top: MediaQuery.of(context).padding.top + 70,
+                    right: 16,
+                    child: AppTrackingButton(),
+                  ),
+
+                // Верхняя панель с маршрутом
+                if (state is SalesRepHomeLoaded && state.currentRoute != null)
+                  _buildTopPanel(context, state),
+
+                // Нижняя панель с кнопками
+                if (state is SalesRepHomeLoaded &&
+                    state.currentRoute != null &&
+                    state.showRoutePanel)
+                  _buildBottomPanel(context, state),
+
+                // Overlay загрузки
+                if (state is SalesRepHomeLoading)
+                  _buildLoadingOverlay(state.message),
+              ],
             );
-          }
-        },
-        builder: (context, state) {
-          return Stack(
-            children: [
-              _buildMapArea(context, state),
-
-              if (state is SalesRepHomeLoaded)
-                Positioned(
-                  top: MediaQuery.of(context).padding.top + 70,
-                  right: 16,
-                  child: const AppTrackingButton(),
-                ),
-
-              // Верхняя панель
-              if (state is SalesRepHomeLoaded && state.currentRoute != null)
-                _buildTopPanel(context, state),
-              
-              // Нижняя панель
-              if (state is SalesRepHomeLoaded && 
-                  state.currentRoute != null && 
-                  state.showRoutePanel)
-                _buildBottomPanel(context, state),
-              
-              // Overlay загрузки
-              if (state is SalesRepHomeLoading)
-                _buildLoadingOverlay(state.message),
-            ],
-          );
-        },
+          },
+        ),
       ),
     );
   }
 
-  /// Карта с маршрутом и треками
+  /// Карта с маршрутом и треками (основной компонент)
   Widget _buildMapArea(BuildContext context, SalesRepHomeState state) {
     return BlocBuilder<SalesRepHomeBloc, SalesRepHomeState>(
       builder: (context, blocState) {
-        print('🏗️ MapArea builder: Вызван с состоянием ${blocState.runtimeType}');
+        if (blocState is SalesRepHomeLoaded) {
+          final route = blocState.currentRoute;
+          final track = blocState.activeTrack;
+          final routePolylinePoints = blocState.routePolylinePoints;
 
-        if (blocState is SalesRepHomeLoaded && blocState.activeTrack != null) {
-          print('🗺️ MapArea builder: Активный трек в BLoC состоянии: ${blocState.activeTrack!.id} (${blocState.activeTrack!.totalPoints} точек)');
+          // Получаем liveBuffer из UserTracksBloc
+          return BlocBuilder<UserTracksBloc, UserTracksState>(
+            builder: (context, userTracksState) {
+              CompactTrack? liveBuffer;
+              if (userTracksState is UserTracksLoaded) {
+                liveBuffer = userTracksState.liveBuffer;
+              }
+
+              return CombinedMapWidget(
+                route: route,
+                track: track,
+                liveBuffer: liveBuffer,
+                currentUserLocation: _cachedUserLocation,
+                currentUserBearing: _cachedUserBearing,
+                maxConnectionDistance: 250.0, // Максимальное расстояние для соединения сегментов
+                onTap: (point) {
+                  // Обработка нажатия на карту
+                },
+                routePolylinePoints: routePolylinePoints,
+              );
+            },
+          );
         }
 
-        // Инициализируем WorkDayProvider при первом рендере
-        return Consumer2<SelectedRouteProvider, WorkDayProvider>(
-          builder: (context, selectedRouteProvider, workDayProvider, child) {
-            if (workDayProvider.workDays.isEmpty) {
-              WidgetsBinding.instance.addPostFrameCallback((_) {
-                workDayProvider.loadWorkDays().then((_) {
-                  final todayWorkDay = workDayProvider.todayWorkDay;
-                  if (todayWorkDay != null) {
-                    workDayProvider.selectWorkDay(todayWorkDay);
-                  }
-                });
-              });
-              return const Center(child: CircularProgressIndicator());
-            }
-
-            //  Синхронизируем WorkDayProvider с выбранным маршрутом
-            WidgetsBinding.instance.addPostFrameCallback((_) {
-              final selectedRoute = selectedRouteProvider.selectedRoute;
-              final currentSelectedWorkDay = workDayProvider.selectedWorkDay;
-
-              if (selectedRoute != null) {
-                final matchingWorkDay = workDayProvider.workDays.firstWhere(
-                  (wd) => wd.route?.id == selectedRoute.id,
-                  orElse: () => workDayProvider.todayWorkDay ?? workDayProvider.workDays.first,
-                );
-
-                if (currentSelectedWorkDay?.id != matchingWorkDay.id) {
-                  print('🔄 SalesRepHomePage: Синхронизируем WorkDay с маршрутом "${selectedRoute.name}"');
-                  workDayProvider.selectWorkDay(matchingWorkDay);
-                }
-              }
-            });
-
-            shop.Route? routeToShow;
-            List<LatLng> routePolylinePoints = [];
-            UserTrack? finalTrack;
-
-            if (blocState is SalesRepHomeLoaded) {
-              routeToShow = blocState.currentRoute;
-              routePolylinePoints = blocState.routePolylinePoints;
-
-              finalTrack = blocState.activeTrack;
-
-              if (finalTrack != null) {
-                print('🗺️ MapArea: Используем активный трек из ПАРАМЕТРА blocState: ${finalTrack.id} (${finalTrack.totalPoints} точек)');
-              } else {
-                // Fallback: получаем трек из выбранного WorkDay только если нет активного трека в BLoC
-                final selectedWorkDay = workDayProvider.selectedWorkDay;
-                if (selectedWorkDay != null && selectedWorkDay.track != null) {
-                  finalTrack = selectedWorkDay.track;
-                  if (finalTrack != null) {
-                    print('🗺️ MapArea: Используем трек из выбранного WorkDay: ${finalTrack.id} (${finalTrack.totalPoints} точек)');
-                  }
-                } else {
-                  print('🗺️ MapArea: Нет трека для отображения');
-                }
-              }
-            }
-
-            return CombinedMapWidget(
-              route: routeToShow,
-              track: finalTrack,
-              onTap: (point) {
-                print('Нажатие на карту: ${point.latitude}, ${point.longitude}');
-              },
-              routePolylinePoints: routePolylinePoints,
-            );
-          },
+        // Состояние загрузки или ошибки - показываем пустую карту
+        return CombinedMapWidget(
+          route: null,
+          track: null,
+          liveBuffer: null,
+          currentUserLocation: _cachedUserLocation,
+          currentUserBearing: _cachedUserBearing,
+          maxConnectionDistance: 150.0,
+          onTap: (point) {},
+          routePolylinePoints: const [],
         );
       },
     );
@@ -196,7 +249,7 @@ class SalesRepHomeView extends StatelessWidget {
   /// Верхняя панель с меню и информацией о маршруте
   Widget _buildTopPanel(BuildContext context, SalesRepHomeLoaded state) {
     final route = state.currentRoute!;
-    
+
     return Positioned(
       top: MediaQuery.of(context).padding.top,
       left: 0,
@@ -206,7 +259,7 @@ class SalesRepHomeView extends StatelessWidget {
           color: Colors.white,
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withOpacity(0.1),
+              color: Colors.black.withValues(alpha: 0.1),
               offset: const Offset(0, 2),
               blurRadius: 4,
             ),
@@ -224,8 +277,8 @@ class SalesRepHomeView extends StatelessWidget {
                 icon: const Icon(Icons.menu, color: Colors.white, size: 24),
               ),
             ),
-            
-            // Информация о маршруте
+
+            // Инф��рмация о маршруте
             Expanded(
               child: GestureDetector(
                 onTap: () {
@@ -285,7 +338,7 @@ class SalesRepHomeView extends StatelessWidget {
                 ),
               ),
             ),
-            
+
             // Кнопка скрыть/показать панель
             Container(
               width: 50,
@@ -298,14 +351,14 @@ class SalesRepHomeView extends StatelessWidget {
               ),
               child: IconButton(
                 icon: Icon(
-                  state.showRoutePanel 
-                      ? Icons.keyboard_arrow_up 
+                  state.showRoutePanel
+                      ? Icons.keyboard_arrow_up
                       : Icons.keyboard_arrow_down,
                   color: Colors.grey.shade700,
                 ),
                 onPressed: () {
                   context.read<SalesRepHomeBloc>().add(
-                    const ToggleRoutePanelEvent(),
+                    const home_events.ToggleRoutePanelEvent(),
                   );
                 },
               ),
@@ -328,7 +381,7 @@ class SalesRepHomeView extends StatelessWidget {
           color: Colors.white,
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withOpacity(0.1),
+              color: Colors.black.withValues(alpha: 0.1),
               offset: const Offset(0, -2),
               blurRadius: 4,
             ),
@@ -336,11 +389,11 @@ class SalesRepHomeView extends StatelessWidget {
         ),
         child: SafeArea(
           child: ElevatedButton(
-            onPressed: state.isBuildingRoute 
-                ? null 
+            onPressed: state.isBuildingRoute
+                ? null
                 : () {
                     context.read<SalesRepHomeBloc>().add(
-                      const BuildRouteEvent(),
+                      const home_events.BuildRouteEvent(),
                     );
                   },
             style: ElevatedButton.styleFrom(
@@ -370,7 +423,7 @@ class SalesRepHomeView extends StatelessWidget {
   /// Overlay загрузки
   Widget _buildLoadingOverlay(String? message) {
     return Container(
-      color: Colors.black.withOpacity(0.3),
+      color: Colors.black.withValues(alpha: 0.3),
       child: Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
@@ -392,7 +445,7 @@ class SalesRepHomeView extends StatelessWidget {
     );
   }
 
-  // Вспомогательные методы
+  // Вспомогательные методы из оригинала
   Color _getRouteStatusColor(shop.RouteStatus status) {
     switch (status) {
       case shop.RouteStatus.planned:
@@ -427,5 +480,24 @@ class SalesRepHomeView extends StatelessWidget {
     return route.pointsOfInterest
         .where((point) => point.isVisited)
         .length;
+  }
+
+  /// Синхронизирует треки с выбранным маршрутом
+  void _syncTracksWithRoute(shop.Route route) {
+    if (_user == null) return;
+
+    // Очищаем старые треки
+    context.read<UserTracksBloc>().add(ClearTracksEvent());
+
+    // Загружаем треки в зависимости от типа маршрута
+    if (route.isActive) {
+      // Active route - loading all tracks and showing active
+      context.read<UserTracksBloc>().add(LoadUserTracksEvent(_user!, showActiveTrack: true));
+    } else {
+      // Historical route - loading track for route date
+      final routeDate = route.startTime ?? DateTime.now();
+      // Loading track for route date
+      context.read<UserTracksBloc>().add(LoadUserTrackForDateEvent(_user!, routeDate));
+    }
   }
 }

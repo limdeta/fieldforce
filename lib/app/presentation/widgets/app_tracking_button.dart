@@ -15,38 +15,26 @@ class AppTrackingButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return BlocProvider(
-      create: (context) {
-        final bloc = TrackingBloc();
-
-        final currentSession = AppSessionService.currentSession;
-        if (currentSession?.appUser != null) {
-          bloc.setUser(currentSession!.appUser);
-        }
-
-        return bloc;
-      },
-      child: BlocBuilder<TrackingBloc, TrackingState>(
-        builder: (context, state) {
-          print('🎯 AppTrackingButton: Текущее состояние: ${state.runtimeType}');
-          return TrackingToggleButton(
-            state: state,
-            size: size,
-            onPressed: () {
-              // Если пользователя нет, пытаемся получить из сессии
-              if (state is TrackingNoUser) {
-                final currentSession = AppSessionService.currentSession;
-                if (currentSession?.appUser != null) {
-                  context.read<TrackingBloc>().add(TrackingStart(currentSession!.appUser));
-                  return;
-                }
+    return BlocBuilder<TrackingBloc, TrackingState>(
+      builder: (context, state) {
+        print('🎯 AppTrackingButton: Текущее состояние: ${state.runtimeType}');
+        return TrackingToggleButton(
+          state: state,
+          size: size,
+          onPressed: () {
+            // Если пользователя нет, пытаемся получить из сессии
+            if (state is TrackingNoUser) {
+              final currentSession = AppSessionService.currentSession;
+              if (currentSession?.appUser != null) {
+                context.read<TrackingBloc>().add(TrackingStart(currentSession!.appUser));
+                return;
               }
+            }
 
-              context.read<TrackingBloc>().add(TrackingTogglePressed());
-            },
-          );
-        },
-      ),
+            context.read<TrackingBloc>().add(TrackingTogglePressed());
+          },
+        );
+      },
     );
   }
 }

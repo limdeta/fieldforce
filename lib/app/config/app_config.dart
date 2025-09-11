@@ -50,7 +50,6 @@ class AppConfig {
 
   static void configureFromArgs() {
     const envString = String.fromEnvironment('ENV', defaultValue: 'dev');
-    const useMockString = String.fromEnvironment('USE_MOCK', defaultValue: 'true');
     
     switch (envString.toLowerCase()) {
       case 'prod':

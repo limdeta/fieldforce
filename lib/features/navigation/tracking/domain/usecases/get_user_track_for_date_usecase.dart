@@ -17,17 +17,22 @@ class GetUserTrackForDateUseCase {
       (failure) => Left(failure),
       (tracks) {
         final targetDate = DateTime(date.year, date.month, date.day);
-        final track = tracks.firstWhere(
-          (track) {
-            final trackDate = DateTime(
-              track.startTime.year,
-              track.startTime.month,
-              track.startTime.day,
-            );
-            return trackDate.isAtSameMomentAs(targetDate);
-          }
-        );
-        return Right(track);
+        try {
+          final track = tracks.firstWhere(
+            (track) {
+              final trackDate = DateTime(
+                track.startTime.year,
+                track.startTime.month,
+                track.startTime.day,
+              );
+              return trackDate.isAtSameMomentAs(targetDate);
+            }
+          );
+          return Right(track);
+        } catch (e) {
+          // Трек не найден для этой даты
+          return Left(NotFoundFailure('Track not found for date ${date.toString()}'));
+        }
       },
     );
   }
