@@ -28,9 +28,6 @@ class TrackManager {
   TrackManager(this._repository) {
     // Подписываемся на обновления буфера
     _bufferSubscription = _buffer.updateStream.listen(_onBufferUpdate);
-    
-    // ЗАМЕНЯЕМ таймер на умную сегментацию
-    // _persistTimer = Timer.periodic(const Duration(seconds: 4), (_) => _persistTrack());
   }
 
   /// Стрим обновлений трека для UI (только при сохранении сегментов)
@@ -82,8 +79,6 @@ class TrackManager {
       await stopTracking();
     }
 
-    print('🔍 TrackManager: Ищем существующий трек за сегодня для пользователя ${user.id}');
-
     // Ищем трек за сегодня
     final today = DateTime.now();
     final startOfDay = DateTime(today.year, today.month, today.day);
@@ -128,7 +123,6 @@ class TrackManager {
   Future<void> stopTracking() async {
     if (_currentTrack == null) return;
     
-    // Сохраняем буфер перед остановкой
     await _persistTrack();
     
     // Завершаем трек
@@ -137,7 +131,6 @@ class TrackManager {
       endTime: DateTime.now(),
     );
     
-    // Финальное сохранение - репозиторий сам решит INSERT или UPDATE
     await _repository.saveOrUpdateUserTrack(_currentTrack!);
 
     _currentTrack = null;
@@ -186,10 +179,6 @@ class TrackManager {
   
   // Приватные методы
   void _onBufferUpdate(CompactTrack bufferSegment) {
-    // НЕ отправляем обновление UI при каждой точке - только логируем
-    print('📍 TrackManager: Буфер обновлен (${bufferSegment.pointCount} точек)');
-    
-    // Проверяем условия для создания нового сегмента
     _checkSegmentationConditions();
   }
 
@@ -204,28 +193,24 @@ class TrackManager {
 
     // Условие 1: Буфер заполнен (50+ точек)
     if (bufferSegment.pointCount >= 50) {
-      print('📊 TrackManager: Буфер заполнен (${bufferSegment.pointCount} точек), создаем сегмент');
       _persistTrack();
       return;
     }
 
     // Условие 2: Прошло много времени (5+ минут)
     if (timeSinceLastPersist.inMinutes >= 5) {
-      print('⏰ TrackManager: Прошло ${timeSinceLastPersist.inMinutes} минут, создаем сегмент');
       _persistTrack();
       return;
     }
 
-    // Условие 3: Пройдено значительное ��асстояние (2+ км)
+    // Условие 3: Пройдено значительное расстояние (2+ км)
     if (bufferSegment.getTotalDistance() >= 2000) {
-      print('🛣️ TrackManager: Пройдено ${bufferSegment.getTotalDistance()/1000}км, создаем сегмент');
       _persistTrack();
       return;
     }
 
     // Условие 4: Обнаружена остановка (детектор активности)
     if (_detectStationaryPeriod(bufferSegment)) {
-      print('🛑 TrackManager: Обнаружена остановка, создаем сегмент');
       _persistTrack();
       return;
     }
@@ -290,9 +275,6 @@ class TrackManager {
       }
 
       _lastPersistTime = DateTime.now();
-      print('✅ TrackManager: Сегмент сохранён (${newSegment.pointCount} точек)');
-      
-      // Отправляем обновление UI только после сохранения сегмента
       _trackUpdateController.add(_currentTrack!);
       
     } catch (e) {

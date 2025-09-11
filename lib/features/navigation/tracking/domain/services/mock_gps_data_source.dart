@@ -21,7 +21,6 @@ class MockGpsDataSource implements GpsDataSource {
   int _currentPointIndex = 0;
   bool _isActive = false;
   bool _isPaused = false;
-  DateTime? _startTime;
   Timer? _playbackTimer;
 
   // Настройки воспроизведения
@@ -52,7 +51,6 @@ class MockGpsDataSource implements GpsDataSource {
     try {
       debugPrint('🎭 $_tag: Загружаем маршрут из $jsonAssetPath');
 
-      // Use TestCoordinatesLoader to parse & enrich coordinates (timestamps, speed, bearing)
       final loader = TestCoordinatesLoader(
         nominalSpeedMps: 5.0,
         speedMultiplier: _speedMultiplier,
@@ -85,19 +83,7 @@ class MockGpsDataSource implements GpsDataSource {
     }
   }
 
-  /// Создает простой тестовый маршрут если не удалось загрузить из файла
-  void _createTestRoute() {
-    debugPrint('🎭 $_tag: Создаем тестовый маршрут');
-    _routePoints = [
-      {'lat': 55.7558, 'lng': 37.6176, 'timestamp': DateTime.now().millisecondsSinceEpoch}, // TODO переделать
-      {'lat': 55.7540, 'lng': 37.6200, 'timestamp': DateTime.now().add(Duration(seconds: 10)).millisecondsSinceEpoch},
-      {'lat': 55.7520, 'lng': 37.6220, 'timestamp': DateTime.now().add(Duration(seconds: 20)).millisecondsSinceEpoch},
-      {'lat': 55.7500, 'lng': 37.6240, 'timestamp': DateTime.now().add(Duration(seconds: 30)).millisecondsSinceEpoch},
-      {'lat': 55.7480, 'lng': 37.6260, 'timestamp': DateTime.now().add(Duration(seconds: 40)).millisecondsSinceEpoch},
-    ];
-  }
 
-  /// Устанавливает начальную позицию для продолжения с определенной точки
   void setStartPosition(int pointIndex) {
     if (pointIndex >= 0 && pointIndex < _routePoints.length) {
       _currentPointIndex = pointIndex;
@@ -105,7 +91,6 @@ class MockGpsDataSource implements GpsDataSource {
     }
   }
 
-  /// Устанавливает прогресс в процентах (0.0 - 1.0)
   void setProgress(double progress) {
     final targetIndex = ((_routePoints.length - 1) * progress.clamp(0.0, 1.0)).round();
     setStartPosition(targetIndex);
@@ -168,14 +153,12 @@ class MockGpsDataSource implements GpsDataSource {
     _currentPointIndex = 0;
   }
 
-  /// Добавляет ошибку в поток (для те��тирования)
   void throwError([dynamic error]) {
     if (!_positionController.isClosed) {
       _positionController.addError(error ?? Exception('Mock GPS error'));
     }
   }
 
-  /// Запускает воспроизведение маршрута
   void _startPlayback() {
     debugPrint('🎬 $_tag: _startPlayback() - запускаем воспроизведение');
 
@@ -189,7 +172,6 @@ class MockGpsDataSource implements GpsDataSource {
       return;
     }
 
-    _startTime = DateTime.now();
     _startPlaybackTimer();
   }
 

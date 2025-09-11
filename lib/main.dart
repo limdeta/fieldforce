@@ -25,7 +25,7 @@ void main() async {
   if (AppConfig.isProd) {
     await setupServiceLocator();
   } else {
-    print("Запускаем тестовый контейнер");
+    // Запускаем тестовый контейнер
     await setupTestServiceLocator();
   }
 

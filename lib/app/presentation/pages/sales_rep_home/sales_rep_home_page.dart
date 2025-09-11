@@ -8,6 +8,7 @@ import 'package:fieldforce/app/presentation/widgets/combined_map_widget.dart';
 import 'package:fieldforce/app/presentation/widgets/app_tracking_button.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:latlong2/latlong.dart';
 import 'package:fieldforce/app/domain/entities/route.dart' as shop;
 import 'package:fieldforce/features/navigation/tracking/domain/services/gps_data_manager.dart';
 import 'bloc/sales_rep_home_bloc.dart';
@@ -47,9 +48,9 @@ class SalesRepHomePage extends StatelessWidget {
             final currentSession = AppSessionService.currentSession;
             if (currentSession?.appUser != null) {
               bloc.setUser(currentSession!.appUser);
-              print('🎯 SalesRepHomePage: TrackingBloc создан с пользователем ${currentSession.appUser.id}');
+              // TrackingBloc создан с пользователем
             } else {
-              print('⚠️ SalesRepHomePage: TrackingBloc создан без пользователя');
+              // TrackingBloc создан без пользователя
             }
             return bloc;
           },
@@ -71,6 +72,10 @@ class SalesRepHomeView extends StatefulWidget {
 class _SalesRepHomeViewState extends State<SalesRepHomeView> {
   NavigationUser? _user;
   bool _initialized = false;
+  
+  // Кэширование последней известной позиции пользователя
+  LatLng? _cachedUserLocation;
+  double? _cachedUserBearing;
 
   @override
   void initState() {
@@ -103,9 +108,22 @@ class _SalesRepHomeViewState extends State<SalesRepHomeView> {
           BlocListener<UserTracksBloc, UserTracksState>(
             listener: (context, state) {
               if (state is UserTracksLoaded && state.activeTrack != null) {
-                print('[UI] Track loaded: id=${state.activeTrack!.id}');
                 // Уведомляем SalesRepHomeBloc об обновлении трека
                 context.read<SalesRepHomeBloc>().add(home_events.ActiveTrackUpdatedEvent(state.activeTrack!));
+              }
+            },
+          ),
+          // Слушаем обновления позиции из TrackingBloc
+          BlocListener<TrackingBloc, TrackingState>(
+            listener: (context, state) {
+              if (state is TrackingOn && state.latitude != null && state.longitude != null) {
+                setState(() {
+                  _cachedUserLocation = LatLng(state.latitude!, state.longitude!);
+                  _cachedUserBearing = state.bearing;
+                });
+                // TODO: Debug - стрелка исчезает при переключении маршрутов. 
+                // Проблема: BlocBuilder<UserTracksBloc> пересоздается и сбрасывает кэшированную позицию.
+                // Нужно вынести CombinedMapWidget из BlocBuilder<UserTracksBloc> или использовать Provider для позиции.
               }
             },
           ),
@@ -136,7 +154,7 @@ class _SalesRepHomeViewState extends State<SalesRepHomeView> {
           BlocListener<SalesRepHomeBloc, SalesRepHomeState>(
             listener: (context, state) {
               if (state is SalesRepHomeLoaded && state.currentRoute != null && _user != null) {
-                print('[UI] Route changed: ${state.currentRoute!.name}');
+                // Route changed
                 
                 // Синхронизируем треки с новым маршрутом
                 _syncTracksWithRoute(state.currentRoute!);
@@ -184,16 +202,10 @@ class _SalesRepHomeViewState extends State<SalesRepHomeView> {
   Widget _buildMapArea(BuildContext context, SalesRepHomeState state) {
     return BlocBuilder<SalesRepHomeBloc, SalesRepHomeState>(
       builder: (context, blocState) {
-        print('🏗��� MapArea builder: состояние ${blocState.runtimeType}');
-
         if (blocState is SalesRepHomeLoaded) {
           final route = blocState.currentRoute;
           final track = blocState.activeTrack;
           final routePolylinePoints = blocState.routePolylinePoints;
-
-          if (track != null) {
-            print('🗺️ MapArea: Отображаем трек ${track.id} (${track.totalPoints} точек)');
-          }
 
           // Получаем liveBuffer из UserTracksBloc
           return BlocBuilder<UserTracksBloc, UserTracksState>(
@@ -201,18 +213,17 @@ class _SalesRepHomeViewState extends State<SalesRepHomeView> {
               CompactTrack? liveBuffer;
               if (userTracksState is UserTracksLoaded) {
                 liveBuffer = userTracksState.liveBuffer;
-                if (liveBuffer != null) {
-                  print('📍 MapArea: Live буфер содержит ${liveBuffer.pointCount} точек');
-                }
               }
 
               return CombinedMapWidget(
                 route: route,
                 track: track,
                 liveBuffer: liveBuffer,
+                currentUserLocation: _cachedUserLocation,
+                currentUserBearing: _cachedUserBearing,
                 maxConnectionDistance: 250.0, // Максимальное расстояние для соединения сегментов
                 onTap: (point) {
-                  print('Нажатие на карту: ${point.latitude}, ${point.longitude}');
+                  // Обработка нажатия на карту
                 },
                 routePolylinePoints: routePolylinePoints,
               );
@@ -225,6 +236,8 @@ class _SalesRepHomeViewState extends State<SalesRepHomeView> {
           route: null,
           track: null,
           liveBuffer: null,
+          currentUserLocation: _cachedUserLocation,
+          currentUserBearing: _cachedUserBearing,
           maxConnectionDistance: 150.0,
           onTap: (point) {},
           routePolylinePoints: const [],
@@ -478,12 +491,12 @@ class _SalesRepHomeViewState extends State<SalesRepHomeView> {
 
     // Загружаем треки в зависимости от типа маршрута
     if (route.isActive) {
-      print('[UI] Active route - loading all tracks and showing active');
+      // Active route - loading all tracks and showing active
       context.read<UserTracksBloc>().add(LoadUserTracksEvent(_user!, showActiveTrack: true));
     } else {
-      print('[UI] Historical route - loading track for route date');
+      // Historical route - loading track for route date
       final routeDate = route.startTime ?? DateTime.now();
-      print('[UI] Loading track for route date: $routeDate');
+      // Loading track for route date
       context.read<UserTracksBloc>().add(LoadUserTrackForDateEvent(_user!, routeDate));
     }
   }

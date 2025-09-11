@@ -1,10 +1,11 @@
+import 'package:fieldforce/app/presentation/utils/coordinate_converter.dart';
+import 'package:fieldforce/features/navigation/map/presentation/widgets/map_widget.dart';
+import 'package:fieldforce/features/navigation/tracking/domain/entities/compact_track.dart';
+import 'package:fieldforce/features/navigation/tracking/domain/entities/user_track.dart';
 import 'package:flutter/material.dart';
 import 'package:latlong2/latlong.dart';
-import '../../../features/navigation/map/presentation/widgets/map_widget.dart';
-import '../../../features/navigation/tracking/domain/entities/user_track.dart';
-import '../../../features/navigation/tracking/domain/entities/compact_track.dart';
-import '../../domain/entities/route.dart' as shop;
-import '../utils/coordinate_converter.dart';
+import 'package:fieldforce/app/domain/entities/route.dart' as shop;
+
 
 /// Комбинированный виджет карты для app-слоя
 /// Объединяет отображение маршрутов (Route) и треков (Track)
@@ -15,18 +16,15 @@ class CombinedMapWidget extends StatelessWidget {
 
   final LatLng? center;
   final double? initialZoom;
-  
-  /// Callback при тапе на карту
+
   final void Function(LatLng)? onTap;
-  
-  /// Callback при долгом нажатии
   final void Function(LatLng)? onLongPress;
-  
-  /// Трек для отображения (может быть null)
   final UserTrack? track;
-  
-  /// Live буфер для отображения (текущие точки трекинга)
   final CompactTrack? liveBuffer;
+  final LatLng? currentUserLocation;
+  
+  /// Направление движения пользователя (в градусах, 0-360)
+  final double? currentUserBearing;
   
   /// Максимальное расстояние для соединения сегментов (в метрах)
   final double? maxConnectionDistance;
@@ -43,6 +41,8 @@ class CombinedMapWidget extends StatelessWidget {
     this.onLongPress,
     this.track,
     this.liveBuffer,
+    this.currentUserLocation,
+    this.currentUserBearing,
     this.maxConnectionDistance,
     this.routePolylinePoints = const [],
   });
@@ -58,6 +58,8 @@ class CombinedMapWidget extends StatelessWidget {
       onLongPress: CoordinateConverter.convertLatLngCallback(onLongPress),
       track: track,
       liveBuffer: liveBuffer,
+      currentUserLocation: currentUserLocation,
+      currentUserBearing: currentUserBearing,
       maxConnectionDistance: maxConnectionDistance,
       routePolylinePoints: routePolylinePoints,
     );

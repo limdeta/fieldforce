@@ -54,7 +54,7 @@ class SalesRepHomeBloc extends Bloc<SalesRepHomeEvent, SalesRepHomeState> {
   /// Настройка слушателя активного трека
   void _setupActiveTrackListener() {
     _activeTrackSubscription?.cancel();
-    print('🔇 SalesRepHomeBloc: Подписка на trackUpdateStream отключена - управление через UserTracksBloc');
+    // Подписка на trackUpdateStream отключена - управление через UserTracksBloc
   }
 
   /// Инициализация BLoC
@@ -89,12 +89,11 @@ class SalesRepHomeBloc extends Bloc<SalesRepHomeEvent, SalesRepHomeState> {
       // Если передан preselectedRoute, сохраняем его в настройки
       if (event.preselectedRoute != null) {
         await _preferencesService.setSelectedRouteId(event.preselectedRoute!.id);
-        print('[SalesRepHomeBloc] Preselected route saved: ${event.preselectedRoute!.name} (id=${event.preselectedRoute!.id})');
+        // Preselected route saved
       }
 
       // Загружаем сохраненный маршрут из настроек (или используем preselectedRoute)
-      final savedRouteId = event.preselectedRoute?.id ?? _preferencesService.getSelectedRouteId();
-      print('[SalesRepHomeBloc] Saved route ID: $savedRouteId');
+      event.preselectedRoute?.id ?? _preferencesService.getSelectedRouteId();
 
       _setupRouteStreamListener(session);
       add(const LoadUserRoutesEvent());
@@ -136,7 +135,7 @@ class SalesRepHomeBloc extends Bloc<SalesRepHomeEvent, SalesRepHomeState> {
     try {
       // Сохраняем выбранный маршрут в настройки
       await _preferencesService.setSelectedRouteId(event.route.id);
-      print('[SalesRepHomeBloc] Route saved to preferences: ${event.route.name} (id=${event.route.id})');
+      // Route saved to preferences
 
       add(SyncTracksWithRouteEvent(event.route));
 
@@ -145,7 +144,7 @@ class SalesRepHomeBloc extends Bloc<SalesRepHomeEvent, SalesRepHomeState> {
         emit(currentState.copyWith(currentRoute: event.route));
       }
     } catch (e) {
-      print('❌ SalesRepHomeBloc._onSelectRoute: Критическая ошибка: $e');
+      // Критическая ошибка
       emit(SalesRepHomeError(
         message: 'Ошибка выбора маршрута: $e',
         currentRoute: (state is SalesRepHomeLoaded) ? (state as SalesRepHomeLoaded).currentRoute : null,
@@ -189,7 +188,7 @@ class SalesRepHomeBloc extends Bloc<SalesRepHomeEvent, SalesRepHomeState> {
       final routePoints = currentRoute.pointsOfInterest.sublist(startIndex);
 
       if (routePoints.length < 2) {
-        print('⚠️ Недостаточно точек для построения маршрута');
+        // Недостаточно точек для построения маршрута
         emit(currentState.copyWith(isBuildingRoute: false));
         return;
       }
@@ -214,7 +213,7 @@ class SalesRepHomeBloc extends Bloc<SalesRepHomeEvent, SalesRepHomeState> {
         emit(currentState.copyWith(isBuildingRoute: false));
       }
     } catch (e) {
-      print('❌ Ошибка построения маршрута: $e');
+      // Ошибка построения маршрута
       emit(currentState.copyWith(isBuildingRoute: false));
     }
   }
@@ -238,7 +237,7 @@ class SalesRepHomeBloc extends Bloc<SalesRepHomeEvent, SalesRepHomeState> {
       if (loadingState.preselectedRoute != null) {
         // Ищем preselectedRoute в загруженных маршрутах
         routeToDisplay = event.routes.where((route) => route.id == loadingState.preselectedRoute!.id).firstOrNull;
-        print('[SalesRepHomeBloc] Found preselected route: ${routeToDisplay?.name ?? "null"} (id=${loadingState.preselectedRoute!.id})');
+        // Found preselected route
       }
     }
     
@@ -247,14 +246,14 @@ class SalesRepHomeBloc extends Bloc<SalesRepHomeEvent, SalesRepHomeState> {
       final savedRouteId = _preferencesService.getSelectedRouteId();
       if (savedRouteId != null) {
         routeToDisplay = event.routes.where((route) => route.id == savedRouteId).firstOrNull;
-        print('[SalesRepHomeBloc] Found saved route: ${routeToDisplay?.name ?? "null"} (id=$savedRouteId)');
+        // Found saved route: ${routeToDisplay?.name ?? "null"} (id=$savedRouteId)
       }
     }
     
     // Если сохраненный маршрут не найден - используем активный или сегодняшний
     if (routeToDisplay == null) {
       routeToDisplay = _findCurrentRoute(event.routes);
-      print('[SalesRepHomeBloc] Using current route: ${routeToDisplay?.name ?? "null"}');
+      // Using current route
     }
 
     emit(SalesRepHomeLoaded(
@@ -274,10 +273,10 @@ class SalesRepHomeBloc extends Bloc<SalesRepHomeEvent, SalesRepHomeState> {
       final session = sessionResult.fold((l) => null, (r) => r);
 
       if (session != null) {
-        print('[SalesRepHomeBloc] Syncing tracks for route: ${event.route.name}');
+        // Syncing tracks for route
       }
     } catch (e) {
-      print('⚠️ Ошибка синхронизации треков: $e');
+      // Ошибка синхронизации треков
     }
   }
 
@@ -289,7 +288,7 @@ class SalesRepHomeBloc extends Bloc<SalesRepHomeEvent, SalesRepHomeState> {
           (routes) => add(RoutesUpdatedEvent(routes)),
           onError: (error) {
             add(const LoadUserRoutesEvent());
-            print('⚠️ Ошибка загрузки маршрутов: $error');
+            // Ошибка загрузки маршрутов
           },
         );
   }

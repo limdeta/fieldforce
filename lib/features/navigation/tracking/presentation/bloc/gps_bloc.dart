@@ -1,6 +1,6 @@
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:fieldforce/features/navigation/tracking/domain/services/gps_data_manager.dart';
-import '../widgets/gps_toggle_button.dart';
+import 'package:fieldforce/features/navigation/tracking/presentation/widgets/gps_toggle_button.dart';
 
 // События
 abstract class GpsEvent {}

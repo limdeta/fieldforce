@@ -1,15 +1,16 @@
+import 'package:fieldforce/features/navigation/map/data/repositories/osm_map_service.dart';
+import 'package:fieldforce/features/navigation/map/domain/entities/map_point.dart';
+import 'package:fieldforce/features/navigation/map/domain/repositories/map_service.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
 import 'dart:math' as math;
-import '../../domain/entities/map_point.dart';
-import '../../domain/repositories/map_service.dart';
-import '../../../../../app/domain/adapters/route_map_adapter.dart';
-import '../../data/repositories/osm_map_service.dart';
-import '../../../../../app/domain/entities/route.dart' as domain;
-import '../../../../../app/services/user_initialization_service.dart';
-import '../../../tracking/domain/entities/user_track.dart';
-import '../../../tracking/domain/entities/compact_track.dart';
+import 'dart:ui' as ui;
+import 'package:fieldforce/app/domain/adapters/route_map_adapter.dart';
+import 'package:fieldforce/app/domain/entities/route.dart' as domain;
+import 'package:fieldforce/app/services/user_initialization_service.dart';
+import 'package:fieldforce/features/navigation/tracking/domain/entities/user_track.dart';
+import 'package:fieldforce/features/navigation/tracking/domain/entities/compact_track.dart';
 import 'route_polyline.dart';
 
 /// Основной виджет карты с поддержкой различных провайдеров
@@ -26,6 +27,12 @@ class MapWidget extends StatefulWidget {
   /// Live буфер для отображения (текущие точки трекинга)
   final CompactTrack? liveBuffer;
   
+  /// Текущее положение пользователя
+  final LatLng? currentUserLocation;
+  
+  /// Направление движения пользователя (в градусах, 0-360)
+  final double? currentUserBearing;
+  
   /// Максимальное расстояние для соединения сегментов (в метрах)
   final double? maxConnectionDistance;
   
@@ -40,6 +47,8 @@ class MapWidget extends StatefulWidget {
     this.onLongPress,
     this.track,
     this.liveBuffer,
+    this.currentUserLocation,
+    this.currentUserBearing,
     this.maxConnectionDistance,
     this.routePolylinePoints = const [],
   });
@@ -51,10 +60,14 @@ class MapWidget extends StatefulWidget {
 class _MapWidgetState extends State<MapWidget> {
   late final MapController _mapController;
   late final MapService _mapService;
-  
+
   // Центр карты и масштаб по умолчанию (Владивосток)
   static const LatLng _defaultCenter = LatLng(43.1056, 131.8735);
   static const double _defaultZoom = 12.0;
+
+  // Кэширование последней известной позиции пользователя
+  LatLng? _cachedUserLocation;
+  double? _cachedUserBearing;
 
   @override
   void initState() {
@@ -62,6 +75,23 @@ class _MapWidgetState extends State<MapWidget> {
     _mapController = MapController();
     _mapService = OSMMapService(); // В будущем можно inject через DI
     _polylineCache = {}; // Инициализируем кэш
+  }
+
+  @override
+  void didUpdateWidget(MapWidget oldWidget) {
+    super.didUpdateWidget(oldWidget);
+
+    // Восстанавливаем кэш из старого виджета, если новый не имеет данных
+    if (widget.currentUserLocation == null && oldWidget.currentUserLocation != null) {
+      _cachedUserLocation = oldWidget.currentUserLocation;
+      _cachedUserBearing = oldWidget.currentUserBearing;
+    }
+
+    // Обновляем кэш при получении новых данных
+    if (widget.currentUserLocation != null) {
+      _cachedUserLocation = widget.currentUserLocation;
+      _cachedUserBearing = widget.currentUserBearing;
+    }
   }
 
   @override
@@ -142,13 +172,42 @@ class _MapWidgetState extends State<MapWidget> {
     return _defaultZoom;
   }
 
-  /// Создает маркеры для точек маршрута
-  List<Marker> _buildRouteMarkers() {
-    if (widget.route == null) return [];
+  /// Создает все маркеры (маршрута + текущего положения пользователя)
+  List<Marker> _buildAllMarkers() {
+    final markers = <Marker>[];
 
-    return widget.route!.pointsOfInterest
-        .map((poi) => _buildMarkerForPOI(poi))
-        .toList();
+    // Маркеры маршрута
+    if (widget.route != null) {
+      markers.addAll(widget.route!.pointsOfInterest
+          .map((poi) => _buildMarkerForPOI(poi)));
+    }
+
+    // Маркер текущего положения пользователя
+    // Используем текущие данные или кэшированные, если текущие недоступны
+    final LatLng? userLocation = widget.currentUserLocation ?? _cachedUserLocation;
+    final double? userBearing = widget.currentUserBearing ?? _cachedUserBearing;
+
+    if (userLocation != null) {
+      markers.add(_buildCurrentUserMarkerForLocation(userLocation, userBearing));
+    }
+
+    return markers;
+  }
+
+  /// Создает маркер текущего положения пользователя с направлением
+  Marker _buildCurrentUserMarkerForLocation(LatLng location, double? bearing) {
+    return Marker(
+      point: location,
+      width: 32,
+      height: 32,
+      child: Transform.rotate(
+        angle: (bearing ?? 0) * math.pi / 180, // Конвертируем градусы в радианы
+        child: CustomPaint(
+          painter: TrianglePainter(),
+          child: Container(),
+        ),
+      ),
+    );
   }
 
   /// Создает маркер для точки интереса
@@ -320,9 +379,9 @@ class _MapWidgetState extends State<MapWidget> {
             if (widget.routePolylinePoints.isNotEmpty)
               RoutePolyline(points: widget.routePolylinePoints),
 
-            if (widget.route != null)
+            if (widget.route != null || widget.currentUserLocation != null)
               MarkerLayer(
-                markers: _buildRouteMarkers(),
+                markers: _buildAllMarkers(),
               ),
           ],
         ),
@@ -379,10 +438,17 @@ class _MapWidgetState extends State<MapWidget> {
 
   /// Обработчик кнопки текущего положения
   void _onLocationPressed() {
-    // TODO: Получить текущее положение пользователя и переместить карту
-    // Пока центрируем на Владивостоке
-    const vladivostokCenter = LatLng(43.1056, 131.8735);
-    _mapController.move(vladivostokCenter, 12.0);
+    // Используем текущую позицию или кэшированную, если текущая недоступна
+    final LatLng? userLocation = widget.currentUserLocation ?? _cachedUserLocation;
+
+    // Если есть положение пользователя, центрируем на нём
+    if (userLocation != null) {
+      _mapController.move(userLocation, 16.0);
+    } else {
+      // Иначе центрируем на Владивостоке
+      const vladivostokCenter = LatLng(43.1056, 131.8735);
+      _mapController.move(vladivostokCenter, 12.0);
+    }
     _saveMapState(); // Сохраняем новое состояние
   }
 
@@ -579,33 +645,46 @@ class _MapWidgetState extends State<MapWidget> {
     
     return connectionLines;
   }
+}
 
-  /// Очищает кэш полилиний при изменении треков (оптимизация памяти)
-  void _clearPolylineCache() {
-    if (_polylineCache != null && _polylineCache!.isNotEmpty) {
-      _polylineCache!.clear();
-    }
+/// Кастомный painter для рисования треугольной стрелки
+class TrianglePainter extends CustomPainter {
+  @override
+  void paint(Canvas canvas, Size size) {
+    final Paint paint = Paint()
+      ..color = const Color.fromARGB(255, 243, 33, 156).withOpacity(0.9)
+      ..style = PaintingStyle.fill;
+
+    final Paint borderPaint = Paint()
+      ..color = Colors.white
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 1;
+
+    final ui.Path path = ui.Path();
+
+    // Создаем форму стрелки (треугольник с вырезом у основания)
+    final double tipHeight = size.height * 0.7; // Высота наконечника (70% от общей высоты)
+    final double baseWidth = size.width * 0.4; // Ширина основания (40% от ширины)
+
+    // Рисуем наконечник стрелы (большой треугольник)
+    path.moveTo(size.width / 2, 0); // Верхняя точка
+    path.lineTo(size.width / 2 - baseWidth / 2, tipHeight); // Левая точка наконечника
+    path.lineTo(size.width / 2 + baseWidth / 2, tipHeight); // Правая точка наконечника
+    path.close();
+
+    // Рисуем тень
+    final Paint shadowPaint = Paint()
+      ..color = Colors.black.withOpacity(0.3)
+      ..style = PaintingStyle.fill
+      ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 4);
+
+    canvas.drawPath(path.shift(const Offset(0, 2)), shadowPaint);
+
+    // Рисуем стрелку
+    canvas.drawPath(path, paint);
+    canvas.drawPath(path, borderPaint);
   }
 
   @override
-  void didUpdateWidget(MapWidget oldWidget) {
-    super.didUpdateWidget(oldWidget);
-    
-    // Очищаем кэш при изменении трека
-    if (oldWidget.track?.id != widget.track?.id) {
-      _clearPolylineCache();
-    }
-    // Также очищаем кэш если изменилось количество точек в live треке
-    else if (oldWidget.track != null && widget.track != null) {
-      final oldTrack = oldWidget.track!;
-      final newTrack = widget.track!;
-      
-      // Если есть live сегмент и изменилось количество точек - очищаем кэш
-      if (newTrack.liveSegmentIndex != null && 
-          oldTrack.totalPoints != newTrack.totalPoints) {
-        _clearPolylineCache();
-      }
-    }
-  }
-
+  bool shouldRepaint(CustomPainter oldDelegate) => false;
 }

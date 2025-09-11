@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:fieldforce/features/navigation/tracking/domain/services/location_tracking_service_base.dart';
 import 'package:fieldforce/features/navigation/tracking/domain/entities/navigation_user.dart';
@@ -11,12 +12,24 @@ class TrackingStart extends TrackingEvent {
   TrackingStart(this.user);
 }
 class TrackingCheckStatus extends TrackingEvent {}
+class TrackingPositionUpdated extends TrackingEvent {
+  final double latitude;
+  final double longitude;
+  final double bearing;
+  TrackingPositionUpdated(this.latitude, this.longitude, this.bearing);
+}
 
 // Состояния трекинга
 abstract class TrackingState {}
 class TrackingOff extends TrackingState {}
 class TrackingStarting extends TrackingState {}
-class TrackingOn extends TrackingState {}
+class TrackingOn extends TrackingState {
+  final double? latitude;
+  final double? longitude;
+  final double? bearing;
+  
+  TrackingOn({this.latitude, this.longitude, this.bearing});
+}
 class TrackingNoUser extends TrackingState {}
 
 /// BLoC для управления трекингом как единым процессом
@@ -24,6 +37,12 @@ class TrackingNoUser extends TrackingState {}
 class TrackingBloc extends Bloc<TrackingEvent, TrackingState> {
   final LocationTrackingServiceBase _trackingService;
   NavigationUser? _currentUser;
+  StreamSubscription? _positionSubscription;
+  
+  // Последняя известная позиция пользователя
+  double? _lastLatitude;
+  double? _lastLongitude;
+  double? _lastBearing;
 
   TrackingBloc()
     : _trackingService = GetIt.instance<LocationTrackingServiceBase>(),
@@ -48,24 +67,24 @@ class TrackingBloc extends Bloc<TrackingEvent, TrackingState> {
       await _startTracking(emit);
     });
 
+    on<TrackingPositionUpdated>((event, emit) {
+      if (state is TrackingOn) {
+        emit(TrackingOn(latitude: event.latitude, longitude: event.longitude, bearing: event.bearing));
+      }
+    });
+
     on<TrackingCheckStatus>((event, emit) {
-      print('🎯 TrackingBloc: Получен TrackingCheckStatus event');
       // Синхронизируем состояние с трекинг сервисом
       if (_trackingService.isTracking) {
-        print('🎯 TrackingBloc: _trackingService.isTracking == true, emit TrackingOn');
-        emit(TrackingOn());
+        emit(TrackingOn(latitude: _lastLatitude, longitude: _lastLongitude, bearing: _lastBearing));
       } else if (_currentUser != null) {
-        print('🎯 TrackingBloc: _trackingService.isTracking == false, но пользователь есть');
         // Проверяем, был ли трекинг активен до этого (чтобы не останавливать случайно)
         if (state is TrackingOn) {
-          print('⚠️ TrackingBloc: Трекинг был активен, но сервис сообщает false - возможно временная проблема, сохраняем состояние');
           // Не меняем состояние, если оно было активно
           return;
         }
-        print('🎯 TrackingBloc: emit TrackingOff');
         emit(TrackingOff());
       } else {
-        print('🎯 TrackingBloc: Нет пользователя, emit TrackingNoUser');
         emit(TrackingNoUser());
       }
     });
@@ -83,8 +102,6 @@ class TrackingBloc extends Bloc<TrackingEvent, TrackingState> {
     emit(TrackingStarting());
 
     try {
-      print('🚀 Запуск трекинга для пользователя: ${_currentUser!.id}');
-
       bool success;
       if (!_trackingService.isTracking) {
         // Если трекинг не активен, запускаем автостарт
@@ -95,7 +112,9 @@ class TrackingBloc extends Bloc<TrackingEvent, TrackingState> {
       }
 
       if (success || _trackingService.isTracking) {
-        emit(TrackingOn());
+        // Подписываемся на поток позиций для отслеживания текущего положения
+        _setupPositionSubscription();
+        emit(TrackingOn(latitude: _lastLatitude, longitude: _lastLongitude, bearing: _lastBearing));
       } else {
         emit(TrackingOff());
       }
@@ -108,13 +127,10 @@ class TrackingBloc extends Bloc<TrackingEvent, TrackingState> {
     try {
       if (_trackingService.isTracking) {
         await _trackingService.pauseTracking();
-      } else {
-        print('⚠️ Трекинг не активен');
       }
 
       emit(TrackingOff());
     } catch (e) {
-      print('❌ Ошибка при постановке трекинга на паузу: $e');
       emit(TrackingOff());
     }
   }
@@ -123,5 +139,34 @@ class TrackingBloc extends Bloc<TrackingEvent, TrackingState> {
   void setUser(NavigationUser user) {
     _currentUser = user;
     add(TrackingCheckStatus());
+  }
+
+  /// Настроить подписку на поток позиций
+  void _setupPositionSubscription() {
+    _positionSubscription?.cancel();
+    
+    try {
+      _positionSubscription = _trackingService.positionStream?.listen(
+        (position) {
+          // Сохраняем последнюю позицию
+          _lastLatitude = position.latitude;
+          _lastLongitude = position.longitude;
+          _lastBearing = position.heading;
+          
+          // Отправляем событие обновления позиции
+          add(TrackingPositionUpdated(position.latitude, position.longitude, position.heading));
+        },
+        onError: (error) {
+        },
+        onDone: () {
+        },
+      );
+    } catch (e) {
+    }
+  }
+
+  /// Получить текущую позицию пользователя
+  (double?, double?, double?) getCurrentPosition() {
+    return (_lastLatitude, _lastLongitude, _lastBearing);
   }
 }

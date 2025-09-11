@@ -9,8 +9,7 @@ import 'package:get_it/get_it.dart';
 
 /// Менеджер жизненного цикла приложения для GPS трекинга
 class AppLifecycleManager with WidgetsBindingObserver {
-  static const String _tag = 'AppLifecycle';
-  
+
   final LocationTrackingServiceBase _trackingService;
   final GetCurrentAppSessionUseCase _sessionUsecase;
   
@@ -127,9 +126,9 @@ class AppLifecycleManager with WidgetsBindingObserver {
       final success = await _trackingService.startTracking(user);
 
       if (success) {
-        print('Автоматический трекинг рабочего дня начат');
+        // Автоматический трекинг рабочего дня начат
       } else {
-        print('Не удалось начать автоматический трекинг');
+        // Не удалось начать автоматический трекинг
       }
 
       return success;
@@ -187,7 +186,7 @@ class AppLifecycleManager with WidgetsBindingObserver {
 
   void _log(String message) {
     if (kDebugMode) {
-      print('🔄 [$_tag] $message');
+      // Сообщение
     }
   }
 }

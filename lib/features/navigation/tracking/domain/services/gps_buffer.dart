@@ -1,12 +1,8 @@
 import 'dart:async';
 import 'package:geolocator/geolocator.dart';
-import '../entities/compact_track.dart';
-import '../entities/compact_track_builder.dart';
+import 'package:fieldforce/features/navigation/tracking/domain/entities/compact_track.dart';
+import 'package:fieldforce/features/navigation/tracking/domain/entities/compact_track_builder.dart';
 
-/// Улучшенный буфер GPS точек с умной сегментацией
-/// 
-/// Принцип единой ответственности: только буферизация и управление сегментами
-/// Логика сохранения вынесена в TrackManager
 class GpsBuffer {
   final CompactTrackBuilder _builder = CompactTrackBuilder();
   final StreamController<CompactTrack> _updateController = StreamController<CompactTrack>.broadcast();

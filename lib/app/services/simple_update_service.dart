@@ -14,11 +14,11 @@ class SimpleUpdateService {
   /// Проверить обновления если включено в конфиге
   static Future<void> checkForUpdatesIfEnabled(BuildContext context) async {
     if (!AppConfig.checkForUpdates) {
-      print('� [Updates] Проверка обновлений отключена в конфигурации');
+      // Проверка обновлений отключена в конфигурации
       return;
     }
     
-    print('🔄 [Updates] Проверяем обновления...');
+    // Проверяем обновления...
     await _checkForUpdates(context);
   }
 
@@ -64,7 +64,7 @@ class SimpleUpdateService {
         
         // Проверяем нужно ли обновление
         if (data['version'] != CURRENT_VERSION) {
-          print('📦 [Updates] Найдено обновление: ${data['version']} (текущая: $CURRENT_VERSION)');
+          // Найдено обновление
           return data;
         } else {
           // Версия актуальна - возвращаем null
@@ -128,14 +128,14 @@ class SimpleUpdateService {
   /// Скачать обновление (открыть в браузере)
   static Future<void> _downloadUpdate(String url) async {
     try {
-      print('📥 [Updates] Открываем ссылку для скачивания: $url');
+      // Открываем ссылку для скачивания
       if (await canLaunchUrl(Uri.parse(url))) {
         await launchUrl(Uri.parse(url), mode: LaunchMode.externalApplication);
       } else {
-        print('❌ [Updates] Не удается открыть ссылку: $url');
+        // Не удается открыть ссылку
       }
     } catch (e) {
-      print('❌ [Updates] Ошибка при открытии ссылки: $e');
+      // Ошибка при открытии ссылки
     }
   }
   

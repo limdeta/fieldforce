@@ -248,7 +248,7 @@ class SyncService {
         (failure) => Left(failure),
         (needsSync) async {
           if (!needsSync) {
-            print('Синхронизация торговых точек не требуется');
+            // Синхронизация торговых точек не требуется
             return Right(null);
           }
           
@@ -259,11 +259,11 @@ class SyncService {
             (failure) => Left(failure),
             (updatedPoints) async {
               if (updatedPoints.isEmpty) {
-                print('Нет обновлений для синхронизации');
+                // Нет обновлений для синхронизации
                 return Right(null);
               }
               
-              print('Найдено ${updatedPoints.length} обновлений');
+              // Найдено обновлений
               
               // 3. Сохраняем только обновленные данные
               return await _saveTradingPointsLocally(updatedPoints);
