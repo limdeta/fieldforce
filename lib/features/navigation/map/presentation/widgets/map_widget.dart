@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
+import 'dart:math' as math;
 import '../../domain/entities/map_point.dart';
 import '../../domain/repositories/map_service.dart';
 import '../../../../../app/domain/adapters/route_map_adapter.dart';
@@ -25,6 +26,9 @@ class MapWidget extends StatefulWidget {
   /// Live буфер для отображения (текущие точки трекинга)
   final CompactTrack? liveBuffer;
   
+  /// Максимальное расстояние для соединения сегментов (в метрах)
+  final double? maxConnectionDistance;
+  
   final List<LatLng> routePolylinePoints;
 
   const MapWidget({
@@ -36,6 +40,7 @@ class MapWidget extends StatefulWidget {
     this.onLongPress,
     this.track,
     this.liveBuffer,
+    this.maxConnectionDistance,
     this.routePolylinePoints = const [],
   });
 
@@ -415,6 +420,25 @@ class _MapWidgetState extends State<MapWidget> {
   static const double _trackStrokeWidth = 4.0;
   static const double _connectionStrokeWidth = 4.0; // Одинаковая толщина
   static const double _connectionOpacity = 1.0; // Без прозрачности
+  
+  // Максимальное расстояние для соединения сегментов (в метрах)
+  static const double _maxConnectionDistance = 150.0;
+
+  /// Рассчитывает расстояние между двумя точками в метрах (формула гаверсинуса)
+  double _calculateDistance(double lat1, double lng1, double lat2, double lng2) {
+    const double earthRadius = 6371000; // Радиус Земли в метрах
+    
+    final double dLat = (lat2 - lat1) * (math.pi / 180.0);
+    final double dLng = (lng2 - lng1) * (math.pi / 180.0);
+    
+    final double a = math.pow(math.sin(dLat / 2), 2) +
+        math.cos(lat1 * math.pi / 180.0) * math.cos(lat2 * math.pi / 180.0) * 
+        math.pow(math.sin(dLng / 2), 2);
+    
+    final double c = 2 * math.atan2(math.sqrt(a), math.sqrt(1 - a));
+    
+    return earthRadius * c;
+  }
 
   /// Создает полилинии для отображения GPS трека
   List<Polyline> _buildTrackPolylines() {
@@ -477,41 +501,22 @@ class _MapWidgetState extends State<MapWidget> {
           color: _liveBufferColor, // Отдельный цвет для live буфера
         ),
       );
-      
-      // 3. Соединяем последний сегмент трека с live буфером
-      if (track.segments.isNotEmpty && track.segments.last.pointCount > 0) {
-        final lastSegment = track.segments.last;
-        final (lastLat, lastLng) = lastSegment.getCoordinates(lastSegment.pointCount - 1);
-        final (firstLiveLat, firstLiveLng) = widget.liveBuffer!.getCoordinates(0);
-        
-        polylines.add(
-          Polyline(
-            points: [
-              LatLng(lastLat, lastLng),
-              LatLng(firstLiveLat, firstLiveLng),
-            ],
-            strokeWidth: _trackStrokeWidth,
-            color: _connectionColor,
-          ),
-        );
-      }
     }
 
-    // 3. Добавляем соединительные линии между сегментами (если нет live буфера)
-    if (widget.liveBuffer == null || widget.liveBuffer!.pointCount < 2) {
-      final connectionLines = _buildConnectionLines(track);
-      polylines.addAll(connectionLines);
-    }
+    // 3. Добавляем соединительные линии между сегментами и live буфером
+    final connectionLines = _buildConnectionLines(track, widget.liveBuffer);
+    polylines.addAll(connectionLines);
 
     // Кэшируем результат
     _polylineCache![cacheKey] = polylines;
     return polylines;
   }
 
-  /// Создает соединительные линии между сегментами
-  List<Polyline> _buildConnectionLines(UserTrack track) {
+  /// Создает соединительные линии между сегментами и live буфером
+  List<Polyline> _buildConnectionLines(UserTrack track, CompactTrack? liveBuffer) {
     final connectionLines = <Polyline>[];
     
+    // 1. Соединения между сегментами трека
     for (int i = 0; i < track.segments.length - 1; i++) {
       final currentSegment = track.segments[i];
       final nextSegment = track.segments[i + 1];
@@ -524,7 +529,15 @@ class _MapWidgetState extends State<MapWidget> {
       // Получаем первую точку следующего сегмента
       final (startLat, startLng) = nextSegment.getCoordinates(0);
       
-      // Создаем соединительную линию того же цвета и толщины
+      // Проверяем расстояние
+      final distance = _calculateDistance(endLat, endLng, startLat, startLng);
+      final maxDistance = widget.maxConnectionDistance ?? _maxConnectionDistance;
+      if (distance > maxDistance) {
+        print('⚠️ Пропускаем соединение между сегментами ${i} и ${i+1}: расстояние ${distance.toStringAsFixed(1)}м > ${maxDistance}м');
+        continue;
+      }
+      
+      // Создаем соединительную линию
       connectionLines.add(
         Polyline(
           points: [
@@ -535,6 +548,33 @@ class _MapWidgetState extends State<MapWidget> {
           color: _connectionLineColor.withOpacity(_connectionOpacity),
         ),
       );
+    }
+    
+    // 2. Соединение между последним сегментом и live буфером
+    if (liveBuffer != null && liveBuffer.pointCount > 0 && track.segments.isNotEmpty) {
+      final lastSegment = track.segments.last;
+      if (lastSegment.pointCount > 0) {
+        final (endLat, endLng) = lastSegment.getCoordinates(lastSegment.pointCount - 1);
+        final (startLat, startLng) = liveBuffer.getCoordinates(0);
+        
+        // Проверяем расстояние
+        final distance = _calculateDistance(endLat, endLng, startLat, startLng);
+        final maxDistance = widget.maxConnectionDistance ?? _maxConnectionDistance;
+        if (distance <= maxDistance) {
+          connectionLines.add(
+            Polyline(
+              points: [
+                LatLng(endLat, endLng),
+                LatLng(startLat, startLng),
+              ],
+              strokeWidth: _connectionStrokeWidth,
+              color: _connectionColor, // Фиолетовый для соединения с live буфером
+            ),
+          );
+        } else {
+          print('⚠️ Пропускаем соединение с live буфером: расстояние ${distance.toStringAsFixed(1)}м > ${maxDistance}м');
+        }
+      }
     }
     
     return connectionLines;

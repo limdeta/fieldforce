@@ -55,7 +55,14 @@ class TrackingBloc extends Bloc<TrackingEvent, TrackingState> {
         print('🎯 TrackingBloc: _trackingService.isTracking == true, emit TrackingOn');
         emit(TrackingOn());
       } else if (_currentUser != null) {
-        print('🎯 TrackingBloc: _trackingService.isTracking == false, но пользователь есть, emit TrackingOff');
+        print('🎯 TrackingBloc: _trackingService.isTracking == false, но пользователь есть');
+        // Проверяем, был ли трекинг активен до этого (чтобы не останавливать случайно)
+        if (state is TrackingOn) {
+          print('⚠️ TrackingBloc: Трекинг был активен, но сервис сообщает false - возможно временная проблема, сохраняем состояние');
+          // Не меняем состояние, если оно было активно
+          return;
+        }
+        print('🎯 TrackingBloc: emit TrackingOff');
         emit(TrackingOff());
       } else {
         print('🎯 TrackingBloc: Нет пользователя, emit TrackingNoUser');

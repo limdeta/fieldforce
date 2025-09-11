@@ -28,6 +28,9 @@ class CombinedMapWidget extends StatelessWidget {
   /// Live буфер для отображения (текущие точки трекинга)
   final CompactTrack? liveBuffer;
   
+  /// Максимальное расстояние для соединения сегментов (в метрах)
+  final double? maxConnectionDistance;
+  
   /// Точки полилинии маршрута (для отображения построенного пути)
   final List<LatLng> routePolylinePoints;
 
@@ -40,6 +43,7 @@ class CombinedMapWidget extends StatelessWidget {
     this.onLongPress,
     this.track,
     this.liveBuffer,
+    this.maxConnectionDistance,
     this.routePolylinePoints = const [],
   });
 
@@ -54,6 +58,7 @@ class CombinedMapWidget extends StatelessWidget {
       onLongPress: CoordinateConverter.convertLatLngCallback(onLongPress),
       track: track,
       liveBuffer: liveBuffer,
+      maxConnectionDistance: maxConnectionDistance,
       routePolylinePoints: routePolylinePoints,
     );
   }

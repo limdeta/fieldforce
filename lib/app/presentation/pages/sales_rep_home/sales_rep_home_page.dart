@@ -1,4 +1,5 @@
 import 'package:fieldforce/features/navigation/tracking/domain/entities/compact_track.dart';
+import 'package:fieldforce/features/navigation/tracking/presentation/bloc/tracking_bloc.dart';
 import 'package:fieldforce/app/presentation/pages/route_detail_page.dart';
 import 'package:fieldforce/app/services/app_session_service.dart';
 import 'package:fieldforce/features/navigation/tracking/domain/entities/navigation_user.dart';
@@ -37,6 +38,21 @@ class SalesRepHomePage extends StatelessWidget {
         ),
         BlocProvider<UserTracksBloc>(
           create: (context) => UserTracksBloc(),
+        ),
+        // TrackingBloc для управления трекингом
+        BlocProvider<TrackingBloc>(
+          create: (context) {
+            final bloc = TrackingBloc();
+            // Устанавливаем пользователя из сессии
+            final currentSession = AppSessionService.currentSession;
+            if (currentSession?.appUser != null) {
+              bloc.setUser(currentSession!.appUser);
+              print('🎯 SalesRepHomePage: TrackingBloc создан с пользователем ${currentSession.appUser.id}');
+            } else {
+              print('⚠️ SalesRepHomePage: TrackingBloc создан без пользователя');
+            }
+            return bloc;
+          },
         ),
       ],
       child: SalesRepHomeView(gpsDataManager: gpsDataManager),
@@ -194,6 +210,7 @@ class _SalesRepHomeViewState extends State<SalesRepHomeView> {
                 route: route,
                 track: track,
                 liveBuffer: liveBuffer,
+                maxConnectionDistance: 250.0, // Максимальное расстояние для соединения сегментов
                 onTap: (point) {
                   print('Нажатие на карту: ${point.latitude}, ${point.longitude}');
                 },
@@ -208,6 +225,7 @@ class _SalesRepHomeViewState extends State<SalesRepHomeView> {
           route: null,
           track: null,
           liveBuffer: null,
+          maxConnectionDistance: 150.0,
           onTap: (point) {},
           routePolylinePoints: const [],
         );
