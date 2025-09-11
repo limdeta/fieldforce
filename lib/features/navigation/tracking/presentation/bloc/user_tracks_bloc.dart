@@ -2,6 +2,7 @@ import 'dart:async';
 import 'package:bloc/bloc.dart';
 import 'package:equatable/equatable.dart';
 import 'package:fieldforce/features/navigation/tracking/domain/entities/user_track.dart';
+import 'package:fieldforce/features/navigation/tracking/domain/entities/compact_track.dart';
 import 'package:fieldforce/features/navigation/tracking/domain/usecases/get_user_track_for_date_usecase.dart';
 import 'package:fieldforce/features/navigation/tracking/domain/usecases/get_user_tracks_usecase.dart';
 import 'package:fieldforce/features/navigation/tracking/domain/services/location_tracking_service_base.dart';
@@ -17,9 +18,10 @@ abstract class UserTracksEvent extends Equatable {
 
 class LoadUserTracksEvent extends UserTracksEvent {
   final NavigationUser user;
-  LoadUserTracksEvent(this.user);
+  final bool showActiveTrack; // Показать активный трек после загрузки
+  LoadUserTracksEvent(this.user, {this.showActiveTrack = false});
   @override
-  List<Object?> get props => [user];
+  List<Object?> get props => [user, showActiveTrack];
 }
 
 class LoadUserTrackForDateEvent extends UserTracksEvent {
@@ -32,11 +34,27 @@ class LoadUserTrackForDateEvent extends UserTracksEvent {
 
 class ClearTracksEvent extends UserTracksEvent {}
 
+class SetDisplayedTrackEvent extends UserTracksEvent {
+  final UserTrack? track; // null = ничего не отображаем
+  SetDisplayedTrackEvent(this.track);
+  @override
+  List<Object?> get props => [track];
+}
+
+class ShowActiveTrackEvent extends UserTracksEvent {}
+
 class ActiveTrackUpdatedEvent extends UserTracksEvent {
   final UserTrack activeTrack;
   ActiveTrackUpdatedEvent(this.activeTrack);
   @override
   List<Object?> get props => [activeTrack];
+}
+
+class LiveBufferUpdatedEvent extends UserTracksEvent {
+  final CompactTrack bufferSegment;
+  LiveBufferUpdatedEvent(this.bufferSegment);
+  @override
+  List<Object?> get props => [bufferSegment];
 }
 
 // STATES
@@ -53,13 +71,33 @@ class UserTracksLoaded extends UserTracksState {
   final List<UserTrack> userTracks;
   final UserTrack? activeTrack;
   final List<UserTrack> completedTracks;
+  final String? notificationMessage; // Уведомление для пользователя
+  final CompactTrack? liveBuffer; // Live данные буфера для отрисовки
   UserTracksLoaded({
     required this.userTracks,
     required this.activeTrack,
     required this.completedTracks,
+    this.notificationMessage,
+    this.liveBuffer,
   });
   @override
-  List<Object?> get props => [userTracks, activeTrack, completedTracks];
+  List<Object?> get props => [userTracks, activeTrack, completedTracks, notificationMessage, liveBuffer];
+
+  UserTracksLoaded copyWith({
+    List<UserTrack>? userTracks,
+    UserTrack? activeTrack,
+    List<UserTrack>? completedTracks,
+    String? notificationMessage,
+    CompactTrack? liveBuffer,
+  }) {
+    return UserTracksLoaded(
+      userTracks: userTracks ?? this.userTracks,
+      activeTrack: activeTrack ?? this.activeTrack,
+      completedTracks: completedTracks ?? this.completedTracks,
+      notificationMessage: notificationMessage ?? this.notificationMessage,
+      liveBuffer: liveBuffer ?? this.liveBuffer,
+    );
+  }
 }
 
 class UserTracksError extends UserTracksState {
@@ -83,9 +121,12 @@ class UserTracksBloc extends Bloc<UserTracksEvent, UserTracksState> {
   final LocationTrackingServiceBase _locationTrackingService = GetIt.instance<LocationTrackingServiceBase>();
 
   List<UserTrack> _userTracks = [];
-  UserTrack? _activeTrack;
+  UserTrack? _displayedTrack; // Единственный трек который отображается
   List<UserTrack> _completedTracks = [];
   String? _error;
+  
+  StreamSubscription<UserTrack>? _trackUpdateSubscription;
+  StreamSubscription<CompactTrack>? _liveBufferSubscription;
 
   StreamSubscription<UserTrack>? _activeTrackSubscription;
 
@@ -93,11 +134,18 @@ class UserTracksBloc extends Bloc<UserTracksEvent, UserTracksState> {
   DateTime? _lastLoadTime;
   static const Duration _cacheTimeout = Duration(minutes: 5);
 
+  // Геттер для активного трека
+  // Getter для активного трека из списка
+  UserTrack? get activeTrack => _userTracks.where((track) => track.status.isActive).firstOrNull;
+
   UserTracksBloc() : super(UserTracksInitial()) {
     on<LoadUserTracksEvent>(_onLoadUserTracks);
     on<LoadUserTrackForDateEvent>(_onLoadUserTrackForDate);
     on<ClearTracksEvent>(_onClearTracks);
+    on<SetDisplayedTrackEvent>(_onSetDisplayedTrack);
+    on<ShowActiveTrackEvent>(_onShowActiveTrack);
     on<ActiveTrackUpdatedEvent>(_onActiveTrackUpdated);
+    on<LiveBufferUpdatedEvent>(_onLiveBufferUpdated);
     _subscribeToActiveTrack();
   }
 
@@ -107,7 +155,7 @@ class UserTracksBloc extends Bloc<UserTracksEvent, UserTracksState> {
         DateTime.now().difference(_lastLoadTime!) < _cacheTimeout) {
       emit(UserTracksLoaded(
         userTracks: _userTracks,
-        activeTrack: _activeTrack,
+        activeTrack: _displayedTrack,
         completedTracks: _completedTracks,
       ));
       return;
@@ -121,13 +169,19 @@ class UserTracksBloc extends Bloc<UserTracksEvent, UserTracksState> {
       },
       (tracks) {
         _userTracks = tracks;
-        _activeTrack = tracks.where((track) => track.status.isActive).firstOrNull;
+        final currentActiveTrack = tracks.where((track) => track.status.isActive).firstOrNull;
         _completedTracks = tracks.where((track) => track.status.name == 'completed').toList();
         _lastLoadedUser = event.user;
         _lastLoadTime = DateTime.now();
+        
+        // Если нужно показать активный трек после загрузки
+        if (event.showActiveTrack && currentActiveTrack != null) {
+          _displayedTrack = currentActiveTrack;
+        }
+        
         emit(UserTracksLoaded(
           userTracks: _userTracks,
-          activeTrack: _activeTrack,
+          activeTrack: _displayedTrack, // Отображаемый трек
           completedTracks: _completedTracks,
         ));
       },
@@ -142,7 +196,19 @@ class UserTracksBloc extends Bloc<UserTracksEvent, UserTracksState> {
       (failure) {
         print('[UserTracksBloc] Track not found for date=${event.date}, failure=$failure');
         if (failure is NotFoundFailure) {
-          emit(UserTrackNotFound(event.date));
+          // Трек не найден - просто не показываем ничего с уведомлением
+          print('[UserTracksBloc] Track not found for date=${event.date}');
+          
+          _userTracks = [];
+          _displayedTrack = null; // Ничего не показываем
+          _completedTracks = [];
+          
+          emit(UserTracksLoaded(
+            userTracks: _userTracks,
+            activeTrack: _displayedTrack,
+            completedTracks: _completedTracks,
+            notificationMessage: 'Нет данных за ${event.date.day}.${event.date.month}.${event.date.year}',
+          ));
         } else {
           _error = 'Ошибка загрузки трека: $failure';
           emit(UserTracksError(_error!));
@@ -151,11 +217,11 @@ class UserTracksBloc extends Bloc<UserTracksEvent, UserTracksState> {
       (track) {
         print('[UserTracksBloc] Track loaded for date=${event.date}, trackId=${track?.id}');
         _userTracks = track != null ? [track] : [];
-        _activeTrack = track != null && track.status.isActive ? track : null;
+        _displayedTrack = track; // Устанавливаем загруженный трек как отображаемый
         _completedTracks = track != null && track.status.name == 'completed' ? [track] : [];
         emit(UserTracksLoaded(
           userTracks: _userTracks,
-          activeTrack: _activeTrack,
+          activeTrack: _displayedTrack, // отображаем загруженный трек
           completedTracks: _completedTracks,
         ));
       },
@@ -163,8 +229,9 @@ class UserTracksBloc extends Bloc<UserTracksEvent, UserTracksState> {
   }
 
   void _onClearTracks(ClearTracksEvent event, Emitter<UserTracksState> emit) {
+    print('[UserTracksBloc] Clearing all tracks including displayedTrack');
     _userTracks.clear();
-    _activeTrack = null;
+    _displayedTrack = null; // Очищаем отображаемый трек!
     _completedTracks.clear();
     _error = null;
     _lastLoadedUser = null;
@@ -172,36 +239,99 @@ class UserTracksBloc extends Bloc<UserTracksEvent, UserTracksState> {
     emit(UserTracksInitial());
   }
 
+  void _onSetDisplayedTrack(SetDisplayedTrackEvent event, Emitter<UserTracksState> emit) {
+    print('[UserTracksBloc] Setting displayed track: ${event.track?.id ?? "null"}');
+    _displayedTrack = event.track;
+    
+    // Отрисовываем трек
+    emit(UserTracksLoaded(
+      userTracks: _userTracks,
+      activeTrack: _displayedTrack, // отображаемый трек
+      completedTracks: _completedTracks,
+    ));
+    
+    // Проверяем: это активный трек? Если да - подключаем realtime
+    if (_displayedTrack != null && _displayedTrack!.status.isActive) {
+      print('[UserTracksBloc] Displayed track is active - realtime updates enabled');
+      // Realtime уже подключен через _subscribeToActiveTrack
+    } else {
+      print('[UserTracksBloc] Displayed track is historical - static display');
+      // Ничего не делаем - трек уже отрисован статично
+    }
+  }
+
+  void _onShowActiveTrack(ShowActiveTrackEvent event, Emitter<UserTracksState> emit) {
+    final currentActiveTrack = activeTrack; // используем getter
+    print('[UserTracksBloc] Showing active track: ${currentActiveTrack?.id ?? "null"}');
+    // Просто вызываем SetDisplayedTrackEvent с активным треком
+    add(SetDisplayedTrackEvent(currentActiveTrack));
+  }
+
   void _subscribeToActiveTrack() {
-    _activeTrackSubscription = _locationTrackingService.trackUpdateStream.listen(
+    // Подписка на обновления сохраненных треков (редкие обновления)
+    _trackUpdateSubscription = _locationTrackingService.trackUpdateStream.listen(
       (activeTrack) {
         add(ActiveTrackUpdatedEvent(activeTrack));
       },
       onError: (error) {
-        // Optionally handle error
+        print('❌ UserTracksBloc: Ошибка в trackUpdateStream: $error');
+      },
+    );
+    
+    // Подписка на live обновления буфера (частые обновления)
+    _liveBufferSubscription = _locationTrackingService.liveBufferStream?.listen(
+      (bufferSegment) {
+        add(LiveBufferUpdatedEvent(bufferSegment));
+      },
+      onError: (error) {
+        print('❌ UserTracksBloc: Ошибка в liveBufferStream: $error');
       },
     );
   }
 
   void _onActiveTrackUpdated(ActiveTrackUpdatedEvent event, Emitter<UserTracksState> emit) {
     print('[UserTracksBloc] _onActiveTrackUpdated called for trackId=${event.activeTrack.id}');
+    print('[UserTracksBloc] Current _displayedTrack?.id = ${_displayedTrack?.id}');
+    print('[UserTracksBloc] Active track id = ${event.activeTrack.id}');
+    print('[UserTracksBloc] Active track points count = ${event.activeTrack.totalPoints}'); // Добавлен лог
+    print('[UserTracksBloc] Should update UI? ${_displayedTrack?.id == event.activeTrack.id}');
+    
+    // Всегда обновляем активный трек в памяти (для фонового трекинга)
     final existingIndex = _userTracks.indexWhere((track) => track.id == event.activeTrack.id);
     if (existingIndex != -1) {
       _userTracks[existingIndex] = event.activeTrack;
     } else {
       _userTracks.add(event.activeTrack);
     }
-    _activeTrack = event.activeTrack;
-    emit(UserTracksLoaded(
-      userTracks: _userTracks,
-      activeTrack: _activeTrack,
-      completedTracks: _completedTracks,
-    ));
+    
+    // Обновляем UI только если активный трек сейчас отображается
+    if (_displayedTrack?.id == event.activeTrack.id) {
+      print('[UserTracksBloc] ✅ Активный трек отображается - обновляем UI');
+      print('[UserTracksBloc] Old displayed track points: ${_displayedTrack?.totalPoints}'); // Добавлен лог
+      _displayedTrack = event.activeTrack;
+      print('[UserTracksBloc] New displayed track points: ${_displayedTrack?.totalPoints}'); // Добавлен лог
+      emit(UserTracksLoaded(
+        userTracks: _userTracks,
+        activeTrack: event.activeTrack,
+        completedTracks: _completedTracks,
+      ));
+    } else {
+      print('[UserTracksBloc] ❌ Активный трек НЕ отображается - игнорируем обновление UI');
+    }
+  }
+
+  void _onLiveBufferUpdated(LiveBufferUpdatedEvent event, Emitter<UserTracksState> emit) {
+    if (state is UserTracksLoaded) {
+      final currentState = state as UserTracksLoaded;
+      emit(currentState.copyWith(liveBuffer: event.bufferSegment));
+    }
   }
 
   @override
   Future<void> close() {
     _activeTrackSubscription?.cancel();
+    _trackUpdateSubscription?.cancel();
+    _liveBufferSubscription?.cancel();
     return super.close();
   }
 }

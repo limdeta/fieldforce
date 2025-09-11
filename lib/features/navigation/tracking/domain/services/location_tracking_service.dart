@@ -6,7 +6,7 @@ import 'package:geolocator/geolocator.dart';
 import 'package:get_it/get_it.dart';
 import 'package:fieldforce/features/navigation/tracking/domain/entities/navigation_user.dart';
 import '../entities/user_track.dart';
-import '../enums/track_status.dart';
+import '../entities/compact_track.dart';
 import '../repositories/user_track_repository.dart';
 import 'gps_data_manager.dart';
 import 'track_manager.dart';
@@ -62,6 +62,8 @@ class LocationTrackingService implements LocationTrackingServiceBase  {
   Stream<Position> get positionStream => _positionController.stream;
   @override
   Stream<UserTrack> get trackUpdateStream => _trackManager.trackUpdateStream;
+  
+  Stream<CompactTrack> get liveBufferStream => _trackManager.liveBufferStream;
   Stream<bool> get trackingStateStream => _trackingStateController.stream;
   Stream<bool> get pauseStateStream => _pauseStateController.stream;
   

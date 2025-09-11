@@ -19,11 +19,12 @@ class SalesRepHomeInitial extends SalesRepHomeState {
 /// Состояние загрузки
 class SalesRepHomeLoading extends SalesRepHomeState {
   final String? message;
+  final shop.Route? preselectedRoute;
 
-  const SalesRepHomeLoading({this.message});
+  const SalesRepHomeLoading({this.message, this.preselectedRoute});
 
   @override
-  List<Object?> get props => [message];
+  List<Object?> get props => [message, preselectedRoute];
 }
 
 /// Состояние с загруженными данными

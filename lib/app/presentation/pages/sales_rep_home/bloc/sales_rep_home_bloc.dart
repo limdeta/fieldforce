@@ -6,8 +6,7 @@ import 'package:latlong2/latlong.dart';
 import 'package:fieldforce/app/domain/entities/route.dart' as shop;
 import 'package:fieldforce/app/domain/repositories/route_repository.dart';
 import 'package:fieldforce/app/services/app_session_service.dart';
-import 'package:fieldforce/app/domain/entities/route.dart' as domain;
-import 'package:fieldforce/features/navigation/tracking/domain/services/location_tracking_service_base.dart';
+import 'package:fieldforce/app/services/user_preferences_service.dart';
 import 'package:fieldforce/features/navigation/map/domain/entities/map_point.dart';
 import 'package:fieldforce/features/navigation/path_predictor/osrm_path_prediction_service.dart';
 import 'sales_rep_home_event.dart';
@@ -16,7 +15,8 @@ import 'sales_rep_home_state.dart';
 /// BLoC для главной страницы торгового представителя
 class SalesRepHomeBloc extends Bloc<SalesRepHomeEvent, SalesRepHomeState> {
   final RouteRepository _routeRepository = GetIt.instance<RouteRepository>();
-  final LocationTrackingServiceBase _trackingService = GetIt.instance<LocationTrackingServiceBase>();
+  final UserPreferencesService _preferencesService = GetIt.instance<UserPreferencesService>();
+  // final LocationTrackingServiceBase _trackingService = GetIt.instance<LocationTrackingServiceBase>();
 
   StreamSubscription<List<shop.Route>>? _routesSubscription;
   StreamSubscription? _activeTrackSubscription;
@@ -54,15 +54,7 @@ class SalesRepHomeBloc extends Bloc<SalesRepHomeEvent, SalesRepHomeState> {
   /// Настройка слушателя активного трека
   void _setupActiveTrackListener() {
     _activeTrackSubscription?.cancel();
-
-    _activeTrackSubscription = _trackingService.trackUpdateStream.listen(
-      (activeTrack) {
-        add(ActiveTrackUpdatedEvent(activeTrack));
-      },
-      onError: (error) {
-        print('⚠️ SalesRepHomeBloc: Ошибка прямой подписки на трек: $error');
-      },
-    );
+    print('🔇 SalesRepHomeBloc: Подписка на trackUpdateStream отключена - управление через UserTracksBloc');
   }
 
   /// Инициализация BLoC
@@ -70,7 +62,10 @@ class SalesRepHomeBloc extends Bloc<SalesRepHomeEvent, SalesRepHomeState> {
     SalesRepHomeInitializeEvent event,
     Emitter<SalesRepHomeState> emit,
   ) async {
-    emit(const SalesRepHomeLoading(message: 'Инициализация...'));
+    emit(SalesRepHomeLoading(
+      message: 'Инициализация...',
+      preselectedRoute: event.preselectedRoute,
+    ));
 
     try {
       final sessionResult = await AppSessionService.getCurrentAppSession();
@@ -90,6 +85,16 @@ class SalesRepHomeBloc extends Bloc<SalesRepHomeEvent, SalesRepHomeState> {
         ));
         return;
       }
+
+      // Если передан preselectedRoute, сохраняем его в настройки
+      if (event.preselectedRoute != null) {
+        await _preferencesService.setSelectedRouteId(event.preselectedRoute!.id);
+        print('[SalesRepHomeBloc] Preselected route saved: ${event.preselectedRoute!.name} (id=${event.preselectedRoute!.id})');
+      }
+
+      // Загружаем сохраненный маршрут из настроек (или используем preselectedRoute)
+      final savedRouteId = event.preselectedRoute?.id ?? _preferencesService.getSelectedRouteId();
+      print('[SalesRepHomeBloc] Saved route ID: $savedRouteId');
 
       _setupRouteStreamListener(session);
       add(const LoadUserRoutesEvent());
@@ -129,6 +134,10 @@ class SalesRepHomeBloc extends Bloc<SalesRepHomeEvent, SalesRepHomeState> {
     Emitter<SalesRepHomeState> emit,
   ) async {
     try {
+      // Сохраняем выбранный маршрут в настройки
+      await _preferencesService.setSelectedRouteId(event.route.id);
+      print('[SalesRepHomeBloc] Route saved to preferences: ${event.route.name} (id=${event.route.id})');
+
       add(SyncTracksWithRouteEvent(event.route));
 
       if (state is SalesRepHomeLoaded) {
@@ -222,7 +231,31 @@ class SalesRepHomeBloc extends Bloc<SalesRepHomeEvent, SalesRepHomeState> {
     }
 
     shop.Route? routeToDisplay;
-    routeToDisplay = _findCurrentRoute(event.routes);
+    
+    // Сначала проверяем, есть ли preselectedRoute в состоянии инициализации
+    if (state is SalesRepHomeLoading) {
+      final loadingState = state as SalesRepHomeLoading;
+      if (loadingState.preselectedRoute != null) {
+        // Ищем preselectedRoute в загруженных маршрутах
+        routeToDisplay = event.routes.where((route) => route.id == loadingState.preselectedRoute!.id).firstOrNull;
+        print('[SalesRepHomeBloc] Found preselected route: ${routeToDisplay?.name ?? "null"} (id=${loadingState.preselectedRoute!.id})');
+      }
+    }
+    
+    // Если preselectedRoute не найден или не был установлен, ищем сохраненный маршрут из настроек
+    if (routeToDisplay == null) {
+      final savedRouteId = _preferencesService.getSelectedRouteId();
+      if (savedRouteId != null) {
+        routeToDisplay = event.routes.where((route) => route.id == savedRouteId).firstOrNull;
+        print('[SalesRepHomeBloc] Found saved route: ${routeToDisplay?.name ?? "null"} (id=$savedRouteId)');
+      }
+    }
+    
+    // Если сохраненный маршрут не найден - используем активный или сегодняшний
+    if (routeToDisplay == null) {
+      routeToDisplay = _findCurrentRoute(event.routes);
+      print('[SalesRepHomeBloc] Using current route: ${routeToDisplay?.name ?? "null"}');
+    }
 
     emit(SalesRepHomeLoaded(
       currentRoute: routeToDisplay,
@@ -241,7 +274,6 @@ class SalesRepHomeBloc extends Bloc<SalesRepHomeEvent, SalesRepHomeState> {
       final session = sessionResult.fold((l) => null, (r) => r);
 
       if (session != null) {
-        final routeDate = event.route.startTime ?? DateTime.now();
         print('[SalesRepHomeBloc] Syncing tracks for route: ${event.route.name}');
       }
     } catch (e) {

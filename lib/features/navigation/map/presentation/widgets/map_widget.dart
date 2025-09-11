@@ -8,6 +8,7 @@ import '../../data/repositories/osm_map_service.dart';
 import '../../../../../app/domain/entities/route.dart' as domain;
 import '../../../../../app/services/user_initialization_service.dart';
 import '../../../tracking/domain/entities/user_track.dart';
+import '../../../tracking/domain/entities/compact_track.dart';
 import 'route_polyline.dart';
 
 /// Основной виджет карты с поддержкой различных провайдеров
@@ -21,6 +22,9 @@ class MapWidget extends StatefulWidget {
   /// Трек для отображения (может быть null)
   final UserTrack? track;
   
+  /// Live буфер для отображения (текущие точки трекинга)
+  final CompactTrack? liveBuffer;
+  
   final List<LatLng> routePolylinePoints;
 
   const MapWidget({
@@ -31,6 +35,7 @@ class MapWidget extends StatefulWidget {
     this.onTap,
     this.onLongPress,
     this.track,
+    this.liveBuffer,
     this.routePolylinePoints = const [],
   });
 
@@ -51,6 +56,7 @@ class _MapWidgetState extends State<MapWidget> {
     super.initState();
     _mapController = MapController();
     _mapService = OSMMapService(); // В будущем можно inject через DI
+    _polylineCache = {}; // Инициализируем кэш
   }
 
   @override
@@ -398,11 +404,13 @@ class _MapWidgetState extends State<MapWidget> {
   // }
 
 
-  // Кэш для оптимизации полилиний треков
-  static final Map<String, List<Polyline>> _polylineCache = {};
+  // Кэш для оптимизации полилиний треков (упрощенный)
+  Map<String, List<Polyline>>? _polylineCache;
   
   // Конфигурация цветов и стилей треков
   static const Color _trackColor = Colors.pink; // HOT PINK для всех линий трека
+  static const Color _liveBufferColor = Colors.blue; // Синий для live буфера
+  static const Color _connectionColor = Colors.purple; // Фиолетовый для соединений
   static const Color _connectionLineColor = Colors.pink; // HOT PINK и для соединений
   static const double _trackStrokeWidth = 4.0;
   static const double _connectionStrokeWidth = 4.0; // Одинаковая толщина
@@ -415,19 +423,19 @@ class _MapWidgetState extends State<MapWidget> {
       return [];
     }
 
-    // Создаем кэш-ключ с учетом live сегмента
+    // Создаем кэш-ключ с учетом live буфера
     String cacheKey;
-    if (track.liveSegmentIndex != null) {
-      // Для треков с live сегментом учитываем totalPoints для инвалидации при новых точках
-      cacheKey = '${track.id}_${track.segments.length}_${track.totalPoints}_live${track.liveSegmentIndex}';
+    if (widget.liveBuffer != null && widget.liveBuffer!.pointCount > 0) {
+      // Для треков с live буфером учитываем количество точек для инвалидации при новых точках
+      cacheKey = '${track.id}_${track.segments.length}_${track.totalPoints}_live${widget.liveBuffer!.pointCount}';
     } else {
       // Для завершенных треков используем стабильный ключ
       cacheKey = '${track.id}_${track.segments.length}';
     }
     
     // Проверяем кэш
-    if (_polylineCache.containsKey(cacheKey)) {
-      return _polylineCache[cacheKey]!;
+    if (_polylineCache!.containsKey(cacheKey)) {
+      return _polylineCache![cacheKey]!;
     }
 
     final polylines = <Polyline>[];
@@ -454,12 +462,49 @@ class _MapWidgetState extends State<MapWidget> {
       );
     }
 
-    // 2. Добавляем соединительные линии между сегментами
-    final connectionLines = _buildConnectionLines(track);
-    polylines.addAll(connectionLines);
+    // 2. Добавляем live буфер как отдельную линию (если есть)
+    if (widget.liveBuffer != null && widget.liveBuffer!.pointCount >= 2) {
+      final livePoints = <LatLng>[];
+      for (int j = 0; j < widget.liveBuffer!.pointCount; j++) {
+        final (lat, lng) = widget.liveBuffer!.getCoordinates(j);
+        livePoints.add(LatLng(lat, lng));
+      }
+      
+      polylines.add(
+        Polyline(
+          points: livePoints,
+          strokeWidth: _trackStrokeWidth,
+          color: _liveBufferColor, // Отдельный цвет для live буфера
+        ),
+      );
+      
+      // 3. Соединяем последний сегмент трека с live буфером
+      if (track.segments.isNotEmpty && track.segments.last.pointCount > 0) {
+        final lastSegment = track.segments.last;
+        final (lastLat, lastLng) = lastSegment.getCoordinates(lastSegment.pointCount - 1);
+        final (firstLiveLat, firstLiveLng) = widget.liveBuffer!.getCoordinates(0);
+        
+        polylines.add(
+          Polyline(
+            points: [
+              LatLng(lastLat, lastLng),
+              LatLng(firstLiveLat, firstLiveLng),
+            ],
+            strokeWidth: _trackStrokeWidth,
+            color: _connectionColor,
+          ),
+        );
+      }
+    }
+
+    // 3. Добавляем соединительные линии между сегментами (если нет live буфера)
+    if (widget.liveBuffer == null || widget.liveBuffer!.pointCount < 2) {
+      final connectionLines = _buildConnectionLines(track);
+      polylines.addAll(connectionLines);
+    }
 
     // Кэшируем результат
-    _polylineCache[cacheKey] = polylines;
+    _polylineCache![cacheKey] = polylines;
     return polylines;
   }
 
@@ -497,8 +542,8 @@ class _MapWidgetState extends State<MapWidget> {
 
   /// Очищает кэш полилиний при изменении треков (оптимизация памяти)
   void _clearPolylineCache() {
-    if (_polylineCache.isNotEmpty) {
-      _polylineCache.clear();
+    if (_polylineCache != null && _polylineCache!.isNotEmpty) {
+      _polylineCache!.clear();
     }
   }
 

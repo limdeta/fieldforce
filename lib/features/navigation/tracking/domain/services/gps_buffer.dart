@@ -3,13 +3,10 @@ import 'package:geolocator/geolocator.dart';
 import '../entities/compact_track.dart';
 import '../entities/compact_track_builder.dart';
 
-/// Буфер GPS точек для оптимизации real-time трекинга
+/// Улучшенный буфер GPS точек с умной сегментацией
 /// 
-/// Решает проблемы:
-/// - Частые записи в БД при каждой GPS точке
-/// - Лишние перестроения UI
-/// - GPS шум и избыточные данные
-/// - Правильная сегментация треков
+/// Принцип единой ответственности: только буферизация и управление сегментами
+/// Логика сохранения вынесена в TrackManager
 class GpsBuffer {
   final CompactTrackBuilder _builder = CompactTrackBuilder();
   final StreamController<CompactTrack> _updateController = StreamController<CompactTrack>.broadcast();
@@ -17,16 +14,17 @@ class GpsBuffer {
   Timer? _flushTimer;
   DateTime? _lastFlushTime;
   
-  // УЛУЧШЕННЫЕ настройки буферизации для работы с умной сегментацией
-  static const int _maxBufferSize = 50; // Увеличено до 50 точек (было 20)
-  static const Duration _maxBufferTime = Duration(minutes: 10); // Увеличено до 10 минут (было 30 сек)
-  static const double _minDistanceMeters = 2.0; // Уменьшено до 2м для более точного трека
+  // Оптимизированные настройки буферизации
+  static const int _maxBufferSize = 50; // Увеличено для лучшей производительности
+  static const Duration _maxBufferTime = Duration(minutes: 10); // Увеличено
+  static const double _minDistanceMeters = 2.0; // Фильтр по расстоянию
 
   Position? _lastPosition;
 
   Stream<CompactTrack> get updateStream => _updateController.stream;
   int get pointCount => _builder.pointCount;
   bool get hasData => _builder.pointCount > 0;
+  bool get isReadyToFlush => _shouldFlush();
 
   void addPoint(Position position) {
     // Фильтруем точки по расстоянию
@@ -56,7 +54,6 @@ class GpsBuffer {
     _lastPosition = position;
 
     _notifyUpdate();
-    _checkFlushConditions();
   }
   
   /// Принудительно сбрасывает буфер и возвращает сегмент
@@ -92,44 +89,24 @@ class GpsBuffer {
     }
   }
   
-  void _checkFlushConditions() {
+  /// Проверяет, готов ли буфер к сбросу
+  bool _shouldFlush() {
+    if (_builder.pointCount == 0) return false;
+    
     // Условие 1: Превышен размер буфера
     if (_builder.pointCount >= _maxBufferSize) {
-      _scheduleFlush();
-      return;
+      return true;
     }
     
     // Условие 2: Превышено время буферизации
     if (_lastFlushTime != null) {
       final timeSinceFlush = DateTime.now().difference(_lastFlushTime!);
       if (timeSinceFlush >= _maxBufferTime) {
-        _scheduleFlush();
-        return;
+        return true;
       }
     }
-
-    _scheduleFlushTimer();
-  }
-  
-  void _scheduleFlush() {
-    _cancelFlushTimer();
     
-    // задержка для группировки точек
-    _flushTimer = Timer(const Duration(milliseconds: 100), () {
-      if (_builder.pointCount > 0) {
-        flush(); // Просто флашим буфер, сохранение будет в TrackManager
-      }
-    });
-  }
-  
-  void _scheduleFlushTimer() {
-    _cancelFlushTimer();
-    
-    _flushTimer = Timer(_maxBufferTime, () {
-      if (_builder.pointCount > 0) {
-        _scheduleFlush();
-      }
-    });
+    return false;
   }
   
   void _cancelFlushTimer() {

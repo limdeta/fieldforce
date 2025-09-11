@@ -1,7 +1,6 @@
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:equatable/equatable.dart';
 import 'package:fieldforce/app/domain/entities/route.dart' as domain;
-import 'package:fieldforce/app/domain/entities/work_day.dart';
 import 'package:fieldforce/features/navigation/tracking/domain/entities/user_track.dart';
 import 'package:fieldforce/features/navigation/tracking/domain/entities/navigation_user.dart';
 
@@ -25,12 +24,6 @@ class RouteSelectedEvent extends SalesRepPageEvent {
   List<Object?> get props => [route];
 }
 
-class WorkDayLoadedEvent extends SalesRepPageEvent {
-  final WorkDay? workDay;
-  WorkDayLoadedEvent(this.workDay);
-  @override
-  List<Object?> get props => [workDay];
-}
 
 class TrackUpdatedEvent extends SalesRepPageEvent {
   final UserTrack? track;
@@ -55,29 +48,25 @@ class SalesRepPageLoading extends SalesRepPageState {
 
 class SalesRepPageLoaded extends SalesRepPageState {
   final domain.Route? selectedRoute;
-  final WorkDay? selectedWorkDay;
   final UserTrack? activeTrack;
   final NavigationUser? user;
 
   SalesRepPageLoaded({
     this.selectedRoute,
-    this.selectedWorkDay,
     this.activeTrack,
     this.user,
   });
 
   @override
-  List<Object?> get props => [selectedRoute, selectedWorkDay, activeTrack, user];
+  List<Object?> get props => [selectedRoute, activeTrack, user];
 
   SalesRepPageLoaded copyWith({
     domain.Route? selectedRoute,
-    WorkDay? selectedWorkDay,
     UserTrack? activeTrack,
     NavigationUser? user,
   }) {
     return SalesRepPageLoaded(
       selectedRoute: selectedRoute ?? this.selectedRoute,
-      selectedWorkDay: selectedWorkDay ?? this.selectedWorkDay,
       activeTrack: activeTrack ?? this.activeTrack,
       user: user ?? this.user,
     );
@@ -96,7 +85,6 @@ class SalesRepPageBloc extends Bloc<SalesRepPageEvent, SalesRepPageState> {
   SalesRepPageBloc() : super(SalesRepPageInitial()) {
     on<InitializePageEvent>(_onInitializePage);
     on<RouteSelectedEvent>(_onRouteSelected);
-    on<WorkDayLoadedEvent>(_onWorkDayLoaded);
     on<TrackUpdatedEvent>(_onTrackUpdated);
   }
 
@@ -112,20 +100,10 @@ class SalesRepPageBloc extends Bloc<SalesRepPageEvent, SalesRepPageState> {
       final currentState = state as SalesRepPageLoaded;
       emit(currentState.copyWith(
         selectedRoute: event.route,
-        selectedWorkDay: null, // Сбрасываем, так как будет загружен новый
         activeTrack: null, // Сбрасываем, так как будет загружен новый
       ));
     } else {
       emit(SalesRepPageLoaded(selectedRoute: event.route));
-    }
-  }
-
-  void _onWorkDayLoaded(WorkDayLoadedEvent event, Emitter<SalesRepPageState> emit) {
-    print('[SalesRepPageBloc] WorkDay loaded: id=${event.workDay?.id}');
-
-    if (state is SalesRepPageLoaded) {
-      final currentState = state as SalesRepPageLoaded;
-      emit(currentState.copyWith(selectedWorkDay: event.workDay));
     }
   }
 

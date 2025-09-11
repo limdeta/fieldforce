@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:latlong2/latlong.dart';
 import '../../../features/navigation/map/presentation/widgets/map_widget.dart';
 import '../../../features/navigation/tracking/domain/entities/user_track.dart';
+import '../../../features/navigation/tracking/domain/entities/compact_track.dart';
 import '../../domain/entities/route.dart' as shop;
 import '../utils/coordinate_converter.dart';
 
@@ -24,6 +25,9 @@ class CombinedMapWidget extends StatelessWidget {
   /// Трек для отображения (может быть null)
   final UserTrack? track;
   
+  /// Live буфер для отображения (текущие точки трекинга)
+  final CompactTrack? liveBuffer;
+  
   /// Точки полилинии маршрута (для отображения построенного пути)
   final List<LatLng> routePolylinePoints;
 
@@ -35,6 +39,7 @@ class CombinedMapWidget extends StatelessWidget {
     this.onTap,
     this.onLongPress,
     this.track,
+    this.liveBuffer,
     this.routePolylinePoints = const [],
   });
 
@@ -48,6 +53,7 @@ class CombinedMapWidget extends StatelessWidget {
       onTap: CoordinateConverter.convertLatLngCallback(onTap),
       onLongPress: CoordinateConverter.convertLatLngCallback(onLongPress),
       track: track,
+      liveBuffer: liveBuffer,
       routePolylinePoints: routePolylinePoints,
     );
   }

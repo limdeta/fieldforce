@@ -1,7 +1,6 @@
 import 'package:fieldforce/app/domain/repositories/route_repository.dart';
 import 'package:fieldforce/app/domain/entities/route.dart' as domain;
 import 'package:fieldforce/app/presentation/pages/route_detail_page.dart';
-import 'package:fieldforce/app/presentation/pages/route_map_page.dart';
 import 'package:flutter/material.dart';
 import 'package:get_it/get_it.dart';
 import 'package:fieldforce/app/services/app_session_service.dart';
@@ -333,7 +332,7 @@ class _RoutesPageState extends State<RoutesPage> {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
       decoration: BoxDecoration(
-        color: _getRouteStatusColor(status).withOpacity(0.1),
+        color: _getRouteStatusColor(status).withValues(alpha: 0.1),
         borderRadius: BorderRadius.circular(12),
         border: Border.all(
           color: _getRouteStatusColor(status),
@@ -419,11 +418,12 @@ class _RoutesPageState extends State<RoutesPage> {
   }
 
   void _openRouteOnMap(domain.Route route) {
-    Navigator.push(
+    // Сохраняем выбранный маршрут в настройки
+    // и переходим на главную страницу, где он автоматически загрузится
+    Navigator.pushReplacementNamed(
       context,
-      MaterialPageRoute(
-        builder: (context) => RouteMapPage(route: route),
-      ),
+      '/sales-home',
+      arguments: {'selectedRoute': route},
     );
   }
 }

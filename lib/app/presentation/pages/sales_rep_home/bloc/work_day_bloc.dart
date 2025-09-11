@@ -13,7 +13,12 @@ abstract class WorkDayEvent extends Equatable {
   List<Object?> get props => [];
 }
 
-class LoadWorkDaysEvent extends WorkDayEvent {}
+class LoadWorkDaysEvent extends WorkDayEvent {
+  final DateTime? targetDate; // Дата для автовыбора
+  LoadWorkDaysEvent({this.targetDate});
+  @override
+  List<Object?> get props => [targetDate];
+}
 class SelectWorkDayEvent extends WorkDayEvent {
   final WorkDay workDay;
   SelectWorkDayEvent(this.workDay);
@@ -101,13 +106,26 @@ class WorkDayBloc extends Bloc<WorkDayEvent, WorkDayState> {
       final workDays = await _getWorkDaysForUser(user);
       _workDays = workDays;
       print('[WorkDayBloc] Loaded workDays: count=${_workDays.length}');
-      // Auto-select today's workday or first available
-      final today = DateTime.now();
+      
+      // Auto-select workday based on target date or today
+      final targetDate = event.targetDate ?? DateTime.now();
       if (_workDays.isNotEmpty) {
-        _selectedWorkDay = _workDays.firstWhere(
-          (wd) => wd.date.year == today.year && wd.date.month == today.month && wd.date.day == today.day,
-          orElse: () => _workDays.first,
+        // Ищем WorkDay для целевой даты
+        final targetWorkDay = _workDays.cast<WorkDay?>().firstWhere(
+          (wd) => wd != null && 
+                  wd.date.year == targetDate.year && 
+                  wd.date.month == targetDate.month && 
+                  wd.date.day == targetDate.day,
+          orElse: () => null,
         );
+        
+        if (targetWorkDay != null) {
+          _selectedWorkDay = targetWorkDay;
+          print('[WorkDayBloc] Found workday for target date: ${targetDate.year}-${targetDate.month}-${targetDate.day}');
+        } else {
+          _selectedWorkDay = null;
+          print('[WorkDayBloc] No workday found for target date: ${targetDate.year}-${targetDate.month}-${targetDate.day}');
+        }
       } else {
         _selectedWorkDay = null;
       }
