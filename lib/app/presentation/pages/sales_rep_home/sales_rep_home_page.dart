@@ -393,7 +393,7 @@ class _SalesRepHomeViewState extends State<SalesRepHomeView> {
                 ? null
                 : () {
                     context.read<SalesRepHomeBloc>().add(
-                      const home_events.BuildRouteEvent(),
+                      home_events.BuildRouteEvent(currentLocation: _cachedUserLocation),
                     );
                   },
             style: ElevatedButton.styleFrom(

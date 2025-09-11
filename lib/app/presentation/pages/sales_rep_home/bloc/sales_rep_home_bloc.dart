@@ -198,6 +198,25 @@ class SalesRepHomeBloc extends Bloc<SalesRepHomeEvent, SalesRepHomeState> {
         longitude: poi.coordinates.longitude,
       )).toList();
 
+      // Добавляем текущую позицию пользователя или последнюю точку из трека в начало
+      LatLng? startPoint = event.currentLocation;
+      if (startPoint == null && currentState.activeTrack != null && currentState.activeTrack!.segments.isNotEmpty) {
+        final lastSegment = currentState.activeTrack!.liveSegmentIndex != null
+            ? currentState.activeTrack!.segments[currentState.activeTrack!.liveSegmentIndex!]
+            : currentState.activeTrack!.segments.last;
+        if (lastSegment.isNotEmpty) {
+          final lastTrackPoint = lastSegment.getCoordinates(lastSegment.pointCount - 1);
+          startPoint = LatLng(lastTrackPoint.$1, lastTrackPoint.$2);
+        }
+      }
+
+      if (startPoint != null) {
+        mapPoints.insert(0, MapPoint(
+          latitude: startPoint.latitude,
+          longitude: startPoint.longitude,
+        ));
+      }
+
       final result = await pathPredictionService.predictRouteGeometry(mapPoints);
 
       if (result.routePoints.isNotEmpty) {

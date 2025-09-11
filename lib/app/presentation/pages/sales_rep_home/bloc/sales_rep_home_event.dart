@@ -1,4 +1,5 @@
 import 'package:equatable/equatable.dart';
+import 'package:latlong2/latlong.dart';
 import 'package:fieldforce/app/domain/entities/route.dart' as shop;
 import 'package:fieldforce/features/navigation/tracking/domain/entities/user_track.dart';
 
@@ -44,7 +45,12 @@ class ToggleRoutePanelEvent extends SalesRepHomeEvent {
 
 /// Построение маршрута
 class BuildRouteEvent extends SalesRepHomeEvent {
-  const BuildRouteEvent();
+  final LatLng? currentLocation;
+
+  const BuildRouteEvent({this.currentLocation});
+
+  @override
+  List<Object?> get props => [currentLocation];
 }
 
 /// Обновление списка маршрутов (от stream)
