@@ -118,21 +118,15 @@ class LocationTrackingService implements LocationTrackingServiceBase  {
         _setLastPositionFromTrack(currentTrack);
       }
 
-      // Запускаем GPS источник данных
-      // Запускаем GPS источник данных...
       final gpsStarted = await _gpsDataManager.startGps();
       if (!gpsStarted) {
         // Не удалось запустить GPS источник данных
         return false;
       }
-      // GPS источник данных запущен
 
-      // Запускаем подписку на GPS
-      // Создаем подписку на GPS поток...
       _positionSubscription = _gpsDataManager.getPositionStream(
         settings: _locationSettings,
       ).listen(_onPositionUpdate, onError: _onPositionError);
-      // Подписка на GPS поток создана
 
       final trackId = _trackManager.currentTrackForUI?.id;
       if (trackId != null) {
@@ -143,7 +137,6 @@ class LocationTrackingService implements LocationTrackingServiceBase  {
       return true;
       
     } catch (e) {
-      // Ошибка запуска трекинга
       return false;
     }
   }
@@ -151,19 +144,14 @@ class LocationTrackingService implements LocationTrackingServiceBase  {
   /// Автоматический запуск трекинга - упрощенная версия, просто вызывает startTracking
   @override
   Future<bool> autoStartTracking({required NavigationUser user}) async {
-    // Автозапуск трекинга для пользователя
-
-    // Получаем ID пользователя для логирования
     final currentSession = AppSessionService.currentSession;
     if (currentSession?.appUser.employee != null) {
       currentSession!.appUser.employee.id;
     }
 
-    // Вся логика поиска существующих треков теперь в TrackManager.startTracking
     return await startTracking(user);
   }
 
-  /// Останавливает трекинг
   @override
   Future<bool> stopTracking() async {
     try {
@@ -177,22 +165,17 @@ class LocationTrackingService implements LocationTrackingServiceBase  {
       _isActive = false;
       _trackingStateController.add(false);
       _pauseStateController.add(false);
-      
-      // Трекинг остановлен
       return true;
       
     } catch (e) {
-      // Ошибка остановки трекинга
       return false;
     }
   }
 
-  /// Ставит трекинг на паузу
   @override
   Future<bool> pauseTracking() async {
     try {
       if (!isActive) {
-        // Трекинг не активен
         return false;
       }
       
@@ -200,22 +183,19 @@ class LocationTrackingService implements LocationTrackingServiceBase  {
       
       _isActive = false;
       _pauseStateController.add(true);
-      
-      // Трекинг поставлен на паузу
+
       return true;
-      
     } catch (e) {
       print('$_tag: О��ибка паузы трекинга: $e');
       return false;
     }
   }
 
-  /// Возобновляет трекинг после паузы
+
   @override
   Future<bool> resumeTracking() async {
     try {
       if (!isPaused) {
-        // Трекинг не на паузе
         return false;
       }
       
@@ -224,9 +204,7 @@ class LocationTrackingService implements LocationTrackingServiceBase  {
       _isActive = true;
       _pauseStateController.add(false);
       
-      print('$_tag: Трекинг возобновлён');
       return true;
-      
     } catch (e) {
       print('$_tag: Ошибка возобновления трекинга: $e');
       return false;
@@ -236,9 +214,6 @@ class LocationTrackingService implements LocationTrackingServiceBase  {
   /// Обработчик новой позиции GPS
   void _onPositionUpdate(Position position) {
     try {
-      print('$_tag: 🔄 _onPositionUpdate() - обрабатываем позицию ${position.latitude}, ${position.longitude}');
-
-      // Фильтруем некачественные точки
       if (!_isValidPosition(position)) {
         print('$_tag: ❌ Позиция отфильтрована как невалидная (точность: ${position.accuracy})');
         return;
@@ -250,11 +225,8 @@ class LocationTrackingService implements LocationTrackingServiceBase  {
         return;
       }
 
-      print('$_tag: ✅ Позиция прошла фильтры, обрабатываем');
-
       // Добавляем точку в track manager (он использует буферизацию)
       if (_isActive) {
-        print('$_tag: 📊 Добавляем точку в TrackManager');
         _trackManager.addGpsPoint(position);
       } else {
         print('$_tag: ⚠️ Трекинг неактивен - НЕ добавляем точку в TrackManager');
@@ -266,7 +238,6 @@ class LocationTrackingService implements LocationTrackingServiceBase  {
       _checkStationaryState(position);
       
       // Отправляем позицию в стрим для UI
-      print('$_tag: 📤 Отправляем позицию в UI стрим');
       _positionController.add(position);
       
     } catch (e) {
@@ -278,10 +249,8 @@ class LocationTrackingService implements LocationTrackingServiceBase  {
   void _onPositionError(dynamic error) {
     print('$_tag: Ошибка GPS: $error');
   }
-  
-  /// Проверяет валидность GPS позиции
+
   bool _isValidPosition(Position position) {
-    // Проверяем точность
     if (position.accuracy > _minAccuracy) {
       return false;
     }
@@ -294,8 +263,7 @@ class LocationTrackingService implements LocationTrackingServiceBase  {
     
     return true;
   }
-  
-  /// Определяет, нужно ли записывать позицию
+
   bool _shouldRecordPosition(Position position) {
     if (_lastPosition == null) return true;
     
@@ -308,8 +276,7 @@ class LocationTrackingService implements LocationTrackingServiceBase  {
     
     return distance >= _minDistanceMeters;
   }
-  
-  /// Проверяет стационарность
+
   void _checkStationaryState(Position position) {
     if (_lastPosition == null) return;
     
@@ -332,7 +299,6 @@ class LocationTrackingService implements LocationTrackingServiceBase  {
     }
   }
 
-  /// Устанавливает последнюю позицию из существующего трека
   void _setLastPositionFromTrack(UserTrack track) {
     if (track.segments.isEmpty) return;
 
@@ -359,7 +325,6 @@ class LocationTrackingService implements LocationTrackingServiceBase  {
     print('$_tag: Последняя позиция установлена: $lat, $lng');
   }
 
-  /// Освобождает ресурсы
   void dispose() {
     _positionSubscription?.cancel();
     _trackManager.dispose();

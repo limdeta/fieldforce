@@ -17,7 +17,6 @@ class AppTrackingButton extends StatelessWidget {
   Widget build(BuildContext context) {
     return BlocBuilder<TrackingBloc, TrackingState>(
       builder: (context, state) {
-        print('🎯 AppTrackingButton: Текущее состояние: ${state.runtimeType}');
         return TrackingToggleButton(
           state: state,
           size: size,

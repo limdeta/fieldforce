@@ -3,7 +3,7 @@ import 'package:fieldforce/app/domain/usecases/app_user_login_usecase.dart';
 import 'package:fieldforce/app/domain/usecases/app_user_logout_usecase.dart';
 import 'package:fieldforce/app/domain/usecases/get_current_app_session_usecase.dart';
 import 'package:fieldforce/app/domain/usecases/get_work_days_for_user_usecase.dart';
-import 'package:fieldforce/app/fixtures/user_fixture.dart';
+import 'package:fieldforce/features/navigation/tracking/domain/services/location_tracking_service.dart';
 import 'package:fieldforce/features/navigation/tracking/domain/usecases/get_user_track_for_date_usecase.dart';
 import 'package:fieldforce/features/navigation/tracking/domain/usecases/get_user_tracks_usecase.dart';
 import 'package:get_it/get_it.dart';
@@ -33,11 +33,9 @@ import 'package:fieldforce/app/services/app_lifecycle_manager.dart';
 import 'package:fieldforce/app/domain/usecases/load_user_routes_usecase.dart';
 import 'package:fieldforce/app/domain/repositories/route_repository.dart';
 import 'package:fieldforce/app/services/user_preferences_service.dart';
-import 'package:fieldforce/features/navigation/tracking/domain/services/location_tracking_service_base.dart';
-import 'package:fieldforce/features/navigation/tracking/domain/services/location_tracking_service.dart';
-import 'package:fieldforce/features/navigation/tracking/domain/services/gps_data_manager.dart';
 import 'package:fieldforce/app/database/repositories/work_day_repository.dart';
-import 'package:http/http.dart';
+import 'package:fieldforce/features/navigation/tracking/domain/services/location_tracking_service_base.dart';
+import 'package:fieldforce/features/navigation/tracking/domain/services/gps_data_manager.dart';
 
 final getIt = GetIt.instance;
 
@@ -48,102 +46,98 @@ Future<void> setupServiceLocator() async {
     AppConfig.printConfig();
   }
 
+  await getIt.reset();
+
   getIt.registerLazySingleton<UserPreferencesService>(
-        () {
+    () {
       final service = UserPreferencesService();
       service.initialize();
       return service;
     },
   );
 
-  getIt.registerLazySingleton<AppDatabase>(() =>
-      AppDatabase.withFile(AppConfig.databaseName));
+  getIt.registerSingleton<AppDatabase>(AppDatabase.withFile(AppConfig.databaseName));
   getIt.registerLazySingleton<WorkDayRepository>(
-        () => WorkDayRepository(getIt<AppDatabase>()),
+    () => WorkDayRepository(getIt<AppDatabase>()),
   );
   getIt.registerLazySingleton<SessionRepository>(() => SessionRepositoryImpl());
-  getIt.registerLazySingleton<OsrmPathPredictionService>(() =>
-      OsrmPathPredictionService());
+  getIt.registerLazySingleton<OsrmPathPredictionService>(() => OsrmPathPredictionService());
 
   getIt.registerLazySingleton<UserRepositoryImpl>(
-        () =>
-        UserRepositoryImpl(
-          database: getIt(),
-        ),
+    () => UserRepositoryImpl(
+      database: getIt(),
+    ),
   );
 
   getIt.registerLazySingleton<UserRepository>(
-        () => getIt<UserRepositoryImpl>(),
+    () => getIt<UserRepositoryImpl>(),
   );
 
   getIt.registerLazySingleton<EmployeeRepositoryDrift>(
-        () => EmployeeRepositoryDrift(getIt<AppDatabase>()),
+    () => EmployeeRepositoryDrift(getIt<AppDatabase>()),
   );
 
   getIt.registerLazySingleton<EmployeeRepository>(
-        () => getIt<EmployeeRepositoryDrift>(),
+    () => getIt<EmployeeRepositoryDrift>(),
   );
 
   getIt.registerLazySingleton<UserTrackRepositoryDrift>(
-        () =>
-        UserTrackRepositoryDrift(
+        () => UserTrackRepositoryDrift(
           getIt<AppDatabase>(),
           getIt<EmployeeRepositoryDrift>(),
         ),
   );
 
   getIt.registerLazySingleton<TradingPointRepository>(
-        () => DriftTradingPointRepository(),
+    () => DriftTradingPointRepository(),
   );
 
   getIt.registerLazySingleton<AppUserRepository>(
-        () =>
-        AppUserRepositoryDrift(
-          database: getIt<AppDatabase>(),
-          employeeRepository: getIt<EmployeeRepositoryDrift>(),
-          userRepository: getIt<UserRepositoryImpl>(),
-        ),
+    () => AppUserRepositoryDrift(
+      database: getIt<AppDatabase>(),
+      employeeRepository: getIt<EmployeeRepositoryDrift>(),
+      userRepository: getIt<UserRepositoryImpl>(),
+    ),
   );
 
   getIt.registerLazySingleton<AuthenticationService>(
-        () =>
-        AuthenticationService(
-          userRepository: getIt(),
-          sessionRepository: getIt(),
-        ),
+    () => AuthenticationService(
+      userRepository: getIt(),
+      sessionRepository: getIt(),
+    ),
   );
 
   getIt.registerLazySingleton<LoginUseCase>(
-        () => LoginUseCase(getIt()),
+    () => LoginUseCase(getIt()),
   );
 
   getIt.registerLazySingleton<GetEmployeeTradingPointsUseCase>(
-        () => GetEmployeeTradingPointsUseCase(getIt<TradingPointRepository>()),
+    () => GetEmployeeTradingPointsUseCase(getIt<TradingPointRepository>()),
   );
 
   getIt.registerLazySingleton<AppUserLoginUseCase>(
-        () => AppUserLoginUseCase(),
+    () => AppUserLoginUseCase(),
   );
 
   getIt.registerLazySingleton<AppUserLogoutUseCase>(
-        () => AppUserLogoutUseCase(),
+    () => AppUserLogoutUseCase(),
   );
 
   getIt.registerLazySingleton<SimpleUpdateService>(
-        () => SimpleUpdateService(),
+    () => SimpleUpdateService(),
   );
 
   getIt.registerLazySingleton<LogoutUseCase>(
-        () => LogoutUseCase(authenticationService: getIt()),
+    () => LogoutUseCase(authenticationService: getIt()),
   );
 
   getIt.registerLazySingleton<GetCurrentSessionUseCase>(
-        () => GetCurrentSessionUseCase(sessionRepository: getIt()),
+    () => GetCurrentSessionUseCase(sessionRepository: getIt()),
   );
 
 
   getIt.registerLazySingleton<GetCurrentAppSessionUseCase>(
-        () => GetCurrentAppSessionUseCase(),
+    () => GetCurrentAppSessionUseCase(),
   );
 
   getIt.registerLazySingleton<GetUserTrackForDateUseCase>(
@@ -151,51 +145,43 @@ Future<void> setupServiceLocator() async {
   );
 
   getIt.registerLazySingleton<GetWorkDaysForUserUseCase>(
-        () => GetWorkDaysForUserUseCase(),
+    () => GetWorkDaysForUserUseCase(),
   );
 
-
-  // BLoCs for features layer
   getIt.registerFactory<AuthenticationBloc>(
-        () =>
-        AuthenticationBloc(
-          loginUseCase: getIt<LoginUseCase>(),
-          logoutUseCase: getIt<LogoutUseCase>(),
-          getCurrentSessionUseCase: getIt<GetCurrentSessionUseCase>(),
-        ),
+    () => AuthenticationBloc(
+      loginUseCase: getIt<LoginUseCase>(),
+      logoutUseCase: getIt<LogoutUseCase>(),
+      getCurrentSessionUseCase: getIt<GetCurrentSessionUseCase>(),
+    ),
   );
 
-  // App Lifecycle Manager for GPS tracking
   getIt.registerLazySingleton<AppLifecycleManager>(
-        () => AppLifecycleManager(),
+    () => AppLifecycleManager(),
   );
 
   RouteDI.registerDependencies();
 
   getIt.registerLazySingleton<UserTrackRepository>(
-        () =>
-        UserTrackRepositoryDrift(
-          getIt<AppDatabase>(),
-          getIt<EmployeeRepositoryDrift>(),
-        ),
+    () => UserTrackRepositoryDrift(
+      getIt<AppDatabase>(),
+      getIt<EmployeeRepositoryDrift>(),
+    ),
+  );
+
+  getIt.registerLazySingleton<LocationTrackingServiceBase>(
+    () => LocationTrackingService(getIt<GpsDataManager>()),
   );
 
   // TODO: В проде заменить на реальный GPS источник!
   await GpsDataManager().initialize(mode: GpsMode.mock);
-// register the already-initialized singleton instance
   getIt.registerSingleton<GpsDataManager>(GpsDataManager());
 
-  getIt.registerLazySingleton<LocationTrackingServiceBase>(
-        () => LocationTrackingService(getIt<GpsDataManager>()),
-  );
-
-  // Tracking presentation layer
   getIt.registerLazySingleton<GetUserTracksUseCase>(
-        () => GetUserTracksUseCase(getIt<UserTrackRepository>()),
+    () => GetUserTracksUseCase(getIt<UserTrackRepository>()),
   );
 
-  // Presentation layer UseCases
   getIt.registerLazySingleton<LoadUserRoutesUseCase>(
-        () => LoadUserRoutesUseCase(getIt<RouteRepository>()),
+    () => LoadUserRoutesUseCase(getIt<RouteRepository>()),
   );
 }

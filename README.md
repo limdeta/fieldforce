@@ -22,8 +22,11 @@ Roadmap:
 flutter pub run build_runner build --delete-conflicting-outputs
 flutter test
 
+пример интеграционного теста 
+flutter test .\integration_test\login_test.dart -d windows --dart-define=ENV=dev
+
 для разработки (dev режим по умолчанию с фикстурами)
-flutter run -d windows
+flutter run -d windows --dart-define=flutter.flutter_map.unblockOSM="Our tile servers are not." --dart-define=ENV=dev
 
 собрать для продакшена
 flutter build apk --dart-define=ENV=prod --release 

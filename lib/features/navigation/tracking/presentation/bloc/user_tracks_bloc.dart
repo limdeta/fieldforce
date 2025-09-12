@@ -64,7 +64,6 @@ abstract class UserTracksState extends Equatable {
 }
 
 class UserTracksInitial extends UserTracksState {}
-
 class UserTracksLoading extends UserTracksState {}
 
 class UserTracksLoaded extends UserTracksState {
@@ -134,8 +133,6 @@ class UserTracksBloc extends Bloc<UserTracksEvent, UserTracksState> {
   DateTime? _lastLoadTime;
   static const Duration _cacheTimeout = Duration(minutes: 5);
 
-  // Геттер для активного трека
-  // Getter для активного трека из списка
   UserTrack? get activeTrack => _userTracks.where((track) => track.status.isActive).firstOrNull;
 
   UserTracksBloc() : super(UserTracksInitial()) {
@@ -189,15 +186,15 @@ class UserTracksBloc extends Bloc<UserTracksEvent, UserTracksState> {
   }
 
   Future<void> _onLoadUserTrackForDate(LoadUserTrackForDateEvent event, Emitter<UserTracksState> emit) async {
-    print('[UserTracksBloc] _onLoadUserTrackForDate called for user=${event.user.id}, date=${event.date}');
+    // print('[UserTracksBloc] _onLoadUserTrackForDate called for user=${event.user.id}, date=${event.date}');
     emit(UserTracksLoading());
     final result = await _getUserTrackForDateUseCase.call(event.user, event.date);
     result.fold(
       (failure) {
-        print('[UserTracksBloc] Track not found for date=${event.date}, failure=$failure');
+        // print('[UserTracksBloc] Track not found for date=${event.date}, failure=$failure');
         if (failure is NotFoundFailure) {
           // Трек не найден - просто не показываем ничего с уведомлением
-          print('[UserTracksBloc] Track not found for date=${event.date}');
+          // print('[UserTracksBloc] Track not found for date=${event.date}');
           
           _userTracks = [];
           _displayedTrack = null; // Ничего не показываем
@@ -215,7 +212,7 @@ class UserTracksBloc extends Bloc<UserTracksEvent, UserTracksState> {
         }
       },
       (track) {
-        print('[UserTracksBloc] Track loaded for date=${event.date}, trackId=${track?.id}');
+        // print('[UserTracksBloc] Track loaded for date=${event.date}, trackId=${track?.id}');
         _userTracks = track != null ? [track] : [];
         _displayedTrack = track; // Устанавливаем загруженный трек как отображаемый
         _completedTracks = track != null && track.status.name == 'completed' ? [track] : [];
@@ -229,7 +226,7 @@ class UserTracksBloc extends Bloc<UserTracksEvent, UserTracksState> {
   }
 
   void _onClearTracks(ClearTracksEvent event, Emitter<UserTracksState> emit) {
-    print('[UserTracksBloc] Clearing all tracks including displayedTrack');
+    // print('[UserTracksBloc] Clearing all tracks including displayedTrack');
     _userTracks.clear();
     _displayedTrack = null; // Очищаем отображаемый трек!
     _completedTracks.clear();
@@ -240,7 +237,7 @@ class UserTracksBloc extends Bloc<UserTracksEvent, UserTracksState> {
   }
 
   void _onSetDisplayedTrack(SetDisplayedTrackEvent event, Emitter<UserTracksState> emit) {
-    print('[UserTracksBloc] Setting displayed track: ${event.track?.id ?? "null"}');
+    // print('[UserTracksBloc] Setting displayed track: ${event.track?.id ?? "null"}');
     _displayedTrack = event.track;
     
     // Отрисовываем трек
@@ -249,21 +246,10 @@ class UserTracksBloc extends Bloc<UserTracksEvent, UserTracksState> {
       activeTrack: _displayedTrack, // отображаемый трек
       completedTracks: _completedTracks,
     ));
-    
-    // Проверяем: это активный трек? Если да - подключаем realtime
-    if (_displayedTrack != null && _displayedTrack!.status.isActive) {
-      print('[UserTracksBloc] Displayed track is active - realtime updates enabled');
-      // Realtime уже подключен через _subscribeToActiveTrack
-    } else {
-      print('[UserTracksBloc] Displayed track is historical - static display');
-      // Ничего не делаем - трек уже отрисован статично
-    }
   }
 
   void _onShowActiveTrack(ShowActiveTrackEvent event, Emitter<UserTracksState> emit) {
     final currentActiveTrack = activeTrack; // используем getter
-    print('[UserTracksBloc] Showing active track: ${currentActiveTrack?.id ?? "null"}');
-    // Просто вызываем SetDisplayedTrackEvent с активным треком
     add(SetDisplayedTrackEvent(currentActiveTrack));
   }
 
@@ -290,12 +276,6 @@ class UserTracksBloc extends Bloc<UserTracksEvent, UserTracksState> {
   }
 
   void _onActiveTrackUpdated(ActiveTrackUpdatedEvent event, Emitter<UserTracksState> emit) {
-    print('[UserTracksBloc] _onActiveTrackUpdated called for trackId=${event.activeTrack.id}');
-    print('[UserTracksBloc] Current _displayedTrack?.id = ${_displayedTrack?.id}');
-    print('[UserTracksBloc] Active track id = ${event.activeTrack.id}');
-    print('[UserTracksBloc] Active track points count = ${event.activeTrack.totalPoints}'); // Добавлен лог
-    print('[UserTracksBloc] Should update UI? ${_displayedTrack?.id == event.activeTrack.id}');
-    
     // Всегда обновляем активный трек в памяти (для фонового трекинга)
     final existingIndex = _userTracks.indexWhere((track) => track.id == event.activeTrack.id);
     if (existingIndex != -1) {
@@ -306,10 +286,7 @@ class UserTracksBloc extends Bloc<UserTracksEvent, UserTracksState> {
     
     // Обновляем UI только если активный трек сейчас отображается
     if (_displayedTrack?.id == event.activeTrack.id) {
-      print('[UserTracksBloc] ✅ Активный трек отображается - обновляем UI');
-      print('[UserTracksBloc] Old displayed track points: ${_displayedTrack?.totalPoints}'); // Добавлен лог
       _displayedTrack = event.activeTrack;
-      print('[UserTracksBloc] New displayed track points: ${_displayedTrack?.totalPoints}'); // Добавлен лог
       emit(UserTracksLoaded(
         userTracks: _userTracks,
         activeTrack: event.activeTrack,

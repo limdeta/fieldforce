@@ -1,4 +1,4 @@
-import 'package:fieldforce/app/di/test_service_locator.dart';
+import 'package:fieldforce/app/di/test_service_locator.dart' as test_di;
 import 'package:fieldforce/app/presentation/pages/trading_points_list_page.dart';
 import 'package:flutter/material.dart';
 import 'package:get_it/get_it.dart';
@@ -9,7 +9,7 @@ import 'package:fieldforce/app/presentation/pages/login_page.dart';
 import 'package:fieldforce/app/presentation/widgets/dev_data_loading_overlay.dart';
 import 'package:fieldforce/features/navigation/tracking/domain/services/gps_data_manager.dart';
 import 'app/config/app_config.dart';
-import 'app/di/service_locator.dart';
+import 'app/di/service_locator.dart' as prod_di;
 import 'app/fixtures/dev_fixture_orchestrator.dart';
 import 'app/services/app_lifecycle_manager.dart';
 import 'app/services/simple_update_service.dart';
@@ -23,14 +23,14 @@ void main() async {
   AppConfig.configureFromArgs();
 
   if (AppConfig.isProd) {
-    await setupServiceLocator();
+    await prod_di.setupServiceLocator();
   } else {
     // Запускаем тестовый контейнер
-    await setupTestServiceLocator();
+    await test_di.setupTestServiceLocator();
   }
 
   if (AppConfig.isDev) {
-    final orchestrator = getIt<DevFixtureOrchestrator>();
+    final orchestrator = GetIt.instance<DevFixtureOrchestrator>();
     await orchestrator.createFullDevDataset();
   }
 

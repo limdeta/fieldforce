@@ -34,27 +34,26 @@ import 'package:fieldforce/app/domain/usecases/load_user_routes_usecase.dart';
 import 'package:fieldforce/app/domain/repositories/route_repository.dart';
 import 'package:fieldforce/app/services/user_preferences_service.dart';
 import 'package:fieldforce/app/database/repositories/work_day_repository.dart';
-import '../../features/navigation/tracking/domain/services/location_tracking_service_base.dart';
+import 'package:fieldforce/features/navigation/tracking/domain/services/location_tracking_service_base.dart';
 import 'package:fieldforce/features/navigation/tracking/domain/services/gps_data_manager.dart';
-// Added imports for UserFixture and dependencies
+import 'package:fieldforce/app/fixtures/dev_fixture_orchestrator.dart';
 import 'package:fieldforce/features/authentication/domain/services/user_service.dart';
 import 'package:fieldforce/features/shop/domain/usecases/create_employee_usecase.dart';
 import 'package:fieldforce/app/domain/usecases/create_app_user_usecase.dart';
 import 'package:fieldforce/app/domain/usecases/create_work_day_usecase.dart';
 import 'package:fieldforce/app/fixtures/user_fixture.dart';
-import 'package:fieldforce/app/fixtures/dev_fixture_orchestrator.dart';
 import 'package:fieldforce/app/fixtures/route_fixture_service.dart';
 import 'package:fieldforce/features/shop/data/fixtures/trading_points_fixture_service.dart';
 
-final _getIt = GetIt.instance;
+final getIt = GetIt.instance;
 
 Future<void> setupTestServiceLocator() async {
   AppConfig.configureFromArgs();
   AppConfig.printConfig();
 
-  await _getIt.reset();
+  await getIt.reset();
 
-  _getIt.registerLazySingleton<UserPreferencesService>(
+  getIt.registerLazySingleton<UserPreferencesService>(
     () {
       final service = UserPreferencesService();
       service.initialize();
@@ -62,175 +61,174 @@ Future<void> setupTestServiceLocator() async {
     },
   );
 
-  _getIt.registerSingleton<AppDatabase>(AppDatabase.withFile(AppConfig.databaseName));
-  _getIt.registerLazySingleton<WorkDayRepository>(
-    () => WorkDayRepository(_getIt<AppDatabase>()),
+  getIt.registerSingleton<AppDatabase>(AppDatabase.withFile(AppConfig.databaseName));
+  getIt.registerLazySingleton<WorkDayRepository>(
+    () => WorkDayRepository(getIt<AppDatabase>()),
   );
-  _getIt.registerLazySingleton<SessionRepository>(() => SessionRepositoryImpl());
-  _getIt.registerLazySingleton<OsrmPathPredictionService>(() => OsrmPathPredictionService());
+  getIt.registerLazySingleton<SessionRepository>(() => SessionRepositoryImpl());
+  getIt.registerLazySingleton<OsrmPathPredictionService>(() => OsrmPathPredictionService());
 
-  _getIt.registerLazySingleton<UserRepositoryImpl>(
+  getIt.registerLazySingleton<UserRepositoryImpl>(
     () => UserRepositoryImpl(
-      database: _getIt(),
+      database: getIt(),
     ),
   );
 
-  _getIt.registerLazySingleton<UserRepository>(
-    () => _getIt<UserRepositoryImpl>(),
+  getIt.registerLazySingleton<UserRepository>(
+    () => getIt<UserRepositoryImpl>(),
   );
 
-  _getIt.registerLazySingleton<EmployeeRepositoryDrift>(
-    () => EmployeeRepositoryDrift(_getIt<AppDatabase>()),
+  getIt.registerLazySingleton<EmployeeRepositoryDrift>(
+    () => EmployeeRepositoryDrift(getIt<AppDatabase>()),
   );
 
-  _getIt.registerLazySingleton<EmployeeRepository>(
-    () => _getIt<EmployeeRepositoryDrift>(),
+  getIt.registerLazySingleton<EmployeeRepository>(
+    () => getIt<EmployeeRepositoryDrift>(),
   );
 
-  _getIt.registerLazySingleton<UserTrackRepositoryDrift>(
+  getIt.registerLazySingleton<UserTrackRepositoryDrift>(
         () => UserTrackRepositoryDrift(
-          _getIt<AppDatabase>(),
-          _getIt<EmployeeRepositoryDrift>(),
+          getIt<AppDatabase>(),
+          getIt<EmployeeRepositoryDrift>(),
         ),
   );
 
-  _getIt.registerLazySingleton<TradingPointRepository>(
+  getIt.registerLazySingleton<TradingPointRepository>(
     () => DriftTradingPointRepository(),
   );
 
-  _getIt.registerLazySingleton<AppUserRepository>(
+  getIt.registerLazySingleton<AppUserRepository>(
     () => AppUserRepositoryDrift(
-      database: _getIt<AppDatabase>(),
-      employeeRepository: _getIt<EmployeeRepositoryDrift>(),
-      userRepository: _getIt<UserRepositoryImpl>(),
+      database: getIt<AppDatabase>(),
+      employeeRepository: getIt<EmployeeRepositoryDrift>(),
+      userRepository: getIt<UserRepositoryImpl>(),
     ),
   );
 
-  _getIt.registerLazySingleton<AuthenticationService>(
+  getIt.registerLazySingleton<AuthenticationService>(
     () => AuthenticationService(
-      userRepository: _getIt(),
-      sessionRepository: _getIt(),
+      userRepository: getIt(),
+      sessionRepository: getIt(),
     ),
   );
 
-  _getIt.registerLazySingleton<LoginUseCase>(
-    () => LoginUseCase(_getIt()),
+  getIt.registerLazySingleton<LoginUseCase>(
+    () => LoginUseCase(getIt()),
   );
 
-  _getIt.registerLazySingleton<GetEmployeeTradingPointsUseCase>(
-    () => GetEmployeeTradingPointsUseCase(_getIt<TradingPointRepository>()),
+  getIt.registerLazySingleton<GetEmployeeTradingPointsUseCase>(
+    () => GetEmployeeTradingPointsUseCase(getIt<TradingPointRepository>()),
   );
 
-  _getIt.registerLazySingleton<AppUserLoginUseCase>(
+  getIt.registerLazySingleton<AppUserLoginUseCase>(
     () => AppUserLoginUseCase(),
   );
 
-  _getIt.registerLazySingleton<AppUserLogoutUseCase>(
+  getIt.registerLazySingleton<AppUserLogoutUseCase>(
     () => AppUserLogoutUseCase(),
   );
 
-  _getIt.registerLazySingleton<SimpleUpdateService>(
+  getIt.registerLazySingleton<SimpleUpdateService>(
     () => SimpleUpdateService(),
   );
 
-  _getIt.registerLazySingleton<LogoutUseCase>(
-    () => LogoutUseCase(authenticationService: _getIt()),
+  getIt.registerLazySingleton<LogoutUseCase>(
+    () => LogoutUseCase(authenticationService: getIt()),
   );
 
-  _getIt.registerLazySingleton<GetCurrentSessionUseCase>(
-    () => GetCurrentSessionUseCase(sessionRepository: _getIt()),
+  getIt.registerLazySingleton<GetCurrentSessionUseCase>(
+    () => GetCurrentSessionUseCase(sessionRepository: getIt()),
   );
 
-
-  _getIt.registerLazySingleton<GetCurrentAppSessionUseCase>(
+  getIt.registerLazySingleton<GetCurrentAppSessionUseCase>(
     () => GetCurrentAppSessionUseCase(),
   );
 
-  _getIt.registerLazySingleton<GetUserTrackForDateUseCase>(
-        () => GetUserTrackForDateUseCase(userTrackRepository: _getIt()),
+  getIt.registerLazySingleton<GetUserTrackForDateUseCase>(
+        () => GetUserTrackForDateUseCase(userTrackRepository: getIt()),
   );
 
-  _getIt.registerLazySingleton<GetWorkDaysForUserUseCase>(
+  getIt.registerLazySingleton<GetWorkDaysForUserUseCase>(
     () => GetWorkDaysForUserUseCase(),
   );
 
-  _getIt.registerFactory<AuthenticationBloc>(
+  getIt.registerFactory<AuthenticationBloc>(
     () => AuthenticationBloc(
-      loginUseCase: _getIt<LoginUseCase>(),
-      logoutUseCase: _getIt<LogoutUseCase>(),
-      getCurrentSessionUseCase: _getIt<GetCurrentSessionUseCase>(),
+      loginUseCase: getIt<LoginUseCase>(),
+      logoutUseCase: getIt<LogoutUseCase>(),
+      getCurrentSessionUseCase: getIt<GetCurrentSessionUseCase>(),
     ),
   );
 
-  _getIt.registerLazySingleton<AppLifecycleManager>(
+  getIt.registerLazySingleton<AppLifecycleManager>(
     () => AppLifecycleManager(),
   );
 
   RouteDI.registerDependencies();
 
-  _getIt.registerLazySingleton<UserTrackRepository>(
+  getIt.registerLazySingleton<UserTrackRepository>(
     () => UserTrackRepositoryDrift(
-      _getIt<AppDatabase>(),
-      _getIt<EmployeeRepositoryDrift>(),
+      getIt<AppDatabase>(),
+      getIt<EmployeeRepositoryDrift>(),
     ),
   );
 
-  _getIt.registerLazySingleton<LocationTrackingServiceBase>(
-    () => LocationTrackingService(_getIt<GpsDataManager>()),
+  getIt.registerLazySingleton<LocationTrackingServiceBase>(
+    () => LocationTrackingService(getIt<GpsDataManager>()),
   );
 
   // GpsDataManager с mock источником для тестов
   await GpsDataManager().initialize(mode: GpsMode.mock);
-  _getIt.registerSingleton<GpsDataManager>(GpsDataManager());
+  getIt.registerSingleton<GpsDataManager>(GpsDataManager());
 
-  _getIt.registerLazySingleton<GetUserTracksUseCase>(
-    () => GetUserTracksUseCase(_getIt<UserTrackRepository>()),
+  getIt.registerLazySingleton<GetUserTracksUseCase>(
+    () => GetUserTracksUseCase(getIt<UserTrackRepository>()),
   );
 
-  _getIt.registerLazySingleton<LoadUserRoutesUseCase>(
-    () => LoadUserRoutesUseCase(_getIt<RouteRepository>()),
+  getIt.registerLazySingleton<LoadUserRoutesUseCase>(
+    () => LoadUserRoutesUseCase(getIt<RouteRepository>()),
   );
 
   // --- Fixture Services ---
-  _getIt.registerLazySingleton<RouteFixtureService>(
-    () => RouteFixtureService(_getIt<RouteRepository>()),
+  getIt.registerLazySingleton<RouteFixtureService>(
+    () => RouteFixtureService(getIt<RouteRepository>()),
   );
 
-  _getIt.registerLazySingleton<TradingPointsFixtureService>(
+  getIt.registerLazySingleton<TradingPointsFixtureService>(
     () => TradingPointsFixtureService(),
   );
 
   // --- UserFixture and DevFixtureOrchestrator dependencies ---
-  _getIt.registerLazySingleton<UserService>(
+  getIt.registerLazySingleton<UserService>(
     () => UserServiceFactory.create(),
   );
 
-  _getIt.registerLazySingleton<CreateEmployeeUseCase>(
-    () => CreateEmployeeUseCase(_getIt<EmployeeRepository>()),
+  getIt.registerLazySingleton<CreateEmployeeUseCase>(
+    () => CreateEmployeeUseCase(getIt<EmployeeRepository>()),
   );
 
-  _getIt.registerLazySingleton<CreateAppUserUseCase>(
-    () => CreateAppUserUseCase(_getIt<AppUserRepository>()),
+  getIt.registerLazySingleton<CreateAppUserUseCase>(
+    () => CreateAppUserUseCase(getIt<AppUserRepository>()),
   );
 
-  _getIt.registerLazySingleton<CreateWorkDayUseCase>(
-    () => CreateWorkDayUseCase(_getIt<WorkDayRepository>()),
+  getIt.registerLazySingleton<CreateWorkDayUseCase>(
+    () => CreateWorkDayUseCase(getIt<WorkDayRepository>()),
   );
 
-  _getIt.registerLazySingleton<UserFixture>(
+  getIt.registerLazySingleton<UserFixture>(
     () => UserFixture(
-      userService: _getIt<UserService>(),
-      createEmployeeUseCase: _getIt<CreateEmployeeUseCase>(),
-      createAppUserUseCase: _getIt<CreateAppUserUseCase>(),
+      userService: getIt<UserService>(),
+      createEmployeeUseCase: getIt<CreateEmployeeUseCase>(),
+      createAppUserUseCase: getIt<CreateAppUserUseCase>(),
     ),
   );
 
-  _getIt.registerLazySingleton<DevFixtureOrchestrator>(
+  getIt.registerLazySingleton<DevFixtureOrchestrator>(
     () => DevFixtureOrchestrator(
-      _getIt<UserFixture>(),
-      _getIt<RouteFixtureService>(),
-      _getIt<TradingPointsFixtureService>(),
-      _getIt<CreateWorkDayUseCase>(),
+      getIt<UserFixture>(),
+      getIt<RouteFixtureService>(),
+      getIt<TradingPointsFixtureService>(),
+      getIt<CreateWorkDayUseCase>(),
     ),
   );
 }
