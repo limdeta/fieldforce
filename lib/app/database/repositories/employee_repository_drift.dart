@@ -12,7 +12,7 @@ class EmployeeRepositoryDrift implements EmployeeRepository {
 
   // Дополнительные методы для CRUD операций
   @override
-  Future<Either<Failure, domain.Employee>> createEmployee(domain.Employee employee) async {
+  Future<Either<Failure, domain.Employee>> create(domain.Employee employee) async {
     try {
       final companion = EmployeeMapper.toDb(employee);
       final id = await _database.into(_database.employees).insert(companion);
@@ -31,7 +31,7 @@ class EmployeeRepositoryDrift implements EmployeeRepository {
   }
 
   @override
-  Future<Either<Failure, List<domain.Employee>>> getAllEmployees() async {
+  Future<Either<Failure, List<domain.Employee>>> getAll() async {
     try {
       final dbEmployees = await _database.select(_database.employees).get();
       final employees = dbEmployees.map(EmployeeMapper.fromDb).toList().cast<domain.Employee>();
@@ -42,41 +42,23 @@ class EmployeeRepositoryDrift implements EmployeeRepository {
   }
 
   @override
-  Future<Either<Failure, domain.Employee?>> getEmployeeById(int id) async {
+  Future<Either<NotFoundFailure, domain.Employee>> getById(int id) async {
     try {
       final query = _database.select(_database.employees)
         ..where((employee) => employee.id.equals(id));
-      
-      final dbEmployee = await query.getSingleOrNull();
-      if (dbEmployee == null) return const Right(null);
-      
-      final employee = EmployeeMapper.fromDb(dbEmployee);
-      return Right(employee);
-    } catch (e) {
-      return Left(DatabaseFailure('Failed to get employee by id: $e'));
-    }
-  }
-
-  // Простой метод для получения по ID (для AppUserRepository)
-  Future<Either<Failure, domain.Employee>> getById(int id) async {
-    try {
-      final query = _database.select(_database.employees)
-        ..where((employee) => employee.id.equals(id));
-      
       final dbEmployee = await query.getSingleOrNull();
       if (dbEmployee == null) {
         return Left(NotFoundFailure('Employee with id $id not found'));
       }
-      
       final employee = EmployeeMapper.fromDb(dbEmployee);
       return Right(employee);
     } catch (e) {
-      return Left(DatabaseFailure('Failed to get employee by id: $e'));
+      return Left(NotFoundFailure('Failed to get employee by id: $e'));
     }
   }
 
   @override
-  Future<Either<Failure, void>> deleteEmployee(int id) async {
+  Future<Either<Failure, void>> delete(int id) async {
     try {
       await (_database.delete(_database.employees)
         ..where((employee) => employee.id.equals(id))).go();
@@ -99,7 +81,7 @@ class EmployeeRepositoryDrift implements EmployeeRepository {
   @override
   Future<Either<Failure, domain.Employee?>> getNavigationUserById(int id) async {
     try {
-      final employeeResult = await getEmployeeById(id);
+      final employeeResult = await getById(id);
       return employeeResult.fold(
         (failure) => Left(failure),
         (employee) => Right(employee),

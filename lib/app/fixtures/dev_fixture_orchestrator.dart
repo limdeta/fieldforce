@@ -13,20 +13,19 @@ import 'package:get_it/get_it.dart';
 class DevFixtureOrchestrator {
   final UserFixture _userFixture;
   final RouteFixtureService _routeFixtureService;
-  final TradingPointsFixtureService _tradingPointsService;
+  final TradingPointsFixtureService _tradingPointsFixture;
   final CreateWorkDayUseCase _createWorkDayUseCase;
 
   DevFixtureOrchestrator(
       this. _userFixture,
       this._routeFixtureService,
-      this._tradingPointsService,
+      this._tradingPointsFixture,
       this._createWorkDayUseCase,
       );
 
   /// Создает полный набор dev данных
   Future<void> createFullDevDataset() async {
     await _clearAllData();
-    await _tradingPointsService.createBaseTradingPoints();
     final user = await _userFixture.getBasicUser(userData: _userFixture.saddam);
     await createScenarioWithUser(user);
     print("Загрузил все dev фикстуры");
@@ -43,6 +42,9 @@ class DevFixtureOrchestrator {
 
   Future<void> createScenarioWithUser(AppUser user) async {
   try {
+      // Привязываем точки к сотруднику
+      await _tradingPointsFixture.assignTradingPointsToEmployee(user.employee);
+
       // 1. Маршруты
       final yesterdayRoute = await unwrapOrThrow(
           _routeFixtureService.createYesterdayRoute(user.employee),

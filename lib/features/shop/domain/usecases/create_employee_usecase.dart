@@ -19,7 +19,7 @@ class CreateEmployeeUseCase {
       return Left(ValidationFailure('Фамилия и имя обязательны'));
     }
 
-    final allEmployeesResult = await _repository.getAllEmployees();
+    final allEmployeesResult = await _repository.getAll();
     final allEmployees = allEmployeesResult.fold((l) => [], (r) => r);
     final exists = allEmployees.any((e) =>
       e.lastName == lastName &&
@@ -37,6 +37,6 @@ class CreateEmployeeUseCase {
       role: role,
     );
 
-    return await _repository.createEmployee(employee);
+    return await _repository.create(employee);
   }
 }

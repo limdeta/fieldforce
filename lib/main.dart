@@ -1,5 +1,5 @@
 import 'package:fieldforce/app/di/test_service_locator.dart' as test_di;
-import 'package:fieldforce/app/presentation/pages/trading_points_list_page.dart';
+import 'package:fieldforce/features/shop/presentation/trading_points_list_page.dart';
 import 'package:flutter/material.dart';
 import 'package:get_it/get_it.dart';
 import 'package:fieldforce/app/presentation/pages/main_menu_page.dart';
@@ -20,6 +20,9 @@ import 'features/shop/presentation/promotions_page.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+
+  final String initialRoute = const String.fromEnvironment('INITIAL_ROUTE', defaultValue: '/');
+
   AppConfig.configureFromArgs();
 
   if (AppConfig.isProd) {
@@ -42,7 +45,8 @@ void main() async {
 }
 
 class FieldforceApp extends StatelessWidget {
-  const FieldforceApp({super.key});
+  final String initialRoute;
+  const FieldforceApp({super.key,  this.initialRoute = '/'});
 
   @override
   Widget build(BuildContext context) {

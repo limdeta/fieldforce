@@ -14,11 +14,9 @@ class DriftTradingPointRepository implements TradingPointRepository {
   @override
   Future<Either<Failure, List<TradingPoint>>> getEmployeePoints(Employee employee) async {
     try {
-      // Получаем ID торговых точек закрепленных за сотрудником
       final assignments = await (_database.select(_database.employeeTradingPointAssignments)
         ..where((tbl) => tbl.employeeId.equals(employee.id))
       ).get();
-
       if (assignments.isEmpty) {
         return const Right([]);
       }
@@ -38,7 +36,6 @@ class DriftTradingPointRepository implements TradingPointRepository {
         createdAt: entity.createdAt,
         updatedAt: entity.updatedAt,
       )).toList();
-
       return Right(tradingPoints);
     } catch (e) {
       return Left(DatabaseFailure('Ошибка получения торговых точек сотрудника: $e'));

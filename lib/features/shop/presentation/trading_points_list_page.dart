@@ -185,6 +185,31 @@ class _TradingPointsListPageState extends State<TradingPointsListPage> {
       );
     }
 
+    // Если у пользователя нет торговых точек вообще
+    if (_tradingPoints.isEmpty) {
+      return Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            const Icon(
+              Icons.store_outlined,
+              size: 64,
+              color: Colors.grey,
+            ),
+            const SizedBox(height: 16),
+            const Text(
+              'Торговые точки не назначены',
+              style: TextStyle(
+                fontSize: 18,
+                color: Colors.grey,
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+
+    // Если есть точки, но поиск не дал результатов
     if (_filteredTradingPoints.isEmpty) {
       return Center(
         child: Column(
@@ -196,11 +221,9 @@ class _TradingPointsListPageState extends State<TradingPointsListPage> {
               color: Colors.grey,
             ),
             const SizedBox(height: 16),
-            Text(
-              _searchController.text.isNotEmpty 
-                  ? 'Торговые точки не найдены'
-                  : 'Торговые точки не назначены',
-              style: const TextStyle(
+            const Text(
+              'Торговые точки не найдены',
+              style: TextStyle(
                 fontSize: 18,
                 color: Colors.grey,
               ),

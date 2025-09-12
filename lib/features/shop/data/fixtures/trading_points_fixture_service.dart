@@ -1,3 +1,4 @@
+import 'package:flutter/cupertino.dart';
 import 'package:get_it/get_it.dart';
 import 'package:drift/drift.dart';
 import 'package:fieldforce/app/database/app_database.dart';
@@ -114,34 +115,21 @@ class TradingPointsFixtureService {
       await _saveTradingPoint(point);
     }
 
+    debugPrint("✅ Создано ${points.length} торговых точек");
     return points;
   }
   
   /// Привязывает все торговые точки из маршрутов к первому найденному сотруднику
-  Future<void> assignTradingPointsToFirstEmployee() async {
+  Future<void> assignTradingPointsToEmployee(Employee user) async {
     try {
       // Получаем первого сотрудника из базы
       final employeeRepository = GetIt.instance<EmployeeRepository>();
-      final employeesResult = await employeeRepository.getAllEmployees();
-      
-      if (employeesResult.isLeft()) {
-        print('⚠️ Не удалось получить сотрудников для привязки торговых точек');
-        return;
-      }
-      
-      final employees = employeesResult.fold(
-        (failure) => <Employee>[],
+      final employeeResult = await employeeRepository.getById(user.id);
+      final employee = employeeResult.fold(
+        (failure) => throw("Пользователь для привязки точек не найден"),
         (employees) => employees,
       );
-      
-      if (employees.isEmpty) {
-        print('⚠️ В базе нет сотрудников для привязки торговых точек');
-        return;
-      }
-      
-      final employee = employees.first;
-      
-      // Создаем торговые точки если их нет
+
       final tradingPoints = await createBaseTradingPoints();
       
       // Получаем репозиторий торговых точек

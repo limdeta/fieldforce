@@ -1,3 +1,4 @@
+import 'package:flutter/cupertino.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:get_it/get_it.dart';
 import 'package:fieldforce/features/shop/domain/entities/employee.dart';
@@ -31,7 +32,7 @@ void main() {
       final tradingPoints = scenario['tradingPoints'] as List;
 
       // Сначала сохраняем сотрудника в базу
-      final createResult = await employeeRepository.createEmployee(employee);
+      final createResult = await employeeRepository.create(employee);
       
       // Получаем сотрудника с присвоенным ID
       late final Employee savedEmployee;
@@ -72,7 +73,7 @@ void main() {
       final tradingPoints = scenario['tradingPoints'] as List;
 
       // Сохраняем сотрудника и торговые точки в базу
-      final createResult = await employeeRepository.createEmployee(employee);
+      final createResult = await employeeRepository.create(employee);
       late final Employee savedEmployee;
       createResult.fold(
         (failure) => fail('Failed to create employee: ${failure.message}'),
@@ -108,7 +109,7 @@ void main() {
       );
 
       // Сохраняем сотрудника в базу
-      final createResult = await employeeRepository.createEmployee(employee);
+      final createResult = await employeeRepository.create(employee);
       late final Employee savedEmployee;
       createResult.fold(
         (failure) => fail('Failed to create employee: ${failure.message}'),
