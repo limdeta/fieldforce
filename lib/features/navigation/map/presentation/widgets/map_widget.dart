@@ -599,7 +599,7 @@ class _MapWidgetState extends State<MapWidget> {
       final distance = _calculateDistance(endLat, endLng, startLat, startLng);
       final maxDistance = widget.maxConnectionDistance ?? _maxConnectionDistance;
       if (distance > maxDistance) {
-        print('⚠️ Пропускаем соединение между сегментами ${i} и ${i+1}: расстояние ${distance.toStringAsFixed(1)}м > ${maxDistance}м');
+        // print('⚠️ Пропускаем соединение между сегментами ${i} и ${i+1}: расстояние ${distance.toStringAsFixed(1)}м > ${maxDistance}м');
         continue;
       }
       

@@ -117,9 +117,7 @@ class GpsDataManager {
     if (_currentSource == null) {
       throw StateError('GPS источник не инициализирован. Вызовите initialize() сначала.');
     }
-    print('🌍 GpsDataManager: getPositionStream() вызван, _currentSource: ${_currentSource.runtimeType}');
     return _currentSource!.getPositionStream(settings: settings).map((position) {
-      print('🌍 GpsDataManager: Передаем позицию ${position.latitude}, ${position.longitude}');
       return position;
     });
   }
