@@ -21,3 +21,12 @@ Roadmap:
 
 flutter pub run build_runner build --delete-conflicting-outputs
 flutter test
+
+для разработки (dev режим по умолчанию с фикстурами)
+flutter run -d windows
+
+собрать для продакшена
+flutter build apk --dart-define=ENV=prod --release 
+
+под винду
+flutter build windows --dart-define=ENV=prod --release

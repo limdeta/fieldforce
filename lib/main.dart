@@ -29,7 +29,7 @@ void main() async {
     await setupTestServiceLocator();
   }
 
-  if (!AppConfig.isProd) {
+  if (AppConfig.isDev) {
     final orchestrator = getIt<DevFixtureOrchestrator>();
     await orchestrator.createFullDevDataset();
   }

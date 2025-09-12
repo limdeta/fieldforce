@@ -1,3 +1,5 @@
+import 'dart:io';
+
 enum Environment {
   dev,
   prod,
@@ -49,6 +51,12 @@ class AppConfig {
   
 
   static void configureFromArgs() {
+    // Автоматически определяем тестовое окружение
+    if (Platform.environment.containsKey('FLUTTER_TEST')) {
+      _environment = Environment.test;
+      return;
+    }
+
     const envString = String.fromEnvironment('ENV', defaultValue: 'dev');
     
     switch (envString.toLowerCase()) {
