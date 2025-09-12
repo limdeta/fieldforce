@@ -30,7 +30,7 @@ void main() async {
   }
 
   if (!AppConfig.isProd) {
-    final orchestrator = DevFixtureOrchestratorFactory.create();
+    final orchestrator = getIt<DevFixtureOrchestrator>();
     await orchestrator.createFullDevDataset();
   }
 

@@ -36,6 +36,15 @@ import 'package:fieldforce/app/services/user_preferences_service.dart';
 import 'package:fieldforce/app/database/repositories/work_day_repository.dart';
 import '../../features/navigation/tracking/domain/services/location_tracking_service_base.dart';
 import 'package:fieldforce/features/navigation/tracking/domain/services/gps_data_manager.dart';
+// Added imports for UserFixture and dependencies
+import 'package:fieldforce/features/authentication/domain/services/user_service.dart';
+import 'package:fieldforce/features/shop/domain/usecases/create_employee_usecase.dart';
+import 'package:fieldforce/app/domain/usecases/create_app_user_usecase.dart';
+import 'package:fieldforce/app/domain/usecases/create_work_day_usecase.dart';
+import 'package:fieldforce/app/fixtures/user_fixture.dart';
+import 'package:fieldforce/app/fixtures/dev_fixture_orchestrator.dart';
+import 'package:fieldforce/app/fixtures/route_fixture_service.dart';
+import 'package:fieldforce/features/shop/data/fixtures/trading_points_fixture_service.dart';
 
 final _getIt = GetIt.instance;
 
@@ -180,5 +189,48 @@ Future<void> setupTestServiceLocator() async {
 
   _getIt.registerLazySingleton<LoadUserRoutesUseCase>(
     () => LoadUserRoutesUseCase(_getIt<RouteRepository>()),
+  );
+
+  // --- Fixture Services ---
+  _getIt.registerLazySingleton<RouteFixtureService>(
+    () => RouteFixtureService(_getIt<RouteRepository>()),
+  );
+
+  _getIt.registerLazySingleton<TradingPointsFixtureService>(
+    () => TradingPointsFixtureService(),
+  );
+
+  // --- UserFixture and DevFixtureOrchestrator dependencies ---
+  _getIt.registerLazySingleton<UserService>(
+    () => UserServiceFactory.create(),
+  );
+
+  _getIt.registerLazySingleton<CreateEmployeeUseCase>(
+    () => CreateEmployeeUseCase(_getIt<EmployeeRepository>()),
+  );
+
+  _getIt.registerLazySingleton<CreateAppUserUseCase>(
+    () => CreateAppUserUseCase(_getIt<AppUserRepository>()),
+  );
+
+  _getIt.registerLazySingleton<CreateWorkDayUseCase>(
+    () => CreateWorkDayUseCase(_getIt<WorkDayRepository>()),
+  );
+
+  _getIt.registerLazySingleton<UserFixture>(
+    () => UserFixture(
+      userService: _getIt<UserService>(),
+      createEmployeeUseCase: _getIt<CreateEmployeeUseCase>(),
+      createAppUserUseCase: _getIt<CreateAppUserUseCase>(),
+    ),
+  );
+
+  _getIt.registerLazySingleton<DevFixtureOrchestrator>(
+    () => DevFixtureOrchestrator(
+      _getIt<UserFixture>(),
+      _getIt<RouteFixtureService>(),
+      _getIt<TradingPointsFixtureService>(),
+      _getIt<CreateWorkDayUseCase>(),
+    ),
   );
 }

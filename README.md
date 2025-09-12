@@ -18,3 +18,6 @@ Roadmap:
  - История заказов торговых точек
  - Разобраться с логами, дебаг-принтами и kDebugMode
  - Почистить модуль авторизации от ненужного
+
+flutter pub run build_runner build --delete-conflicting-outputs
+flutter test
