@@ -17,6 +17,8 @@ import 'app/presentation/pages/routes_page.dart';
 import 'features/shop/presentation/product_catalog_page.dart';
 import 'features/shop/presentation/product_categories_page.dart';
 import 'features/shop/presentation/promotions_page.dart';
+import 'app/fixtures/user_fixture.dart';
+import 'app/domain/entities/app_user.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -27,6 +29,8 @@ void main() async {
 
   if (AppConfig.isProd) {
     await prod_di.setupServiceLocator();
+    final userFixture = GetIt.instance<UserFixture>();
+    await userFixture.getBasicUser(userData: userFixture.admin);
   } else {
     // Запускаем тестовый контейнер
     await test_di.setupTestServiceLocator();

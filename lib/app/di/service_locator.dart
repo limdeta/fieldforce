@@ -1,11 +1,15 @@
 import 'package:fieldforce/app/di/route_di.dart';
 import 'package:fieldforce/app/domain/usecases/app_user_login_usecase.dart';
 import 'package:fieldforce/app/domain/usecases/app_user_logout_usecase.dart';
+import 'package:fieldforce/app/domain/usecases/create_app_user_usecase.dart';
 import 'package:fieldforce/app/domain/usecases/get_current_app_session_usecase.dart';
 import 'package:fieldforce/app/domain/usecases/get_work_days_for_user_usecase.dart';
+import 'package:fieldforce/app/fixtures/user_fixture.dart';
+import 'package:fieldforce/features/authentication/domain/services/user_service.dart';
 import 'package:fieldforce/features/navigation/tracking/domain/services/location_tracking_service.dart';
 import 'package:fieldforce/features/navigation/tracking/domain/usecases/get_user_track_for_date_usecase.dart';
 import 'package:fieldforce/features/navigation/tracking/domain/usecases/get_user_tracks_usecase.dart';
+import 'package:fieldforce/features/shop/domain/usecases/create_employee_usecase.dart';
 import 'package:get_it/get_it.dart';
 import 'package:fieldforce/app/database/app_database.dart';
 import 'package:fieldforce/app/database/repositories/user_repository_drift.dart';
@@ -173,9 +177,14 @@ Future<void> setupServiceLocator() async {
     () => LocationTrackingService(getIt<GpsDataManager>()),
   );
 
-  // TODO: В проде заменить на реальный GPS источник!
-  await GpsDataManager().initialize(mode: GpsMode.mock);
-  getIt.registerSingleton<GpsDataManager>(GpsDataManager());
+  // GPS initialization based on environment
+  if (AppConfig.isProd) {
+    await GpsDataManager().initialize(mode: GpsMode.real);
+    getIt.registerSingleton<GpsDataManager>(GpsDataManager());
+  } else {
+    await GpsDataManager().initialize(mode: GpsMode.mock);
+    getIt.registerSingleton<GpsDataManager>(GpsDataManager());
+  }
 
   getIt.registerLazySingleton<GetUserTracksUseCase>(
     () => GetUserTracksUseCase(getIt<UserTrackRepository>()),
@@ -183,5 +192,25 @@ Future<void> setupServiceLocator() async {
 
   getIt.registerLazySingleton<LoadUserRoutesUseCase>(
     () => LoadUserRoutesUseCase(getIt<RouteRepository>()),
+  );
+
+  getIt.registerLazySingleton<UserService>(
+    () => UserService(getIt<UserRepository>()),
+  );
+
+  getIt.registerLazySingleton<CreateEmployeeUseCase>(
+    () => CreateEmployeeUseCase(getIt<EmployeeRepository>()),
+  );
+
+  getIt.registerLazySingleton<CreateAppUserUseCase>(
+    () => CreateAppUserUseCase(getIt<AppUserRepository>()),
+  );
+
+  getIt.registerLazySingleton<UserFixture>(
+    () => UserFixture(
+      userService: getIt<UserService>(),
+      createEmployeeUseCase: getIt<CreateEmployeeUseCase>(),
+      createAppUserUseCase: getIt<CreateAppUserUseCase>(),
+    ),
   );
 }

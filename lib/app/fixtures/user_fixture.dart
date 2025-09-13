@@ -33,6 +33,14 @@ class UserFixture {
     required this.createAppUserUseCase,
   });
 
+  final admin = const DevUserData(
+    name: 'Админ Админов',
+    email: 'admin@fieldforce.dev',
+    password: '123456',
+    phone: '+7-000-000-0000',
+    role: UserRole.admin,
+  );
+
   final saddam = const DevUserData(
     name: 'Саддам Хусейн',
     email: 'salesrep@fieldforce.dev',
