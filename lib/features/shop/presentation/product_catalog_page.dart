@@ -129,25 +129,76 @@ class _ProductCatalogPageState extends State<ProductCatalogPage>
   }
 
   Color _getCategoryColor(int level) {
-    // Серая градация - чем глубже уровень, тем темнее оттенок
+    // Улучшенная градация с более заметными отличиями
     switch (level) {
-      case 0: return const Color(0xFFF8F9FA); // Светло-серый для корневых категорий
-      case 1: return const Color(0xFFE9ECEF); // Более насыщенный серый
-      case 2: return const Color(0xFFDEE2E6); // Еще более насыщенный
-      case 3: return const Color(0xFFCED4DA); // Темно-серый
-      case 4: return const Color(0xFFADB5BD); // Очень темный серый
-      default: return const Color(0xFFF8F9FA); // Светло-серый для глубоких уровней
+      case 0: return const Color(0xFFF0F8FF); // Светло-голубой для корневых категорий
+      case 1: return const Color(0xFFF8F9FA); // Светло-серый для уровня 1
+      case 2: return const Color(0xFFE3F2FD); // Светло-синий для уровня 2
+      case 3: return const Color(0xFFF3E5F5); // Светло-фиолетовый для уровня 3
+      case 4: return const Color(0xFFFFF3E0); // Светло-оранжевый для уровня 4
+      default: return const Color(0xFFF0F8FF); // Светло-голубой для глубоких уровней
     }
   }
 
   Color _getChildCategoryColor(int parentLevel) {
-    // Для дочерних категорий используем чуть более светлый оттенок
+    // Цвета дочерних категорий соответствуют цветам родительских
     switch (parentLevel) {
-      case 0: return const Color(0xFFFFFFFF); // Белый для детей корневых
-      case 1: return const Color(0xFFF8F9FA); // Светло-серый для детей уровня 1
-      case 2: return const Color(0xFFE9ECEF); // Более насыщенный для детей уровня 2
-      case 3: return const Color(0xFFDEE2E6); // Еще насыщеннее для детей уровня 3
-      default: return const Color(0xFFFFFFFF); // Белый для глубоких уровней
+      case 0: return const Color(0xFFF8F9FA); // Светло-серый для детей корневых
+      case 1: return const Color(0xFFFFFFFF); // Белый для детей уровня 1
+      case 2: return const Color(0xFFF8F9FA); // Светло-серый для детей уровня 2
+      case 3: return const Color(0xFFFFFFFF); // Белый для детей уровня 3
+      default: return const Color(0xFFF8F9FA); // Светло-серый для глубоких уровней
+    }
+  }
+
+  // Новые методы для визуальной иерархии
+  String _getLevelPrefix(int level) {
+    switch (level) {
+      case 0: return '●'; // Крупная точка для корневых
+      case 1: return '○'; // Круг для уровня 1
+      case 2: return '◦'; // Маленькая точка для уровня 2
+      case 3: return '•'; // Маркер для уровня 3
+      default: return '·'; // Точка для глубоких уровней
+    }
+  }
+
+  Color _getLevelBorderColor(int level) {
+    switch (level) {
+      case 0: return Colors.blue.shade300; // Синяя граница для корневых
+      case 1: return Colors.green.shade300; // Зеленая для уровня 1
+      case 2: return Colors.orange.shade300; // Оранжевая для уровня 2
+      case 3: return Colors.purple.shade300; // Фиолетовая для уровня 3
+      default: return Colors.grey.shade300; // Серая для глубоких уровней
+    }
+  }
+
+  double _getLevelBorderWidth(int level) {
+    switch (level) {
+      case 0: return 4.0; // Толстая граница для корневых
+      case 1: return 3.0; // Средняя для уровня 1
+      case 2: return 2.0; // Тонкая для уровня 2
+      case 3: return 1.0; // Очень тонкая для уровня 3
+      default: return 0.5; // Минимальная для глубоких уровней
+    }
+  }
+
+  double _getIconSize(int level) {
+    switch (level) {
+      case 0: return 22.0; // Крупная иконка для корневых
+      case 1: return 20.0; // Средняя для уровня 1
+      case 2: return 18.0; // Меньше для уровня 2
+      case 3: return 16.0; // Маленькая для уровня 3
+      default: return 14.0; // Минимальная для глубоких уровней
+    }
+  }
+
+  double _getFontSize(int level) {
+    switch (level) {
+      case 0: return 15.0; // Крупный шрифт для корневых
+      case 1: return 14.0; // Средний для уровня 1
+      case 2: return 13.0; // Меньше для уровня 2
+      case 3: return 12.0; // Маленький для уровня 3
+      default: return 11.0; // Минимальный для глубоких уровней
     }
   }
 
@@ -338,6 +389,9 @@ class _ProductCatalogPageState extends State<ProductCatalogPage>
     final isExpanded = _expandedCategories.contains(category.id);
     final categoryColor = _getCategoryColor(level);
 
+    // Создаем префикс для обозначения уровня
+    final levelPrefix = _getLevelPrefix(level);
+
     return Card(
       elevation: 0,
       margin: const EdgeInsets.only(
@@ -358,19 +412,45 @@ class _ProductCatalogPageState extends State<ProductCatalogPage>
             child: Container(
               decoration: BoxDecoration(
                 color: categoryColor,
+                border: Border(
+                  left: BorderSide(
+                    color: _getLevelBorderColor(level),
+                    width: _getLevelBorderWidth(level),
+                  ),
+                ),
               ),
               child: Row(
                 children: [
-                  // Левая часть - иконка и отступ
+                  // Левая часть - иконка с отступом в зависимости от уровня
                   Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
-                    child: Container(
-                      padding: const EdgeInsets.all(4),
-                      child: Icon(
-                        _getCategoryIcon(category.name),
-                        color: Colors.blue.shade600,
-                        size: 20,
-                      ),
+                    padding: EdgeInsets.only(
+                      left: 8.0 + (level * 12.0), // Отступ иконки зависит от уровня
+                      right: 8,
+                      top: 6,
+                      bottom: 6,
+                    ),
+                    child: Row(
+                      children: [
+                        // Префикс уровня
+                        Text(
+                          levelPrefix,
+                          style: TextStyle(
+                            fontSize: 12,
+                            color: Colors.grey.shade600,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                        const SizedBox(width: 4),
+                        // Иконка
+                        Container(
+                          padding: const EdgeInsets.all(3),
+                          child: Icon(
+                            _getCategoryIcon(category.name),
+                            color: Colors.blue.shade600,
+                            size: _getIconSize(level), // Размер иконки зависит от уровня
+                          ),
+                        ),
+                      ],
                     ),
                   ),
 
@@ -383,9 +463,10 @@ class _ProductCatalogPageState extends State<ProductCatalogPage>
                         child: Text(
                           category.name,
                           style: TextStyle(
-                            fontSize: level == 0 ? 14 : 13,
+                            fontSize: _getFontSize(level), // Размер шрифта зависит от уровня
                             fontWeight: level == 0 ? FontWeight.w600 : FontWeight.w500,
                             color: Colors.black87,
+                            height: 1.2, // Межстрочный интервал
                           ),
                         ),
                       ),
@@ -411,7 +492,7 @@ class _ProductCatalogPageState extends State<ProductCatalogPage>
                                   ? Icons.expand_more // Стрелка вниз для категорий с детьми
                                   : Icons.keyboard_arrow_up, // Стрелка вверх для конечных категорий
                               color: Colors.blue.shade600,
-                              size: 20,
+                              size: 18, // Фиксированный размер стрелки
                             ),
                           ),
                         ),
