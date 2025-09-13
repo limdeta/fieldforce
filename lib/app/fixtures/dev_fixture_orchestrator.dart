@@ -4,6 +4,7 @@ import 'package:fieldforce/app/fixtures/user_fixture.dart';
 import 'package:fieldforce/app/fixtures/route_fixture_service.dart';
 import 'package:fieldforce/features/navigation/tracking/data/fixtures/track_fixtures.dart';
 import 'package:fieldforce/features/shop/data/fixtures/trading_points_fixture_service.dart';
+import 'package:fieldforce/features/shop/data/fixtures/category_fixture_service.dart';
 import 'package:fieldforce/app/database/app_database.dart';
 import 'package:fieldforce/shared/either.dart';
 import 'package:flutter/cupertino.dart';
@@ -14,12 +15,14 @@ class DevFixtureOrchestrator {
   final UserFixture _userFixture;
   final RouteFixtureService _routeFixtureService;
   final TradingPointsFixtureService _tradingPointsFixture;
+  final CategoryFixtureService _categoryFixture;
   final CreateWorkDayUseCase _createWorkDayUseCase;
 
   DevFixtureOrchestrator(
       this. _userFixture,
       this._routeFixtureService,
       this._tradingPointsFixture,
+      this._categoryFixture,
       this._createWorkDayUseCase,
       );
 
@@ -44,6 +47,9 @@ class DevFixtureOrchestrator {
   try {
       // Привязываем точки к сотруднику
       await _tradingPointsFixture.assignTradingPointsToEmployee(user.employee);
+
+      // 0. Категории товаров
+      await _categoryFixture.loadCategories(fixtureType: FixtureType.full);
 
       // 1. Маршруты
       final yesterdayRoute = await unwrapOrThrow(

@@ -4635,6 +4635,597 @@ class WorkDaysCompanion extends UpdateCompanion<WorkDayData> {
   }
 }
 
+class $CategoriesTable extends Categories
+    with TableInfo<$CategoriesTable, CategoryData> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $CategoriesTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _idMeta = const VerificationMeta('id');
+  @override
+  late final GeneratedColumn<int> id = GeneratedColumn<int>(
+      'id', aliasedName, false,
+      hasAutoIncrement: true,
+      type: DriftSqlType.int,
+      requiredDuringInsert: false,
+      defaultConstraints:
+          GeneratedColumn.constraintIsAlways('PRIMARY KEY AUTOINCREMENT'));
+  static const VerificationMeta _nameMeta = const VerificationMeta('name');
+  @override
+  late final GeneratedColumn<String> name = GeneratedColumn<String>(
+      'name', aliasedName, false,
+      type: DriftSqlType.string, requiredDuringInsert: true);
+  static const VerificationMeta _categoryIdMeta =
+      const VerificationMeta('categoryId');
+  @override
+  late final GeneratedColumn<int> categoryId = GeneratedColumn<int>(
+      'category_id', aliasedName, false,
+      type: DriftSqlType.int,
+      requiredDuringInsert: true,
+      defaultConstraints: GeneratedColumn.constraintIsAlways('UNIQUE'));
+  static const VerificationMeta _lftMeta = const VerificationMeta('lft');
+  @override
+  late final GeneratedColumn<int> lft = GeneratedColumn<int>(
+      'lft', aliasedName, false,
+      type: DriftSqlType.int, requiredDuringInsert: true);
+  static const VerificationMeta _lvlMeta = const VerificationMeta('lvl');
+  @override
+  late final GeneratedColumn<int> lvl = GeneratedColumn<int>(
+      'lvl', aliasedName, false,
+      type: DriftSqlType.int, requiredDuringInsert: true);
+  static const VerificationMeta _rgtMeta = const VerificationMeta('rgt');
+  @override
+  late final GeneratedColumn<int> rgt = GeneratedColumn<int>(
+      'rgt', aliasedName, false,
+      type: DriftSqlType.int, requiredDuringInsert: true);
+  static const VerificationMeta _descriptionMeta =
+      const VerificationMeta('description');
+  @override
+  late final GeneratedColumn<String> description = GeneratedColumn<String>(
+      'description', aliasedName, true,
+      type: DriftSqlType.string, requiredDuringInsert: false);
+  static const VerificationMeta _queryMeta = const VerificationMeta('query');
+  @override
+  late final GeneratedColumn<String> query = GeneratedColumn<String>(
+      'query', aliasedName, true,
+      type: DriftSqlType.string, requiredDuringInsert: false);
+  static const VerificationMeta _countMeta = const VerificationMeta('count');
+  @override
+  late final GeneratedColumn<int> count = GeneratedColumn<int>(
+      'count', aliasedName, false,
+      type: DriftSqlType.int, requiredDuringInsert: true);
+  static const VerificationMeta _parentIdMeta =
+      const VerificationMeta('parentId');
+  @override
+  late final GeneratedColumn<int> parentId = GeneratedColumn<int>(
+      'parent_id', aliasedName, true,
+      type: DriftSqlType.int, requiredDuringInsert: false);
+  static const VerificationMeta _rawJsonMeta =
+      const VerificationMeta('rawJson');
+  @override
+  late final GeneratedColumn<String> rawJson = GeneratedColumn<String>(
+      'raw_json', aliasedName, false,
+      type: DriftSqlType.string, requiredDuringInsert: true);
+  static const VerificationMeta _createdAtMeta =
+      const VerificationMeta('createdAt');
+  @override
+  late final GeneratedColumn<DateTime> createdAt = GeneratedColumn<DateTime>(
+      'created_at', aliasedName, false,
+      type: DriftSqlType.dateTime,
+      requiredDuringInsert: false,
+      defaultValue: currentDateAndTime);
+  static const VerificationMeta _updatedAtMeta =
+      const VerificationMeta('updatedAt');
+  @override
+  late final GeneratedColumn<DateTime> updatedAt = GeneratedColumn<DateTime>(
+      'updated_at', aliasedName, false,
+      type: DriftSqlType.dateTime,
+      requiredDuringInsert: false,
+      defaultValue: currentDateAndTime);
+  @override
+  List<GeneratedColumn> get $columns => [
+        id,
+        name,
+        categoryId,
+        lft,
+        lvl,
+        rgt,
+        description,
+        query,
+        count,
+        parentId,
+        rawJson,
+        createdAt,
+        updatedAt
+      ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'categories';
+  @override
+  VerificationContext validateIntegrity(Insertable<CategoryData> instance,
+      {bool isInserting = false}) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('id')) {
+      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
+    }
+    if (data.containsKey('name')) {
+      context.handle(
+          _nameMeta, name.isAcceptableOrUnknown(data['name']!, _nameMeta));
+    } else if (isInserting) {
+      context.missing(_nameMeta);
+    }
+    if (data.containsKey('category_id')) {
+      context.handle(
+          _categoryIdMeta,
+          categoryId.isAcceptableOrUnknown(
+              data['category_id']!, _categoryIdMeta));
+    } else if (isInserting) {
+      context.missing(_categoryIdMeta);
+    }
+    if (data.containsKey('lft')) {
+      context.handle(
+          _lftMeta, lft.isAcceptableOrUnknown(data['lft']!, _lftMeta));
+    } else if (isInserting) {
+      context.missing(_lftMeta);
+    }
+    if (data.containsKey('lvl')) {
+      context.handle(
+          _lvlMeta, lvl.isAcceptableOrUnknown(data['lvl']!, _lvlMeta));
+    } else if (isInserting) {
+      context.missing(_lvlMeta);
+    }
+    if (data.containsKey('rgt')) {
+      context.handle(
+          _rgtMeta, rgt.isAcceptableOrUnknown(data['rgt']!, _rgtMeta));
+    } else if (isInserting) {
+      context.missing(_rgtMeta);
+    }
+    if (data.containsKey('description')) {
+      context.handle(
+          _descriptionMeta,
+          description.isAcceptableOrUnknown(
+              data['description']!, _descriptionMeta));
+    }
+    if (data.containsKey('query')) {
+      context.handle(
+          _queryMeta, query.isAcceptableOrUnknown(data['query']!, _queryMeta));
+    }
+    if (data.containsKey('count')) {
+      context.handle(
+          _countMeta, count.isAcceptableOrUnknown(data['count']!, _countMeta));
+    } else if (isInserting) {
+      context.missing(_countMeta);
+    }
+    if (data.containsKey('parent_id')) {
+      context.handle(_parentIdMeta,
+          parentId.isAcceptableOrUnknown(data['parent_id']!, _parentIdMeta));
+    }
+    if (data.containsKey('raw_json')) {
+      context.handle(_rawJsonMeta,
+          rawJson.isAcceptableOrUnknown(data['raw_json']!, _rawJsonMeta));
+    } else if (isInserting) {
+      context.missing(_rawJsonMeta);
+    }
+    if (data.containsKey('created_at')) {
+      context.handle(_createdAtMeta,
+          createdAt.isAcceptableOrUnknown(data['created_at']!, _createdAtMeta));
+    }
+    if (data.containsKey('updated_at')) {
+      context.handle(_updatedAtMeta,
+          updatedAt.isAcceptableOrUnknown(data['updated_at']!, _updatedAtMeta));
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {id};
+  @override
+  CategoryData map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return CategoryData(
+      id: attachedDatabase.typeMapping
+          .read(DriftSqlType.int, data['${effectivePrefix}id'])!,
+      name: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}name'])!,
+      categoryId: attachedDatabase.typeMapping
+          .read(DriftSqlType.int, data['${effectivePrefix}category_id'])!,
+      lft: attachedDatabase.typeMapping
+          .read(DriftSqlType.int, data['${effectivePrefix}lft'])!,
+      lvl: attachedDatabase.typeMapping
+          .read(DriftSqlType.int, data['${effectivePrefix}lvl'])!,
+      rgt: attachedDatabase.typeMapping
+          .read(DriftSqlType.int, data['${effectivePrefix}rgt'])!,
+      description: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}description']),
+      query: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}query']),
+      count: attachedDatabase.typeMapping
+          .read(DriftSqlType.int, data['${effectivePrefix}count'])!,
+      parentId: attachedDatabase.typeMapping
+          .read(DriftSqlType.int, data['${effectivePrefix}parent_id']),
+      rawJson: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}raw_json'])!,
+      createdAt: attachedDatabase.typeMapping
+          .read(DriftSqlType.dateTime, data['${effectivePrefix}created_at'])!,
+      updatedAt: attachedDatabase.typeMapping
+          .read(DriftSqlType.dateTime, data['${effectivePrefix}updated_at'])!,
+    );
+  }
+
+  @override
+  $CategoriesTable createAlias(String alias) {
+    return $CategoriesTable(attachedDatabase, alias);
+  }
+}
+
+class CategoryData extends DataClass implements Insertable<CategoryData> {
+  final int id;
+  final String name;
+  final int categoryId;
+  final int lft;
+  final int lvl;
+  final int rgt;
+  final String? description;
+  final String? query;
+  final int count;
+  final int? parentId;
+  final String rawJson;
+  final DateTime createdAt;
+  final DateTime updatedAt;
+  const CategoryData(
+      {required this.id,
+      required this.name,
+      required this.categoryId,
+      required this.lft,
+      required this.lvl,
+      required this.rgt,
+      this.description,
+      this.query,
+      required this.count,
+      this.parentId,
+      required this.rawJson,
+      required this.createdAt,
+      required this.updatedAt});
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['id'] = Variable<int>(id);
+    map['name'] = Variable<String>(name);
+    map['category_id'] = Variable<int>(categoryId);
+    map['lft'] = Variable<int>(lft);
+    map['lvl'] = Variable<int>(lvl);
+    map['rgt'] = Variable<int>(rgt);
+    if (!nullToAbsent || description != null) {
+      map['description'] = Variable<String>(description);
+    }
+    if (!nullToAbsent || query != null) {
+      map['query'] = Variable<String>(query);
+    }
+    map['count'] = Variable<int>(count);
+    if (!nullToAbsent || parentId != null) {
+      map['parent_id'] = Variable<int>(parentId);
+    }
+    map['raw_json'] = Variable<String>(rawJson);
+    map['created_at'] = Variable<DateTime>(createdAt);
+    map['updated_at'] = Variable<DateTime>(updatedAt);
+    return map;
+  }
+
+  CategoriesCompanion toCompanion(bool nullToAbsent) {
+    return CategoriesCompanion(
+      id: Value(id),
+      name: Value(name),
+      categoryId: Value(categoryId),
+      lft: Value(lft),
+      lvl: Value(lvl),
+      rgt: Value(rgt),
+      description: description == null && nullToAbsent
+          ? const Value.absent()
+          : Value(description),
+      query:
+          query == null && nullToAbsent ? const Value.absent() : Value(query),
+      count: Value(count),
+      parentId: parentId == null && nullToAbsent
+          ? const Value.absent()
+          : Value(parentId),
+      rawJson: Value(rawJson),
+      createdAt: Value(createdAt),
+      updatedAt: Value(updatedAt),
+    );
+  }
+
+  factory CategoryData.fromJson(Map<String, dynamic> json,
+      {ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return CategoryData(
+      id: serializer.fromJson<int>(json['id']),
+      name: serializer.fromJson<String>(json['name']),
+      categoryId: serializer.fromJson<int>(json['categoryId']),
+      lft: serializer.fromJson<int>(json['lft']),
+      lvl: serializer.fromJson<int>(json['lvl']),
+      rgt: serializer.fromJson<int>(json['rgt']),
+      description: serializer.fromJson<String?>(json['description']),
+      query: serializer.fromJson<String?>(json['query']),
+      count: serializer.fromJson<int>(json['count']),
+      parentId: serializer.fromJson<int?>(json['parentId']),
+      rawJson: serializer.fromJson<String>(json['rawJson']),
+      createdAt: serializer.fromJson<DateTime>(json['createdAt']),
+      updatedAt: serializer.fromJson<DateTime>(json['updatedAt']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'id': serializer.toJson<int>(id),
+      'name': serializer.toJson<String>(name),
+      'categoryId': serializer.toJson<int>(categoryId),
+      'lft': serializer.toJson<int>(lft),
+      'lvl': serializer.toJson<int>(lvl),
+      'rgt': serializer.toJson<int>(rgt),
+      'description': serializer.toJson<String?>(description),
+      'query': serializer.toJson<String?>(query),
+      'count': serializer.toJson<int>(count),
+      'parentId': serializer.toJson<int?>(parentId),
+      'rawJson': serializer.toJson<String>(rawJson),
+      'createdAt': serializer.toJson<DateTime>(createdAt),
+      'updatedAt': serializer.toJson<DateTime>(updatedAt),
+    };
+  }
+
+  CategoryData copyWith(
+          {int? id,
+          String? name,
+          int? categoryId,
+          int? lft,
+          int? lvl,
+          int? rgt,
+          Value<String?> description = const Value.absent(),
+          Value<String?> query = const Value.absent(),
+          int? count,
+          Value<int?> parentId = const Value.absent(),
+          String? rawJson,
+          DateTime? createdAt,
+          DateTime? updatedAt}) =>
+      CategoryData(
+        id: id ?? this.id,
+        name: name ?? this.name,
+        categoryId: categoryId ?? this.categoryId,
+        lft: lft ?? this.lft,
+        lvl: lvl ?? this.lvl,
+        rgt: rgt ?? this.rgt,
+        description: description.present ? description.value : this.description,
+        query: query.present ? query.value : this.query,
+        count: count ?? this.count,
+        parentId: parentId.present ? parentId.value : this.parentId,
+        rawJson: rawJson ?? this.rawJson,
+        createdAt: createdAt ?? this.createdAt,
+        updatedAt: updatedAt ?? this.updatedAt,
+      );
+  @override
+  String toString() {
+    return (StringBuffer('CategoryData(')
+          ..write('id: $id, ')
+          ..write('name: $name, ')
+          ..write('categoryId: $categoryId, ')
+          ..write('lft: $lft, ')
+          ..write('lvl: $lvl, ')
+          ..write('rgt: $rgt, ')
+          ..write('description: $description, ')
+          ..write('query: $query, ')
+          ..write('count: $count, ')
+          ..write('parentId: $parentId, ')
+          ..write('rawJson: $rawJson, ')
+          ..write('createdAt: $createdAt, ')
+          ..write('updatedAt: $updatedAt')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(id, name, categoryId, lft, lvl, rgt,
+      description, query, count, parentId, rawJson, createdAt, updatedAt);
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is CategoryData &&
+          other.id == this.id &&
+          other.name == this.name &&
+          other.categoryId == this.categoryId &&
+          other.lft == this.lft &&
+          other.lvl == this.lvl &&
+          other.rgt == this.rgt &&
+          other.description == this.description &&
+          other.query == this.query &&
+          other.count == this.count &&
+          other.parentId == this.parentId &&
+          other.rawJson == this.rawJson &&
+          other.createdAt == this.createdAt &&
+          other.updatedAt == this.updatedAt);
+}
+
+class CategoriesCompanion extends UpdateCompanion<CategoryData> {
+  final Value<int> id;
+  final Value<String> name;
+  final Value<int> categoryId;
+  final Value<int> lft;
+  final Value<int> lvl;
+  final Value<int> rgt;
+  final Value<String?> description;
+  final Value<String?> query;
+  final Value<int> count;
+  final Value<int?> parentId;
+  final Value<String> rawJson;
+  final Value<DateTime> createdAt;
+  final Value<DateTime> updatedAt;
+  const CategoriesCompanion({
+    this.id = const Value.absent(),
+    this.name = const Value.absent(),
+    this.categoryId = const Value.absent(),
+    this.lft = const Value.absent(),
+    this.lvl = const Value.absent(),
+    this.rgt = const Value.absent(),
+    this.description = const Value.absent(),
+    this.query = const Value.absent(),
+    this.count = const Value.absent(),
+    this.parentId = const Value.absent(),
+    this.rawJson = const Value.absent(),
+    this.createdAt = const Value.absent(),
+    this.updatedAt = const Value.absent(),
+  });
+  CategoriesCompanion.insert({
+    this.id = const Value.absent(),
+    required String name,
+    required int categoryId,
+    required int lft,
+    required int lvl,
+    required int rgt,
+    this.description = const Value.absent(),
+    this.query = const Value.absent(),
+    required int count,
+    this.parentId = const Value.absent(),
+    required String rawJson,
+    this.createdAt = const Value.absent(),
+    this.updatedAt = const Value.absent(),
+  })  : name = Value(name),
+        categoryId = Value(categoryId),
+        lft = Value(lft),
+        lvl = Value(lvl),
+        rgt = Value(rgt),
+        count = Value(count),
+        rawJson = Value(rawJson);
+  static Insertable<CategoryData> custom({
+    Expression<int>? id,
+    Expression<String>? name,
+    Expression<int>? categoryId,
+    Expression<int>? lft,
+    Expression<int>? lvl,
+    Expression<int>? rgt,
+    Expression<String>? description,
+    Expression<String>? query,
+    Expression<int>? count,
+    Expression<int>? parentId,
+    Expression<String>? rawJson,
+    Expression<DateTime>? createdAt,
+    Expression<DateTime>? updatedAt,
+  }) {
+    return RawValuesInsertable({
+      if (id != null) 'id': id,
+      if (name != null) 'name': name,
+      if (categoryId != null) 'category_id': categoryId,
+      if (lft != null) 'lft': lft,
+      if (lvl != null) 'lvl': lvl,
+      if (rgt != null) 'rgt': rgt,
+      if (description != null) 'description': description,
+      if (query != null) 'query': query,
+      if (count != null) 'count': count,
+      if (parentId != null) 'parent_id': parentId,
+      if (rawJson != null) 'raw_json': rawJson,
+      if (createdAt != null) 'created_at': createdAt,
+      if (updatedAt != null) 'updated_at': updatedAt,
+    });
+  }
+
+  CategoriesCompanion copyWith(
+      {Value<int>? id,
+      Value<String>? name,
+      Value<int>? categoryId,
+      Value<int>? lft,
+      Value<int>? lvl,
+      Value<int>? rgt,
+      Value<String?>? description,
+      Value<String?>? query,
+      Value<int>? count,
+      Value<int?>? parentId,
+      Value<String>? rawJson,
+      Value<DateTime>? createdAt,
+      Value<DateTime>? updatedAt}) {
+    return CategoriesCompanion(
+      id: id ?? this.id,
+      name: name ?? this.name,
+      categoryId: categoryId ?? this.categoryId,
+      lft: lft ?? this.lft,
+      lvl: lvl ?? this.lvl,
+      rgt: rgt ?? this.rgt,
+      description: description ?? this.description,
+      query: query ?? this.query,
+      count: count ?? this.count,
+      parentId: parentId ?? this.parentId,
+      rawJson: rawJson ?? this.rawJson,
+      createdAt: createdAt ?? this.createdAt,
+      updatedAt: updatedAt ?? this.updatedAt,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (id.present) {
+      map['id'] = Variable<int>(id.value);
+    }
+    if (name.present) {
+      map['name'] = Variable<String>(name.value);
+    }
+    if (categoryId.present) {
+      map['category_id'] = Variable<int>(categoryId.value);
+    }
+    if (lft.present) {
+      map['lft'] = Variable<int>(lft.value);
+    }
+    if (lvl.present) {
+      map['lvl'] = Variable<int>(lvl.value);
+    }
+    if (rgt.present) {
+      map['rgt'] = Variable<int>(rgt.value);
+    }
+    if (description.present) {
+      map['description'] = Variable<String>(description.value);
+    }
+    if (query.present) {
+      map['query'] = Variable<String>(query.value);
+    }
+    if (count.present) {
+      map['count'] = Variable<int>(count.value);
+    }
+    if (parentId.present) {
+      map['parent_id'] = Variable<int>(parentId.value);
+    }
+    if (rawJson.present) {
+      map['raw_json'] = Variable<String>(rawJson.value);
+    }
+    if (createdAt.present) {
+      map['created_at'] = Variable<DateTime>(createdAt.value);
+    }
+    if (updatedAt.present) {
+      map['updated_at'] = Variable<DateTime>(updatedAt.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('CategoriesCompanion(')
+          ..write('id: $id, ')
+          ..write('name: $name, ')
+          ..write('categoryId: $categoryId, ')
+          ..write('lft: $lft, ')
+          ..write('lvl: $lvl, ')
+          ..write('rgt: $rgt, ')
+          ..write('description: $description, ')
+          ..write('query: $query, ')
+          ..write('count: $count, ')
+          ..write('parentId: $parentId, ')
+          ..write('rawJson: $rawJson, ')
+          ..write('createdAt: $createdAt, ')
+          ..write('updatedAt: $updatedAt')
+          ..write(')'))
+        .toString();
+  }
+}
+
 abstract class _$AppDatabase extends GeneratedDatabase {
   _$AppDatabase(QueryExecutor e) : super(e);
   late final $UsersTable users = $UsersTable(this);
@@ -4652,6 +5243,7 @@ abstract class _$AppDatabase extends GeneratedDatabase {
   late final $CompactTracksTable compactTracks = $CompactTracksTable(this);
   late final $AppUsersTable appUsers = $AppUsersTable(this);
   late final $WorkDaysTable workDays = $WorkDaysTable(this);
+  late final $CategoriesTable categories = $CategoriesTable(this);
   @override
   Iterable<TableInfo<Table, Object?>> get allTables =>
       allSchemaEntities.whereType<TableInfo<Table, Object?>>();
@@ -4667,7 +5259,8 @@ abstract class _$AppDatabase extends GeneratedDatabase {
         userTracks,
         compactTracks,
         appUsers,
-        workDays
+        workDays,
+        categories
       ];
   @override
   StreamQueryUpdateRules get streamUpdateRules => const StreamQueryUpdateRules(

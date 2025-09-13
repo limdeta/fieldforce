@@ -1,5 +1,6 @@
 import 'package:fieldforce/app/services/simple_update_service.dart';
 import 'package:fieldforce/features/authentication/domain/usecases/logout_usecase.dart';
+import 'package:fieldforce/features/shop/presentation/product_catalog_page.dart';
 import 'package:flutter/material.dart';
 import 'package:get_it/get_it.dart';
 
@@ -206,6 +207,8 @@ class _MainMenuPageState extends State<MainMenuPage> {
         Navigator.pushNamed(context, '/routes');
       } else if (item.route == '/outlets') {
         Navigator.pushNamed(context, '/outlets');
+      } else if (item.route == '/products/catalog') {
+        Navigator.pushNamed(context, '/products/catalog');
       } else if (item.route == '/check-updates') {
         _handleCheckUpdates();
       } else if (item.route == '/logout') {

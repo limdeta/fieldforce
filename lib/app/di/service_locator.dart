@@ -40,6 +40,8 @@ import 'package:fieldforce/app/services/user_preferences_service.dart';
 import 'package:fieldforce/app/database/repositories/work_day_repository.dart';
 import 'package:fieldforce/features/navigation/tracking/domain/services/location_tracking_service_base.dart';
 import 'package:fieldforce/features/navigation/tracking/domain/services/gps_data_manager.dart';
+import 'package:fieldforce/features/shop/domain/repositories/category_repository.dart';
+import 'package:fieldforce/app/database/repositories/category_repository_drift.dart';
 
 final getIt = GetIt.instance;
 
@@ -94,6 +96,10 @@ Future<void> setupServiceLocator() async {
 
   getIt.registerLazySingleton<TradingPointRepository>(
     () => DriftTradingPointRepository(),
+  );
+
+  getIt.registerLazySingleton<CategoryRepository>(
+    () => DriftCategoryRepository(),
   );
 
   getIt.registerLazySingleton<AppUserRepository>(

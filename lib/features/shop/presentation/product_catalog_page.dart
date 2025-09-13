@@ -1,57 +1,550 @@
 import 'package:flutter/material.dart';
+import 'package:get_it/get_it.dart';
+import 'package:fieldforce/features/shop/domain/repositories/category_repository.dart';
+import 'package:fieldforce/features/shop/domain/entities/category.dart';
 
-/// Страница каталога товаров (заглушка)
-class ProductCatalogPage extends StatelessWidget {
+/// Страница каталога товаров с современным и интуитивным UI
+class ProductCatalogPage extends StatefulWidget {
   const ProductCatalogPage({super.key});
+
+  @override
+  State<ProductCatalogPage> createState() => _ProductCatalogPageState();
+}
+
+class _ProductCatalogPageState extends State<ProductCatalogPage>
+    with TickerProviderStateMixin {
+  final CategoryRepository _categoryRepository = GetIt.instance<CategoryRepository>();
+
+  List<Category> _categories = [];
+  List<Category> _filteredCategories = [];
+  bool _isLoading = true;
+  String? _error;
+  final Set<int> _expandedCategories = {};
+  final TextEditingController _searchController = TextEditingController();
+  String _searchQuery = '';
+  late AnimationController _animationController;
+  late Animation<double> _fadeAnimation;
+
+  // Популярные категории для быстрого доступа
+  final List<String> _popularCategoryNames = ['Напитки', 'Сладости', 'Молочные продукты'];
+
+  @override
+  void initState() {
+    super.initState();
+    _animationController = AnimationController(
+      duration: const Duration(milliseconds: 300),
+      vsync: this,
+    );
+    _fadeAnimation = Tween<double>(begin: 0.0, end: 1.0).animate(
+      CurvedAnimation(parent: _animationController, curve: Curves.easeInOut),
+    );
+    _loadCategories();
+  }
+
+  @override
+  void dispose() {
+    _searchController.dispose();
+    _animationController.dispose();
+    super.dispose();
+  }
+
+  Future<void> _loadCategories() async {
+    setState(() {
+      _isLoading = true;
+      _error = null;
+    });
+
+    final result = await _categoryRepository.getAllCategories();
+
+    setState(() {
+      _isLoading = false;
+      result.fold(
+        (failure) => _error = failure.message,
+        (categories) {
+          _categories = categories;
+          _filteredCategories = categories;
+          _animationController.forward(from: 0.0);
+        },
+      );
+    });
+  }
+
+  void _onSearchChanged(String query) {
+    setState(() {
+      _searchQuery = query.toLowerCase();
+      if (_searchQuery.isEmpty) {
+        _filteredCategories = _categories;
+      } else {
+        _filteredCategories = _filterCategories(_categories, _searchQuery);
+      }
+    });
+  }
+
+  List<Category> _filterCategories(List<Category> categories, String query) {
+    return categories.where((category) {
+      final matchesName = category.name.toLowerCase().contains(query);
+      final matchesChildren = category.children.isNotEmpty &&
+          _filterCategories(category.children, query).isNotEmpty;
+      return matchesName || matchesChildren;
+    }).toList();
+  }
+
+  void _toggleCategoryExpansion(int categoryId) {
+    setState(() {
+      if (_expandedCategories.contains(categoryId)) {
+        _expandedCategories.remove(categoryId);
+      } else {
+        _expandedCategories.add(categoryId);
+      }
+    });
+  }
+
+  void _onCategoryTap(Category category) {
+    // TODO: Навигация к списку продуктов категории
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text('Переход к продуктам категории "${category.name}"'),
+        duration: const Duration(seconds: 2),
+        backgroundColor: Colors.blue.shade700,
+        behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(10),
+        ),
+      ),
+    );
+  }
+
+  IconData _getCategoryIcon(String categoryName) {
+    final name = categoryName.toLowerCase();
+    if (name.contains('напит')) return Icons.local_drink;
+    if (name.contains('сладост') || name.contains('конфет')) return Icons.cake;
+    if (name.contains('молоч')) return Icons.restaurant;
+    if (name.contains('хлеб') || name.contains('выпечк')) return Icons.bakery_dining;
+    if (name.contains('мяс') || name.contains('колбас')) return Icons.restaurant_menu;
+    if (name.contains('рыб')) return Icons.set_meal;
+    if (name.contains('фрукт') || name.contains('овощ')) return Icons.eco;
+    if (name.contains('бытов')) return Icons.cleaning_services;
+    if (name.contains('космет')) return Icons.spa;
+    return Icons.category;
+  }
+
+  Color _getCategoryColor(int level) {
+    // Серая градация - чем глубже уровень, тем темнее оттенок
+    switch (level) {
+      case 0: return const Color(0xFFF8F9FA); // Светло-серый для корневых категорий
+      case 1: return const Color(0xFFE9ECEF); // Более насыщенный серый
+      case 2: return const Color(0xFFDEE2E6); // Еще более насыщенный
+      case 3: return const Color(0xFFCED4DA); // Темно-серый
+      case 4: return const Color(0xFFADB5BD); // Очень темный серый
+      default: return const Color(0xFFF8F9FA); // Светло-серый для глубоких уровней
+    }
+  }
+
+  Color _getChildCategoryColor(int parentLevel) {
+    // Для дочерних категорий используем чуть более светлый оттенок
+    switch (parentLevel) {
+      case 0: return const Color(0xFFFFFFFF); // Белый для детей корневых
+      case 1: return const Color(0xFFF8F9FA); // Светло-серый для детей уровня 1
+      case 2: return const Color(0xFFE9ECEF); // Более насыщенный для детей уровня 2
+      case 3: return const Color(0xFFDEE2E6); // Еще насыщеннее для детей уровня 3
+      default: return const Color(0xFFFFFFFF); // Белый для глубоких уровней
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Каталог товаров'),
-        backgroundColor: Colors.blue,
-        foregroundColor: Colors.white,
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back),
-          onPressed: () {
-            Navigator.pushReplacementNamed(context, '/menu');
-          },
+      backgroundColor: Colors.white, // Белый фон для экономии места
+      appBar: _buildAppBar(),
+      body: _buildBody(),
+      floatingActionButton: _buildFloatingActionButton(),
+    );
+  }
+
+  PreferredSizeWidget _buildAppBar() {
+    return AppBar(
+      elevation: 0,
+      backgroundColor: Colors.white,
+      foregroundColor: Colors.black87,
+      title: const Text(
+        'Каталог товаров',
+        style: TextStyle(
+          fontWeight: FontWeight.bold,
+          fontSize: 20,
         ),
       ),
-      body: const Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(
-              Icons.list,
-              size: 100,
-              color: Colors.blue,
-            ),
-            SizedBox(height: 16),
-            Text(
-              'Каталог товаров',
-              style: TextStyle(
-                fontSize: 24,
-                fontWeight: FontWeight.bold,
+      leading: IconButton(
+        icon: const Icon(Icons.arrow_back, color: Colors.black87),
+        onPressed: () {
+          Navigator.pushReplacementNamed(context, '/menu');
+        },
+      ),
+      bottom: PreferredSize(
+        preferredSize: const Size.fromHeight(50), // Уменьшаем высоту
+        child: Container(
+          padding: const EdgeInsets.fromLTRB(16, 0, 16, 8), // Уменьшаем нижний padding
+          child: TextField(
+            controller: _searchController,
+            onChanged: _onSearchChanged,
+            decoration: InputDecoration(
+              hintText: 'Поиск по категориям...',
+              prefixIcon: const Icon(Icons.search, color: Colors.grey),
+              filled: true,
+              fillColor: Colors.grey.shade100,
+              border: const OutlineInputBorder(
+                borderRadius: BorderRadius.zero, // Прямые углы
+                borderSide: BorderSide.none,
               ),
+              contentPadding: const EdgeInsets.symmetric(vertical: 8), // Уменьшаем вертикальный padding
             ),
-            SizedBox(height: 8),
-            Text(
-              'Здесь будет отображаться каталог товаров',
-              style: TextStyle(
-                fontSize: 16,
-                color: Colors.grey,
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildBody() {
+    if (_isLoading) {
+      return const Center(
+        child: CircularProgressIndicator(
+          valueColor: AlwaysStoppedAnimation<Color>(Colors.blue),
+        ),
+      );
+    }
+
+    if (_error != null) {
+      return _buildErrorState();
+    }
+
+    if (_filteredCategories.isEmpty) {
+      return _buildEmptyState();
+    }
+
+    return FadeTransition(
+      opacity: _fadeAnimation,
+      child: RefreshIndicator(
+        onRefresh: _loadCategories,
+        color: Colors.blue,
+        child: CustomScrollView(
+          slivers: [
+            if (_searchQuery.isEmpty) _buildPopularCategories(),
+            SliverPadding(
+              padding: const EdgeInsets.all(16),
+              sliver: SliverList(
+                delegate: SliverChildBuilderDelegate(
+                  (context, index) {
+                    return _buildCategoryCard(_filteredCategories[index], 0);
+                  },
+                  childCount: _filteredCategories.length,
+                ),
               ),
             ),
           ],
         ),
       ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: () {
-          Navigator.pushReplacementNamed(context, '/sales-home');
-        },
-        child: const Icon(Icons.home),
+    );
+  }
+
+  Widget _buildPopularCategories() {
+    final popularCategories = _categories
+        .where((cat) => _popularCategoryNames.contains(cat.name))
+        .toList();
+
+    if (popularCategories.isEmpty) return const SliverToBoxAdapter();
+
+    return SliverToBoxAdapter(
+      child: Container(
+        height: 120,
+        margin: const EdgeInsets.only(bottom: 8),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Padding(
+              padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+              child: Text(
+                'Популярные категории',
+                style: TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.black87,
+                ),
+              ),
+            ),
+            Expanded(
+              child: ListView.builder(
+                scrollDirection: Axis.horizontal,
+                padding: const EdgeInsets.symmetric(horizontal: 16),
+                itemCount: popularCategories.length,
+                itemBuilder: (context, index) {
+                  final category = popularCategories[index];
+                  return Container(
+                    width: 100,
+                    margin: const EdgeInsets.only(right: 12),
+                    child: _buildPopularCategoryCard(category),
+                  );
+                },
+              ),
+            ),
+          ],
+        ),
       ),
+    );
+  }
+
+  Widget _buildPopularCategoryCard(Category category) {
+    return Card(
+      elevation: 4,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: InkWell(
+        onTap: () => _onCategoryTap(category),
+        borderRadius: BorderRadius.circular(12),
+        child: Container(
+          width: 100,
+          height: 100,
+          padding: const EdgeInsets.all(8),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(
+                _getCategoryIcon(category.name),
+                color: Colors.blue.shade600,
+                size: 32,
+              ),
+              const SizedBox(height: 4),
+              Flexible(
+                child: Text(
+                  category.name,
+                  style: const TextStyle(
+                    color: Colors.black87,
+                    fontSize: 10,
+                    fontWeight: FontWeight.w500,
+                  ),
+                  textAlign: TextAlign.center,
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildCategoryCard(Category category, int level, [int? parentId]) {
+    final hasChildren = category.children.isNotEmpty;
+    final isExpanded = _expandedCategories.contains(category.id);
+    final categoryColor = _getCategoryColor(level);
+
+    return Card(
+      elevation: 0,
+      margin: const EdgeInsets.only(
+        left: 0,
+        bottom: 2,
+        right: 0,
+      ),
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.zero,
+      ),
+      child: Column(
+        children: [
+          // Основная строка с категорией
+          InkWell(
+            onTap: hasChildren
+                ? () => _toggleCategoryExpansion(category.id) // Для категорий с детьми - сворачивание
+                : () => _onCategoryTap(category), // Для конечных категорий - переход
+            child: Container(
+              decoration: BoxDecoration(
+                color: categoryColor,
+              ),
+              child: Row(
+                children: [
+                  // Левая часть - иконка и отступ
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+                    child: Container(
+                      padding: const EdgeInsets.all(4),
+                      child: Icon(
+                        _getCategoryIcon(category.name),
+                        color: Colors.blue.shade600,
+                        size: 20,
+                      ),
+                    ),
+                  ),
+
+                  // Центральная часть - название категории (кликабельное)
+                  Expanded(
+                    child: InkWell(
+                      onTap: () => _onCategoryTap(category), // Всегда переход по клику на текст
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(vertical: 6),
+                        child: Text(
+                          category.name,
+                          style: TextStyle(
+                            fontSize: level == 0 ? 14 : 13,
+                            fontWeight: level == 0 ? FontWeight.w600 : FontWeight.w500,
+                            color: Colors.black87,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+
+                  // Правая часть - стрелка (занимает всю оставшуюся ширину)
+                  Expanded(
+                    child: InkWell(
+                      onTap: hasChildren
+                          ? () => _toggleCategoryExpansion(category.id) // Сворачивание своей категории
+                          : () => _toggleCategoryExpansion(parentId ?? category.id), // Сворачивание родительской категории
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(vertical: 6),
+                        alignment: Alignment.centerRight,
+                        child: Container(
+                          padding: const EdgeInsets.all(8),
+                          child: AnimatedRotation(
+                            turns: isExpanded ? 0.5 : 0.0,
+                            duration: const Duration(milliseconds: 200),
+                            child: Icon(
+                              hasChildren
+                                  ? Icons.expand_more // Стрелка вниз для категорий с детьми
+                                  : Icons.keyboard_arrow_up, // Стрелка вверх для конечных категорий
+                              color: Colors.blue.shade600,
+                              size: 20,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+
+          // Дочерние категории
+          if (hasChildren && isExpanded)
+            Container(
+              decoration: BoxDecoration(
+                color: _getChildCategoryColor(level), // Используем специальный цвет для дочерних
+              ),
+              child: Column(
+                children: category.children.map(
+                  (child) => _buildCategoryCard(child, level + 1, category.id), // Передаем ID родителя
+                ).toList(),
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildErrorState() {
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Container(
+            padding: const EdgeInsets.all(24),
+            decoration: BoxDecoration(
+              color: Colors.red.shade50,
+              shape: BoxShape.circle,
+            ),
+            child: Icon(
+              Icons.error_outline,
+              size: 64,
+              color: Colors.red.shade400,
+            ),
+          ),
+          const SizedBox(height: 16),
+          Text(
+            'Ошибка загрузки категорий',
+            style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+              color: Colors.red.shade700,
+            ),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            _error!,
+            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+              color: Colors.grey.shade600,
+            ),
+            textAlign: TextAlign.center,
+          ),
+          const SizedBox(height: 24),
+          ElevatedButton.icon(
+            onPressed: _loadCategories,
+            icon: const Icon(Icons.refresh),
+            label: const Text('Повторить'),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.blue.shade600,
+              foregroundColor: Colors.white,
+              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildEmptyState() {
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Container(
+            padding: const EdgeInsets.all(24),
+            decoration: BoxDecoration(
+              color: Colors.grey.shade100,
+              shape: BoxShape.circle,
+            ),
+            child: Icon(
+              Icons.category,
+              size: 64,
+              color: Colors.grey.shade400,
+            ),
+          ),
+          const SizedBox(height: 16),
+          Text(
+            _searchQuery.isEmpty ? 'Категории не найдены' : 'Ничего не найдено',
+            style: TextStyle(
+              fontSize: 18,
+              color: Colors.grey.shade600,
+              fontWeight: FontWeight.w500,
+            ),
+          ),
+          if (_searchQuery.isNotEmpty) ...[
+            const SizedBox(height: 8),
+            Text(
+              'Попробуйте изменить запрос',
+              style: TextStyle(
+                fontSize: 14,
+                color: Colors.grey.shade500,
+              ),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+
+  Widget _buildFloatingActionButton() {
+    return FloatingActionButton(
+      onPressed: () {
+        // TODO: Быстрый доступ к корзине или избранному
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Быстрый доступ к корзине'),
+            duration: Duration(seconds: 2),
+          ),
+        );
+      },
+      backgroundColor: Colors.blue.shade600,
+      child: const Icon(Icons.shopping_cart),
     );
   }
 }

@@ -44,6 +44,10 @@ import 'package:fieldforce/app/domain/usecases/create_work_day_usecase.dart';
 import 'package:fieldforce/app/fixtures/user_fixture.dart';
 import 'package:fieldforce/app/fixtures/route_fixture_service.dart';
 import 'package:fieldforce/features/shop/data/fixtures/trading_points_fixture_service.dart';
+import 'package:fieldforce/features/shop/data/fixtures/category_fixture_service.dart';
+import 'package:fieldforce/features/shop/data/services/category_parsing_service.dart';
+import 'package:fieldforce/features/shop/domain/repositories/category_repository.dart';
+import 'package:fieldforce/app/database/repositories/category_repository_drift.dart';
 
 final getIt = GetIt.instance;
 
@@ -97,6 +101,10 @@ Future<void> setupTestServiceLocator() async {
     () => DriftTradingPointRepository(),
   );
 
+  getIt.registerLazySingleton<CategoryRepository>(
+    () => DriftCategoryRepository(),
+  );
+
   getIt.registerLazySingleton<AppUserRepository>(
     () => AppUserRepositoryDrift(
       database: getIt<AppDatabase>(),
@@ -130,6 +138,10 @@ Future<void> setupTestServiceLocator() async {
 
   getIt.registerLazySingleton<SimpleUpdateService>(
     () => SimpleUpdateService(),
+  );
+
+  getIt.registerLazySingleton<CategoryParsingService>(
+    () => CategoryParsingService(),
   );
 
   getIt.registerLazySingleton<LogoutUseCase>(
@@ -198,6 +210,13 @@ Future<void> setupTestServiceLocator() async {
     () => TradingPointsFixtureService(),
   );
 
+  getIt.registerLazySingleton<CategoryFixtureService>(
+    () => CategoryFixtureService(
+      getIt<CategoryParsingService>(),
+      getIt<CategoryRepository>(),
+    ),
+  );
+
   // --- UserFixture and DevFixtureOrchestrator dependencies ---
   getIt.registerLazySingleton<UserService>(
     () => UserServiceFactory.create(),
@@ -228,6 +247,7 @@ Future<void> setupTestServiceLocator() async {
       getIt<UserFixture>(),
       getIt<RouteFixtureService>(),
       getIt<TradingPointsFixtureService>(),
+      getIt<CategoryFixtureService>(),
       getIt<CreateWorkDayUseCase>(),
     ),
   );
