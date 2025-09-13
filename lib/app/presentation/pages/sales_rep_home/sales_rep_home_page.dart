@@ -178,7 +178,7 @@ class _SalesRepHomeViewState extends State<SalesRepHomeView> {
                   ),
 
                 // Верхняя панель с маршрутом
-                if (state is SalesRepHomeLoaded && state.currentRoute != null)
+                if (state is SalesRepHomeLoaded)
                   _buildTopPanel(context, state),
 
                 // Нижняя панель с кнопками
@@ -248,7 +248,7 @@ class _SalesRepHomeViewState extends State<SalesRepHomeView> {
 
   /// Верхняя панель с меню и информацией о маршруте
   Widget _buildTopPanel(BuildContext context, SalesRepHomeLoaded state) {
-    final route = state.currentRoute!;
+    final route = state.currentRoute;
 
     return Positioned(
       top: MediaQuery.of(context).padding.top,
@@ -278,91 +278,118 @@ class _SalesRepHomeViewState extends State<SalesRepHomeView> {
               ),
             ),
 
-            // Инф��рмация о маршруте
+            // Информация о маршруте или уведомление
             Expanded(
-              child: GestureDetector(
-                onTap: () {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (context) => RouteDetailPage(route: route),
-                    ),
-                  );
-                },
-                child: Container(
-                  height: 60,
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Text(
-                        route.name,
-                        style: const TextStyle(
-                          fontWeight: FontWeight.bold,
-                          fontSize: 14,
+              child: route != null
+                ? GestureDetector(
+                    onTap: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => RouteDetailPage(route: route),
                         ),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                      Row(
+                      );
+                    },
+                    child: Container(
+                      height: 60,
+                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        mainAxisAlignment: MainAxisAlignment.center,
                         children: [
-                          Container(
-                            width: 8,
-                            height: 8,
-                            decoration: BoxDecoration(
-                              color: _getRouteStatusColor(route.status),
-                              shape: BoxShape.circle,
-                            ),
-                          ),
-                          const SizedBox(width: 4),
                           Text(
-                            _getRouteStatusText(route.status),
-                            style: TextStyle(
-                              color: Colors.grey.shade600,
-                              fontSize: 12,
+                            route.name,
+                            style: const TextStyle(
+                              fontWeight: FontWeight.bold,
+                              fontSize: 14,
                             ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
                           ),
-                          const Spacer(),
-                          Text(
-                            '${_getCompletedCount(route)}/${route.pointsOfInterest.length}',
-                            style: TextStyle(
-                              color: Colors.grey.shade600,
-                              fontSize: 12,
-                            ),
+                          Row(
+                            children: [
+                              Container(
+                                width: 8,
+                                height: 8,
+                                decoration: BoxDecoration(
+                                  color: _getRouteStatusColor(route.status),
+                                  shape: BoxShape.circle,
+                                ),
+                              ),
+                              const SizedBox(width: 4),
+                              Text(
+                                _getRouteStatusText(route.status),
+                                style: TextStyle(
+                                  color: Colors.grey.shade600,
+                                  fontSize: 12,
+                                ),
+                              ),
+                              const Spacer(),
+                              Text(
+                                '${_getCompletedCount(route)}/${route.pointsOfInterest.length}',
+                                style: TextStyle(
+                                  color: Colors.grey.shade600,
+                                  fontSize: 12,
+                                ),
+                              ),
+                            ],
                           ),
                         ],
                       ),
-                    ],
+                    ),
+                  )
+                : Container(
+                    height: 60,
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                    child: const Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Text(
+                          'Маршрут не установлен',
+                          style: TextStyle(
+                            fontWeight: FontWeight.bold,
+                            fontSize: 14,
+                            color: Colors.grey,
+                          ),
+                        ),
+                        Text(
+                          'Выберите маршрут для начала работы',
+                          style: TextStyle(
+                            color: Colors.grey,
+                            fontSize: 12,
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
-                ),
-              ),
             ),
 
-            // Кнопка скрыть/показать панель
-            Container(
-              width: 50,
-              height: 60,
-              decoration: BoxDecoration(
-                color: Colors.grey.shade100,
-                border: Border(
-                  left: BorderSide(color: Colors.grey.shade300),
+            // Кнопка скрыть/показать панель (только если есть маршрут)
+            if (route != null)
+              Container(
+                width: 50,
+                height: 60,
+                decoration: BoxDecoration(
+                  color: Colors.grey.shade100,
+                  border: Border(
+                    left: BorderSide(color: Colors.grey.shade300),
+                  ),
+                ),
+                child: IconButton(
+                  icon: Icon(
+                    state.showRoutePanel
+                        ? Icons.keyboard_arrow_up
+                        : Icons.keyboard_arrow_down,
+                    color: Colors.grey.shade700,
+                  ),
+                  onPressed: () {
+                    context.read<SalesRepHomeBloc>().add(
+                      const home_events.ToggleRoutePanelEvent(),
+                    );
+                  },
                 ),
               ),
-              child: IconButton(
-                icon: Icon(
-                  state.showRoutePanel
-                      ? Icons.keyboard_arrow_up
-                      : Icons.keyboard_arrow_down,
-                  color: Colors.grey.shade700,
-                ),
-                onPressed: () {
-                  context.read<SalesRepHomeBloc>().add(
-                    const home_events.ToggleRoutePanelEvent(),
-                  );
-                },
-              ),
-            ),
           ],
         ),
       ),
