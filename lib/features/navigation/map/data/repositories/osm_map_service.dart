@@ -75,7 +75,8 @@ class OSMMapService implements MapService {
   String get attribution => '© OpenStreetMap contributors';
 
   @override
-  int get maxZoom => 18;
+  int get maxZoom => 16; // Ограничено до 16 для избежания запросов несуществующих тайлов OSM
+                        // TODO: Увеличить до 18+ при переходе на другой тайл-провайдер (Mapbox/Google)
 
   @override
   int get minZoom => 1;

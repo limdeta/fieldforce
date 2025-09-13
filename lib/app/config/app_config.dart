@@ -48,6 +48,7 @@ class AppConfig {
   static bool get enableDebugTools => isDev || isTest;
   static bool get enableDetailedLogging => !isProd;
   static bool get checkForUpdates => isDev; // Включено только для dev пока
+  static bool get enableTileCaching => true; // Включение кеширования тайлов карты (экономит трафик, ускоряет загрузку)
   
 
   static void configureFromArgs() {

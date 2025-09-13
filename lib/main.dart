@@ -8,6 +8,7 @@ import 'package:fieldforce/app/presentation/pages/splash_page.dart';
 import 'package:fieldforce/app/presentation/pages/login_page.dart';
 import 'package:fieldforce/app/presentation/widgets/dev_data_loading_overlay.dart';
 import 'package:fieldforce/features/navigation/tracking/domain/services/gps_data_manager.dart';
+import 'package:logging/logging.dart';
 import 'app/config/app_config.dart';
 import 'app/di/service_locator.dart' as prod_di;
 import 'app/fixtures/dev_fixture_orchestrator.dart';
@@ -18,12 +19,15 @@ import 'features/shop/presentation/product_catalog_page.dart';
 import 'features/shop/presentation/product_categories_page.dart';
 import 'features/shop/presentation/promotions_page.dart';
 import 'app/fixtures/user_fixture.dart';
-import 'app/domain/entities/app_user.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
-  final String initialRoute = const String.fromEnvironment('INITIAL_ROUTE', defaultValue: '/');
+  // Настройка логирования
+  Logger.root.level = Level.ALL;
+  Logger.root.onRecord.listen((record) {
+    debugPrint('${record.level.name}: ${record.time}: ${record.message}');
+  });
 
   AppConfig.configureFromArgs();
 

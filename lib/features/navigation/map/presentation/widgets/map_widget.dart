@@ -1,4 +1,5 @@
 import 'package:fieldforce/features/navigation/map/data/repositories/osm_map_service.dart';
+import 'package:fieldforce/features/navigation/map/data/repositories/tile_cache_service.dart';
 import 'package:fieldforce/features/navigation/map/domain/entities/map_point.dart';
 import 'package:fieldforce/features/navigation/map/domain/repositories/map_service.dart';
 import 'package:flutter/material.dart';
@@ -11,6 +12,8 @@ import 'package:fieldforce/app/domain/entities/route.dart' as domain;
 import 'package:fieldforce/app/services/user_initialization_service.dart';
 import 'package:fieldforce/features/navigation/tracking/domain/entities/user_track.dart';
 import 'package:fieldforce/features/navigation/tracking/domain/entities/compact_track.dart';
+import 'package:logging/logging.dart';
+import 'package:fieldforce/app/config/app_config.dart';
 import 'route_polyline.dart';
 
 /// Основной виджет карты с поддержкой различных провайдеров
@@ -58,8 +61,10 @@ class MapWidget extends StatefulWidget {
 }
 
 class _MapWidgetState extends State<MapWidget> {
+  static final Logger _logger = Logger('MapWidget');
   late final MapController _mapController;
   late final MapService _mapService;
+  dynamic _tileProvider;
 
   // Центр карты и масштаб по умолчанию (Владивосток)
   static const LatLng _defaultCenter = LatLng(43.1056, 131.8735);
@@ -74,7 +79,19 @@ class _MapWidgetState extends State<MapWidget> {
     super.initState();
     _mapController = MapController();
     _mapService = OSMMapService(); // В будущем можно inject через DI
+    _tileProvider = TileCacheService.getTileProviderWithCaching(
+      enableCaching: AppConfig.enableTileCaching,
+    ); // Синхронно
     _polylineCache = {}; // Инициализируем кэш
+
+    // Принудительно обновляем карту после инициализации
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) {
+        final center = _getMapCenter();
+        final zoom = _getMapZoom();
+        _mapController.move(center, zoom);
+      }
+    });
   }
 
   @override
@@ -366,9 +383,14 @@ class _MapWidgetState extends State<MapWidget> {
           ),
           children: [
             TileLayer(
-              urlTemplate: _mapService.getTileUrl(0, 0, 0).replaceAll('/0/0/0.png', '/{z}/{x}/{y}.png'),
+              urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
               userAgentPackageName: 'com.fieldforce.app.fieldforce',
               maxZoom: _mapService.maxZoom.toDouble(),
+              tileProvider: _tileProvider,
+              // Показываем серый placeholder для тайлов, которые не загрузились
+              errorTileCallback: (tile, error, stackTrace) {
+                _logger.fine('Тайл ${tile.coordinates} не загружен, показываем placeholder');
+              },
             ),
             
             // Слой GPS трека (polyline) - простое отображение одного трека
