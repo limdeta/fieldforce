@@ -1,6 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:fieldforce/features/shop/data/services/category_parsing_service.dart';
-import 'package:fieldforce/features/shop/domain/entities/category.dart';
 
 void main() {
   late CategoryParsingService service;

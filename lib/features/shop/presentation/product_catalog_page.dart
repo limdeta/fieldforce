@@ -26,7 +26,7 @@ class _ProductCatalogPageState extends State<ProductCatalogPage>
   late Animation<double> _fadeAnimation;
 
   // Популярные категории для быстрого доступа
-  final List<String> _popularCategoryNames = ['Напитки', 'Сладости', 'Молочные продукты'];
+  final List<String> _popularCategoryNames = ['work', 'in', 'progress'];
 
   @override
   void initState() {

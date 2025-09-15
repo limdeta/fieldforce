@@ -1,4 +1,3 @@
-import 'package:fieldforce/features/authentication/domain/value_objects/phone_number.dart';
 import 'package:fieldforce/features/shop/domain/entities/employee.dart';
 import 'package:fieldforce/shared/either.dart';
 import 'package:fieldforce/shared/failures.dart';
