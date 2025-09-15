@@ -42,7 +42,7 @@ class _SplashPageState extends State<SplashPage> {
               },
               onFound: (userSession) async {
                 await UserInitializationService.initializeUserSettings(userSession.user);
-                Navigator.of(context).pushReplacementNamed('/home');
+                Navigator.of(context).pushReplacementNamed('/sales-home');
               },
             );
           },

@@ -18,6 +18,7 @@ import 'tables/compact_track_table.dart';
 import 'tables/app_user_table.dart';
 import 'tables/work_day_table.dart';
 import 'tables/category_table.dart';
+import 'tables/product_table.dart';
 
 part 'app_database.g.dart';
 
@@ -34,6 +35,7 @@ part 'app_database.g.dart';
   AppUsers,
   WorkDays,
   Categories,
+  Products,
 ])
 class AppDatabase extends _$AppDatabase {
   AppDatabase() : super(_openConnection('app_database.db'));
@@ -43,7 +45,7 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase.forTesting(DatabaseConnection super.connection);
 
   @override
-  int get schemaVersion => 3;
+  int get schemaVersion => 4;
 
   // Методы для работы с торговыми точками
   // TODO вынести в репозитории и отрефакторить
@@ -89,6 +91,11 @@ class AppDatabase extends _$AppDatabase {
       if (from < 3) {
         // Добавляем таблицу категорий
         await m.createTable(categories);
+      }
+
+      if (from < 4) {
+        // Добавляем таблицу продуктов
+        await m.createTable(products);
       }
     },
   );

@@ -1,10 +1,12 @@
 import 'package:fieldforce/app/domain/entities/app_user.dart';
 import 'package:fieldforce/app/domain/usecases/create_work_day_usecase.dart';
-import 'package:fieldforce/app/fixtures/user_fixture.dart';
 import 'package:fieldforce/app/fixtures/route_fixture_service.dart';
+import 'package:fieldforce/app/fixtures/user_fixture.dart';
 import 'package:fieldforce/features/navigation/tracking/data/fixtures/track_fixtures.dart';
 import 'package:fieldforce/features/shop/data/fixtures/trading_points_fixture_service.dart';
 import 'package:fieldforce/features/shop/data/fixtures/category_fixture_service.dart';
+import 'package:fieldforce/features/shop/data/fixtures/product_fixture_service.dart';
+import 'package:fieldforce/features/shop/domain/repositories/product_repository.dart';
 import 'package:fieldforce/app/database/app_database.dart';
 import 'package:fieldforce/shared/either.dart';
 import 'package:flutter/cupertino.dart';
@@ -16,6 +18,7 @@ class DevFixtureOrchestrator {
   final RouteFixtureService _routeFixtureService;
   final TradingPointsFixtureService _tradingPointsFixture;
   final CategoryFixtureService _categoryFixture;
+  final ProductFixtureService _productFixture;
   final CreateWorkDayUseCase _createWorkDayUseCase;
 
   DevFixtureOrchestrator(
@@ -23,6 +26,7 @@ class DevFixtureOrchestrator {
       this._routeFixtureService,
       this._tradingPointsFixture,
       this._categoryFixture,
+      this._productFixture,
       this._createWorkDayUseCase,
       );
 
@@ -49,7 +53,26 @@ class DevFixtureOrchestrator {
       await _tradingPointsFixture.assignTradingPointsToEmployee(user.employee);
 
       // 0. Категории товаров
+      print('🎭 DevFixtureOrchestrator: Начинаем загрузку категорий');
       await _categoryFixture.loadCategories(fixtureType: FixtureType.full);
+      print('🎭 DevFixtureOrchestrator: Категории загружены');
+
+      // 0.1. Продукты
+      print('🎭 DevFixtureOrchestrator: Начинаем загрузку продуктов');
+      final productsResult = await _productFixture.loadProducts(ProductFixtureType.full);
+      if (productsResult.isLeft()) {
+        throw StateError('Failed to load products: ${productsResult.fold((l) => l, (r) => '')}');
+      }
+      final products = productsResult.fold((l) => throw StateError(l.toString()), (r) => r);
+      print('🎭 DevFixtureOrchestrator: Загружено ${products.length} продуктов');
+      for (final product in products) {
+        print('🎭 Продукт: ${product.title} (код: ${product.code}, категория: ${product.category?.name ?? 'нет'})');
+      }
+      // Сохраняем продукты в базу данных
+      print('🎭 DevFixtureOrchestrator: Сохраняем продукты в базу данных');
+      final productRepository = GetIt.instance<ProductRepository>();
+      await productRepository.saveProducts(products);
+      print('🎭 DevFixtureOrchestrator: Продукты сохранены в базу данных');
 
       // 1. Маршруты
       final yesterdayRoute = await unwrapOrThrow(

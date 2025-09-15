@@ -224,27 +224,34 @@ class CategoryFixtureService {
   /// Загружает фиктивные категории в базу данных
   Future<void> loadCategories({FixtureType fixtureType = FixtureType.compact}) async {
     try {
+      print('🎭 CategoryFixtureService: Начинаем загрузку категорий типа $fixtureType');
       String jsonString;
 
       if (fixtureType == FixtureType.full) {
         // Загружаем полный каталог из файла
+        print('🎭 CategoryFixtureService: Загружаем полный каталог из categories.json');
         jsonString = await rootBundle.loadString('lib/features/shop/data/fixtures/categories.json');
       } else {
         // Используем сокращенную фикстуру для тестов
+        print('🎭 CategoryFixtureService: Используем сокращенную фикстуру');
         jsonString = _compactCategoriesJson;
       }
 
       final categories = _parsingService.parseCategoriesFromJsonString(jsonString);
+      print('🎭 CategoryFixtureService: Распарсено ${categories.length} категорий');
+
       final saveResult = await _repository.saveCategories(categories);
       saveResult.fold(
         (failure) {
+          print('🎭 CategoryFixtureService: Ошибка сохранения категорий: ${failure.message}');
           throw Exception('Ошибка сохранения категорий: ${failure.message}');
         },
         (_) {
-          // Успешно сохранено
+          print('🎭 CategoryFixtureService: Категории успешно сохранены');
         },
       );
     } catch (e) {
+      print('🎭 CategoryFixtureService: Ошибка загрузки категорий: $e');
       throw Exception('Ошибка загрузки категорий: $e');
     }
   }

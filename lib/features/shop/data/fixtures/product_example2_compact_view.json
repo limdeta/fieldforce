@@ -1,0 +1,176 @@
+  {
+      "title": "Нитроэмаль Расцвет НЦ-132КП С золотисто-желтая 0.7 кг",
+      "barcodes": [
+        "4605365042182",
+        "4605365049587"
+      ],
+      "code": 102969,
+      "bcode": 44759,
+      "catalogId": 44759,
+      "novelty": false,
+      "popular": false,
+      "isMarked": false,
+      "brand": {
+        "search_priority": 0,
+        "id": 328,
+        "name": "Расцвет",
+        "adaptedName": null
+      },
+      "manufacturer": {
+        "id": 218,
+        "name": "EMPILS"
+      },
+      "colorImage": null,
+      "defaultImage": {
+        "id": null,
+        "height": 1000,
+        "width": 967,
+        "uri": "https://api.bonjour-dv.ru/public_v1/products/44759/images/38104.jpg",
+        "webp": "https://api.bonjour-dv.ru/public_v1/products/44759/images/38104.webp"
+      },
+      "images": [
+        {
+          "height": 1000,
+          "uri": "https://api.bonjour-dv.ru/public_v1/products/44759/images/38104.jpg",
+          "webp": "https://api.bonjour-dv.ru/public_v1/products/44759/images/38104.webp",
+          "width": 967
+        }
+      ],
+      "series": {
+        "id": 3083,
+        "name": "НЦ-132КП С"
+      },
+      "priceListCategoryId": 159581,
+      "amountInPackage": 14,
+      "vendorCode": "4605365042182",
+      "type": {
+        "id": 1163,
+        "name": "Нитроэмаль"
+      },
+      "categoriesInstock": [
+        {
+          "id": 221,
+          "name": "Эмали НЦ"
+        }
+      ],
+      "numericCharacteristics": [
+        {
+          "attributeId": 8,
+          "attributeName": "Вес",
+          "id": 308640,
+          "type": "numeric",
+          "adaptValue": "700г",
+          "value": 700000
+        }
+      ],
+      "stringCharacteristics": [
+        {
+          "attributeId": 13,
+          "attributeName": "Назначение",
+          "id": 308626,
+          "type": "string",
+          "adaptValue": "по металлу и дереву",
+          "value": 899
+        },
+        {
+          "attributeId": 73,
+          "attributeName": "Основа",
+          "id": 308666,
+          "type": "string",
+          "adaptValue": "алкидная",
+          "value": 869
+        },
+        {
+          "attributeId": 71,
+          "attributeName": "Применение",
+          "id": 308683,
+          "type": "string",
+          "adaptValue": "внутри и снаружи помещения",
+          "value": 833
+        },
+        {
+          "attributeId": 74,
+          "attributeName": "Степень блеска",
+          "id": 308695,
+          "type": "string",
+          "adaptValue": "глянцевый",
+          "value": 876
+        },
+        {
+          "attributeId": 50,
+          "attributeName": "Цвет",
+          "id": 308711,
+          "type": "string",
+          "adaptValue": "золотисто-желтый",
+          "value": 948
+        },
+        {
+          "attributeId": 70,
+          "attributeName": "Тара",
+          "id": 308712,
+          "type": "string",
+          "adaptValue": "банка",
+          "value": 827
+        }
+      ],
+      "boolCharacteristics": [
+        {
+          "attributeId": 72,
+          "attributeName": "Влагостойкость",
+          "id": 308616,
+          "type": "bool",
+          "adaptValue": null,
+          "value": true
+        }
+      ],
+      "stockItems": [
+        {
+          "id": 55898,
+          "publicStock": "4 шт.",
+          "warehouse": {
+            "id": 11,
+            "name": "Распродажа",
+            "vendorId": "000000012",
+            "isPickUpPoint": false
+          },
+          "defaultPrice": 55408,
+          "discountValue": 60,
+          "availablePrice": null,
+          "multiplicity": 1,
+          "offerPrice": 22163,
+          "promotion": {
+            "id": 10450,
+            "bannerFull": null,
+            "banner": null,
+            "shipmentStart": "2025-09-08T00:00:00+10:00",
+            "shipmentFinish": "2025-09-30T00:00:00+10:00",
+            "promotionConditionsDescription": "Закажи и получи скидку. До 30-09-2025",
+            "promotionLimits": [],
+            "vendorId": "010002199",
+            "vendorName": "2025.09 Распродажа скидка Приморье (весь ассортимент) ",
+            "title": null,
+            "wobbler": null,
+            "description": null,
+            "caption": null,
+            "backgroundColor": null,
+            "url": null,
+            "start": "2025-09-08T00:00:00+10:00",
+            "finish": "2025-09-30T00:00:00+10:00",
+            "promoCondition": {
+              "id": 1286109,
+              "typesCount": 1,
+              "quantityByTypes": 1,
+              "limitQuantity": 0,
+              "limitQuantityForDocument": 0,
+              "limitQuantityForEachGoods": 0,
+              "limitQuantityForTradePoint": 0,
+              "totalQuantity": 1,
+              "type": "byQuantity"
+            },
+            "isPortalPromo": false,
+            "type": "discount"
+          }
+        }
+      ],
+      "canBuy": true
+    }

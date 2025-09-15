@@ -119,6 +119,10 @@ flutter:
       - assets/data/
       - assets/data/tracks/
       - lib/features/shop/data/fixtures/categories.json
+      - lib/features/shop/data/fixtures/product_example.json
+      - lib/features/shop/data/fixtures/product_example1.json
+      - lib/features/shop/data/fixtures/product_example2.json
+      - lib/features/shop/data/fixtures/product_example3.json
 
   # An image asset can refer to one or more resolution-specific "variants", see
   # https://flutter.dev/to/resolution-aware-images

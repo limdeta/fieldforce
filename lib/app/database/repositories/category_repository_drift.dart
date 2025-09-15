@@ -158,4 +158,77 @@ class DriftCategoryRepository implements CategoryRepository {
       return Left(DatabaseFailure('Ошибка получения подкатегорий: $e'));
     }
   }
+
+  @override
+  Future<Either<Failure, List<Category>>> getAllDescendants(int categoryId) async {
+    try {
+      // Сначала получаем категорию, чтобы узнать её lft и rgt
+      final parentEntity = await (_database.select(_database.categories)
+        ..where((tbl) => tbl.categoryId.equals(categoryId))
+      ).getSingleOrNull();
+
+      if (parentEntity == null) {
+        return Right([]);
+      }
+
+      final parentJson = jsonDecode(parentEntity.rawJson) as Map<String, dynamic>;
+      final parentCategory = Category.fromJson(parentJson);
+
+      // Находим всех потомков по nested set: lft > parent.lft AND rgt < parent.rgt
+      final entities = await (_database.select(_database.categories)
+        ..where((tbl) => tbl.lft.isBiggerThanValue(parentCategory.lft) & tbl.rgt.isSmallerThanValue(parentCategory.rgt))
+      ).get();
+
+      final categories = entities.map((entity) {
+        final categoryJson = jsonDecode(entity.rawJson) as Map<String, dynamic>;
+        return Category.fromJson(categoryJson);
+      }).toList();
+
+      return Right(categories);
+    } catch (e) {
+      return Left(DatabaseFailure('Ошибка получения потомков категории: $e'));
+    }
+  }
+
+  @override
+  Future<Either<Failure, List<Category>>> getAllAncestors(int categoryId) async {
+    try {
+      final ancestors = <Category>[];
+      var currentId = categoryId;
+
+      // Рекурсивно поднимаемся по иерархии
+      while (true) {
+        final entity = await (_database.select(_database.categories)
+          ..where((tbl) => tbl.categoryId.equals(currentId))
+        ).getSingleOrNull();
+
+        if (entity == null) break;
+
+        final categoryJson = jsonDecode(entity.rawJson) as Map<String, dynamic>;
+        final category = Category.fromJson(categoryJson);
+
+        // Если это корневая категория (lvl == 1), прекращаем
+        if (entity.lvl == 1) break;
+
+        // Ищем родителя по parentId из базы данных
+        if (entity.parentId == null) break;
+
+        final parentEntity = await (_database.select(_database.categories)
+          ..where((tbl) => tbl.categoryId.equals(entity.parentId!))
+        ).getSingleOrNull();
+
+        if (parentEntity == null) break;
+
+        final parentJson = jsonDecode(parentEntity.rawJson) as Map<String, dynamic>;
+        final parentCategory = Category.fromJson(parentJson);
+
+        ancestors.add(parentCategory);
+        currentId = parentCategory.id;
+      }
+
+      return Right(ancestors);
+    } catch (e) {
+      return Left(DatabaseFailure('Ошибка получения предков категории: $e'));
+    }
+  }
 }

@@ -10,4 +10,6 @@ abstract class CategoryRepository {
   Future<Either<Failure, void>> deleteCategory(int id);
   Future<Either<Failure, List<Category>>> searchCategories(String query);
   Future<Either<Failure, List<Category>>> getSubcategories(int parentId);
+  Future<Either<Failure, List<Category>>> getAllDescendants(int categoryId);
+  Future<Either<Failure, List<Category>>> getAllAncestors(int categoryId);
 }

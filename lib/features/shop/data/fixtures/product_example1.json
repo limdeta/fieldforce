@@ -1,0 +1,120 @@
+{
+  "title": "Глина Валдайская голубая 100 гр",
+  "barcodes": [
+    "4607051790599"
+  ],
+  "code": 108482,
+  "bcode": 36868,
+  "catalogId": 36868,
+  "novelty": false,
+  "popular": false,
+  "isMarked": false,
+  "brand": {
+    "search_priority": 0,
+    "id": 240,
+    "name": "Фитокосметик",
+    "adaptedName": null
+  },
+  "manufacturer": {
+    "id": 10,
+    "name": "Фитокосметик ООО"
+  },
+  "colorImage": null,
+  "defaultImage": {
+    "id": null,
+    "height": 1218,
+    "width": 849,
+    "uri": "https://api.bonjour-dv.ru/public_v1/products/36868/images/36429.jpg",
+    "webp": "https://api.bonjour-dv.ru/public_v1/products/36868/images/36429.webp"
+  },
+  "images": [
+    {
+      "height": 1218,
+      "uri": "https://api.bonjour-dv.ru/public_v1/products/36868/images/36429.jpg",
+      "webp": "https://api.bonjour-dv.ru/public_v1/products/36868/images/36429.webp",
+      "width": 849
+    }
+  ],
+  "description": null,
+  "howToUse": null,
+  "ingredients": null,
+  "series": null,
+  "category": null,
+  "priceListCategoryId": 191545,
+  "amountInPackage": 40,
+  "vendorCode": "1302",
+  "type": {
+    "id": 1706,
+    "name": "Глина для лица, тела, волос"
+  },
+  "categoriesInstock": [],
+  "numericCharacteristics": [],
+  "stringCharacteristics": [],
+  "boolCharacteristics": [],
+  "stockItems": [
+    {
+      "id": 50007,
+      "publicStock": "2 шт.",
+      "warehouse": {
+        "id": 11,
+        "name": "Распродажа",
+        "vendorId": "000000012",
+        "isPickUpPoint": false
+      },
+      "defaultPrice": 4907,
+      "discountValue": 50,
+      "availablePrice": null,
+      "multiplicity": 1,
+      "offerPrice": 2454,
+      "promotion": {
+        "id": 10398,
+        "bannerFull": null,
+        "banner": null,
+        "shipmentStart": "2025-09-01T00:00:00+10:00",
+        "shipmentFinish": "2025-09-30T00:00:00+10:00",
+        "promotionConditionsDescription": "Закажи и получи скидку. До 30-09-2025",
+        "promotionLimits": [],
+        "vendorId": "010002158",
+        "vendorName": "2025.09 Распродажа скидка Приморье Фитокосметика ",
+        "title": null,
+        "wobbler": null,
+        "description": null,
+        "caption": null,
+        "backgroundColor": null,
+        "url": null,
+        "start": "2025-09-01T00:00:00+10:00",
+        "finish": "2025-09-30T00:00:00+10:00",
+        "promoCondition": {
+          "id": 1286082,
+          "typesCount": 1,
+          "quantityByTypes": 1,
+          "limitQuantity": 0,
+          "limitQuantityForDocument": 0,
+          "limitQuantityForEachGoods": 0,
+          "limitQuantityForTradePoint": 0,
+          "totalQuantity": 1,
+          "type": "byQuantity"
+        },
+        "isPortalPromo": false,
+        "type": "discount"
+      }
+    },
+    {
+      "id": 30174,
+      "publicStock": "129 шт.",
+      "warehouse": {
+        "id": 10,
+        "name": "Основной склад",
+        "vendorId": "010000031",
+        "isPickUpPoint": false
+      },
+      "defaultPrice": 4907,
+      "discountValue": 0,
+      "availablePrice": null,
+      "multiplicity": 1,
+      "offerPrice": 4907,
+      "promotion": null
+    }
+  ],
+  "canBuy": true
+}

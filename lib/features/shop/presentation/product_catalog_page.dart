@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:get_it/get_it.dart';
 import 'package:fieldforce/features/shop/domain/repositories/category_repository.dart';
 import 'package:fieldforce/features/shop/domain/entities/category.dart';
+import 'product_list_page.dart';
 
 /// Страница каталога товаров с современным и интуитивным UI
 class ProductCatalogPage extends StatefulWidget {
@@ -100,16 +101,9 @@ class _ProductCatalogPageState extends State<ProductCatalogPage>
   }
 
   void _onCategoryTap(Category category) {
-    // TODO: Навигация к списку продуктов категории
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text('Переход к продуктам категории "${category.name}"'),
-        duration: const Duration(seconds: 2),
-        backgroundColor: Colors.blue.shade700,
-        behavior: SnackBarBehavior.floating,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(10),
-        ),
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (context) => ProductListPage(category: category),
       ),
     );
   }
