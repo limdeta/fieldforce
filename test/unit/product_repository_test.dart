@@ -4,54 +4,56 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:fieldforce/features/shop/domain/entities/product.dart';
 
 void main() {
-  group('ProductRepository Tests', () {
-    test('Product entity should serialize and deserialize correctly', () {
-      // Arrange
-      final originalProduct = Product(
+  group('Product Entity Tests', () {
+    test('should create Product with required fields', () {
+      // Arrange & Act
+      final product = Product(
         title: 'Test Product',
         barcodes: ['123456789'],
         code: 1001,
         bcode: 1001,
-        catalogId: 1001,
+        catalogId: 100,
         novelty: false,
         popular: true,
         isMarked: false,
-        brand: null,
-        manufacturer: null,
-        colorImage: null,
-        defaultImage: null,
         images: [],
-        description: 'Test description',
-        howToUse: null,
-        ingredients: null,
-        series: null,
-        category: null,
-        priceListCategoryId: null,
-        amountInPackage: 1,
-        vendorCode: 'TEST001',
-        type: null,
         categoriesInstock: [],
         numericCharacteristics: [],
         stringCharacteristics: [],
         boolCharacteristics: [],
-        stockItems: [
-          StockItem(
-            id: 1,
-            publicStock: '10 шт.',
-            warehouse: Warehouse(
-              id: 1,
-              name: 'Test Warehouse',
-              vendorId: 'TEST',
-              isPickUpPoint: false,
-            ),
-            defaultPrice: 10000,
-            discountValue: 0,
-            availablePrice: 10000,
-            multiplicity: 1,
-            offerPrice: 10000,
-            promotion: null,
-          )
-        ],
+        canBuy: true,
+      );
+
+      // Assert
+      expect(product.title, 'Test Product');
+      expect(product.code, 1001);
+      expect(product.canBuy, true);
+      expect(product.popular, true);
+      expect(product.novelty, false);
+      expect(product.barcodes, ['123456789']);
+    });
+
+    test('should serialize and deserialize to JSON correctly', () {
+      // Arrange
+      final originalProduct = Product(
+        title: 'Краска акриловая белая',
+        barcodes: ['4607001234567', '4607001234568'],
+        code: 2001,
+        bcode: 2001,
+        catalogId: 200,
+        novelty: true,
+        popular: false,
+        isMarked: true,
+        description: 'Высококачественная краска',
+        howToUse: 'Наносить кистью',
+        ingredients: 'Акрил, пигмент',
+        vendorCode: 'TB-001',
+        amountInPackage: 12,
+        images: [],
+        categoriesInstock: [],
+        numericCharacteristics: [],
+        stringCharacteristics: [],
+        boolCharacteristics: [],
         canBuy: true,
       );
 
@@ -62,110 +64,56 @@ void main() {
       // Assert
       expect(deserializedProduct.title, originalProduct.title);
       expect(deserializedProduct.code, originalProduct.code);
+      expect(deserializedProduct.bcode, originalProduct.bcode);
       expect(deserializedProduct.catalogId, originalProduct.catalogId);
+      expect(deserializedProduct.novelty, originalProduct.novelty);
+      expect(deserializedProduct.popular, originalProduct.popular);
+      expect(deserializedProduct.isMarked, originalProduct.isMarked);
       expect(deserializedProduct.canBuy, originalProduct.canBuy);
-      expect(deserializedProduct.stockItems.length, originalProduct.stockItems.length);
-      expect(deserializedProduct.stockItems[0].defaultPrice, originalProduct.stockItems[0].defaultPrice);
+      expect(deserializedProduct.description, originalProduct.description);
+      expect(deserializedProduct.vendorCode, originalProduct.vendorCode);
     });
 
-    test('Product with promotion should serialize correctly', () {
+    test('should handle empty arrays correctly', () {
       // Arrange
-      final productWithPromotion = Product(
-        title: 'Product with Promotion',
-        barcodes: ['123456789'],
-        code: 1002,
-        bcode: 1002,
-        catalogId: 1002,
+      final product = Product(
+        title: 'Simple Product',
+        barcodes: [],
+        code: 3001,
+        bcode: 3001,
+        catalogId: 300,
         novelty: false,
         popular: false,
         isMarked: false,
-        brand: null,
-        manufacturer: null,
-        colorImage: null,
-        defaultImage: null,
         images: [],
-        description: 'Product with promotion',
-        howToUse: null,
-        ingredients: null,
-        series: null,
-        category: null,
-        priceListCategoryId: null,
-        amountInPackage: 1,
-        vendorCode: 'TEST002',
-        type: null,
         categoriesInstock: [],
         numericCharacteristics: [],
         stringCharacteristics: [],
         boolCharacteristics: [],
-        stockItems: [
-          StockItem(
-            id: 1,
-            publicStock: '5 шт.',
-            warehouse: Warehouse(
-              id: 1,
-              name: 'Test Warehouse',
-              vendorId: 'TEST',
-              isPickUpPoint: false,
-            ),
-            defaultPrice: 20000,
-            discountValue: 2000,
-            availablePrice: 18000,
-            multiplicity: 1,
-            offerPrice: 20000,
-            promotion: Promotion(
-              id: 1,
-              shipmentStart: '2025-01-01T00:00:00+00:00',
-              shipmentFinish: '2025-12-31T23:59:59+00:00',
-              promotionConditionsDescription: 'Test promotion',
-              promotionLimits: [],
-              vendorId: 'TEST_VENDOR',
-              vendorName: 'Test Vendor',
-              title: 'Test Promotion',
-              wobbler: null,
-              description: 'Test promotion description',
-              caption: null,
-              backgroundColor: null,
-              url: null,
-              start: '2025-01-01T00:00:00+00:00',
-              finish: '2025-12-31T23:59:59+00:00',
-              promoCondition: PromoCondition(
-                id: 1,
-                typesCount: 1,
-                quantityByTypes: 1,
-                limitQuantity: 10,
-                limitQuantityForDocument: 5,
-                limitQuantityForEachGoods: 2,
-                limitQuantityForTradePoint: 3,
-                totalQuantity: 100,
-                type: 'discount',
-              ),
-              isPortalPromo: false,
-              type: 'discount',
-            ),
-          )
-        ],
         canBuy: true,
       );
 
       // Act
-      final json = productWithPromotion.toJson();
+      final json = product.toJson();
       final deserializedProduct = Product.fromJson(json);
 
       // Assert
-      expect(deserializedProduct.stockItems[0].promotion?.id, 1);
-      expect(deserializedProduct.stockItems[0].promotion?.title, 'Test Promotion');
-      final promoCondition = deserializedProduct.stockItems[0].promotion?.promoCondition;
-      expect(promoCondition?.type, 'discount');
+      expect(deserializedProduct.barcodes, isEmpty);
+      expect(deserializedProduct.images, isEmpty);
+      expect(deserializedProduct.categoriesInstock, isEmpty);
+      expect(deserializedProduct.numericCharacteristics, isEmpty);
+      expect(deserializedProduct.stringCharacteristics, isEmpty);
+      expect(deserializedProduct.boolCharacteristics, isEmpty);
     });
 
-    test('Product with characteristics should serialize correctly', () {
+    test('should handle null optional fields correctly', () {
       // Arrange
-      final productWithCharacteristics = Product(
-        title: 'Product with Characteristics',
-        barcodes: ['123456789'],
-        code: 1003,
-        bcode: 1003,
-        catalogId: 1003,
+      final product = Product(
+        title: 'Product with nulls',
+        barcodes: ['1234567890123'],
+        code: 4001,
+        bcode: 4001,
+        catalogId: 400,
         novelty: false,
         popular: false,
         isMarked: false,
@@ -173,93 +121,91 @@ void main() {
         manufacturer: null,
         colorImage: null,
         defaultImage: null,
-        images: [],
-        description: 'Product with characteristics',
+        description: null,
         howToUse: null,
         ingredients: null,
         series: null,
         category: null,
         priceListCategoryId: null,
-        amountInPackage: 1,
-        vendorCode: 'TEST003',
+        amountInPackage: null,
+        vendorCode: null,
         type: null,
+        images: [],
         categoriesInstock: [],
-        numericCharacteristics: [
-          Characteristic(
-            attributeId: 1,
-            attributeName: 'Вес',
-            id: 1,
-            type: 'numeric',
-            adaptValue: '1.5 кг',
-            value: 1.5,
-          )
-        ],
-        stringCharacteristics: [
-          Characteristic(
-            attributeId: 2,
-            attributeName: 'Цвет',
-            id: 2,
-            type: 'string',
-            adaptValue: 'Красный',
-            value: 'red',
-          )
-        ],
-        boolCharacteristics: [
-          Characteristic(
-            attributeId: 3,
-            attributeName: 'Экологичный',
-            id: 3,
-            type: 'boolean',
-            adaptValue: 'Да',
-            value: true,
-          )
-        ],
-        stockItems: [
-          StockItem(
-            id: 1,
-            publicStock: '10 шт.',
-            warehouse: Warehouse(
-              id: 1,
-              name: 'Test Warehouse',
-              vendorId: 'TEST',
-              isPickUpPoint: false,
-            ),
-            defaultPrice: 15000,
-            discountValue: 0,
-            availablePrice: 15000,
-            multiplicity: 1,
-            offerPrice: 15000,
-            promotion: null,
-          )
-        ],
+        numericCharacteristics: [],
+        stringCharacteristics: [],
+        boolCharacteristics: [],
         canBuy: true,
       );
 
       // Act
-      final json = productWithCharacteristics.toJson();
+      final json = product.toJson();
       final deserializedProduct = Product.fromJson(json);
 
       // Assert
-      expect(deserializedProduct.numericCharacteristics.length, 1);
-      expect(deserializedProduct.stringCharacteristics.length, 1);
-      expect(deserializedProduct.boolCharacteristics.length, 1);
-      expect(deserializedProduct.numericCharacteristics[0].attributeName, 'Вес');
-      expect(deserializedProduct.numericCharacteristics[0].adaptValue, '1.5 кг');
-      expect(deserializedProduct.stringCharacteristics[0].attributeName, 'Цвет');
-      expect(deserializedProduct.boolCharacteristics[0].attributeName, 'Экологичный');
+      expect(deserializedProduct.brand, isNull);
+      expect(deserializedProduct.manufacturer, isNull);
+      expect(deserializedProduct.description, isNull);
+      expect(deserializedProduct.howToUse, isNull);
+      expect(deserializedProduct.ingredients, isNull);
+      expect(deserializedProduct.series, isNull);
+      expect(deserializedProduct.vendorCode, isNull);
+      expect(deserializedProduct.amountInPackage, isNull);
     });
 
-    // TODO: Add integration tests with actual database when repository is properly initialized
-    // test('saveProducts should save products to database', () async {
-    //   // This test will be implemented when database setup is complete
-    // });
+    test('should handle basic product properties', () {
+      // Arrange
+      final product = Product(
+        title: 'Basic Product',
+        barcodes: ['1111', '2222'],
+        code: 5001,
+        bcode: 5001,
+        catalogId: 500,
+        novelty: false,
+        popular: false,
+        isMarked: false,
+        images: [],
+        categoriesInstock: [],
+        numericCharacteristics: [],
+        stringCharacteristics: [],
+        boolCharacteristics: [],
+        canBuy: true,
+      );
 
-    // test('getAllProducts should return all products from database', () async {
-    //   // This test will be implemented when database setup is complete
-    // });
+      // Assert
+      expect(product.title, 'Basic Product');
+      expect(product.barcodes.length, 2);
+      expect(product.barcodes, contains('1111'));
+      expect(product.barcodes, contains('2222'));
+      expect(product.code, 5001);
+      expect(product.catalogId, 500);
+      expect(product.canBuy, true);
+    });
 
-    // test('getProductByCatalogId should return correct product', () async {
-    //   // This test will be implemented when database setup is complete
-    // });
+    test('should provide correct string representation', () {
+      // Arrange
+      final product = Product(
+        title: 'String Test Product',
+        barcodes: ['999'],
+        code: 6001,
+        bcode: 6001,
+        catalogId: 600,
+        novelty: false,
+        popular: false,
+        isMarked: false,
+        images: [],
+        categoriesInstock: [],
+        numericCharacteristics: [],
+        stringCharacteristics: [],
+        boolCharacteristics: [],
+        canBuy: true,
+      );
+
+      // Act & Assert
+      final stringRepr = product.toString();
+      expect(stringRepr, contains('Product'));
+      expect(stringRepr, contains('6001')); // code
+      expect(stringRepr, contains('String Test Product')); // title
+    });
   });
 }

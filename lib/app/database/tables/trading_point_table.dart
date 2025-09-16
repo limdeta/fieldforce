@@ -1,6 +1,8 @@
 import 'package:drift/drift.dart';
 import 'point_of_interest_table.dart';
 
+/// Таблица географических торговых точек на маршрутах  
+/// Связана с PointsOfInterest - это точки для навигации и визитов
 @DataClassName('TradingPointData')
 class TradingPoints extends Table {
   IntColumn get id => integer().autoIncrement()();

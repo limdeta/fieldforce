@@ -1,6 +1,6 @@
 import 'package:drift/drift.dart';
 import 'employee_table.dart';
-import 'trading_point_table.dart';
+import 'trading_point_entity_table.dart';
 
 @DataClassName('OrderEntity')
 class Orders extends Table {
@@ -10,7 +10,7 @@ class Orders extends Table {
   IntColumn get creatorId => integer().references(Employees, #id)();
   
   // Ссылка на торговую точку
-  IntColumn get outletId => integer().references(TradingPoints, #id)();
+  IntColumn get outletId => integer().references(TradingPointEntities, #id)();
   
   // Состояние заказа: draft, pending, completed, failed
   TextColumn get state => text().withLength(min: 1, max: 20)();

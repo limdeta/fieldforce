@@ -4,7 +4,7 @@ import 'package:fieldforce/features/shop/domain/entities/order.dart';
 import 'package:fieldforce/features/shop/domain/entities/order_line.dart';
 import 'package:fieldforce/features/shop/domain/entities/order_state.dart';
 import 'package:fieldforce/features/shop/domain/entities/payment_kind.dart';
-import 'package:fieldforce/features/shop/domain/entities/product.dart';
+import 'package:fieldforce/features/shop/domain/entities/stock_item.dart';
 import 'package:fieldforce/features/shop/domain/entities/trading_point.dart';
 
 void main() {
@@ -128,7 +128,7 @@ void main() {
       );
 
       final updatedOrder = draftOrder.addProduct(
-        productId: stockItem.product.code,
+        productId: stockItem.productCode,
         orderLine: orderLine,
       );
 
@@ -177,42 +177,20 @@ void main() {
 
 /// Создает тестовый StockItem
 StockItem _createTestStockItem(int id, String title, int price) {
-  final warehouse = Warehouse(
-    id: 1,
-    name: 'Тестовый склад',
-    vendorId: 'TEST_WAREHOUSE',
-    isPickUpPoint: false,
-  );
-
-  final product = Product(
-    title: title,
-    barcodes: ['$id'],
-    code: id,
-    bcode: id,
-    catalogId: id,
-    novelty: false,
-    popular: false,
-    isMarked: false,
-    images: [],
-    categoriesInstock: [],
-    numericCharacteristics: [],
-    stringCharacteristics: [],
-    boolCharacteristics: [],
-    stockItems: [],
-    canBuy: true,
-  );
-
   return StockItem(
     id: id,
-    product: product,
-    warehouse: warehouse,
+    productCode: id,
+    warehouseId: 1,
+    warehouseName: 'Тестовый склад',
+    warehouseVendorId: 'TEST_WAREHOUSE',
+    isPickUpPoint: false,
     stock: 100,
-    multiplicity: 1,
     publicStock: '100+ шт',
     defaultPrice: price,
     discountValue: 0,
-    availablePrice: null,
     offerPrice: price,
-    promotion: null,
+    currency: 'RUB',
+    createdAt: DateTime.now(),
+    updatedAt: DateTime.now(),
   );
 }

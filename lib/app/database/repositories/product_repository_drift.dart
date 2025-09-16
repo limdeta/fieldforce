@@ -276,9 +276,8 @@ class DriftProductRepository implements ProductRepository {
       final products = entities.map((entity) {
         final productJson = jsonDecode(entity.rawJson) as Map<String, dynamic>;
         return Product.fromJson(productJson);
-      }).where((product) =>
-        product.stockItems.any((stock) => stock.promotion != null)
-      ).toList();
+      }).toList();
+      // TODO: Фильтровать по акциям из отдельной таблицы StockItem
 
       return Right(products);
     } catch (e) {

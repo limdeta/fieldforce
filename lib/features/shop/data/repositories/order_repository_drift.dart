@@ -6,7 +6,7 @@ import '../../domain/entities/order.dart';
 import '../../domain/entities/order_line.dart';
 import '../../domain/entities/employee.dart';
 import '../../domain/entities/trading_point.dart';
-import '../../domain/entities/product.dart';
+import '../../domain/entities/stock_item.dart';
 import '../mappers/order_mapper.dart';
 
 class OrderRepositoryDrift implements OrderRepository {
@@ -201,11 +201,22 @@ class OrderRepositoryDrift implements OrderRepository {
     );
   }
 
-  /// Сохраняет строки заказа
+  /// Сохраняет строки заказ
   Future<void> _saveOrderLines(int orderId, List<OrderLine> lines) async {
-    // Удаляем существующие строки
-    await (_database.delete(_database.orderLines)
-      ..where((line) => line.orderId.equals(orderId))).go();
+    _logger.info('Saving ${lines.length} order lines for order: $orderId');
+    
+    if (lines.isEmpty) {
+      _logger.info('No lines to save for order: $orderId');
+      return;
+    }
+    
+    try {
+      // Удаляем существующие строки (только если заказ уже существует)
+      await (_database.delete(_database.orderLines)
+        ..where((line) => line.orderId.equals(orderId))).go();
+    } catch (e) {
+      _logger.warning('Error deleting existing order lines (this is normal for new orders): $e');
+    }
     
     // Вставляем новые строки
     for (final line in lines) {
@@ -279,44 +290,22 @@ class OrderRepositoryDrift implements OrderRepository {
   /// Создает заглушку StockItem для тестирования
   /// TODO: заменить на загрузку из базы данных когда StockItem будет в БД
   StockItem _createStockItemStub(int stockItemId) {
-    // Создаем заглушки
-    final warehouse = Warehouse(
-      id: 1,
-      name: 'Тестовый склад',
-      vendorId: 'test_warehouse',
-      isPickUpPoint: false,
-    );
-    
-    final product = Product(
-      title: 'Тестовый продукт $stockItemId',
-      barcodes: [],
-      code: stockItemId,
-      bcode: stockItemId,
-      catalogId: 1,
-      novelty: false,
-      popular: false,
-      isMarked: false,
-      images: [],
-      categoriesInstock: [],
-      numericCharacteristics: [],
-      stringCharacteristics: [],
-      boolCharacteristics: [],
-      stockItems: [], // Будет заполнено позже
-      canBuy: true,
-    );
-    
     return StockItem(
       id: stockItemId,
-      product: product,
-      warehouse: warehouse,
-      stock: 100, // Заглушка остатка
+      productCode: stockItemId,
+      warehouseId: 1,
+      warehouseName: 'Тестовый склад',
+      warehouseVendorId: 'VENDOR_001',
+      isPickUpPoint: false,
+      stock: 100,
       multiplicity: 1,
       publicStock: '100+ шт',
       defaultPrice: 10000, // 100 рублей в копейках
-      discountValue: 0,
-      availablePrice: null,
-      offerPrice: 9500, // 95 рублей в копейках (со скидкой)
-      promotion: null,
+      discountValue: 500, // 5 рублей скидка
+      availablePrice: 9500, // 95 рублей со скидкой
+      currency: 'RUB',
+      createdAt: DateTime.now(),
+      updatedAt: DateTime.now(),
     );
   }
 }

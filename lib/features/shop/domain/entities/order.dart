@@ -97,7 +97,7 @@ class Order extends Equatable {
       throw StateError('Cannot edit order in state: $state');
     }
 
-    final existingIndex = lines.indexWhere((line) => line.product.code == productId);
+    final existingIndex = lines.indexWhere((line) => line.productCode == productId);
     List<OrderLine> newLines;
 
     if (existingIndex != -1) {
@@ -125,7 +125,7 @@ class Order extends Equatable {
       throw StateError('Cannot edit order in state: $state');
     }
 
-    final newLines = lines.where((line) => line.product.code != productId).toList();
+    final newLines = lines.where((line) => line.productCode != productId).toList();
     
     return copyWith(
       lines: newLines,
@@ -143,7 +143,7 @@ class Order extends Equatable {
       return removeProduct(productId);
     }
 
-    final lineIndex = lines.indexWhere((line) => line.product.code == productId);
+    final lineIndex = lines.indexWhere((line) => line.productCode == productId);
     if (lineIndex == -1) {
       throw ArgumentError('Product not found in order');
     }

@@ -27,7 +27,8 @@ class Product {
   final List<Characteristic> numericCharacteristics;
   final List<Characteristic> stringCharacteristics;
   final List<Characteristic> boolCharacteristics;
-  final List<StockItem> stockItems;
+  // TODO: Восстановить stockItems после рефакторинга
+  // final List<StockItem> stockItems;
   final bool canBuy;
 
   Product({
@@ -57,7 +58,7 @@ class Product {
     required this.numericCharacteristics,
     required this.stringCharacteristics,
     required this.boolCharacteristics,
-    required this.stockItems,
+    // required this.stockItems,
     required this.canBuy,
   });
 
@@ -89,46 +90,17 @@ class Product {
       numericCharacteristics: (json['numericCharacteristics'] as List<dynamic>).map((e) => Characteristic.fromJson(e)).toList(),
       stringCharacteristics: (json['stringCharacteristics'] as List<dynamic>).map((e) => Characteristic.fromJson(e)).toList(),
       boolCharacteristics: (json['boolCharacteristics'] as List<dynamic>).map((e) => Characteristic.fromJson(e)).toList(),
-      stockItems: [], // Временно пустой список, заполним ниже
+      // stockItems: [], // Временно отключено
       canBuy: json['canBuy'] as bool,
     );
 
-    // Создаем StockItems с ссылкой на product
-    final stockItems = (json['stockItems'] as List<dynamic>)
-        .map((e) => StockItem.fromJson(e, product))
-        .toList();
+    // TODO: Создать StockItems через отдельный сервис
+    // final stockItems = (json['stockItems'] as List<dynamic>)
+    //     .map((e) => StockItem.fromJson(e, product))
+    //     .toList();
 
-    // Возвращаем product с правильными stockItems
-    return Product(
-      title: product.title,
-      barcodes: product.barcodes,
-      code: product.code,
-      bcode: product.bcode,
-      catalogId: product.catalogId,
-      novelty: product.novelty,
-      popular: product.popular,
-      isMarked: product.isMarked,
-      brand: product.brand,
-      manufacturer: product.manufacturer,
-      colorImage: product.colorImage,
-      defaultImage: product.defaultImage,
-      images: product.images,
-      description: product.description,
-      howToUse: product.howToUse,
-      ingredients: product.ingredients,
-      series: product.series,
-      category: product.category,
-      priceListCategoryId: product.priceListCategoryId,
-      amountInPackage: product.amountInPackage,
-      vendorCode: product.vendorCode,
-      type: product.type,
-      categoriesInstock: product.categoriesInstock,
-      numericCharacteristics: product.numericCharacteristics,
-      stringCharacteristics: product.stringCharacteristics,
-      boolCharacteristics: product.boolCharacteristics,
-      stockItems: stockItems,
-      canBuy: product.canBuy,
-    );
+    // Возвращаем product напрямую
+    return product;
   }
 
   Map<String, dynamic> toJson() {
@@ -159,7 +131,7 @@ class Product {
       'numericCharacteristics': numericCharacteristics.map((e) => e.toJson()).toList(),
       'stringCharacteristics': stringCharacteristics.map((e) => e.toJson()).toList(),
       'boolCharacteristics': boolCharacteristics.map((e) => e.toJson()).toList(),
-      'stockItems': stockItems.map((e) => e.toJson()).toList(),
+      // 'stockItems': stockItems.map((e) => e.toJson()).toList(), // TODO: Восстановить после рефакторинга
       'canBuy': canBuy,
     };
   }
@@ -377,66 +349,6 @@ class Characteristic {
       'type': type,
       'adaptValue': adaptValue,
       'value': value,
-    };
-  }
-}
-
-class StockItem {
-  final int id;
-  final Product product;     // Ссылка на продукт (как на бэкенде)
-  final Warehouse warehouse; // Ссылка на склад
-  final int stock;          // Количество товара на складе
-  final int? multiplicity;   // Кратность заказа
-  final String publicStock; // Публичный остаток (строка для отображения)
-  final int defaultPrice;   // Базовая цена в копейках
-  final int discountValue;  // Размер скидки
-  final int? availablePrice; // Доступная цена (может быть null)
-  final int offerPrice;     // Цена предложения
-  final Promotion? promotion; // Промоакция
-
-  StockItem({
-    required this.id,
-    required this.product,
-    required this.warehouse,
-    required this.stock,
-    this.multiplicity,
-    required this.publicStock,
-    required this.defaultPrice,
-    required this.discountValue,
-    this.availablePrice,
-    required this.offerPrice,
-    this.promotion,
-  });
-
-  factory StockItem.fromJson(Map<String, dynamic> json, Product product) {
-    return StockItem(
-      id: json['id'] as int,
-      product: product, // Передается извне
-      warehouse: Warehouse.fromJson(json['warehouse']),
-      stock: json['stock'] as int? ?? 0, // Может не быть в JSON, default 0
-      multiplicity: json['multiplicity'] as int?,
-      publicStock: json['publicStock'] as String,
-      defaultPrice: json['defaultPrice'] as int,
-      discountValue: json['discountValue'] as int,
-      availablePrice: json['availablePrice'] as int?,
-      offerPrice: json['offerPrice'] as int,
-      promotion: json['promotion'] != null ? Promotion.fromJson(json['promotion']) : null,
-    );
-  }
-
-  Map<String, dynamic> toJson() {
-    return {
-      'id': id,
-      'stock': stock,
-      'multiplicity': multiplicity,
-      'publicStock': publicStock,
-      'warehouse': warehouse.toJson(),
-      'defaultPrice': defaultPrice,
-      'discountValue': discountValue,
-      'availablePrice': availablePrice,
-      'offerPrice': offerPrice,
-      'promotion': promotion?.toJson(),
-      // Не включаем product в JSON чтобы избежать циклических ссылок
     };
   }
 }

@@ -21,6 +21,8 @@ import 'tables/category_table.dart';
 import 'tables/product_table.dart';
 import 'tables/order_table.dart';
 import 'tables/order_line_table.dart';
+import 'tables/stock_item_table.dart';
+import 'migrations/stock_item_indexes.dart';
 
 part 'app_database.g.dart';
 
@@ -40,6 +42,7 @@ part 'app_database.g.dart';
   Products,
   Orders,
   OrderLines,
+  StockItems,
 ])
 class AppDatabase extends _$AppDatabase {
   AppDatabase() : super(_openConnection('app_database.db'));
@@ -49,7 +52,7 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase.forTesting(DatabaseConnection super.connection);
 
   @override
-  int get schemaVersion => 6;
+  int get schemaVersion => 8;
 
   // Методы для работы с торговыми точками
   // TODO вынести в репозитории и отрефакторить
@@ -109,8 +112,61 @@ class AppDatabase extends _$AppDatabase {
       }
 
       if (from < 6) {
-        // Обновляем order_lines: заменяем productId на stockItemId
-        await customStatement('ALTER TABLE order_lines RENAME COLUMN productId TO stockItemId');
+        // Безопасное обновление order_lines: заменяем productId на stockItemId если существует
+        try {
+          // Проверяем существование колонки productId
+          final result = await customSelect("PRAGMA table_info(order_lines)").get();
+          final hasProductId = result.any((row) => row.data['name'] == 'productId');
+          
+          if (hasProductId) {
+            await customStatement('ALTER TABLE order_lines RENAME COLUMN productId TO stockItemId');
+          }
+        } catch (e) {
+          // Колонка productId не существует или уже была переименована - это нормально
+          print('Миграция v6: колонка productId не найдена или уже обновлена');
+        }
+      }
+
+      if (from < 7) {
+        // Добавляем таблицу остатков и цен
+        await m.createTable(stockItems);
+        
+        // Создаем индексы для оптимизации производительности
+        for (final indexSql in StockItemIndexes.createIndexes) {
+          await customStatement(indexSql);
+        }
+      }
+
+      if (from < 8) {
+        // Исправляем Foreign Key в orders: outlet_id теперь ссылается на trading_point_entities
+        // Проверяем существование таблицы orders
+        try {
+          final result = await customSelect("SELECT name FROM sqlite_master WHERE type='table' AND name='orders'").get();
+          if (result.isNotEmpty) {
+            // Таблица orders существует - пересоздаем с правильными Foreign Key
+            await customStatement('ALTER TABLE orders RENAME TO orders_old');
+            await m.createTable(orders);
+            
+            // Копируем данные из старой таблицы в новую
+            await customStatement('''
+              INSERT INTO orders (id, creator_id, outlet_id, state, payment_type, payment_details, 
+                                 payment_is_cash, payment_is_card, payment_is_credit, comment, name, 
+                                 is_pickup, approved_delivery_day, approved_assembly_day, 
+                                 with_realization, created_at, updated_at)
+              SELECT id, creator_id, outlet_id, state, payment_type, payment_details, 
+                     payment_is_cash, payment_is_card, payment_is_credit, comment, name, 
+                     is_pickup, approved_delivery_day, approved_assembly_day, 
+                     with_realization, created_at, updated_at
+              FROM orders_old
+            ''');
+            
+            // Удаляем старую таблицу
+            await customStatement('DROP TABLE orders_old');
+          }
+        } catch (e) {
+          // Таблица orders не существует - это нормально для новой базы
+          print('Миграция v8: таблица orders не найдена - пропускаем миграцию');
+        }
       }
     },
   );

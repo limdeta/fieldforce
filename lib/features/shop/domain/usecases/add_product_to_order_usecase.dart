@@ -1,6 +1,6 @@
 import 'package:fieldforce/features/shop/domain/entities/order.dart';
 import 'package:fieldforce/features/shop/domain/entities/order_line.dart';
-import 'package:fieldforce/features/shop/domain/entities/product.dart';
+import 'package:fieldforce/features/shop/domain/entities/stock_item.dart';
 import 'package:fieldforce/features/shop/domain/repositories/order_repository.dart';
 
 /// Use case для добавления товара в заказ
@@ -32,7 +32,7 @@ class AddProductToOrderUseCase {
 
     // Добавляем товар в заказ
     final updatedOrder = order.addProduct(
-      productId: stockItem.product.code,
+      productId: stockItem.productCode,
       orderLine: orderLine,
     );
 

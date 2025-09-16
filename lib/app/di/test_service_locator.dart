@@ -58,6 +58,8 @@ import 'package:fieldforce/features/shop/domain/usecases/create_order_usecase.da
 import 'package:fieldforce/features/shop/domain/usecases/add_product_to_order_usecase.dart';
 import 'package:fieldforce/features/shop/domain/usecases/update_order_state_usecase.dart';
 import 'package:fieldforce/features/shop/data/fixtures/order_fixture_service.dart';
+import 'package:fieldforce/features/shop/domain/repositories/stock_item_repository.dart';
+import 'package:fieldforce/app/database/repositories/stock_item_repository_drift.dart';
 
 final getIt = GetIt.instance;
 
@@ -122,6 +124,10 @@ Future<void> setupTestServiceLocator() async {
   // Order repositories and use cases
   getIt.registerLazySingleton<OrderRepository>(
     () => OrderRepositoryDrift(getIt<AppDatabase>()),
+  );
+
+  getIt.registerLazySingleton<StockItemRepository>(
+    () => DriftStockItemRepository(),
   );
 
   getIt.registerLazySingleton<CreateOrderUseCase>(
@@ -261,8 +267,6 @@ Future<void> setupTestServiceLocator() async {
   getIt.registerLazySingleton<OrderFixtureService>(
     () => OrderFixtureService(
       orderRepository: getIt<OrderRepository>(),
-      employeeRepository: getIt<EmployeeRepository>(),
-      tradingPointRepository: getIt<TradingPointRepository>(),
     ),
   );
 

@@ -1,5 +1,5 @@
 import 'package:equatable/equatable.dart';
-import 'product.dart';
+import 'stock_item.dart';
 
 /// Строка заказа - конкретный товар со склада с количеством и ценой
 class OrderLine extends Equatable {
@@ -33,17 +33,17 @@ class OrderLine extends Equatable {
       orderId: orderId,
       stockItem: stockItem,
       quantity: quantity,
-      pricePerUnit: pricePerUnit ?? stockItem.offerPrice, // Используем цену предложения по умолчанию
+      pricePerUnit: pricePerUnit ?? stockItem.defaultPrice, // Используем базовую цену по умолчанию
       createdAt: now,
       updatedAt: now,
     );
   }
 
-  /// Удобный доступ к продукту через stockItem
-  Product get product => stockItem.product;
+  /// ID продукта из stockItem
+  int get productCode => stockItem.productCode;
 
-  /// Удобный доступ к складу
-  Warehouse get warehouse => stockItem.warehouse;
+  /// ID склада из stockItem
+  int get warehouseId => stockItem.warehouseId;
 
   /// Общая стоимость строки заказа
   int get totalCost => quantity * pricePerUnit;
@@ -119,6 +119,6 @@ class OrderLine extends Equatable {
 
   @override
   String toString() {
-    return 'OrderLine(id: $id, product: ${product.title}, quantity: $quantity, pricePerUnit: $pricePerUnit)';
+    return 'OrderLine(id: $id, productCode: $productCode, quantity: $quantity, pricePerUnit: $pricePerUnit)';
   }
 }

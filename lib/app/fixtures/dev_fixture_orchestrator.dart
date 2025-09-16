@@ -7,8 +7,11 @@ import 'package:fieldforce/features/shop/data/fixtures/trading_points_fixture_se
 import 'package:fieldforce/features/shop/data/fixtures/category_fixture_service.dart';
 import 'package:fieldforce/features/shop/data/fixtures/product_fixture_service.dart';
 import 'package:fieldforce/features/shop/data/fixtures/order_fixture_service.dart';
+import 'package:fieldforce/features/shop/domain/entities/trading_point.dart';
 import 'package:fieldforce/features/shop/domain/repositories/category_repository.dart';
 import 'package:fieldforce/features/shop/domain/repositories/product_repository.dart';
+import 'package:fieldforce/features/shop/domain/repositories/trading_point_repository.dart';
+import 'package:fieldforce/features/shop/domain/repositories/employee_repository.dart';
 import 'package:fieldforce/app/database/app_database.dart';
 import 'package:fieldforce/shared/either.dart';
 import 'package:flutter/cupertino.dart';
@@ -103,8 +106,39 @@ class DevFixtureOrchestrator {
         date: DateTime.now(),
       );
 
-      // 4. Заказы
-      await _orderFixture.createFixtureOrders();
+      // 4. Заказы - используем репозиторий для получения торговых точек и сотрудника с корректными ID
+      final employeeRepository = GetIt.instance<EmployeeRepository>();
+      final tradingPointRepository = GetIt.instance<TradingPointRepository>();
+      
+      // Получаем сотрудника из базы с корректным ID
+      final employeeResult = await employeeRepository.getById(user.employee.id);
+      final employee = employeeResult.fold(
+        (failure) {
+          debugPrint('❌ Ошибка получения сотрудника для заказов: $failure');
+          return user.employee; // fallback к оригинальному
+        },
+        (emp) => emp, // используем из базы
+      );
+      
+      // Получаем торговые точки из базы с корректными ID
+      final tradingPointsResult = await tradingPointRepository.getEmployeePoints(employee);
+      final tradingPoints = tradingPointsResult.fold(
+        (failure) {
+          debugPrint('❌ Ошибка получения торговых точек для заказов: $failure');
+          return <TradingPoint>[];
+        },
+        (points) => points,
+      );
+      
+      if (tradingPoints.isNotEmpty) {
+        debugPrint('🔍 Создаем заказы для сотрудника ID: ${employee.id}, торговых точек: ${tradingPoints.map((tp) => tp.id).join(", ")}');
+        await _orderFixture.createFixtureOrders(
+          employee: employee,
+          tradingPoints: tradingPoints,
+        );
+      } else {
+        debugPrint('❌ Нет торговых точек - пропускаем создание заказов');
+      }
 
       // Обновляем количество продуктов в категориях после загрузки всех данных
       final categoryRepository = GetIt.instance<CategoryRepository>();

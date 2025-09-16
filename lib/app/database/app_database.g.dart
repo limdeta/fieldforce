@@ -6032,8 +6032,8 @@ class $OrdersTable extends Orders with TableInfo<$OrdersTable, OrderEntity> {
       'outlet_id', aliasedName, false,
       type: DriftSqlType.int,
       requiredDuringInsert: true,
-      defaultConstraints:
-          GeneratedColumn.constraintIsAlways('REFERENCES trading_points (id)'));
+      defaultConstraints: GeneratedColumn.constraintIsAlways(
+          'REFERENCES trading_point_entities (id)'));
   static const VerificationMeta _stateMeta = const VerificationMeta('state');
   @override
   late final GeneratedColumn<String> state = GeneratedColumn<String>(
@@ -7172,6 +7172,802 @@ class OrderLinesCompanion extends UpdateCompanion<OrderLineEntity> {
   }
 }
 
+class $StockItemsTable extends StockItems
+    with TableInfo<$StockItemsTable, StockItemData> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $StockItemsTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _idMeta = const VerificationMeta('id');
+  @override
+  late final GeneratedColumn<int> id = GeneratedColumn<int>(
+      'id', aliasedName, false,
+      type: DriftSqlType.int, requiredDuringInsert: false);
+  static const VerificationMeta _productCodeMeta =
+      const VerificationMeta('productCode');
+  @override
+  late final GeneratedColumn<int> productCode = GeneratedColumn<int>(
+      'product_code', aliasedName, false,
+      type: DriftSqlType.int,
+      requiredDuringInsert: true,
+      defaultConstraints:
+          GeneratedColumn.constraintIsAlways('REFERENCES products (code)'));
+  static const VerificationMeta _warehouseIdMeta =
+      const VerificationMeta('warehouseId');
+  @override
+  late final GeneratedColumn<int> warehouseId = GeneratedColumn<int>(
+      'warehouse_id', aliasedName, false,
+      type: DriftSqlType.int, requiredDuringInsert: true);
+  static const VerificationMeta _warehouseNameMeta =
+      const VerificationMeta('warehouseName');
+  @override
+  late final GeneratedColumn<String> warehouseName = GeneratedColumn<String>(
+      'warehouse_name', aliasedName, false,
+      type: DriftSqlType.string, requiredDuringInsert: true);
+  static const VerificationMeta _warehouseVendorIdMeta =
+      const VerificationMeta('warehouseVendorId');
+  @override
+  late final GeneratedColumn<String> warehouseVendorId =
+      GeneratedColumn<String>('warehouse_vendor_id', aliasedName, false,
+          type: DriftSqlType.string, requiredDuringInsert: true);
+  static const VerificationMeta _isPickUpPointMeta =
+      const VerificationMeta('isPickUpPoint');
+  @override
+  late final GeneratedColumn<bool> isPickUpPoint = GeneratedColumn<bool>(
+      'is_pick_up_point', aliasedName, false,
+      type: DriftSqlType.bool,
+      requiredDuringInsert: false,
+      defaultConstraints: GeneratedColumn.constraintIsAlways(
+          'CHECK ("is_pick_up_point" IN (0, 1))'),
+      defaultValue: const Constant(false));
+  static const VerificationMeta _stockMeta = const VerificationMeta('stock');
+  @override
+  late final GeneratedColumn<int> stock = GeneratedColumn<int>(
+      'stock', aliasedName, false,
+      type: DriftSqlType.int,
+      requiredDuringInsert: false,
+      defaultValue: const Constant(0));
+  static const VerificationMeta _multiplicityMeta =
+      const VerificationMeta('multiplicity');
+  @override
+  late final GeneratedColumn<int> multiplicity = GeneratedColumn<int>(
+      'multiplicity', aliasedName, true,
+      type: DriftSqlType.int, requiredDuringInsert: false);
+  static const VerificationMeta _publicStockMeta =
+      const VerificationMeta('publicStock');
+  @override
+  late final GeneratedColumn<String> publicStock = GeneratedColumn<String>(
+      'public_stock', aliasedName, false,
+      type: DriftSqlType.string, requiredDuringInsert: true);
+  static const VerificationMeta _defaultPriceMeta =
+      const VerificationMeta('defaultPrice');
+  @override
+  late final GeneratedColumn<int> defaultPrice = GeneratedColumn<int>(
+      'default_price', aliasedName, false,
+      type: DriftSqlType.int, requiredDuringInsert: true);
+  static const VerificationMeta _discountValueMeta =
+      const VerificationMeta('discountValue');
+  @override
+  late final GeneratedColumn<int> discountValue = GeneratedColumn<int>(
+      'discount_value', aliasedName, false,
+      type: DriftSqlType.int,
+      requiredDuringInsert: false,
+      defaultValue: const Constant(0));
+  static const VerificationMeta _availablePriceMeta =
+      const VerificationMeta('availablePrice');
+  @override
+  late final GeneratedColumn<int> availablePrice = GeneratedColumn<int>(
+      'available_price', aliasedName, true,
+      type: DriftSqlType.int, requiredDuringInsert: false);
+  static const VerificationMeta _offerPriceMeta =
+      const VerificationMeta('offerPrice');
+  @override
+  late final GeneratedColumn<int> offerPrice = GeneratedColumn<int>(
+      'offer_price', aliasedName, false,
+      type: DriftSqlType.int, requiredDuringInsert: true);
+  static const VerificationMeta _currencyMeta =
+      const VerificationMeta('currency');
+  @override
+  late final GeneratedColumn<String> currency = GeneratedColumn<String>(
+      'currency', aliasedName, false,
+      type: DriftSqlType.string,
+      requiredDuringInsert: false,
+      defaultValue: const Constant('RUB'));
+  static const VerificationMeta _promotionJsonMeta =
+      const VerificationMeta('promotionJson');
+  @override
+  late final GeneratedColumn<String> promotionJson = GeneratedColumn<String>(
+      'promotion_json', aliasedName, true,
+      type: DriftSqlType.string, requiredDuringInsert: false);
+  static const VerificationMeta _createdAtMeta =
+      const VerificationMeta('createdAt');
+  @override
+  late final GeneratedColumn<DateTime> createdAt = GeneratedColumn<DateTime>(
+      'created_at', aliasedName, false,
+      type: DriftSqlType.dateTime,
+      requiredDuringInsert: false,
+      defaultValue: currentDateAndTime);
+  static const VerificationMeta _updatedAtMeta =
+      const VerificationMeta('updatedAt');
+  @override
+  late final GeneratedColumn<DateTime> updatedAt = GeneratedColumn<DateTime>(
+      'updated_at', aliasedName, false,
+      type: DriftSqlType.dateTime,
+      requiredDuringInsert: false,
+      defaultValue: currentDateAndTime);
+  @override
+  List<GeneratedColumn> get $columns => [
+        id,
+        productCode,
+        warehouseId,
+        warehouseName,
+        warehouseVendorId,
+        isPickUpPoint,
+        stock,
+        multiplicity,
+        publicStock,
+        defaultPrice,
+        discountValue,
+        availablePrice,
+        offerPrice,
+        currency,
+        promotionJson,
+        createdAt,
+        updatedAt
+      ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'stock_items';
+  @override
+  VerificationContext validateIntegrity(Insertable<StockItemData> instance,
+      {bool isInserting = false}) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('id')) {
+      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
+    }
+    if (data.containsKey('product_code')) {
+      context.handle(
+          _productCodeMeta,
+          productCode.isAcceptableOrUnknown(
+              data['product_code']!, _productCodeMeta));
+    } else if (isInserting) {
+      context.missing(_productCodeMeta);
+    }
+    if (data.containsKey('warehouse_id')) {
+      context.handle(
+          _warehouseIdMeta,
+          warehouseId.isAcceptableOrUnknown(
+              data['warehouse_id']!, _warehouseIdMeta));
+    } else if (isInserting) {
+      context.missing(_warehouseIdMeta);
+    }
+    if (data.containsKey('warehouse_name')) {
+      context.handle(
+          _warehouseNameMeta,
+          warehouseName.isAcceptableOrUnknown(
+              data['warehouse_name']!, _warehouseNameMeta));
+    } else if (isInserting) {
+      context.missing(_warehouseNameMeta);
+    }
+    if (data.containsKey('warehouse_vendor_id')) {
+      context.handle(
+          _warehouseVendorIdMeta,
+          warehouseVendorId.isAcceptableOrUnknown(
+              data['warehouse_vendor_id']!, _warehouseVendorIdMeta));
+    } else if (isInserting) {
+      context.missing(_warehouseVendorIdMeta);
+    }
+    if (data.containsKey('is_pick_up_point')) {
+      context.handle(
+          _isPickUpPointMeta,
+          isPickUpPoint.isAcceptableOrUnknown(
+              data['is_pick_up_point']!, _isPickUpPointMeta));
+    }
+    if (data.containsKey('stock')) {
+      context.handle(
+          _stockMeta, stock.isAcceptableOrUnknown(data['stock']!, _stockMeta));
+    }
+    if (data.containsKey('multiplicity')) {
+      context.handle(
+          _multiplicityMeta,
+          multiplicity.isAcceptableOrUnknown(
+              data['multiplicity']!, _multiplicityMeta));
+    }
+    if (data.containsKey('public_stock')) {
+      context.handle(
+          _publicStockMeta,
+          publicStock.isAcceptableOrUnknown(
+              data['public_stock']!, _publicStockMeta));
+    } else if (isInserting) {
+      context.missing(_publicStockMeta);
+    }
+    if (data.containsKey('default_price')) {
+      context.handle(
+          _defaultPriceMeta,
+          defaultPrice.isAcceptableOrUnknown(
+              data['default_price']!, _defaultPriceMeta));
+    } else if (isInserting) {
+      context.missing(_defaultPriceMeta);
+    }
+    if (data.containsKey('discount_value')) {
+      context.handle(
+          _discountValueMeta,
+          discountValue.isAcceptableOrUnknown(
+              data['discount_value']!, _discountValueMeta));
+    }
+    if (data.containsKey('available_price')) {
+      context.handle(
+          _availablePriceMeta,
+          availablePrice.isAcceptableOrUnknown(
+              data['available_price']!, _availablePriceMeta));
+    }
+    if (data.containsKey('offer_price')) {
+      context.handle(
+          _offerPriceMeta,
+          offerPrice.isAcceptableOrUnknown(
+              data['offer_price']!, _offerPriceMeta));
+    } else if (isInserting) {
+      context.missing(_offerPriceMeta);
+    }
+    if (data.containsKey('currency')) {
+      context.handle(_currencyMeta,
+          currency.isAcceptableOrUnknown(data['currency']!, _currencyMeta));
+    }
+    if (data.containsKey('promotion_json')) {
+      context.handle(
+          _promotionJsonMeta,
+          promotionJson.isAcceptableOrUnknown(
+              data['promotion_json']!, _promotionJsonMeta));
+    }
+    if (data.containsKey('created_at')) {
+      context.handle(_createdAtMeta,
+          createdAt.isAcceptableOrUnknown(data['created_at']!, _createdAtMeta));
+    }
+    if (data.containsKey('updated_at')) {
+      context.handle(_updatedAtMeta,
+          updatedAt.isAcceptableOrUnknown(data['updated_at']!, _updatedAtMeta));
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {id};
+  @override
+  List<Set<GeneratedColumn>> get uniqueKeys => [
+        {productCode, warehouseId},
+      ];
+  @override
+  StockItemData map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return StockItemData(
+      id: attachedDatabase.typeMapping
+          .read(DriftSqlType.int, data['${effectivePrefix}id'])!,
+      productCode: attachedDatabase.typeMapping
+          .read(DriftSqlType.int, data['${effectivePrefix}product_code'])!,
+      warehouseId: attachedDatabase.typeMapping
+          .read(DriftSqlType.int, data['${effectivePrefix}warehouse_id'])!,
+      warehouseName: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}warehouse_name'])!,
+      warehouseVendorId: attachedDatabase.typeMapping.read(
+          DriftSqlType.string, data['${effectivePrefix}warehouse_vendor_id'])!,
+      isPickUpPoint: attachedDatabase.typeMapping
+          .read(DriftSqlType.bool, data['${effectivePrefix}is_pick_up_point'])!,
+      stock: attachedDatabase.typeMapping
+          .read(DriftSqlType.int, data['${effectivePrefix}stock'])!,
+      multiplicity: attachedDatabase.typeMapping
+          .read(DriftSqlType.int, data['${effectivePrefix}multiplicity']),
+      publicStock: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}public_stock'])!,
+      defaultPrice: attachedDatabase.typeMapping
+          .read(DriftSqlType.int, data['${effectivePrefix}default_price'])!,
+      discountValue: attachedDatabase.typeMapping
+          .read(DriftSqlType.int, data['${effectivePrefix}discount_value'])!,
+      availablePrice: attachedDatabase.typeMapping
+          .read(DriftSqlType.int, data['${effectivePrefix}available_price']),
+      offerPrice: attachedDatabase.typeMapping
+          .read(DriftSqlType.int, data['${effectivePrefix}offer_price'])!,
+      currency: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}currency'])!,
+      promotionJson: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}promotion_json']),
+      createdAt: attachedDatabase.typeMapping
+          .read(DriftSqlType.dateTime, data['${effectivePrefix}created_at'])!,
+      updatedAt: attachedDatabase.typeMapping
+          .read(DriftSqlType.dateTime, data['${effectivePrefix}updated_at'])!,
+    );
+  }
+
+  @override
+  $StockItemsTable createAlias(String alias) {
+    return $StockItemsTable(attachedDatabase, alias);
+  }
+}
+
+class StockItemData extends DataClass implements Insertable<StockItemData> {
+  /// Уникальный ID StockItem
+  final int id;
+
+  /// Ссылка на продукт
+  final int productCode;
+
+  /// Данные склада (денормализованы для производительности)
+  final int warehouseId;
+  final String warehouseName;
+  final String warehouseVendorId;
+  final bool isPickUpPoint;
+
+  /// Остатки товара
+  final int stock;
+  final int? multiplicity;
+  final String publicStock;
+
+  /// Ценообразование (все в копейках)
+  final int defaultPrice;
+  final int discountValue;
+  final int? availablePrice;
+  final int offerPrice;
+  final String currency;
+
+  /// Промоакция (JSON для гибкости)
+  final String? promotionJson;
+
+  /// Метки времени
+  final DateTime createdAt;
+  final DateTime updatedAt;
+  const StockItemData(
+      {required this.id,
+      required this.productCode,
+      required this.warehouseId,
+      required this.warehouseName,
+      required this.warehouseVendorId,
+      required this.isPickUpPoint,
+      required this.stock,
+      this.multiplicity,
+      required this.publicStock,
+      required this.defaultPrice,
+      required this.discountValue,
+      this.availablePrice,
+      required this.offerPrice,
+      required this.currency,
+      this.promotionJson,
+      required this.createdAt,
+      required this.updatedAt});
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['id'] = Variable<int>(id);
+    map['product_code'] = Variable<int>(productCode);
+    map['warehouse_id'] = Variable<int>(warehouseId);
+    map['warehouse_name'] = Variable<String>(warehouseName);
+    map['warehouse_vendor_id'] = Variable<String>(warehouseVendorId);
+    map['is_pick_up_point'] = Variable<bool>(isPickUpPoint);
+    map['stock'] = Variable<int>(stock);
+    if (!nullToAbsent || multiplicity != null) {
+      map['multiplicity'] = Variable<int>(multiplicity);
+    }
+    map['public_stock'] = Variable<String>(publicStock);
+    map['default_price'] = Variable<int>(defaultPrice);
+    map['discount_value'] = Variable<int>(discountValue);
+    if (!nullToAbsent || availablePrice != null) {
+      map['available_price'] = Variable<int>(availablePrice);
+    }
+    map['offer_price'] = Variable<int>(offerPrice);
+    map['currency'] = Variable<String>(currency);
+    if (!nullToAbsent || promotionJson != null) {
+      map['promotion_json'] = Variable<String>(promotionJson);
+    }
+    map['created_at'] = Variable<DateTime>(createdAt);
+    map['updated_at'] = Variable<DateTime>(updatedAt);
+    return map;
+  }
+
+  StockItemsCompanion toCompanion(bool nullToAbsent) {
+    return StockItemsCompanion(
+      id: Value(id),
+      productCode: Value(productCode),
+      warehouseId: Value(warehouseId),
+      warehouseName: Value(warehouseName),
+      warehouseVendorId: Value(warehouseVendorId),
+      isPickUpPoint: Value(isPickUpPoint),
+      stock: Value(stock),
+      multiplicity: multiplicity == null && nullToAbsent
+          ? const Value.absent()
+          : Value(multiplicity),
+      publicStock: Value(publicStock),
+      defaultPrice: Value(defaultPrice),
+      discountValue: Value(discountValue),
+      availablePrice: availablePrice == null && nullToAbsent
+          ? const Value.absent()
+          : Value(availablePrice),
+      offerPrice: Value(offerPrice),
+      currency: Value(currency),
+      promotionJson: promotionJson == null && nullToAbsent
+          ? const Value.absent()
+          : Value(promotionJson),
+      createdAt: Value(createdAt),
+      updatedAt: Value(updatedAt),
+    );
+  }
+
+  factory StockItemData.fromJson(Map<String, dynamic> json,
+      {ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return StockItemData(
+      id: serializer.fromJson<int>(json['id']),
+      productCode: serializer.fromJson<int>(json['productCode']),
+      warehouseId: serializer.fromJson<int>(json['warehouseId']),
+      warehouseName: serializer.fromJson<String>(json['warehouseName']),
+      warehouseVendorId: serializer.fromJson<String>(json['warehouseVendorId']),
+      isPickUpPoint: serializer.fromJson<bool>(json['isPickUpPoint']),
+      stock: serializer.fromJson<int>(json['stock']),
+      multiplicity: serializer.fromJson<int?>(json['multiplicity']),
+      publicStock: serializer.fromJson<String>(json['publicStock']),
+      defaultPrice: serializer.fromJson<int>(json['defaultPrice']),
+      discountValue: serializer.fromJson<int>(json['discountValue']),
+      availablePrice: serializer.fromJson<int?>(json['availablePrice']),
+      offerPrice: serializer.fromJson<int>(json['offerPrice']),
+      currency: serializer.fromJson<String>(json['currency']),
+      promotionJson: serializer.fromJson<String?>(json['promotionJson']),
+      createdAt: serializer.fromJson<DateTime>(json['createdAt']),
+      updatedAt: serializer.fromJson<DateTime>(json['updatedAt']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'id': serializer.toJson<int>(id),
+      'productCode': serializer.toJson<int>(productCode),
+      'warehouseId': serializer.toJson<int>(warehouseId),
+      'warehouseName': serializer.toJson<String>(warehouseName),
+      'warehouseVendorId': serializer.toJson<String>(warehouseVendorId),
+      'isPickUpPoint': serializer.toJson<bool>(isPickUpPoint),
+      'stock': serializer.toJson<int>(stock),
+      'multiplicity': serializer.toJson<int?>(multiplicity),
+      'publicStock': serializer.toJson<String>(publicStock),
+      'defaultPrice': serializer.toJson<int>(defaultPrice),
+      'discountValue': serializer.toJson<int>(discountValue),
+      'availablePrice': serializer.toJson<int?>(availablePrice),
+      'offerPrice': serializer.toJson<int>(offerPrice),
+      'currency': serializer.toJson<String>(currency),
+      'promotionJson': serializer.toJson<String?>(promotionJson),
+      'createdAt': serializer.toJson<DateTime>(createdAt),
+      'updatedAt': serializer.toJson<DateTime>(updatedAt),
+    };
+  }
+
+  StockItemData copyWith(
+          {int? id,
+          int? productCode,
+          int? warehouseId,
+          String? warehouseName,
+          String? warehouseVendorId,
+          bool? isPickUpPoint,
+          int? stock,
+          Value<int?> multiplicity = const Value.absent(),
+          String? publicStock,
+          int? defaultPrice,
+          int? discountValue,
+          Value<int?> availablePrice = const Value.absent(),
+          int? offerPrice,
+          String? currency,
+          Value<String?> promotionJson = const Value.absent(),
+          DateTime? createdAt,
+          DateTime? updatedAt}) =>
+      StockItemData(
+        id: id ?? this.id,
+        productCode: productCode ?? this.productCode,
+        warehouseId: warehouseId ?? this.warehouseId,
+        warehouseName: warehouseName ?? this.warehouseName,
+        warehouseVendorId: warehouseVendorId ?? this.warehouseVendorId,
+        isPickUpPoint: isPickUpPoint ?? this.isPickUpPoint,
+        stock: stock ?? this.stock,
+        multiplicity:
+            multiplicity.present ? multiplicity.value : this.multiplicity,
+        publicStock: publicStock ?? this.publicStock,
+        defaultPrice: defaultPrice ?? this.defaultPrice,
+        discountValue: discountValue ?? this.discountValue,
+        availablePrice:
+            availablePrice.present ? availablePrice.value : this.availablePrice,
+        offerPrice: offerPrice ?? this.offerPrice,
+        currency: currency ?? this.currency,
+        promotionJson:
+            promotionJson.present ? promotionJson.value : this.promotionJson,
+        createdAt: createdAt ?? this.createdAt,
+        updatedAt: updatedAt ?? this.updatedAt,
+      );
+  @override
+  String toString() {
+    return (StringBuffer('StockItemData(')
+          ..write('id: $id, ')
+          ..write('productCode: $productCode, ')
+          ..write('warehouseId: $warehouseId, ')
+          ..write('warehouseName: $warehouseName, ')
+          ..write('warehouseVendorId: $warehouseVendorId, ')
+          ..write('isPickUpPoint: $isPickUpPoint, ')
+          ..write('stock: $stock, ')
+          ..write('multiplicity: $multiplicity, ')
+          ..write('publicStock: $publicStock, ')
+          ..write('defaultPrice: $defaultPrice, ')
+          ..write('discountValue: $discountValue, ')
+          ..write('availablePrice: $availablePrice, ')
+          ..write('offerPrice: $offerPrice, ')
+          ..write('currency: $currency, ')
+          ..write('promotionJson: $promotionJson, ')
+          ..write('createdAt: $createdAt, ')
+          ..write('updatedAt: $updatedAt')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(
+      id,
+      productCode,
+      warehouseId,
+      warehouseName,
+      warehouseVendorId,
+      isPickUpPoint,
+      stock,
+      multiplicity,
+      publicStock,
+      defaultPrice,
+      discountValue,
+      availablePrice,
+      offerPrice,
+      currency,
+      promotionJson,
+      createdAt,
+      updatedAt);
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is StockItemData &&
+          other.id == this.id &&
+          other.productCode == this.productCode &&
+          other.warehouseId == this.warehouseId &&
+          other.warehouseName == this.warehouseName &&
+          other.warehouseVendorId == this.warehouseVendorId &&
+          other.isPickUpPoint == this.isPickUpPoint &&
+          other.stock == this.stock &&
+          other.multiplicity == this.multiplicity &&
+          other.publicStock == this.publicStock &&
+          other.defaultPrice == this.defaultPrice &&
+          other.discountValue == this.discountValue &&
+          other.availablePrice == this.availablePrice &&
+          other.offerPrice == this.offerPrice &&
+          other.currency == this.currency &&
+          other.promotionJson == this.promotionJson &&
+          other.createdAt == this.createdAt &&
+          other.updatedAt == this.updatedAt);
+}
+
+class StockItemsCompanion extends UpdateCompanion<StockItemData> {
+  final Value<int> id;
+  final Value<int> productCode;
+  final Value<int> warehouseId;
+  final Value<String> warehouseName;
+  final Value<String> warehouseVendorId;
+  final Value<bool> isPickUpPoint;
+  final Value<int> stock;
+  final Value<int?> multiplicity;
+  final Value<String> publicStock;
+  final Value<int> defaultPrice;
+  final Value<int> discountValue;
+  final Value<int?> availablePrice;
+  final Value<int> offerPrice;
+  final Value<String> currency;
+  final Value<String?> promotionJson;
+  final Value<DateTime> createdAt;
+  final Value<DateTime> updatedAt;
+  const StockItemsCompanion({
+    this.id = const Value.absent(),
+    this.productCode = const Value.absent(),
+    this.warehouseId = const Value.absent(),
+    this.warehouseName = const Value.absent(),
+    this.warehouseVendorId = const Value.absent(),
+    this.isPickUpPoint = const Value.absent(),
+    this.stock = const Value.absent(),
+    this.multiplicity = const Value.absent(),
+    this.publicStock = const Value.absent(),
+    this.defaultPrice = const Value.absent(),
+    this.discountValue = const Value.absent(),
+    this.availablePrice = const Value.absent(),
+    this.offerPrice = const Value.absent(),
+    this.currency = const Value.absent(),
+    this.promotionJson = const Value.absent(),
+    this.createdAt = const Value.absent(),
+    this.updatedAt = const Value.absent(),
+  });
+  StockItemsCompanion.insert({
+    this.id = const Value.absent(),
+    required int productCode,
+    required int warehouseId,
+    required String warehouseName,
+    required String warehouseVendorId,
+    this.isPickUpPoint = const Value.absent(),
+    this.stock = const Value.absent(),
+    this.multiplicity = const Value.absent(),
+    required String publicStock,
+    required int defaultPrice,
+    this.discountValue = const Value.absent(),
+    this.availablePrice = const Value.absent(),
+    required int offerPrice,
+    this.currency = const Value.absent(),
+    this.promotionJson = const Value.absent(),
+    this.createdAt = const Value.absent(),
+    this.updatedAt = const Value.absent(),
+  })  : productCode = Value(productCode),
+        warehouseId = Value(warehouseId),
+        warehouseName = Value(warehouseName),
+        warehouseVendorId = Value(warehouseVendorId),
+        publicStock = Value(publicStock),
+        defaultPrice = Value(defaultPrice),
+        offerPrice = Value(offerPrice);
+  static Insertable<StockItemData> custom({
+    Expression<int>? id,
+    Expression<int>? productCode,
+    Expression<int>? warehouseId,
+    Expression<String>? warehouseName,
+    Expression<String>? warehouseVendorId,
+    Expression<bool>? isPickUpPoint,
+    Expression<int>? stock,
+    Expression<int>? multiplicity,
+    Expression<String>? publicStock,
+    Expression<int>? defaultPrice,
+    Expression<int>? discountValue,
+    Expression<int>? availablePrice,
+    Expression<int>? offerPrice,
+    Expression<String>? currency,
+    Expression<String>? promotionJson,
+    Expression<DateTime>? createdAt,
+    Expression<DateTime>? updatedAt,
+  }) {
+    return RawValuesInsertable({
+      if (id != null) 'id': id,
+      if (productCode != null) 'product_code': productCode,
+      if (warehouseId != null) 'warehouse_id': warehouseId,
+      if (warehouseName != null) 'warehouse_name': warehouseName,
+      if (warehouseVendorId != null) 'warehouse_vendor_id': warehouseVendorId,
+      if (isPickUpPoint != null) 'is_pick_up_point': isPickUpPoint,
+      if (stock != null) 'stock': stock,
+      if (multiplicity != null) 'multiplicity': multiplicity,
+      if (publicStock != null) 'public_stock': publicStock,
+      if (defaultPrice != null) 'default_price': defaultPrice,
+      if (discountValue != null) 'discount_value': discountValue,
+      if (availablePrice != null) 'available_price': availablePrice,
+      if (offerPrice != null) 'offer_price': offerPrice,
+      if (currency != null) 'currency': currency,
+      if (promotionJson != null) 'promotion_json': promotionJson,
+      if (createdAt != null) 'created_at': createdAt,
+      if (updatedAt != null) 'updated_at': updatedAt,
+    });
+  }
+
+  StockItemsCompanion copyWith(
+      {Value<int>? id,
+      Value<int>? productCode,
+      Value<int>? warehouseId,
+      Value<String>? warehouseName,
+      Value<String>? warehouseVendorId,
+      Value<bool>? isPickUpPoint,
+      Value<int>? stock,
+      Value<int?>? multiplicity,
+      Value<String>? publicStock,
+      Value<int>? defaultPrice,
+      Value<int>? discountValue,
+      Value<int?>? availablePrice,
+      Value<int>? offerPrice,
+      Value<String>? currency,
+      Value<String?>? promotionJson,
+      Value<DateTime>? createdAt,
+      Value<DateTime>? updatedAt}) {
+    return StockItemsCompanion(
+      id: id ?? this.id,
+      productCode: productCode ?? this.productCode,
+      warehouseId: warehouseId ?? this.warehouseId,
+      warehouseName: warehouseName ?? this.warehouseName,
+      warehouseVendorId: warehouseVendorId ?? this.warehouseVendorId,
+      isPickUpPoint: isPickUpPoint ?? this.isPickUpPoint,
+      stock: stock ?? this.stock,
+      multiplicity: multiplicity ?? this.multiplicity,
+      publicStock: publicStock ?? this.publicStock,
+      defaultPrice: defaultPrice ?? this.defaultPrice,
+      discountValue: discountValue ?? this.discountValue,
+      availablePrice: availablePrice ?? this.availablePrice,
+      offerPrice: offerPrice ?? this.offerPrice,
+      currency: currency ?? this.currency,
+      promotionJson: promotionJson ?? this.promotionJson,
+      createdAt: createdAt ?? this.createdAt,
+      updatedAt: updatedAt ?? this.updatedAt,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (id.present) {
+      map['id'] = Variable<int>(id.value);
+    }
+    if (productCode.present) {
+      map['product_code'] = Variable<int>(productCode.value);
+    }
+    if (warehouseId.present) {
+      map['warehouse_id'] = Variable<int>(warehouseId.value);
+    }
+    if (warehouseName.present) {
+      map['warehouse_name'] = Variable<String>(warehouseName.value);
+    }
+    if (warehouseVendorId.present) {
+      map['warehouse_vendor_id'] = Variable<String>(warehouseVendorId.value);
+    }
+    if (isPickUpPoint.present) {
+      map['is_pick_up_point'] = Variable<bool>(isPickUpPoint.value);
+    }
+    if (stock.present) {
+      map['stock'] = Variable<int>(stock.value);
+    }
+    if (multiplicity.present) {
+      map['multiplicity'] = Variable<int>(multiplicity.value);
+    }
+    if (publicStock.present) {
+      map['public_stock'] = Variable<String>(publicStock.value);
+    }
+    if (defaultPrice.present) {
+      map['default_price'] = Variable<int>(defaultPrice.value);
+    }
+    if (discountValue.present) {
+      map['discount_value'] = Variable<int>(discountValue.value);
+    }
+    if (availablePrice.present) {
+      map['available_price'] = Variable<int>(availablePrice.value);
+    }
+    if (offerPrice.present) {
+      map['offer_price'] = Variable<int>(offerPrice.value);
+    }
+    if (currency.present) {
+      map['currency'] = Variable<String>(currency.value);
+    }
+    if (promotionJson.present) {
+      map['promotion_json'] = Variable<String>(promotionJson.value);
+    }
+    if (createdAt.present) {
+      map['created_at'] = Variable<DateTime>(createdAt.value);
+    }
+    if (updatedAt.present) {
+      map['updated_at'] = Variable<DateTime>(updatedAt.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('StockItemsCompanion(')
+          ..write('id: $id, ')
+          ..write('productCode: $productCode, ')
+          ..write('warehouseId: $warehouseId, ')
+          ..write('warehouseName: $warehouseName, ')
+          ..write('warehouseVendorId: $warehouseVendorId, ')
+          ..write('isPickUpPoint: $isPickUpPoint, ')
+          ..write('stock: $stock, ')
+          ..write('multiplicity: $multiplicity, ')
+          ..write('publicStock: $publicStock, ')
+          ..write('defaultPrice: $defaultPrice, ')
+          ..write('discountValue: $discountValue, ')
+          ..write('availablePrice: $availablePrice, ')
+          ..write('offerPrice: $offerPrice, ')
+          ..write('currency: $currency, ')
+          ..write('promotionJson: $promotionJson, ')
+          ..write('createdAt: $createdAt, ')
+          ..write('updatedAt: $updatedAt')
+          ..write(')'))
+        .toString();
+  }
+}
+
 abstract class _$AppDatabase extends GeneratedDatabase {
   _$AppDatabase(QueryExecutor e) : super(e);
   late final $UsersTable users = $UsersTable(this);
@@ -7193,6 +7989,7 @@ abstract class _$AppDatabase extends GeneratedDatabase {
   late final $ProductsTable products = $ProductsTable(this);
   late final $OrdersTable orders = $OrdersTable(this);
   late final $OrderLinesTable orderLines = $OrderLinesTable(this);
+  late final $StockItemsTable stockItems = $StockItemsTable(this);
   @override
   Iterable<TableInfo<Table, Object?>> get allTables =>
       allSchemaEntities.whereType<TableInfo<Table, Object?>>();
@@ -7212,7 +8009,8 @@ abstract class _$AppDatabase extends GeneratedDatabase {
         categories,
         products,
         orders,
-        orderLines
+        orderLines,
+        stockItems
       ];
   @override
   StreamQueryUpdateRules get streamUpdateRules => const StreamQueryUpdateRules(

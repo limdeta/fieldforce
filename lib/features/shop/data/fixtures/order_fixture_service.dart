@@ -3,61 +3,34 @@ import 'package:fieldforce/features/shop/domain/entities/order.dart';
 import 'package:fieldforce/features/shop/domain/entities/order_line.dart';
 import 'package:fieldforce/features/shop/domain/entities/order_state.dart';
 import 'package:fieldforce/features/shop/domain/entities/payment_kind.dart';
-import 'package:fieldforce/features/shop/domain/entities/product.dart';
+import 'package:fieldforce/features/shop/domain/entities/stock_item.dart';
 import 'package:fieldforce/features/shop/domain/entities/trading_point.dart';
-import 'package:fieldforce/features/shop/domain/repositories/employee_repository.dart';
 import 'package:fieldforce/features/shop/domain/repositories/order_repository.dart';
-import 'package:fieldforce/features/shop/domain/repositories/trading_point_repository.dart';
 import 'package:flutter/foundation.dart';
 
 /// Сервис для создания фикстурных заказов в dev режиме
 class OrderFixtureService {
   final OrderRepository _orderRepository;
-  final EmployeeRepository _employeeRepository;
-  final TradingPointRepository _tradingPointRepository;
 
   OrderFixtureService({
     required OrderRepository orderRepository,
-    required EmployeeRepository employeeRepository,
-    required TradingPointRepository tradingPointRepository,
-  })  : _orderRepository = orderRepository,
-        _employeeRepository = employeeRepository,
-        _tradingPointRepository = tradingPointRepository;
+  }) : _orderRepository = orderRepository;
 
   /// Создает несколько тестовых заказов для демонстрации
-  Future<List<Order>> createFixtureOrders() async {
+  /// Принимает employee и outlet от оркестратора
+  Future<List<Order>> createFixtureOrders({
+    required Employee employee,
+    required List<TradingPoint> tradingPoints,
+  }) async {
     debugPrint('🛒 Создание фикстурных заказов...');
 
     final orders = <Order>[];
 
     try {
-      // Получаем сотрудников и торговые точки
-      final employeesResult = await _employeeRepository.getAll();
-      final tradingPointsResult = await _tradingPointRepository.getAll();
-
-      final employees = employeesResult.fold(
-        (failure) {
-          debugPrint('Ошибка получения сотрудников: $failure');
-          return <Employee>[];
-        },
-        (employees) => employees,
-      );
-
-      final tradingPoints = tradingPointsResult.fold(
-        (failure) {
-          debugPrint('Ошибка получения торговых точек: $failure');
-          return <TradingPoint>[];
-        },
-        (points) => points,
-      );
-
-      if (employees.isEmpty || tradingPoints.isEmpty) {
-        debugPrint('Недостаточно данных для создания заказов');
+      if (tradingPoints.isEmpty) {
+        debugPrint('❌ Нет торговых точек для создания заказов');
         return orders;
       }
-
-      // Создаем несколько заказов в разных состояниях
-      final employee = employees.first;
 
       // 1. Черновик заказа (корзина)
       final draftOrder = await _createOrder(
@@ -68,7 +41,7 @@ class OrderFixtureService {
       );
       orders.add(draftOrder);
 
-      // 2. Отправленный заказ
+      // 2. Отправленный заказ (если есть вторая торговая точка)
       if (tradingPoints.length > 1) {
         final pendingOrder = await _createOrder(
           employee: employee,
@@ -79,15 +52,15 @@ class OrderFixtureService {
         orders.add(pendingOrder);
       }
 
-      // 3. Завершенный заказ
+      // 3. Отправленный заказ (второй)
       if (tradingPoints.length > 2) {
-        final completedOrder = await _createOrder(
+        final submittedOrder = await _createOrder(
           employee: employee,
           tradingPoint: tradingPoints[2],
-          state: OrderState.completed,
+          state: OrderState.pending,
           withItems: true,
         );
-        orders.add(completedOrder);
+        orders.add(submittedOrder);
       }
 
       debugPrint('✅ Создано ${orders.length} фикстурных заказов');
@@ -106,6 +79,8 @@ class OrderFixtureService {
     required OrderState state,
     bool withItems = false,
   }) async {
+    debugPrint('🔍 Создаем заказ: employee.id=${employee.id}, tradingPoint.id=${tradingPoint.id}');
+    
     // Создаем базовый заказ
     var order = Order.createDraft(
       creator: employee,
@@ -162,43 +137,22 @@ class OrderFixtureService {
 
   /// Создает тестовый StockItem
   StockItem _createTestStockItem(int id, String title, int price) {
-    final warehouse = Warehouse(
-      id: 1,
-      name: 'Тестовый склад',
-      vendorId: 'TEST_WAREHOUSE',
-      isPickUpPoint: false,
-    );
-
-    final product = Product(
-      title: title,
-      barcodes: ['$id'],
-      code: id,
-      bcode: id,
-      catalogId: id,
-      novelty: false,
-      popular: false,
-      isMarked: false,
-      images: [],
-      categoriesInstock: [],
-      numericCharacteristics: [],
-      stringCharacteristics: [],
-      boolCharacteristics: [],
-      stockItems: [],
-      canBuy: true,
-    );
-
     return StockItem(
       id: id,
-      product: product,
-      warehouse: warehouse,
+      productCode: id,
+      warehouseId: 1,
+      warehouseName: 'Тестовый склад',
+      warehouseVendorId: 'TEST_WAREHOUSE',
+      isPickUpPoint: false,
       stock: 100,
       multiplicity: 1,
       publicStock: '100+ шт',
       defaultPrice: price,
       discountValue: 0,
-      availablePrice: null,
-      offerPrice: price,
-      promotion: null,
+      availablePrice: price,
+      currency: 'RUB',
+      createdAt: DateTime.now(),
+      updatedAt: DateTime.now(),
     );
   }
 }
