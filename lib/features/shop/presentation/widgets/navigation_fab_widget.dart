@@ -9,6 +9,7 @@ class NavigationFabWidget extends StatelessWidget {
   final VoidCallback? onHomePressed;
   final bool showCart;
   final bool showHome;
+  final String? heroTagPrefix;
 
   const NavigationFabWidget({
     super.key,
@@ -16,6 +17,7 @@ class NavigationFabWidget extends StatelessWidget {
     this.onHomePressed,
     this.showCart = true,
     this.showHome = true,
+    this.heroTagPrefix,
   });
 
   @override
@@ -29,6 +31,7 @@ class NavigationFabWidget extends StatelessWidget {
           Container(
             margin: const EdgeInsets.only(bottom: 16),
             child: FloatingActionButton(
+              heroTag: "${heroTagPrefix ?? 'default'}_cart",
               onPressed: onCartPressed ?? () {
                 // TODO: Переход к корзине
                 ScaffoldMessenger.of(context).showSnackBar(
@@ -52,6 +55,7 @@ class NavigationFabWidget extends StatelessWidget {
           Container(
             margin: const EdgeInsets.only(bottom: 16),
             child: FloatingActionButton(
+              heroTag: "${heroTagPrefix ?? 'default'}_home",
               onPressed: onHomePressed ?? () {
                 // Переход на домашнюю страницу торгового представителя
                 Navigator.of(context).pushNamedAndRemoveUntil(

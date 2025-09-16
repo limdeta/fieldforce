@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:get_it/get_it.dart';
+import 'package:logging/logging.dart';
 import 'package:fieldforce/features/shop/domain/repositories/category_repository.dart';
 import 'package:fieldforce/features/shop/domain/entities/category.dart';
 import 'package:fieldforce/features/shop/presentation/widgets/navigation_fab_widget.dart';
@@ -13,6 +14,7 @@ class ProductCatalogPage extends StatefulWidget {
 
 class _ProductCatalogPageState extends State<ProductCatalogPage>
     with TickerProviderStateMixin {
+  static final Logger _logger = Logger('ProductCatalogPage');
   final CategoryRepository _categoryRepository = GetIt.instance<CategoryRepository>();
 
   List<Category> _categories = [];
@@ -69,10 +71,10 @@ class _ProductCatalogPageState extends State<ProductCatalogPage>
     // Обновляем количество продуктов в категориях
     final updateResult = await _categoryRepository.updateCategoryCountsWithCategories(categories);
     if (updateResult.isLeft()) {
-      print('⚠️ Предупреждение: не удалось обновить количество продуктов в категориях');
+      _logger.warning('Не удалось обновить количество продуктов в категориях');
       // Продолжаем с загруженными категориями
     } else {
-      print('✅ updateCategoryCounts выполнен успешно');
+      _logger.info('updateCategoryCounts выполнен успешно');
       // Категории уже обновлены в памяти, используем их напрямую
     }
 
@@ -81,10 +83,10 @@ class _ProductCatalogPageState extends State<ProductCatalogPage>
       _isLoading = false;
       _categories = categories;
       _filteredCategories = categories;
-      print('🔄 UI: Категории обновлены. Корневые категории:');
+      _logger.fine('Категории обновлены. Корневых категорий: ${categories.length}');
       for (final cat in categories) {
         if (cat.count > 0) {
-          print('🔄 UI: ${cat.name} (id: ${cat.id}) = ${cat.count}');
+          _logger.fine('Категория с товарами: ${cat.name} (id: ${cat.id}) = ${cat.count}');
         }
       }
       _animationController.forward(from: 0.0);
@@ -343,9 +345,31 @@ class _ProductCatalogPageState extends State<ProductCatalogPage>
               sliver: SliverList(
                 delegate: SliverChildBuilderDelegate(
                   (context, index) {
-                    return _buildCategoryCard(_filteredCategories[index], 0);
+                    final category = _filteredCategories[index];
+                    return _buildCategoryCard(category, 0);
                   },
                   childCount: _filteredCategories.length,
+                  // Упрощенная логика для ключей - используем ID категории
+                  findChildIndexCallback: (Key key) {
+                    if (key is! ValueKey<String>) return null;
+                    final keyValue = key.value;
+                    
+                    // Извлекаем ID категории из ключа
+                    final regex = RegExp(r'category_\w+_(\d+)_');
+                    final match = regex.firstMatch(keyValue);
+                    if (match == null) return null;
+                    
+                    final categoryId = int.tryParse(match.group(1) ?? '');
+                    if (categoryId == null) return null;
+
+                    // Ищем категорию по ID
+                    for (int i = 0; i < _filteredCategories.length; i++) {
+                      if (_filteredCategories[i].id == categoryId) {
+                        return i;
+                      }
+                    }
+                    return null;
+                  },
                 ),
               ),
             ),
@@ -448,11 +472,11 @@ class _ProductCatalogPageState extends State<ProductCatalogPage>
     final isExpanded = _expandedCategories.contains(category.id);
     final categoryColor = _getCategoryColor(level);
 
-    // Отладка для корневых категорий
+    // Логирование для отладки корневых категорий
     if (level == 0) {
-      print('🎨 UI: Строим карточку для ${category.name} (id: ${category.id}) с count = ${category.count}, hasChildren = $hasChildren, children.length = ${category.children.length}');
+      _logger.finer('Строим карточку для ${category.name} (id: ${category.id}) с count = ${category.count}, hasChildren = $hasChildren');
       if (hasChildren) {
-        print('🎨 UI: Дети категории ${category.name}: ${category.children.map((c) => '${c.name}(${c.id})').join(', ')}');
+        _logger.finer('Дети категории ${category.name}: ${category.children.map((c) => '${c.name}(${c.id})').join(', ')}');
       }
     }
 
@@ -460,6 +484,7 @@ class _ProductCatalogPageState extends State<ProductCatalogPage>
     final levelPrefix = _getLevelPrefix(level);
 
     return Card(
+      key: ValueKey('category_card_${category.id}_level_${level}_expanded_${isExpanded}_parent_${parentId ?? 'root'}'),
       elevation: 0,
       margin: const EdgeInsets.only(
         left: 0,
@@ -488,6 +513,7 @@ class _ProductCatalogPageState extends State<ProductCatalogPage>
                 Expanded(
                   flex: 1,
                   child: InkWell(
+                    key: ValueKey('category_navigate_${category.id}_level_${level}_parent_${parentId ?? 'root'}'),
                     onTap: () => _onCategoryTap(category),
                     child: Container(
                       padding: const EdgeInsets.all(12),
@@ -541,6 +567,7 @@ class _ProductCatalogPageState extends State<ProductCatalogPage>
                 Expanded(
                   flex: 1,
                   child: InkWell(
+                    key: ValueKey('category_expand_${category.id}_level_${level}_parent_${parentId ?? 'root'}'),
                     onTap: hasChildren ? () => _toggleCategoryExpansion(category.id) : null,
                     child: Container(
                       padding: const EdgeInsets.all(12),
@@ -674,6 +701,9 @@ class _ProductCatalogPageState extends State<ProductCatalogPage>
     return const NavigationFabWidget(
       onCartPressed: null, // Используем дефолтную логику
       onHomePressed: null, // Используем дефолтную логику
+      heroTagPrefix: 'product_catalog', // Уникальный префикс для этой страницы
     );
   }
+
+
 }

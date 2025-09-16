@@ -142,6 +142,7 @@ class _ProductListPageState extends State<ProductListPage> {
       floatingActionButton: const NavigationFabWidget(
         onCartPressed: null, // Используем дефолтную логику
         onHomePressed: null, // Используем дефолтную логику
+        heroTagPrefix: 'product_list', // Уникальный префикс для этой страницы
       ),
     );
   }
