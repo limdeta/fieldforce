@@ -36,11 +36,13 @@ void main() async {
     final userFixture = GetIt.instance<UserFixture>();
     await userFixture.getBasicUser(userData: userFixture.admin);
   } else {
-    // Запускаем тестовый контейнер
     await test_di.setupTestServiceLocator();
   }
 
   if (AppConfig.isDev) {
+    // Небольшая задержка для обеспечения готовности assets
+    await Future.delayed(const Duration(milliseconds: 200));
+
     final orchestrator = GetIt.instance<DevFixtureOrchestrator>();
     await orchestrator.createFullDevDataset();
   }

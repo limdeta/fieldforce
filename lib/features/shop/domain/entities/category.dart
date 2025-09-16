@@ -8,7 +8,7 @@ class Category {
   final int rgt;
   final String? description;
   final String? query;
-  final int count;
+  int count;  // Сделаем mutable для обработки дерева
   final List<Category> children;
 
   Category({
@@ -32,7 +32,7 @@ class Category {
       rgt: json['rgt'] as int,
       description: json['description'] as String?,
       query: json['query'] as String?,
-      count: json['count'] as int,
+      count: json['count'] as int? ?? 0, // Читаем count из JSON
       children: (json['children'] as List<dynamic>?)
               ?.map((child) => Category.fromJson(child))
               .toList() ??

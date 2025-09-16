@@ -6,6 +6,9 @@ import 'package:fieldforce/app/domain/usecases/get_work_days_for_user_usecase.da
 import 'package:fieldforce/features/navigation/tracking/domain/services/location_tracking_service.dart';
 import 'package:fieldforce/features/navigation/tracking/domain/usecases/get_user_track_for_date_usecase.dart';
 import 'package:fieldforce/features/navigation/tracking/domain/usecases/get_user_tracks_usecase.dart';
+import 'package:fieldforce/features/shop/domain/repositories/employee_repository.dart';
+import 'package:fieldforce/features/shop/domain/repositories/trading_point_repository.dart';
+import 'package:fieldforce/features/shop/domain/usecases/get_employee_trading_points_usecase.dart';
 import 'package:get_it/get_it.dart';
 import 'package:fieldforce/app/database/app_database.dart';
 import 'package:fieldforce/app/database/repositories/user_repository_drift.dart';
@@ -21,9 +24,8 @@ import 'package:fieldforce/features/authentication/domain/usecases/login_usecase
 import 'package:fieldforce/features/authentication/domain/usecases/logout_usecase.dart';
 import 'package:fieldforce/features/authentication/domain/usecases/get_current_session_usecase.dart';
 import 'package:fieldforce/features/authentication/presentation/bloc/bloc.dart';
-import 'package:fieldforce/features/shop/domain/repositories/employee_repository.dart';
-import 'package:fieldforce/features/shop/domain/repositories/trading_point_repository.dart';
-import 'package:fieldforce/features/shop/domain/usecases/get_employee_trading_points_usecase.dart';
+import 'package:fieldforce/features/shop/data/fixtures/product_fixture_service.dart';
+import 'package:fieldforce/features/shop/data/services/product_parsing_service.dart';
 import 'package:fieldforce/app/database/repositories/trading_point_repository_drift.dart';
 import 'package:fieldforce/app/domain/repositories/app_user_repository.dart';
 import 'package:fieldforce/features/navigation/tracking/domain/repositories/user_track_repository.dart';
@@ -48,6 +50,8 @@ import 'package:fieldforce/features/shop/data/fixtures/category_fixture_service.
 import 'package:fieldforce/features/shop/data/services/category_parsing_service.dart';
 import 'package:fieldforce/features/shop/domain/repositories/category_repository.dart';
 import 'package:fieldforce/app/database/repositories/category_repository_drift.dart';
+import 'package:fieldforce/features/shop/domain/repositories/product_repository.dart';
+import 'package:fieldforce/app/database/repositories/product_repository_drift.dart';
 
 final getIt = GetIt.instance;
 
@@ -105,6 +109,10 @@ Future<void> setupTestServiceLocator() async {
     () => DriftCategoryRepository(),
   );
 
+  getIt.registerLazySingleton<ProductRepository>(
+    () => DriftProductRepository(),
+  );
+
   getIt.registerLazySingleton<AppUserRepository>(
     () => AppUserRepositoryDrift(
       database: getIt<AppDatabase>(),
@@ -142,6 +150,10 @@ Future<void> setupTestServiceLocator() async {
 
   getIt.registerLazySingleton<CategoryParsingService>(
     () => CategoryParsingService(),
+  );
+
+  getIt.registerLazySingleton<ProductParsingService>(
+    () => ProductParsingService(),
   );
 
   getIt.registerLazySingleton<LogoutUseCase>(
@@ -217,6 +229,12 @@ Future<void> setupTestServiceLocator() async {
     ),
   );
 
+  getIt.registerLazySingleton<ProductFixtureService>(
+    () => ProductFixtureService(
+      getIt<ProductParsingService>(),
+    ),
+  );
+
   // --- UserFixture and DevFixtureOrchestrator dependencies ---
   getIt.registerLazySingleton<UserService>(
     () => UserServiceFactory.create(),
@@ -248,6 +266,7 @@ Future<void> setupTestServiceLocator() async {
       getIt<RouteFixtureService>(),
       getIt<TradingPointsFixtureService>(),
       getIt<CategoryFixtureService>(),
+      getIt<ProductFixtureService>(),
       getIt<CreateWorkDayUseCase>(),
     ),
   );

@@ -223,29 +223,63 @@ class CategoryFixtureService {
 
   /// Загружает фиктивные категории в базу данных
   Future<void> loadCategories({FixtureType fixtureType = FixtureType.compact}) async {
-    try {
-      String jsonString;
+    const int maxRetries = 3;
+    const Duration retryDelay = Duration(milliseconds: 500);
 
-      if (fixtureType == FixtureType.full) {
-        // Загружаем полный каталог из файла
-        jsonString = await rootBundle.loadString('lib/features/shop/data/fixtures/categories.json');
-      } else {
-        // Используем сокращенную фикстуру для тестов
-        jsonString = _compactCategoriesJson;
+    for (int attempt = 1; attempt <= maxRetries; attempt++) {
+      try {
+        String jsonString;
+
+        if (fixtureType == FixtureType.full) {
+          // Загружаем полный каталог из файла с повторными попытками
+          jsonString = await _loadAssetWithRetry('assets/fixtures/categories.json', attempt, maxRetries);
+        } else {
+          // Используем сокращенную фикстуру для тестов
+          jsonString = _compactCategoriesJson;
+        }
+
+        final categories = _parsingService.parseCategoriesFromJsonString(jsonString);
+
+        final saveResult = await _repository.saveCategories(categories);
+        saveResult.fold(
+          (failure) {
+            throw Exception('Ошибка сохранения категорий: ${failure.message}');
+          },
+          (_) {
+            // Категории успешно сохранены
+          },
+        );
+
+        // Успешно загрузили и сохранили
+        return;
+
+      } catch (e) {
+        if (attempt == maxRetries) {
+          // Последняя попытка провалилась
+          throw Exception('Ошибка загрузки категорий после $maxRetries попыток: $e');
+        }
+
+        // Ждем перед следующей попыткой
+        print('⚠️ Попытка $attempt/$maxRetries загрузки категорий провалилась: $e');
+        print('⏳ Ждем ${retryDelay.inMilliseconds}мс перед следующей попыткой...');
+        await Future.delayed(retryDelay);
       }
+    }
+  }
 
-      final categories = _parsingService.parseCategoriesFromJsonString(jsonString);
-      final saveResult = await _repository.saveCategories(categories);
-      saveResult.fold(
-        (failure) {
-          throw Exception('Ошибка сохранения категорий: ${failure.message}');
-        },
-        (_) {
-          // Успешно сохранено
-        },
-      );
+  /// Загружает asset с повторными попытками
+  Future<String> _loadAssetWithRetry(String assetPath, int attempt, int maxRetries) async {
+    try {
+      return await rootBundle.loadString(assetPath);
     } catch (e) {
-      throw Exception('Ошибка загрузки категорий: $e');
+      if (attempt < maxRetries) {
+        // Не последняя попытка, ждем и пробуем снова
+        await Future.delayed(const Duration(milliseconds: 200));
+        return _loadAssetWithRetry(assetPath, attempt + 1, maxRetries);
+      } else {
+        // Последняя попытка, выбрасываем ошибку
+        throw e;
+      }
     }
   }
 }

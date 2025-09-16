@@ -42,6 +42,8 @@ import 'package:fieldforce/features/navigation/tracking/domain/services/location
 import 'package:fieldforce/features/navigation/tracking/domain/services/gps_data_manager.dart';
 import 'package:fieldforce/features/shop/domain/repositories/category_repository.dart';
 import 'package:fieldforce/app/database/repositories/category_repository_drift.dart';
+import 'package:fieldforce/features/shop/domain/repositories/product_repository.dart';
+import 'package:fieldforce/app/database/repositories/product_repository_drift.dart';
 
 final getIt = GetIt.instance;
 
@@ -100,6 +102,10 @@ Future<void> setupServiceLocator() async {
 
   getIt.registerLazySingleton<CategoryRepository>(
     () => DriftCategoryRepository(),
+  );
+
+  getIt.registerLazySingleton<ProductRepository>(
+    () => DriftProductRepository(),
   );
 
   getIt.registerLazySingleton<AppUserRepository>(

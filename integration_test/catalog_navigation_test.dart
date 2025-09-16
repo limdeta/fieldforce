@@ -29,8 +29,10 @@ void main() {
     Тогда я попадаю на страницу каталога
     И вижу список корневых категорий
     И вижу стрелки с правой части имени категории
-  Когда я нажимаю на стрелку
+  Когда я нажимаю на стрелку На Строительство и Ремонт
     Тогда я раскрываю категории ниже уровнем
+    И вижу в список дочерних категорий
+    И вижу среди них Лакокрасочные материалы
   Когда я нажимаю на название категории
     Тогда попадаю на страницу продуктов (заглушка)
   */
@@ -86,6 +88,64 @@ void main() {
     
     // Проверяем наличие кнопки корзины
     expect(find.byIcon(Icons.shopping_cart), findsOneWidget);
+    
+    // Ждем дополнительно для загрузки категорий
+    await tester.pumpAndSettle();
+    
+    // Находим категорию "Строительство и ремонт"
+    final constructionCategoryFinder = find.text('Строительство и ремонт');
+    expect(constructionCategoryFinder, findsOneWidget, reason: 'Категория "Строительство и ремонт" должна быть видна');
+    
+    // Проверяем что категория действительно имеет дочерние элементы (иконка или стрелка)
+    final constructionCardFinder = find.ancestor(
+      of: constructionCategoryFinder,
+      matching: find.byType(Card),
+    );
+    expect(constructionCardFinder, findsOneWidget, reason: 'Должен найти карточку категории');
+    
+    // Ищем все InkWell внутри карточки
+    find.descendant(
+      of: constructionCardFinder,
+      matching: find.byType(InkWell),
+    );
+        
+    // Проверим все текстовые виджеты ДО клика
+    final allTextWidgetsBefore = find.byType(Text);
+    final textWidgetsBefore = tester.widgetList<Text>(allTextWidgetsBefore);
+    textWidgetsBefore.map((w) => w.data).where((text) => text != null).toList();
+    
+    // Кликаем на ПОСЛЕДНИЙ InkWell (основная кликабельная область для всей строки)
+    final allInkWellFinders = find.descendant(
+      of: constructionCardFinder,
+      matching: find.byType(InkWell),
+    );
+        
+    // Кликаем на последний InkWell (это должен быть основной для всей строки)
+    final lastInkWellFinder = allInkWellFinders.last;
+    
+    await tester.tap(lastInkWellFinder);
+    await tester.pumpAndSettle();
+    
+    // Проверим все текстовые виджеты ПОСЛЕ клика
+    final allTextWidgetsAfter = find.byType(Text);
+    final textWidgetsAfter = tester.widgetList<Text>(allTextWidgetsAfter);
+    textWidgetsAfter.map((w) => w.data).where((text) => text != null).toList();
+    
+    // Ждем дополнительно для анимации раскрытия
+    await Future.delayed(const Duration(milliseconds: 500));
+    await tester.pumpAndSettle();
+
+    // Ищем "Лакокрасочные материалы" среди всех текстов
+    final paintMaterialsFinder = find.text('Лакокрасочные материалы');
+    expect(paintMaterialsFinder, findsWidgets, 
+           reason: 'После раскрытия категории "Строительство и ремонт" должна появиться хотя бы одна дочерняя категория "Лакокрасочные материалы"');
+    
+    // Проверяем что количество виджетов с "Лакокрасочные материалы" увеличилось
+    final paintMaterialsCount = paintMaterialsFinder.evaluate().length;
+    
+    // Должно быть как минимум 2 виджета (один был до раскрытия, плюс новый после раскрытия)
+    expect(paintMaterialsCount, greaterThanOrEqualTo(2), 
+           reason: 'Количество виджетов "Лакокрасочные материалы" должно увеличиться после раскрытия');
     
     // Если есть популярные категории, проверяем их отображение
     // TODO реализовать часто используемые категории
