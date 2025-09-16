@@ -44,6 +44,11 @@ import 'package:fieldforce/features/shop/domain/repositories/category_repository
 import 'package:fieldforce/app/database/repositories/category_repository_drift.dart';
 import 'package:fieldforce/features/shop/domain/repositories/product_repository.dart';
 import 'package:fieldforce/app/database/repositories/product_repository_drift.dart';
+import 'package:fieldforce/features/shop/domain/repositories/order_repository.dart';
+import 'package:fieldforce/features/shop/data/repositories/order_repository_drift.dart';
+import 'package:fieldforce/features/shop/domain/usecases/create_order_usecase.dart';
+import 'package:fieldforce/features/shop/domain/usecases/add_product_to_order_usecase.dart';
+import 'package:fieldforce/features/shop/domain/usecases/update_order_state_usecase.dart';
 
 final getIt = GetIt.instance;
 
@@ -106,6 +111,23 @@ Future<void> setupServiceLocator() async {
 
   getIt.registerLazySingleton<ProductRepository>(
     () => DriftProductRepository(),
+  );
+
+  // Order repositories and use cases
+  getIt.registerLazySingleton<OrderRepository>(
+    () => OrderRepositoryDrift(getIt<AppDatabase>()),
+  );
+
+  getIt.registerLazySingleton<CreateOrderUseCase>(
+    () => CreateOrderUseCase(getIt<OrderRepository>()),
+  );
+
+  getIt.registerLazySingleton<AddProductToOrderUseCase>(
+    () => AddProductToOrderUseCase(getIt<OrderRepository>()),
+  );
+
+  getIt.registerLazySingleton<UpdateOrderStateUseCase>(
+    () => UpdateOrderStateUseCase(getIt<OrderRepository>()),
   );
 
   getIt.registerLazySingleton<AppUserRepository>(

@@ -6,6 +6,7 @@ import 'package:fieldforce/features/navigation/tracking/data/fixtures/track_fixt
 import 'package:fieldforce/features/shop/data/fixtures/trading_points_fixture_service.dart';
 import 'package:fieldforce/features/shop/data/fixtures/category_fixture_service.dart';
 import 'package:fieldforce/features/shop/data/fixtures/product_fixture_service.dart';
+import 'package:fieldforce/features/shop/data/fixtures/order_fixture_service.dart';
 import 'package:fieldforce/features/shop/domain/repositories/category_repository.dart';
 import 'package:fieldforce/features/shop/domain/repositories/product_repository.dart';
 import 'package:fieldforce/app/database/app_database.dart';
@@ -20,6 +21,7 @@ class DevFixtureOrchestrator {
   final TradingPointsFixtureService _tradingPointsFixture;
   final CategoryFixtureService _categoryFixture;
   final ProductFixtureService _productFixture;
+  final OrderFixtureService _orderFixture;
   final CreateWorkDayUseCase _createWorkDayUseCase;
 
   DevFixtureOrchestrator(
@@ -28,6 +30,7 @@ class DevFixtureOrchestrator {
       this._tradingPointsFixture,
       this._categoryFixture,
       this._productFixture,
+      this._orderFixture,
       this._createWorkDayUseCase,
       );
 
@@ -99,6 +102,9 @@ class DevFixtureOrchestrator {
         route: todayRoute,
         date: DateTime.now(),
       );
+
+      // 4. Заказы
+      await _orderFixture.createFixtureOrders();
 
       // Обновляем количество продуктов в категориях после загрузки всех данных
       final categoryRepository = GetIt.instance<CategoryRepository>();

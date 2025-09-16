@@ -19,6 +19,8 @@ import 'tables/app_user_table.dart';
 import 'tables/work_day_table.dart';
 import 'tables/category_table.dart';
 import 'tables/product_table.dart';
+import 'tables/order_table.dart';
+import 'tables/order_line_table.dart';
 
 part 'app_database.g.dart';
 
@@ -36,6 +38,8 @@ part 'app_database.g.dart';
   WorkDays,
   Categories,
   Products,
+  Orders,
+  OrderLines,
 ])
 class AppDatabase extends _$AppDatabase {
   AppDatabase() : super(_openConnection('app_database.db'));
@@ -45,7 +49,7 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase.forTesting(DatabaseConnection super.connection);
 
   @override
-  int get schemaVersion => 4;
+  int get schemaVersion => 6;
 
   // Методы для работы с торговыми точками
   // TODO вынести в репозитории и отрефакторить
@@ -96,6 +100,17 @@ class AppDatabase extends _$AppDatabase {
       if (from < 4) {
         // Добавляем таблицу продуктов
         await m.createTable(products);
+      }
+
+      if (from < 5) {
+        // Добавляем таблицы заказов
+        await m.createTable(orders);
+        await m.createTable(orderLines);
+      }
+
+      if (from < 6) {
+        // Обновляем order_lines: заменяем productId на stockItemId
+        await customStatement('ALTER TABLE order_lines RENAME COLUMN productId TO stockItemId');
       }
     },
   );
