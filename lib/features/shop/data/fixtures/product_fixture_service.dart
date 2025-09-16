@@ -174,10 +174,10 @@ class ProductFixtureService {
 
     // Загружаем все product_example*.json файлы
     final assetFiles = [
-      'lib/features/shop/data/fixtures/product_example.json',
-      'lib/features/shop/data/fixtures/product_example2.json',
-      'lib/features/shop/data/fixtures/product_example3.json',
-      'lib/features/shop/data/fixtures/product_example4.json',
+      'assets/fixtures/product_example.json',
+      'assets/fixtures/product_example2.json',
+      'assets/fixtures/product_example3.json',
+      'assets/fixtures/product_example4.json',
     ];
 
     print('🎭 ProductFixtureService: Начинаем загрузку из ${assetFiles.length} файлов');

@@ -12,4 +12,6 @@ abstract class CategoryRepository {
   Future<Either<Failure, List<Category>>> getSubcategories(int parentId);
   Future<Either<Failure, List<Category>>> getAllDescendants(int categoryId);
   Future<Either<Failure, List<Category>>> getAllAncestors(int categoryId);
+  Future<Either<Failure, void>> updateCategoryCounts();
+  Future<Either<Failure, void>> updateCategoryCountsWithCategories(List<Category> categories);
 }

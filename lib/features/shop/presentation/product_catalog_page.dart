@@ -2,9 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:get_it/get_it.dart';
 import 'package:fieldforce/features/shop/domain/repositories/category_repository.dart';
 import 'package:fieldforce/features/shop/domain/entities/category.dart';
+import 'package:fieldforce/features/shop/presentation/widgets/navigation_fab_widget.dart';
 import 'product_list_page.dart';
-
-/// Страница каталога товаров с современным и интуитивным UI
 class ProductCatalogPage extends StatefulWidget {
   const ProductCatalogPage({super.key});
 
@@ -57,16 +56,38 @@ class _ProductCatalogPageState extends State<ProductCatalogPage>
 
     final result = await _categoryRepository.getAllCategories();
 
+    if (result.isLeft()) {
+      setState(() {
+        _isLoading = false;
+        _error = result.fold((failure) => failure.message, (_) => null);
+      });
+      return;
+    }
+
+    final categories = result.getOrElse(() => []);
+
+    // Обновляем количество продуктов в категориях
+    final updateResult = await _categoryRepository.updateCategoryCountsWithCategories(categories);
+    if (updateResult.isLeft()) {
+      print('⚠️ Предупреждение: не удалось обновить количество продуктов в категориях');
+      // Продолжаем с загруженными категориями
+    } else {
+      print('✅ updateCategoryCounts выполнен успешно');
+      // Категории уже обновлены в памяти, используем их напрямую
+    }
+
+    // Категории уже обновлены, используем их напрямую
     setState(() {
       _isLoading = false;
-      result.fold(
-        (failure) => _error = failure.message,
-        (categories) {
-          _categories = categories;
-          _filteredCategories = categories;
-          _animationController.forward(from: 0.0);
-        },
-      );
+      _categories = categories;
+      _filteredCategories = categories;
+      print('🔄 UI: Категории обновлены. Корневые категории:');
+      for (final cat in categories) {
+        if (cat.count > 0) {
+          print('🔄 UI: ${cat.name} (id: ${cat.id}) = ${cat.count}');
+        }
+      }
+      _animationController.forward(from: 0.0);
     });
   }
 
@@ -110,6 +131,8 @@ class _ProductCatalogPageState extends State<ProductCatalogPage>
 
   IconData _getCategoryIcon(String categoryName) {
     final name = categoryName.toLowerCase();
+
+    // Напитки и еда
     if (name.contains('напит')) return Icons.local_drink;
     if (name.contains('сладост') || name.contains('конфет')) return Icons.cake;
     if (name.contains('молоч')) return Icons.restaurant;
@@ -117,31 +140,73 @@ class _ProductCatalogPageState extends State<ProductCatalogPage>
     if (name.contains('мяс') || name.contains('колбас')) return Icons.restaurant_menu;
     if (name.contains('рыб')) return Icons.set_meal;
     if (name.contains('фрукт') || name.contains('овощ')) return Icons.eco;
+
+    // Бытовая химия и уход
     if (name.contains('бытов')) return Icons.cleaning_services;
     if (name.contains('космет')) return Icons.spa;
+    if (name.contains('гигиен') || name.contains('уход')) return Icons.clean_hands;
+    if (name.contains('мыло')) return Icons.soap;
+    if (name.contains('зубн')) return Icons.cleaning_services; // или Icons.brush, но cleaning_services лучше
+
+    // Строительство и ремонт
+    if (name.contains('строитель') || name.contains('ремонт')) return Icons.build;
+    if (name.contains('инструмент')) return Icons.build;
+    if (name.contains('лакокрас') || name.contains('краск')) return Icons.format_paint;
+    if (name.contains('электр')) return Icons.electrical_services;
+    if (name.contains('плинтус') || name.contains('двер') || name.contains('окн')) return Icons.house;
+
+    // Текстиль и одежда
+    if (name.contains('бель') || name.contains('текстил')) return Icons.checkroom;
+    if (name.contains('одежд')) return Icons.dry_cleaning;
+    if (name.contains('постель')) return Icons.king_bed;
+
+    // Дом и сад
+    if (name.contains('сад') || name.contains('огород')) return Icons.grass;
+    if (name.contains('дом') || name.contains('хозяйств')) return Icons.home;
+    if (name.contains('товар') && name.contains('дом')) return Icons.chair;
+
+    // Здоровье и аптека
+    if (name.contains('аптек') || name.contains('медицин')) return Icons.medical_services;
+    if (name.contains('здоров')) return Icons.healing;
+
+    // Дети
+    if (name.contains('дет') || name.contains('ребенок')) return Icons.child_care;
+
+    // Спорт и отдых
+    if (name.contains('спорт') || name.contains('активн')) return Icons.sports_soccer;
+    if (name.contains('отдых')) return Icons.beach_access;
+
+    // Профессиональные товары
+    if (name.contains('проф')) return Icons.business_center;
+
+    // Прочее
+    if (name.contains('книг') || name.contains('учеб')) return Icons.menu_book;
+    if (name.contains('игруш')) return Icons.toys;
+    if (name.contains('авто') || name.contains('машин')) return Icons.directions_car;
+
     return Icons.category;
   }
 
   Color _getCategoryColor(int level) {
-    // Улучшенная градация с более заметными отличиями
+    // Градиент от светлого к темному для ощущения глубины вложенности
     switch (level) {
-      case 0: return const Color(0xFFF0F8FF); // Светло-голубой для корневых категорий
-      case 1: return const Color(0xFFF8F9FA); // Светло-серый для уровня 1
-      case 2: return const Color(0xFFE3F2FD); // Светло-синий для уровня 2
-      case 3: return const Color(0xFFF3E5F5); // Светло-фиолетовый для уровня 3
-      case 4: return const Color(0xFFFFF3E0); // Светло-оранжевый для уровня 4
-      default: return const Color(0xFFF0F8FF); // Светло-голубой для глубоких уровней
+      case 0: return const Color(0xFFFAFAFA); // Почти белый для корневых категорий
+      case 1: return const Color(0xFFF5F5F5); // Светло-серый для уровня 1
+      case 2: return const Color(0xFFEEEEEE); // Серый для уровня 2
+      case 3: return const Color(0xFFE8E8E8); // Темно-серый для уровня 3
+      case 4: return const Color(0xFFE0E0E0); // Еще темнее для уровня 4
+      default: return const Color(0xFFD0D0D0); // Самый темный для глубоких уровней
     }
   }
 
   Color _getChildCategoryColor(int parentLevel) {
-    // Цвета дочерних категорий соответствуют цветам родительских
+    // Цвета дочерних категорий чуть светлее родительских для контраста
     switch (parentLevel) {
-      case 0: return const Color(0xFFF8F9FA); // Светло-серый для детей корневых
-      case 1: return const Color(0xFFFFFFFF); // Белый для детей уровня 1
-      case 2: return const Color(0xFFF8F9FA); // Светло-серый для детей уровня 2
-      case 3: return const Color(0xFFFFFFFF); // Белый для детей уровня 3
-      default: return const Color(0xFFF8F9FA); // Светло-серый для глубоких уровней
+      case 0: return const Color(0xFFFFFFFF); // Белый для детей корневых
+      case 1: return const Color(0xFFFAFAFA); // Почти белый для детей уровня 1
+      case 2: return const Color(0xFFF8F8F8); // Светло-серый для детей уровня 2
+      case 3: return const Color(0xFFF5F5F5); // Серый для детей уровня 3
+      default: return const Color(0xFFF0F0F0); // Светло-серый для глубоких уровней
     }
   }
 
@@ -209,8 +274,8 @@ class _ProductCatalogPageState extends State<ProductCatalogPage>
   PreferredSizeWidget _buildAppBar() {
     return AppBar(
       elevation: 0,
-      backgroundColor: Colors.white,
-      foregroundColor: Colors.black87,
+      backgroundColor: Colors.blue,
+      foregroundColor: Colors.white,
       title: const Text(
         'Каталог товаров',
         style: TextStyle(
@@ -219,7 +284,7 @@ class _ProductCatalogPageState extends State<ProductCatalogPage>
         ),
       ),
       leading: IconButton(
-        icon: const Icon(Icons.arrow_back, color: Colors.black87),
+        icon: const Icon(Icons.arrow_back),
         onPressed: () {
           Navigator.pushReplacementNamed(context, '/menu');
         },
@@ -383,6 +448,14 @@ class _ProductCatalogPageState extends State<ProductCatalogPage>
     final isExpanded = _expandedCategories.contains(category.id);
     final categoryColor = _getCategoryColor(level);
 
+    // Отладка для корневых категорий
+    if (level == 0) {
+      print('🎨 UI: Строим карточку для ${category.name} (id: ${category.id}) с count = ${category.count}, hasChildren = $hasChildren, children.length = ${category.children.length}');
+      if (hasChildren) {
+        print('🎨 UI: Дети категории ${category.name}: ${category.children.map((c) => '${c.name}(${c.id})').join(', ')}');
+      }
+    }
+
     // Создаем префикс для обозначения уровня
     final levelPrefix = _getLevelPrefix(level);
 
@@ -390,7 +463,7 @@ class _ProductCatalogPageState extends State<ProductCatalogPage>
       elevation: 0,
       margin: const EdgeInsets.only(
         left: 0,
-        bottom: 2,
+        bottom: 1,
         right: 0,
       ),
       shape: const RoundedRectangleBorder(
@@ -399,102 +472,92 @@ class _ProductCatalogPageState extends State<ProductCatalogPage>
       child: Column(
         children: [
           // Основная строка с категорией
-          InkWell(
-            onTap: hasChildren
-                ? () => _toggleCategoryExpansion(category.id) // Для категорий с детьми - сворачивание
-                : () => _onCategoryTap(category), // Для конечных категорий - переход
-            child: Container(
-              decoration: BoxDecoration(
-                color: categoryColor,
-                border: Border(
-                  left: BorderSide(
-                    color: _getLevelBorderColor(level),
-                    width: _getLevelBorderWidth(level),
-                  ),
+          Container(
+            decoration: BoxDecoration(
+              color: categoryColor,
+              border: Border(
+                left: BorderSide(
+                  color: _getLevelBorderColor(level),
+                  width: _getLevelBorderWidth(level),
                 ),
               ),
-              child: Row(
-                children: [
-                  // Левая часть - иконка с отступом в зависимости от уровня
-                  Container(
-                    padding: EdgeInsets.only(
-                      left: 8.0 + (level * 12.0), // Отступ иконки зависит от уровня
-                      right: 8,
-                      top: 6,
-                      bottom: 6,
-                    ),
-                    child: Row(
-                      children: [
-                        // Префикс уровня
-                        Text(
-                          levelPrefix,
-                          style: TextStyle(
-                            fontSize: 12,
-                            color: Colors.grey.shade600,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                        const SizedBox(width: 4),
-                        // Иконка
-                        Container(
-                          padding: const EdgeInsets.all(3),
-                          child: Icon(
-                            _getCategoryIcon(category.name),
-                            color: Colors.blue.shade600,
-                            size: _getIconSize(level), // Размер иконки зависит от уровня
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-
-                  // Центральная часть - название категории (кликабельное)
-                  Expanded(
-                    child: InkWell(
-                      onTap: () => _onCategoryTap(category), // Всегда переход по клику на текст
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(vertical: 6),
-                        child: Text(
-                          category.name,
-                          style: TextStyle(
-                            fontSize: _getFontSize(level), // Размер шрифта зависит от уровня
-                            fontWeight: level == 0 ? FontWeight.w600 : FontWeight.w500,
-                            color: Colors.black87,
-                            height: 1.2, // Межстрочный интервал
-                          ),
-                        ),
-                      ),
-                    ),
-                  ),
-
-                  // Правая часть - стрелка (занимает всю оставшуюся ширину)
-                  Expanded(
-                    child: InkWell(
-                      onTap: hasChildren
-                          ? () => _toggleCategoryExpansion(category.id) // Сворачивание своей категории
-                          : () => _toggleCategoryExpansion(parentId ?? category.id), // Сворачивание родительской категории
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(vertical: 6),
-                        alignment: Alignment.centerRight,
-                        child: Container(
-                          padding: const EdgeInsets.all(8),
-                          child: AnimatedRotation(
-                            turns: isExpanded ? 0.5 : 0.0,
-                            duration: const Duration(milliseconds: 200),
-                            child: Icon(
-                              hasChildren
-                                  ? Icons.expand_more // Стрелка вниз для категорий с детьми
-                                  : Icons.keyboard_arrow_up, // Стрелка вверх для конечных категорий
-                              color: Colors.blue.shade600,
-                              size: 18, // Фиксированный размер стрелки
+            ),
+            child: Row(
+              children: [
+                // Левая половина - кликабельна для перехода к товарам
+                Expanded(
+                  flex: 1,
+                  child: InkWell(
+                    onTap: () => _onCategoryTap(category),
+                    child: Container(
+                      padding: const EdgeInsets.all(12),
+                      child: Row(
+                        children: [
+                          // Префикс уровня
+                          Text(
+                            levelPrefix,
+                            style: TextStyle(
+                              fontSize: 12,
+                              color: Colors.grey.shade600,
+                              fontWeight: FontWeight.bold,
                             ),
                           ),
+                          const SizedBox(width: 8),
+                          // Иконка
+                          Icon(
+                            _getCategoryIcon(category.name),
+                            color: Colors.blue.shade600,
+                            size: _getIconSize(level),
+                          ),
+                          const SizedBox(width: 12),
+                          // Название категории
+                          Expanded(
+                            child: Text(
+                              category.name,
+                              style: TextStyle(
+                                fontSize: _getFontSize(level),
+                                fontWeight: level == 0 ? FontWeight.w600 : FontWeight.w500,
+                                color: Colors.black87,
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          // Количество товаров (справа от названия)
+                          Text(
+                            category.count.toString(),
+                            style: TextStyle(
+                              fontSize: _getFontSize(level) - 2,
+                              fontWeight: FontWeight.w500,
+                              color: Colors.blue.shade700,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+
+                // Правая половина - кликабельна для разворачивания/сворачивания
+                Expanded(
+                  flex: 1,
+                  child: InkWell(
+                    onTap: hasChildren ? () => _toggleCategoryExpansion(category.id) : null,
+                    child: Container(
+                      padding: const EdgeInsets.all(12),
+                      alignment: Alignment.centerRight,
+                      child: AnimatedRotation(
+                        turns: isExpanded ? 0.5 : 0.0,
+                        duration: const Duration(milliseconds: 200),
+                        child: Icon(
+                          hasChildren ? Icons.expand_more : Icons.chevron_right,
+                          color: hasChildren ? Colors.blue.shade600 : Colors.grey.shade400,
+                          size: 18,
                         ),
                       ),
                     ),
                   ),
-                ],
-              ),
+                ),
+              ],
             ),
           ),
 
@@ -502,11 +565,11 @@ class _ProductCatalogPageState extends State<ProductCatalogPage>
           if (hasChildren && isExpanded)
             Container(
               decoration: BoxDecoration(
-                color: _getChildCategoryColor(level), // Используем специальный цвет для дочерних
+                color: _getChildCategoryColor(level),
               ),
               child: Column(
                 children: category.children.map(
-                  (child) => _buildCategoryCard(child, level + 1, category.id), // Передаем ID родителя
+                  (child) => _buildCategoryCard(child, level + 1, category.id),
                 ).toList(),
               ),
             ),
@@ -608,18 +671,9 @@ class _ProductCatalogPageState extends State<ProductCatalogPage>
   }
 
   Widget _buildFloatingActionButton() {
-    return FloatingActionButton(
-      onPressed: () {
-        // TODO: Быстрый доступ к корзине или избранному
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Быстрый доступ к корзине'),
-            duration: Duration(seconds: 2),
-          ),
-        );
-      },
-      backgroundColor: Colors.blue.shade600,
-      child: const Icon(Icons.shopping_cart),
+    return const NavigationFabWidget(
+      onCartPressed: null, // Используем дефолтную логику
+      onHomePressed: null, // Используем дефолтную логику
     );
   }
 }

@@ -1,6 +1,5 @@
 import 'package:fieldforce/app/services/simple_update_service.dart';
 import 'package:fieldforce/features/authentication/domain/usecases/logout_usecase.dart';
-import 'package:fieldforce/features/shop/presentation/product_catalog_page.dart';
 import 'package:flutter/material.dart';
 import 'package:get_it/get_it.dart';
 
@@ -121,6 +120,7 @@ class _MainMenuPageState extends State<MainMenuPage> {
 
     return Card(
       margin: const EdgeInsets.only(bottom: 8),
+      shape: const RoundedRectangleBorder(),
       child: Column(
         children: [
           ListTile(

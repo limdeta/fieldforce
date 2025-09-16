@@ -16,7 +16,7 @@ void main() {
   group('ProductParsingService Tests', () {
     test('parseProduct should parse real JSON from fixture correctly', () async {
       // Arrange - загружаем реальный JSON из fixture
-      final jsonString = await rootBundle.loadString('lib/features/shop/data/fixtures/product_example.json');
+      final jsonString = await rootBundle.loadString('assets/fixtures/product_example.json');
 
       // Act
       final product = service.parseProduct(jsonString);
@@ -38,8 +38,8 @@ void main() {
 
     test('parseProductsFromJsonArray should parse array with real products', () async {
       // Arrange - создаем массив из реальных JSON
-      final product1Json = await rootBundle.loadString('lib/features/shop/data/fixtures/product_example.json');
-      final product2Json = await rootBundle.loadString('lib/features/shop/data/fixtures/product_example1.json');
+      final product1Json = await rootBundle.loadString('assets/fixtures/product_example.json');
+      final product2Json = await rootBundle.loadString('assets/fixtures/product_example1.json');
 
       final jsonArray = [
         jsonDecode(product1Json),
@@ -58,7 +58,7 @@ void main() {
 
     test('createCompactView should work with real product data', () async {
       // Arrange
-      final jsonString = await rootBundle.loadString('lib/features/shop/data/fixtures/product_example.json');
+      final jsonString = await rootBundle.loadString('assets/fixtures/product_example.json');
       final product = service.parseProduct(jsonString);
 
       // Act
@@ -80,8 +80,8 @@ void main() {
 
     test('createCompactViews should handle multiple real products', () async {
       // Arrange
-      final product1Json = await rootBundle.loadString('lib/features/shop/data/fixtures/product_example.json');
-      final product2Json = await rootBundle.loadString('lib/features/shop/data/fixtures/product_example1.json');
+      final product1Json = await rootBundle.loadString('assets/fixtures/product_example.json');
+      final product2Json = await rootBundle.loadString('assets/fixtures/product_example1.json');
 
       final products = [
         service.parseProduct(product1Json),
@@ -99,7 +99,7 @@ void main() {
 
     test('parseProduct should handle product_example2.json with null adaptValue', () async {
       // Arrange - тестируем product_example2.json который содержит null в adaptValue
-      final jsonString = await rootBundle.loadString('lib/features/shop/data/fixtures/product_example2.json');
+      final jsonString = await rootBundle.loadString('assets/fixtures/product_example2.json');
 
       // Act
       final product = service.parseProduct(jsonString);
@@ -118,7 +118,7 @@ void main() {
 
     test('parseProduct should handle product_example3.json with null adaptValue', () async {
       // Arrange - тестируем product_example3.json который тоже содержит null в adaptValue
-      final jsonString = await rootBundle.loadString('lib/features/shop/data/fixtures/product_example3.json');
+      final jsonString = await rootBundle.loadString('assets/fixtures/product_example3.json');
 
       // Act
       final product = service.parseProduct(jsonString);

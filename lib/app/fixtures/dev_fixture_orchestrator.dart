@@ -6,6 +6,7 @@ import 'package:fieldforce/features/navigation/tracking/data/fixtures/track_fixt
 import 'package:fieldforce/features/shop/data/fixtures/trading_points_fixture_service.dart';
 import 'package:fieldforce/features/shop/data/fixtures/category_fixture_service.dart';
 import 'package:fieldforce/features/shop/data/fixtures/product_fixture_service.dart';
+import 'package:fieldforce/features/shop/domain/repositories/category_repository.dart';
 import 'package:fieldforce/features/shop/domain/repositories/product_repository.dart';
 import 'package:fieldforce/app/database/app_database.dart';
 import 'package:fieldforce/shared/either.dart';
@@ -32,6 +33,9 @@ class DevFixtureOrchestrator {
 
   /// Создает полный набор dev данных
   Future<void> createFullDevDataset() async {
+    // Добавляем небольшую задержку для обеспечения готовности assets
+    await Future.delayed(const Duration(milliseconds: 100));
+
     await _clearAllData();
     final user = await _userFixture.getBasicUser(userData: _userFixture.saddam);
     await createScenarioWithUser(user);
@@ -53,26 +57,17 @@ class DevFixtureOrchestrator {
       await _tradingPointsFixture.assignTradingPointsToEmployee(user.employee);
 
       // 0. Категории товаров
-      print('🎭 DevFixtureOrchestrator: Начинаем загрузку категорий');
       await _categoryFixture.loadCategories(fixtureType: FixtureType.full);
-      print('🎭 DevFixtureOrchestrator: Категории загружены');
 
       // 0.1. Продукты
-      print('🎭 DevFixtureOrchestrator: Начинаем загрузку продуктов');
       final productsResult = await _productFixture.loadProducts(ProductFixtureType.full);
       if (productsResult.isLeft()) {
         throw StateError('Failed to load products: ${productsResult.fold((l) => l, (r) => '')}');
       }
       final products = productsResult.fold((l) => throw StateError(l.toString()), (r) => r);
-      print('🎭 DevFixtureOrchestrator: Загружено ${products.length} продуктов');
-      for (final product in products) {
-        print('🎭 Продукт: ${product.title} (код: ${product.code}, категория: ${product.category?.name ?? 'нет'})');
-      }
       // Сохраняем продукты в базу данных
-      print('🎭 DevFixtureOrchestrator: Сохраняем продукты в базу данных');
       final productRepository = GetIt.instance<ProductRepository>();
       await productRepository.saveProducts(products);
-      print('🎭 DevFixtureOrchestrator: Продукты сохранены в базу данных');
 
       // 1. Маршруты
       final yesterdayRoute = await unwrapOrThrow(
@@ -104,6 +99,10 @@ class DevFixtureOrchestrator {
         route: todayRoute,
         date: DateTime.now(),
       );
+
+      // Обновляем количество продуктов в категориях после загрузки всех данных
+      final categoryRepository = GetIt.instance<CategoryRepository>();
+      await categoryRepository.updateCategoryCounts();
     } catch (e, st) {
       FlutterError.reportError(FlutterErrorDetails(
         exception: e,
