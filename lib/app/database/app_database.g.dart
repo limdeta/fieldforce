@@ -3882,6 +3882,12 @@ class $AppUsersTable extends AppUsers
       requiredDuringInsert: true,
       defaultConstraints:
           GeneratedColumn.constraintIsAlways('REFERENCES users (id)'));
+  static const VerificationMeta _selectedTradingPointIdMeta =
+      const VerificationMeta('selectedTradingPointId');
+  @override
+  late final GeneratedColumn<int> selectedTradingPointId = GeneratedColumn<int>(
+      'selected_trading_point_id', aliasedName, true,
+      type: DriftSqlType.int, requiredDuringInsert: false);
   static const VerificationMeta _createdAtMeta =
       const VerificationMeta('createdAt');
   @override
@@ -3900,7 +3906,7 @@ class $AppUsersTable extends AppUsers
       defaultValue: currentDateAndTime);
   @override
   List<GeneratedColumn> get $columns =>
-      [employeeId, userId, createdAt, updatedAt];
+      [employeeId, userId, selectedTradingPointId, createdAt, updatedAt];
   @override
   String get aliasedName => _alias ?? actualTableName;
   @override
@@ -3923,6 +3929,12 @@ class $AppUsersTable extends AppUsers
     } else if (isInserting) {
       context.missing(_userIdMeta);
     }
+    if (data.containsKey('selected_trading_point_id')) {
+      context.handle(
+          _selectedTradingPointIdMeta,
+          selectedTradingPointId.isAcceptableOrUnknown(
+              data['selected_trading_point_id']!, _selectedTradingPointIdMeta));
+    }
     if (data.containsKey('created_at')) {
       context.handle(_createdAtMeta,
           createdAt.isAcceptableOrUnknown(data['created_at']!, _createdAtMeta));
@@ -3944,6 +3956,9 @@ class $AppUsersTable extends AppUsers
           .read(DriftSqlType.int, data['${effectivePrefix}employee_id'])!,
       userId: attachedDatabase.typeMapping
           .read(DriftSqlType.int, data['${effectivePrefix}user_id'])!,
+      selectedTradingPointId: attachedDatabase.typeMapping.read(
+          DriftSqlType.int,
+          data['${effectivePrefix}selected_trading_point_id']),
       createdAt: attachedDatabase.typeMapping
           .read(DriftSqlType.dateTime, data['${effectivePrefix}created_at'])!,
       updatedAt: attachedDatabase.typeMapping
@@ -3960,11 +3975,13 @@ class $AppUsersTable extends AppUsers
 class AppUserData extends DataClass implements Insertable<AppUserData> {
   final int employeeId;
   final int userId;
+  final int? selectedTradingPointId;
   final DateTime createdAt;
   final DateTime updatedAt;
   const AppUserData(
       {required this.employeeId,
       required this.userId,
+      this.selectedTradingPointId,
       required this.createdAt,
       required this.updatedAt});
   @override
@@ -3972,6 +3989,9 @@ class AppUserData extends DataClass implements Insertable<AppUserData> {
     final map = <String, Expression>{};
     map['employee_id'] = Variable<int>(employeeId);
     map['user_id'] = Variable<int>(userId);
+    if (!nullToAbsent || selectedTradingPointId != null) {
+      map['selected_trading_point_id'] = Variable<int>(selectedTradingPointId);
+    }
     map['created_at'] = Variable<DateTime>(createdAt);
     map['updated_at'] = Variable<DateTime>(updatedAt);
     return map;
@@ -3981,6 +4001,9 @@ class AppUserData extends DataClass implements Insertable<AppUserData> {
     return AppUsersCompanion(
       employeeId: Value(employeeId),
       userId: Value(userId),
+      selectedTradingPointId: selectedTradingPointId == null && nullToAbsent
+          ? const Value.absent()
+          : Value(selectedTradingPointId),
       createdAt: Value(createdAt),
       updatedAt: Value(updatedAt),
     );
@@ -3992,6 +4015,8 @@ class AppUserData extends DataClass implements Insertable<AppUserData> {
     return AppUserData(
       employeeId: serializer.fromJson<int>(json['employeeId']),
       userId: serializer.fromJson<int>(json['userId']),
+      selectedTradingPointId:
+          serializer.fromJson<int?>(json['selectedTradingPointId']),
       createdAt: serializer.fromJson<DateTime>(json['createdAt']),
       updatedAt: serializer.fromJson<DateTime>(json['updatedAt']),
     );
@@ -4002,6 +4027,7 @@ class AppUserData extends DataClass implements Insertable<AppUserData> {
     return <String, dynamic>{
       'employeeId': serializer.toJson<int>(employeeId),
       'userId': serializer.toJson<int>(userId),
+      'selectedTradingPointId': serializer.toJson<int?>(selectedTradingPointId),
       'createdAt': serializer.toJson<DateTime>(createdAt),
       'updatedAt': serializer.toJson<DateTime>(updatedAt),
     };
@@ -4010,11 +4036,15 @@ class AppUserData extends DataClass implements Insertable<AppUserData> {
   AppUserData copyWith(
           {int? employeeId,
           int? userId,
+          Value<int?> selectedTradingPointId = const Value.absent(),
           DateTime? createdAt,
           DateTime? updatedAt}) =>
       AppUserData(
         employeeId: employeeId ?? this.employeeId,
         userId: userId ?? this.userId,
+        selectedTradingPointId: selectedTradingPointId.present
+            ? selectedTradingPointId.value
+            : this.selectedTradingPointId,
         createdAt: createdAt ?? this.createdAt,
         updatedAt: updatedAt ?? this.updatedAt,
       );
@@ -4023,6 +4053,7 @@ class AppUserData extends DataClass implements Insertable<AppUserData> {
     return (StringBuffer('AppUserData(')
           ..write('employeeId: $employeeId, ')
           ..write('userId: $userId, ')
+          ..write('selectedTradingPointId: $selectedTradingPointId, ')
           ..write('createdAt: $createdAt, ')
           ..write('updatedAt: $updatedAt')
           ..write(')'))
@@ -4030,13 +4061,15 @@ class AppUserData extends DataClass implements Insertable<AppUserData> {
   }
 
   @override
-  int get hashCode => Object.hash(employeeId, userId, createdAt, updatedAt);
+  int get hashCode => Object.hash(
+      employeeId, userId, selectedTradingPointId, createdAt, updatedAt);
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
       (other is AppUserData &&
           other.employeeId == this.employeeId &&
           other.userId == this.userId &&
+          other.selectedTradingPointId == this.selectedTradingPointId &&
           other.createdAt == this.createdAt &&
           other.updatedAt == this.updatedAt);
 }
@@ -4044,29 +4077,35 @@ class AppUserData extends DataClass implements Insertable<AppUserData> {
 class AppUsersCompanion extends UpdateCompanion<AppUserData> {
   final Value<int> employeeId;
   final Value<int> userId;
+  final Value<int?> selectedTradingPointId;
   final Value<DateTime> createdAt;
   final Value<DateTime> updatedAt;
   const AppUsersCompanion({
     this.employeeId = const Value.absent(),
     this.userId = const Value.absent(),
+    this.selectedTradingPointId = const Value.absent(),
     this.createdAt = const Value.absent(),
     this.updatedAt = const Value.absent(),
   });
   AppUsersCompanion.insert({
     this.employeeId = const Value.absent(),
     required int userId,
+    this.selectedTradingPointId = const Value.absent(),
     this.createdAt = const Value.absent(),
     this.updatedAt = const Value.absent(),
   }) : userId = Value(userId);
   static Insertable<AppUserData> custom({
     Expression<int>? employeeId,
     Expression<int>? userId,
+    Expression<int>? selectedTradingPointId,
     Expression<DateTime>? createdAt,
     Expression<DateTime>? updatedAt,
   }) {
     return RawValuesInsertable({
       if (employeeId != null) 'employee_id': employeeId,
       if (userId != null) 'user_id': userId,
+      if (selectedTradingPointId != null)
+        'selected_trading_point_id': selectedTradingPointId,
       if (createdAt != null) 'created_at': createdAt,
       if (updatedAt != null) 'updated_at': updatedAt,
     });
@@ -4075,11 +4114,14 @@ class AppUsersCompanion extends UpdateCompanion<AppUserData> {
   AppUsersCompanion copyWith(
       {Value<int>? employeeId,
       Value<int>? userId,
+      Value<int?>? selectedTradingPointId,
       Value<DateTime>? createdAt,
       Value<DateTime>? updatedAt}) {
     return AppUsersCompanion(
       employeeId: employeeId ?? this.employeeId,
       userId: userId ?? this.userId,
+      selectedTradingPointId:
+          selectedTradingPointId ?? this.selectedTradingPointId,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
     );
@@ -4093,6 +4135,10 @@ class AppUsersCompanion extends UpdateCompanion<AppUserData> {
     }
     if (userId.present) {
       map['user_id'] = Variable<int>(userId.value);
+    }
+    if (selectedTradingPointId.present) {
+      map['selected_trading_point_id'] =
+          Variable<int>(selectedTradingPointId.value);
     }
     if (createdAt.present) {
       map['created_at'] = Variable<DateTime>(createdAt.value);
@@ -4108,6 +4154,7 @@ class AppUsersCompanion extends UpdateCompanion<AppUserData> {
     return (StringBuffer('AppUsersCompanion(')
           ..write('employeeId: $employeeId, ')
           ..write('userId: $userId, ')
+          ..write('selectedTradingPointId: $selectedTradingPointId, ')
           ..write('createdAt: $createdAt, ')
           ..write('updatedAt: $updatedAt')
           ..write(')'))
@@ -5253,7 +5300,9 @@ class $ProductsTable extends Products
   @override
   late final GeneratedColumn<int> code = GeneratedColumn<int>(
       'code', aliasedName, false,
-      type: DriftSqlType.int, requiredDuringInsert: true);
+      type: DriftSqlType.int,
+      requiredDuringInsert: true,
+      defaultConstraints: GeneratedColumn.constraintIsAlways('UNIQUE'));
   static const VerificationMeta _bcodeMeta = const VerificationMeta('bcode');
   @override
   late final GeneratedColumn<int> bcode = GeneratedColumn<int>(
@@ -7182,7 +7231,11 @@ class $StockItemsTable extends StockItems
   @override
   late final GeneratedColumn<int> id = GeneratedColumn<int>(
       'id', aliasedName, false,
-      type: DriftSqlType.int, requiredDuringInsert: false);
+      hasAutoIncrement: true,
+      type: DriftSqlType.int,
+      requiredDuringInsert: false,
+      defaultConstraints:
+          GeneratedColumn.constraintIsAlways('PRIMARY KEY AUTOINCREMENT'));
   static const VerificationMeta _productCodeMeta =
       const VerificationMeta('productCode');
   @override
@@ -7263,8 +7316,8 @@ class $StockItemsTable extends StockItems
       const VerificationMeta('offerPrice');
   @override
   late final GeneratedColumn<int> offerPrice = GeneratedColumn<int>(
-      'offer_price', aliasedName, false,
-      type: DriftSqlType.int, requiredDuringInsert: true);
+      'offer_price', aliasedName, true,
+      type: DriftSqlType.int, requiredDuringInsert: false);
   static const VerificationMeta _currencyMeta =
       const VerificationMeta('currency');
   @override
@@ -7409,8 +7462,6 @@ class $StockItemsTable extends StockItems
           _offerPriceMeta,
           offerPrice.isAcceptableOrUnknown(
               data['offer_price']!, _offerPriceMeta));
-    } else if (isInserting) {
-      context.missing(_offerPriceMeta);
     }
     if (data.containsKey('currency')) {
       context.handle(_currencyMeta,
@@ -7468,7 +7519,7 @@ class $StockItemsTable extends StockItems
       availablePrice: attachedDatabase.typeMapping
           .read(DriftSqlType.int, data['${effectivePrefix}available_price']),
       offerPrice: attachedDatabase.typeMapping
-          .read(DriftSqlType.int, data['${effectivePrefix}offer_price'])!,
+          .read(DriftSqlType.int, data['${effectivePrefix}offer_price']),
       currency: attachedDatabase.typeMapping
           .read(DriftSqlType.string, data['${effectivePrefix}currency'])!,
       promotionJson: attachedDatabase.typeMapping
@@ -7508,7 +7559,7 @@ class StockItemData extends DataClass implements Insertable<StockItemData> {
   final int defaultPrice;
   final int discountValue;
   final int? availablePrice;
-  final int offerPrice;
+  final int? offerPrice;
   final String currency;
 
   /// Промоакция (JSON для гибкости)
@@ -7530,7 +7581,7 @@ class StockItemData extends DataClass implements Insertable<StockItemData> {
       required this.defaultPrice,
       required this.discountValue,
       this.availablePrice,
-      required this.offerPrice,
+      this.offerPrice,
       required this.currency,
       this.promotionJson,
       required this.createdAt,
@@ -7554,7 +7605,9 @@ class StockItemData extends DataClass implements Insertable<StockItemData> {
     if (!nullToAbsent || availablePrice != null) {
       map['available_price'] = Variable<int>(availablePrice);
     }
-    map['offer_price'] = Variable<int>(offerPrice);
+    if (!nullToAbsent || offerPrice != null) {
+      map['offer_price'] = Variable<int>(offerPrice);
+    }
     map['currency'] = Variable<String>(currency);
     if (!nullToAbsent || promotionJson != null) {
       map['promotion_json'] = Variable<String>(promotionJson);
@@ -7582,7 +7635,9 @@ class StockItemData extends DataClass implements Insertable<StockItemData> {
       availablePrice: availablePrice == null && nullToAbsent
           ? const Value.absent()
           : Value(availablePrice),
-      offerPrice: Value(offerPrice),
+      offerPrice: offerPrice == null && nullToAbsent
+          ? const Value.absent()
+          : Value(offerPrice),
       currency: Value(currency),
       promotionJson: promotionJson == null && nullToAbsent
           ? const Value.absent()
@@ -7608,7 +7663,7 @@ class StockItemData extends DataClass implements Insertable<StockItemData> {
       defaultPrice: serializer.fromJson<int>(json['defaultPrice']),
       discountValue: serializer.fromJson<int>(json['discountValue']),
       availablePrice: serializer.fromJson<int?>(json['availablePrice']),
-      offerPrice: serializer.fromJson<int>(json['offerPrice']),
+      offerPrice: serializer.fromJson<int?>(json['offerPrice']),
       currency: serializer.fromJson<String>(json['currency']),
       promotionJson: serializer.fromJson<String?>(json['promotionJson']),
       createdAt: serializer.fromJson<DateTime>(json['createdAt']),
@@ -7631,7 +7686,7 @@ class StockItemData extends DataClass implements Insertable<StockItemData> {
       'defaultPrice': serializer.toJson<int>(defaultPrice),
       'discountValue': serializer.toJson<int>(discountValue),
       'availablePrice': serializer.toJson<int?>(availablePrice),
-      'offerPrice': serializer.toJson<int>(offerPrice),
+      'offerPrice': serializer.toJson<int?>(offerPrice),
       'currency': serializer.toJson<String>(currency),
       'promotionJson': serializer.toJson<String?>(promotionJson),
       'createdAt': serializer.toJson<DateTime>(createdAt),
@@ -7652,7 +7707,7 @@ class StockItemData extends DataClass implements Insertable<StockItemData> {
           int? defaultPrice,
           int? discountValue,
           Value<int?> availablePrice = const Value.absent(),
-          int? offerPrice,
+          Value<int?> offerPrice = const Value.absent(),
           String? currency,
           Value<String?> promotionJson = const Value.absent(),
           DateTime? createdAt,
@@ -7672,7 +7727,7 @@ class StockItemData extends DataClass implements Insertable<StockItemData> {
         discountValue: discountValue ?? this.discountValue,
         availablePrice:
             availablePrice.present ? availablePrice.value : this.availablePrice,
-        offerPrice: offerPrice ?? this.offerPrice,
+        offerPrice: offerPrice.present ? offerPrice.value : this.offerPrice,
         currency: currency ?? this.currency,
         promotionJson:
             promotionJson.present ? promotionJson.value : this.promotionJson,
@@ -7758,7 +7813,7 @@ class StockItemsCompanion extends UpdateCompanion<StockItemData> {
   final Value<int> defaultPrice;
   final Value<int> discountValue;
   final Value<int?> availablePrice;
-  final Value<int> offerPrice;
+  final Value<int?> offerPrice;
   final Value<String> currency;
   final Value<String?> promotionJson;
   final Value<DateTime> createdAt;
@@ -7795,7 +7850,7 @@ class StockItemsCompanion extends UpdateCompanion<StockItemData> {
     required int defaultPrice,
     this.discountValue = const Value.absent(),
     this.availablePrice = const Value.absent(),
-    required int offerPrice,
+    this.offerPrice = const Value.absent(),
     this.currency = const Value.absent(),
     this.promotionJson = const Value.absent(),
     this.createdAt = const Value.absent(),
@@ -7805,8 +7860,7 @@ class StockItemsCompanion extends UpdateCompanion<StockItemData> {
         warehouseName = Value(warehouseName),
         warehouseVendorId = Value(warehouseVendorId),
         publicStock = Value(publicStock),
-        defaultPrice = Value(defaultPrice),
-        offerPrice = Value(offerPrice);
+        defaultPrice = Value(defaultPrice);
   static Insertable<StockItemData> custom({
     Expression<int>? id,
     Expression<int>? productCode,
@@ -7860,7 +7914,7 @@ class StockItemsCompanion extends UpdateCompanion<StockItemData> {
       Value<int>? defaultPrice,
       Value<int>? discountValue,
       Value<int?>? availablePrice,
-      Value<int>? offerPrice,
+      Value<int?>? offerPrice,
       Value<String>? currency,
       Value<String?>? promotionJson,
       Value<DateTime>? createdAt,

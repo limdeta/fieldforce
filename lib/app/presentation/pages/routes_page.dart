@@ -4,6 +4,7 @@ import 'package:fieldforce/app/presentation/pages/route_detail_page.dart';
 import 'package:flutter/material.dart';
 import 'package:get_it/get_it.dart';
 import 'package:fieldforce/app/services/app_session_service.dart';
+import 'package:fieldforce/app/theme/app_colors.dart';
 
 
 class RoutesPage extends StatefulWidget {
@@ -84,7 +85,7 @@ class _RoutesPageState extends State<RoutesPage> {
     return Scaffold(
       appBar: AppBar(
         title: const Text('Маршруты'),
-        backgroundColor: Colors.blue,
+        backgroundColor: AppColors.primary,
         foregroundColor: Colors.white,
         leading: IconButton(
           icon: const Icon(Icons.arrow_back),

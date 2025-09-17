@@ -15,7 +15,7 @@ class TradingPointDetailPage extends StatelessWidget {
     return Scaffold(
       appBar: AppBar(
         title: Text(tradingPoint.name),
-        backgroundColor: Colors.blue,
+
         foregroundColor: Colors.white,
       ),
       body: SingleChildScrollView(

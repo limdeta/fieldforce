@@ -1,6 +1,4 @@
 // dart
-import 'package:fieldforce/app/domain/repositories/app_user_repository.dart';
-import 'package:fieldforce/features/authentication/domain/repositories/user_repository.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:integration_test/integration_test.dart';

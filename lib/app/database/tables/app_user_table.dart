@@ -6,6 +6,7 @@ import 'user_table.dart';
 class AppUsers extends Table {
   IntColumn get employeeId => integer().references(Employees, #id)();
   IntColumn get userId => integer().references(Users, #id)();
+  IntColumn get selectedTradingPointId => integer().nullable()();
   DateTimeColumn get createdAt => dateTime().withDefault(currentDateAndTime)();
   DateTimeColumn get updatedAt => dateTime().withDefault(currentDateAndTime)();
 

@@ -27,6 +27,9 @@ abstract class StockItemRepository {
   /// Получить остаток конкретного товара на конкретном складе
   Future<Either<Failure, StockItem?>> getStockItem(int productCode, int warehouseId);
 
+  /// Получить остаток по ID
+  Future<Either<Failure, StockItem>> getById(int stockItemId);
+
   /// Сохранить список остатков (upsert)
   Future<Either<Failure, void>> saveStockItems(List<StockItem> stockItems);
 
@@ -38,4 +41,7 @@ abstract class StockItemRepository {
 
   /// Удалить все остатки для склада (при удалении склада)
   Future<Either<Failure, void>> deleteStockItemsForWarehouse(int warehouseId);
+
+  /// Очистить все остатки (для фикстур и тестов)
+  Future<Either<Failure, void>> clearAllStockItems();
 }

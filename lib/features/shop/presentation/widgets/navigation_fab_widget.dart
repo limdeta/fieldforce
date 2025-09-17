@@ -33,16 +33,10 @@ class NavigationFabWidget extends StatelessWidget {
             child: FloatingActionButton(
               heroTag: "${heroTagPrefix ?? 'default'}_cart",
               onPressed: onCartPressed ?? () {
-                // TODO: Переход к корзине
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(
-                    content: Text('Переход к корзине'),
-                    duration: Duration(seconds: 2),
-                  ),
-                );
+                // Переход к корзине (текущий draft заказ)
+                Navigator.pushNamed(context, '/cart');
               },
-              backgroundColor: Colors.blue.shade600,
-              foregroundColor: Colors.white,
+
               elevation: 6,
               tooltip: 'Корзина',
               child: const Icon(Icons.shopping_cart),

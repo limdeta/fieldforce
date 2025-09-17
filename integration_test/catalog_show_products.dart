@@ -22,7 +22,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:integration_test/integration_test.dart';
 import 'package:get_it/get_it.dart';
 import 'package:fieldforce/app/fixtures/dev_fixture_orchestrator.dart';
-import 'package:fieldforce/features/shop/presentation/product_catalog_page.dart';
+import 'package:fieldforce/features/shop/presentation/pages/product_catalog_page.dart';
 import 'package:fieldforce/app/di/test_service_locator.dart' as test_di;
 import './helpers/session_test_helper.dart' as h;
 

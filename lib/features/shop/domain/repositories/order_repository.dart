@@ -1,4 +1,5 @@
 import '../entities/order.dart';
+import '../entities/order_line.dart';
 
 abstract class OrderRepository {
   /// Получает текущий черновик заказа для пользователя и торговой точки
@@ -25,4 +26,22 @@ abstract class OrderRepository {
   
   /// Очищает все черновики (для тестов)
   Future<void> clearAllDrafts();
+  
+  /// Добавляет строку товара в заказ
+  Future<Order> addOrderLine(OrderLine orderLine);
+  
+  /// Обновляет количество товара в строке заказа
+  Future<Order> updateOrderLineQuantity({
+    required int orderLineId,
+    required int newQuantity,
+  });
+  
+  /// Удаляет строку товара из заказа
+  Future<Order> removeOrderLine(int orderLineId);
+  
+  /// Очищает корзину (удаляет все строки из текущего draft заказа)
+  Future<Order> clearCart({
+    required int employeeId,
+    required int outletId,
+  });
 }

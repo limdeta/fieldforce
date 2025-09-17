@@ -6,8 +6,11 @@ import 'package:fieldforce/app/database/repositories/employee_repository_drift.d
 import 'package:fieldforce/app/database/repositories/user_repository_drift.dart';
 import 'package:fieldforce/features/authentication/domain/entities/user.dart';
 import 'package:fieldforce/features/shop/domain/entities/employee.dart';
+import 'package:fieldforce/features/shop/domain/entities/trading_point.dart';
+import 'package:fieldforce/features/shop/domain/repositories/trading_point_repository.dart';
 import 'package:fieldforce/shared/either.dart';
 import 'package:fieldforce/shared/failures.dart';
+import 'package:get_it/get_it.dart';
 
 class AppUserRepositoryDrift implements AppUserRepository {
   final AppDatabase database;
@@ -40,9 +43,21 @@ class AppUserRepositoryDrift implements AppUserRepository {
         (user) => user,
       );
 
+      // Загружаем selectedTradingPoint если есть
+      TradingPoint? selectedTradingPoint;
+      if (appUserData.selectedTradingPointId != null) {
+        final tradingPointRepository = GetIt.instance<TradingPointRepository>();
+        final tradingPointResult = await tradingPointRepository.getById(appUserData.selectedTradingPointId!);
+        selectedTradingPoint = tradingPointResult.fold(
+          (failure) => null, // игнорируем ошибку и продолжаем без selectedTradingPoint
+          (tradingPoint) => tradingPoint,
+        );
+      }
+
       final appUser = AppUserMapper.fromComponents(
         employee: employee,
         authUser: authUser,
+        selectedTradingPoint: selectedTradingPoint,
       );
 
       return Right(appUser);
@@ -71,9 +86,21 @@ class AppUserRepositoryDrift implements AppUserRepository {
         (user) => user,
       );
 
+      // Загружаем selectedTradingPoint если есть
+      TradingPoint? selectedTradingPoint;
+      if (appUserData.selectedTradingPointId != null) {
+        final tradingPointRepository = GetIt.instance<TradingPointRepository>();
+        final tradingPointResult = await tradingPointRepository.getById(appUserData.selectedTradingPointId!);
+        selectedTradingPoint = tradingPointResult.fold(
+          (failure) => null, // игнорируем ошибку и продолжаем без selectedTradingPoint
+          (tradingPoint) => tradingPoint,
+        );
+      }
+
       final appUser = AppUser(
         employee: employee,
         authUser: authUser,
+        selectedTradingPoint: selectedTradingPoint,
       );
 
       return Right(appUser);
@@ -95,6 +122,22 @@ class AppUserRepositoryDrift implements AppUserRepository {
       return await getAppUserByEmployeeId(employee.id);
     } catch (e) {
       return Left(EntityCreationFailure('Не удалось создать AppUser: $e'));
+    }
+  }
+
+  @override
+  Future<Either<Failure, AppUser>> updateAppUser(AppUser appUser) async {
+    try {
+      final companion = AppUserMapper.toDb(
+        employeeId: appUser.employee.id,
+        userId: appUser.authUser.id!,
+        selectedTradingPointId: appUser.selectedTradingPoint?.id,
+      );
+
+      await _updateAppUser(appUser.employee.id, companion);
+      return await getAppUserByEmployeeId(appUser.employee.id);
+    } catch (e) {
+      return Left(DatabaseFailure('Ошибка обновления AppUser: $e'));
     }
   }
 
@@ -164,6 +207,11 @@ class AppUserRepositoryDrift implements AppUserRepository {
 
   Future<int> _insertAppUser(AppUsersCompanion appUser) async {
     return await database.into(database.appUsers).insert(appUser);
+  }
+
+  Future<int> _updateAppUser(int employeeId, AppUsersCompanion companion) async {
+    return await (database.update(database.appUsers)..where((au) => au.employeeId.equals(employeeId)))
+        .write(companion);
   }
 
   Future<int> _deleteAppUser(int employeeId) async {

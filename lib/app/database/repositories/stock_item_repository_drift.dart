@@ -92,9 +92,7 @@ class DriftStockItemRepository implements StockItemRepository {
     try {
       await _database.transaction(() async {
         for (final stockItem in stockItems) {
-          await _database.into(_database.stockItems).insertOnConflictUpdate(
-            _mapToStockItemData(stockItem),
-          );
+          await _saveStockItem(stockItem);
         }
       });
       
@@ -104,6 +102,23 @@ class DriftStockItemRepository implements StockItemRepository {
       _logger.severe('Ошибка сохранения остатков', e, st);
       return Left(DatabaseFailure('Ошибка сохранения остатков: $e'));
     }
+  }
+
+  Future<void> _saveStockItem(StockItem stockItem) async {
+    // 🔍 Проверяем существует ли продукт с таким кодом
+    final productExists = await (_database.select(_database.products)
+      ..where((tbl) => tbl.code.equals(stockItem.productCode))
+    ).getSingleOrNull();
+    
+    _logger.info('🔍 StockItem productCode=${stockItem.productCode}: продукт существует=${productExists != null}');
+    if (productExists != null) {
+      _logger.info('🔍 Найден продукт: id=${productExists.id}, code=${productExists.code}, catalogId=${productExists.catalogId}');
+    }
+    
+    final companion = _mapToStockItemData(stockItem);
+    
+    // Просто INSERT - если есть конфликт UNIQUE, то произойдет ошибка которая поможет найти проблему
+    await _database.into(_database.stockItems).insert(companion);
   }
 
   @override
@@ -198,7 +213,7 @@ class DriftStockItemRepository implements StockItemRepository {
   /// Маппинг из доменной модели в БД
   StockItemsCompanion _mapToStockItemData(StockItem stockItem) {
     return StockItemsCompanion(
-      id: Value(stockItem.id),
+      id: stockItem.id == 0 ? const Value.absent() : Value(stockItem.id),
       productCode: Value(stockItem.productCode),
       warehouseId: Value(stockItem.warehouseId),
       warehouseName: Value(stockItem.warehouseName),
@@ -216,5 +231,32 @@ class DriftStockItemRepository implements StockItemRepository {
       createdAt: Value(stockItem.createdAt),
       updatedAt: Value(stockItem.updatedAt),
     );
+  }
+
+  @override
+  Future<Either<Failure, StockItem>> getById(int stockItemId) async {
+    try {
+      final entity = await (_database.select(_database.stockItems)
+        ..where((tbl) => tbl.id.equals(stockItemId))
+      ).getSingle();
+
+      final stockItem = _mapToStockItem(entity);
+      return Right(stockItem);
+    } catch (e, st) {
+      _logger.severe('Ошибка получения остатка по ID $stockItemId', e, st);
+      return Left(DatabaseFailure('Остаток с ID $stockItemId не найден: $e'));
+    }
+  }
+
+  @override
+  Future<Either<Failure, void>> clearAllStockItems() async {
+    try {
+      await _database.delete(_database.stockItems).go();
+      _logger.info('Все остатки очищены');
+      return const Right(null);
+    } catch (e, st) {
+      _logger.severe('Ошибка очистки остатков', e, st);
+      return Left(DatabaseFailure('Ошибка очистки остатков: $e'));
+    }
   }
 }

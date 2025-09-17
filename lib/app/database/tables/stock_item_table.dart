@@ -6,7 +6,7 @@ import 'product_table.dart';
 @DataClassName('StockItemData')
 class StockItems extends Table {
   /// Уникальный ID StockItem
-  IntColumn get id => integer()();
+  IntColumn get id => integer().autoIncrement()();
   
   /// Ссылка на продукт
   IntColumn get productCode => integer().references(Products, #code)();
@@ -26,7 +26,7 @@ class StockItems extends Table {
   IntColumn get defaultPrice => integer()();
   IntColumn get discountValue => integer().withDefault(const Constant(0))();
   IntColumn get availablePrice => integer().nullable()();
-  IntColumn get offerPrice => integer()();
+  IntColumn get offerPrice => integer().nullable()();
   TextColumn get currency => text().withDefault(const Constant('RUB'))();
   
   /// Промоакция (JSON для гибкости)
@@ -36,8 +36,7 @@ class StockItems extends Table {
   DateTimeColumn get createdAt => dateTime().withDefault(currentDateAndTime)();
   DateTimeColumn get updatedAt => dateTime().withDefault(currentDateAndTime)();
 
-  @override
-  Set<Column> get primaryKey => {id};
+
   
   @override
   List<Set<Column>> get uniqueKeys => [

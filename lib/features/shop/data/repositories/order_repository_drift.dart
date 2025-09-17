@@ -1,7 +1,9 @@
+import '../../domain/entities/product.dart';
 import 'package:logging/logging.dart';
 import 'package:drift/drift.dart';
 import '../../../../app/database/database.dart';
 import '../../domain/repositories/order_repository.dart';
+import '../../domain/repositories/product_repository.dart';
 import '../../domain/entities/order.dart';
 import '../../domain/entities/order_line.dart';
 import '../../domain/entities/employee.dart';
@@ -13,8 +15,9 @@ class OrderRepositoryDrift implements OrderRepository {
   static final Logger _logger = Logger('OrderRepositoryDrift');
   
   final AppDatabase _database;
+  final ProductRepository _productRepository;
 
-  OrderRepositoryDrift(this._database);
+  OrderRepositoryDrift(this._database, this._productRepository);
 
   @override
   Future<Order> getCurrentDraftOrder(int employeeId, int outletId) async {
@@ -184,21 +187,33 @@ class OrderRepositoryDrift implements OrderRepository {
 
   /// Собирает Order из OrderEntity с загрузкой связанных данных
   Future<Order> _buildOrderFromEntity(OrderEntity orderEntity) async {
+    _logger.info('📦 Building order from entity: id=${orderEntity.id}, creatorId=${orderEntity.creatorId}');
+    
     // Загружаем сотрудника
+    _logger.info('👤 Loading employee: ${orderEntity.creatorId}');
     final employee = await _getEmployeeById(orderEntity.creatorId);
+    _logger.info('✅ Employee loaded: ${employee.fullName}');
     
     // Загружаем торговую точку
+    _logger.info('🏪 Loading outlet: ${orderEntity.outletId}');
     final outlet = await _getTradingPointById(orderEntity.outletId);
+    _logger.info('✅ Outlet loaded: ${outlet.name}');
     
     // Загружаем строки заказа
+    _logger.info('📋 Loading order lines for order: ${orderEntity.id}');
     final orderLines = await _getOrderLines(orderEntity.id);
+    _logger.info('✅ Order lines loaded: ${orderLines.length} lines');
     
-    return OrderMapper.fromDatabaseEntities(
+    _logger.info('🔨 Creating Order object via mapper');
+    final order = OrderMapper.fromDatabaseEntities(
       orderEntity,
       employee,
       outlet,
       orderLines,
     );
+    _logger.info('✅ Order object created successfully: id=${order.id}, state=${order.state}');
+    
+    return order;
   }
 
   /// Сохраняет строки заказ
@@ -225,7 +240,7 @@ class OrderRepositoryDrift implements OrderRepository {
     }
   }
 
-  /// Загружает строки заказа с полными данными StockItem
+  /// Загружает строки заказа с полными данными StockItem и Product
   Future<List<OrderLine>> _getOrderLines(int orderId) async {
     // Получаем строки заказа
     final orderLineEntities = await (_database.select(_database.orderLines)
@@ -234,14 +249,165 @@ class OrderRepositoryDrift implements OrderRepository {
     final lines = <OrderLine>[];
     
     for (final lineEntity in orderLineEntities) {
-      // TODO: Здесь нужно загрузить реальный StockItem по lineEntity.stockItemId
-      // Пока создаем заглушку StockItem
-      final stockItem = _createStockItemStub(lineEntity.stockItemId);
+      // Загружаем реальный StockItem по stockItemId
+      final stockItemEntity = await (_database.select(_database.stockItems)
+        ..where((si) => si.id.equals(lineEntity.stockItemId))).getSingleOrNull();
+      
+      if (stockItemEntity == null) {
+        _logger.warning('StockItem не найден: ${lineEntity.stockItemId}');
+        continue; // Пропускаем эту строку если товар не найден
+      }
+      
+      // Загружаем реальный Product через ProductRepository чтобы получить полные данные включая картинки
+      Product? product;
+      try {
+        _logger.info('🔍 Getting full product data for code: ${stockItemEntity.productCode}');
+        final productResult = await _productRepository.getProductByCode(stockItemEntity.productCode);
+        
+        product = productResult.fold(
+          (failure) {
+            _logger.warning('❌ Не удалось получить полный Product: ${failure.message}');
+            return null;
+          },
+          (fullProduct) {
+            _logger.info('✅ Полный Product получен с картинками: ${fullProduct?.title}, images: ${fullProduct?.images.length}');
+            return fullProduct;
+          },
+        );
+        
+        // Fallback: если не получилось через ProductRepository, создаем минимальный
+        if (product == null) {
+          final productEntity = await (_database.select(_database.products)
+            ..where((p) => p.code.equals(stockItemEntity.productCode))).getSingleOrNull();
+          
+          if (productEntity != null) {
+            _logger.info('⚠️ Fallback: создаем минимальный Product из БД: ${productEntity.title}');
+            product = Product(
+              title: productEntity.title,
+              barcodes: [],
+              code: productEntity.code,
+              bcode: productEntity.code,
+              catalogId: 0,
+              novelty: false,
+              popular: false,
+              isMarked: false,
+              brand: null,
+              manufacturer: null,
+              colorImage: null,
+              defaultImage: null,
+              images: [],
+              description: productEntity.description,
+              howToUse: null,
+              ingredients: null,
+              series: null,
+              category: null,
+              priceListCategoryId: null,
+              amountInPackage: null,
+              vendorCode: productEntity.vendorCode,
+              type: null,
+              categoriesInstock: [],
+              numericCharacteristics: [],
+              stringCharacteristics: [],
+              boolCharacteristics: [],
+              canBuy: true,
+            );
+          }
+        }
+        
+        // Если ничего не получилось, создаем минимальный Product
+        if (product == null) {
+          _logger.warning('Product не найден для productCode: ${stockItemEntity.productCode}');
+          // Создаем минимальный Product если не найден в БД
+          product = Product(
+            title: 'Товар №${stockItemEntity.productCode}',
+            barcodes: [],
+            code: stockItemEntity.productCode,
+            bcode: stockItemEntity.productCode,
+            catalogId: 0,
+            novelty: false,
+            popular: false,
+            isMarked: false,
+            brand: null,
+            manufacturer: null,
+            colorImage: null,
+            defaultImage: null,
+            images: [],
+            description: 'Описание товара №${stockItemEntity.productCode}',
+            howToUse: null,
+            ingredients: null,
+            series: null,
+            category: null,
+            priceListCategoryId: null,
+            amountInPackage: null,
+            vendorCode: 'ART${stockItemEntity.productCode}',
+            type: null,
+            categoriesInstock: [],
+            numericCharacteristics: [],
+            stringCharacteristics: [],
+            boolCharacteristics: [],
+            canBuy: true,
+          );
+        }
+      } catch (e) {
+        _logger.warning('Ошибка загрузки Product: $e');
+        // Fallback к заглушке
+        product = Product(
+          title: 'Товар №${stockItemEntity.productCode}',
+          barcodes: [],
+          code: stockItemEntity.productCode,
+          bcode: stockItemEntity.productCode,
+          catalogId: 0,
+          novelty: false,
+          popular: false,
+          isMarked: false,
+          brand: null,
+          manufacturer: null,
+          colorImage: null,
+          defaultImage: null,
+          images: [],
+          description: 'Описание товара №${stockItemEntity.productCode}',
+          howToUse: null,
+          ingredients: null,
+          series: null,
+          category: null,
+          priceListCategoryId: null,
+          amountInPackage: null,
+          vendorCode: 'ART${stockItemEntity.productCode}',
+          type: null,
+          categoriesInstock: [],
+          numericCharacteristics: [],
+          stringCharacteristics: [],
+          boolCharacteristics: [],
+          canBuy: true,
+        );
+      }
+      
+      // Создаем StockItem из данных БД
+      final stockItem = StockItem(
+        id: stockItemEntity.id,
+        productCode: stockItemEntity.productCode,
+        warehouseId: stockItemEntity.warehouseId,
+        warehouseName: stockItemEntity.warehouseName,
+        warehouseVendorId: stockItemEntity.warehouseVendorId,
+        isPickUpPoint: stockItemEntity.isPickUpPoint,
+        stock: stockItemEntity.stock,
+        multiplicity: stockItemEntity.multiplicity,
+        publicStock: stockItemEntity.publicStock,
+        defaultPrice: stockItemEntity.defaultPrice,
+        discountValue: stockItemEntity.discountValue,
+        availablePrice: stockItemEntity.availablePrice,
+        offerPrice: stockItemEntity.offerPrice,
+        currency: stockItemEntity.currency,
+        promotionJson: stockItemEntity.promotionJson,
+        createdAt: stockItemEntity.createdAt,
+        updatedAt: stockItemEntity.updatedAt,
+      );
       
       final line = OrderLine(
         id: lineEntity.id,
         orderId: orderId,
         stockItem: stockItem,
+        product: product, // Добавляем Product
         quantity: lineEntity.quantity,
         pricePerUnit: lineEntity.pricePerUnit,
         createdAt: lineEntity.createdAt,
@@ -256,56 +422,158 @@ class OrderRepositoryDrift implements OrderRepository {
 
   /// Получает сотрудника по ID
   Future<Employee> _getEmployeeById(int employeeId) async {
-    final employeeEntity = await (_database.select(_database.employees)
-      ..where((e) => e.id.equals(employeeId))).getSingle();
-    
-    // TODO: заменить на EmployeeMapper.fromDatabase когда будет доступен
-    return Employee(
-      id: employeeEntity.id,
-      firstName: employeeEntity.firstName,
-      lastName: employeeEntity.lastName,
-      middleName: employeeEntity.middleName,
-      role: EmployeeRole.values.firstWhere(
-        (role) => role.name == employeeEntity.role,
-        orElse: () => EmployeeRole.sales,
-      ),
-      assignedTradingPoints: [],
-    );
+    _logger.info('🔍 Querying employee by ID: $employeeId');
+    try {
+      final employeeEntity = await (_database.select(_database.employees)
+        ..where((e) => e.id.equals(employeeId))).getSingle();
+      _logger.info('✅ Employee found: ${employeeEntity.firstName} ${employeeEntity.lastName}');
+      return Employee(
+        id: employeeEntity.id,
+        firstName: employeeEntity.firstName,
+        lastName: employeeEntity.lastName,
+        middleName: employeeEntity.middleName,
+        role: EmployeeRole.values.firstWhere(
+          (role) => role.name == employeeEntity.role,
+          orElse: () => EmployeeRole.sales,
+        ),
+        assignedTradingPoints: [],
+      );
+    } catch (e) {
+      _logger.severe('❌ Employee with ID $employeeId not found: $e');
+      // Показать список всех employees для диагностики
+      final allEmployees = await _database.select(_database.employees).get();
+      _logger.info('📋 Available employees: ${allEmployees.map((e) => 'ID:${e.id} ${e.firstName} ${e.lastName}').join(', ')}');
+      rethrow;
+    }
   }
 
   /// Получает торговую точку по ID
   Future<TradingPoint> _getTradingPointById(int outletId) async {
-    final outletEntity = await (_database.select(_database.tradingPointEntities)
-      ..where((tp) => tp.id.equals(outletId))).getSingle();
-    
-    // TODO: заменить на TradingPointMapper.fromDatabase когда будет доступен
-    return TradingPoint(
-      id: outletEntity.id,
-      externalId: outletEntity.externalId,
-      name: outletEntity.name,
-      inn: outletEntity.inn,
-    );
+    _logger.info('🔍 Querying trading point by ID: $outletId');
+    try {
+      final outletEntity = await (_database.select(_database.tradingPointEntities)
+        ..where((tp) => tp.id.equals(outletId))).getSingle();
+      _logger.info('✅ Trading point found: ${outletEntity.name}');
+      
+      // TODO: заменить на TradingPointMapper.fromDatabase когда будет доступен
+      return TradingPoint(
+        id: outletEntity.id,
+        externalId: outletEntity.externalId,
+        name: outletEntity.name,
+        inn: outletEntity.inn,
+      );
+    } catch (e) {
+      _logger.severe('❌ Trading point with ID $outletId not found: $e');
+      // Показать список всех торговых точек для диагностики
+      final allOutlets = await _database.select(_database.tradingPointEntities).get();
+      _logger.info('📋 Available trading points: ${allOutlets.map((tp) => 'ID:${tp.id} ${tp.name}').join(', ')}');
+      rethrow;
+    }
   }
 
-  /// Создает заглушку StockItem для тестирования
-  /// TODO: заменить на загрузку из базы данных когда StockItem будет в БД
-  StockItem _createStockItemStub(int stockItemId) {
-    return StockItem(
-      id: stockItemId,
-      productCode: stockItemId,
-      warehouseId: 1,
-      warehouseName: 'Тестовый склад',
-      warehouseVendorId: 'VENDOR_001',
-      isPickUpPoint: false,
-      stock: 100,
-      multiplicity: 1,
-      publicStock: '100+ шт',
-      defaultPrice: 10000, // 100 рублей в копейках
-      discountValue: 500, // 5 рублей скидка
-      availablePrice: 9500, // 95 рублей со скидкой
-      currency: 'RUB',
-      createdAt: DateTime.now(),
-      updatedAt: DateTime.now(),
+  @override
+  Future<Order> addOrderLine(OrderLine orderLine) async {
+    _logger.info('Adding order line to order ${orderLine.orderId}');
+    
+    final now = DateTime.now();
+    final orderLineData = OrderLinesCompanion.insert(
+      orderId: orderLine.orderId,
+      stockItemId: orderLine.stockItem.id,
+      quantity: orderLine.quantity,
+      pricePerUnit: orderLine.pricePerUnit,
+      createdAt: now,
+      updatedAt: now,
     );
+    
+    await _database.into(_database.orderLines).insert(orderLineData);
+    _logger.info('Order line added successfully');
+    
+    // Возвращаем обновленный заказ
+    final orderData = await (_database.select(_database.orders)
+        ..where((o) => o.id.equals(orderLine.orderId))).getSingle();
+    return await _buildOrderFromEntity(orderData);
+  }
+
+  @override
+  Future<Order> updateOrderLineQuantity({
+    required int orderLineId,
+    required int newQuantity,
+  }) async {
+    _logger.info('Updating order line $orderLineId quantity to $newQuantity');
+    
+    // Получаем строку заказа для определения orderId
+    final orderLineData = await (_database.select(_database.orderLines)
+        ..where((ol) => ol.id.equals(orderLineId))).getSingle();
+    
+    if (newQuantity <= 0) {
+      // Если количество 0 или меньше - удаляем строку из корзины
+      _logger.info('Removing order line $orderLineId due to zero quantity');
+      await (_database.delete(_database.orderLines)..where((ol) => ol.id.equals(orderLineId))).go();
+      _logger.info('Order line removed successfully');
+    } else {
+      // Обновляем количество и timestamp
+      await (_database.update(_database.orderLines)..where((ol) => ol.id.equals(orderLineId)))
+          .write(OrderLinesCompanion(
+            quantity: Value(newQuantity),
+            updatedAt: Value(DateTime.now()),
+          ));
+      _logger.info('Order line quantity updated successfully');
+    }
+    
+    // Возвращаем обновленный заказ
+    final orderData = await (_database.select(_database.orders)
+        ..where((o) => o.id.equals(orderLineData.orderId))).getSingle();
+    return await _buildOrderFromEntity(orderData);
+  }
+
+  @override
+  Future<Order> removeOrderLine(int orderLineId) async {
+    _logger.info('Removing order line $orderLineId');
+    
+    // Получаем строку заказа для определения orderId
+    final orderLineData = await (_database.select(_database.orderLines)
+        ..where((ol) => ol.id.equals(orderLineId))).getSingleOrNull();
+    
+    if (orderLineData == null) {
+      _logger.warning('Order line $orderLineId not found');
+      throw Exception('Order line $orderLineId not found');
+    }
+    
+    // Удаляем строку
+    final deletedRows = await (_database.delete(_database.orderLines)..where((ol) => ol.id.equals(orderLineId))).go();
+    
+    _logger.info('Order line removed successfully, deleted $deletedRows rows');
+    
+    // Возвращаем обновленный заказ
+    final orderData = await (_database.select(_database.orders)
+        ..where((o) => o.id.equals(orderLineData.orderId))).getSingleOrNull();
+    
+    if (orderData == null) {
+      _logger.severe('Order ${orderLineData.orderId} not found after removing line');
+      throw Exception('Order ${orderLineData.orderId} not found');
+    }
+    
+    return await _buildOrderFromEntity(orderData);
+  }
+
+  @override
+  Future<Order> clearCart({
+    required int employeeId,
+    required int outletId,
+  }) async {
+    _logger.info('Clearing cart for employee $employeeId, outlet $outletId');
+    
+    // Получаем текущий draft заказ
+    final draftOrder = await getCurrentDraftOrder(employeeId, outletId);
+    
+    // Удаляем все строки заказа
+    await (_database.delete(_database.orderLines)..where((ol) => ol.orderId.equals(draftOrder.id!))).go();
+    
+    _logger.info('Cart cleared successfully');
+    
+    // Возвращаем обновленный заказ
+    final orderData = await (_database.select(_database.orders)
+        ..where((o) => o.id.equals(draftOrder.id!))).getSingle();
+    return await _buildOrderFromEntity(orderData);
   }
 }

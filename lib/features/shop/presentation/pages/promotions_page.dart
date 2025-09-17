@@ -9,7 +9,7 @@ class PromotionsPage extends StatelessWidget {
     return Scaffold(
       appBar: AppBar(
         title: const Text('Акции'),
-        backgroundColor: Colors.blue,
+
         foregroundColor: Colors.white,
         leading: IconButton(
           icon: const Icon(Icons.arrow_back),

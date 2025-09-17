@@ -1,5 +1,6 @@
 import 'package:fieldforce/app/services/simple_update_service.dart';
 import 'package:fieldforce/features/authentication/domain/usecases/logout_usecase.dart';
+import 'package:fieldforce/app/theme/app_colors.dart';
 import 'package:flutter/material.dart';
 import 'package:get_it/get_it.dart';
 
@@ -63,9 +64,14 @@ class _MainMenuPageState extends State<MainMenuPage> {
       route: '/outlets',
     ),
     MenuItem(
-      title: 'Заказы Агента',
-      icon: Icons.assignment,
-      route: '/agent-orders',
+      title: 'Корзина',
+      icon: Icons.shopping_cart,
+      route: '/cart',
+    ),
+    MenuItem(
+      title: 'Мои Заказы',
+      icon: Icons.receipt_long,
+      route: '/orders',
     ),
     MenuItem(
       title: 'Отправка Данных',
@@ -100,8 +106,6 @@ class _MainMenuPageState extends State<MainMenuPage> {
             Navigator.pushReplacementNamed(context, '/sales-home');
           },
         ),
-        backgroundColor: Colors.blue,
-        foregroundColor: Colors.white,
       ),
       body: ListView.builder(
         padding: const EdgeInsets.all(16),
@@ -126,7 +130,7 @@ class _MainMenuPageState extends State<MainMenuPage> {
           ListTile(
             leading: Icon(
               item.icon,
-              color: Colors.blue,
+              color: AppColors.primary,
               size: 28,
             ),
             title: Text(
@@ -169,7 +173,7 @@ class _MainMenuPageState extends State<MainMenuPage> {
             contentPadding: const EdgeInsets.only(left: 56, right: 16),
             leading: Icon(
               subItem.icon,
-              color: Colors.blue[300],
+              color: AppColors.primary,
               size: 24,
             ),
             title: Text(
@@ -209,6 +213,10 @@ class _MainMenuPageState extends State<MainMenuPage> {
         Navigator.pushNamed(context, '/outlets');
       } else if (item.route == '/products/catalog') {
         Navigator.pushNamed(context, '/products/catalog');
+      } else if (item.route == '/cart') {
+        Navigator.pushNamed(context, '/cart');
+      } else if (item.route == '/orders') {
+        Navigator.pushNamed(context, '/orders');
       } else if (item.route == '/check-updates') {
         _handleCheckUpdates();
       } else if (item.route == '/logout') {

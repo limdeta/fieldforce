@@ -6,6 +6,7 @@ import '../entities/employee.dart';
 /// Репозиторий для работы с торговыми точками
 abstract class TradingPointRepository {
   Future<Either<Failure, List<TradingPoint>>> getEmployeePoints(Employee employee);
+  Future<Either<Failure, TradingPoint?>> getById(int id);
   Future<Either<Failure, TradingPoint?>> getByExternalId(String externalId);
   Future<Either<Failure, TradingPoint>> save(TradingPoint tradingPoint);
   Future<Either<Failure, void>> assignToEmployee(

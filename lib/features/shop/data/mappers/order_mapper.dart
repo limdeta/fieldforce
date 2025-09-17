@@ -10,10 +10,14 @@ import '../../domain/entities/trading_point.dart';
 class OrderMapper {
   /// Преобразует Order entity в OrdersCompanion для базы данных
   static OrdersCompanion toDatabase(Order order) {
+    if (order.outlet.id == null || order.outlet.id! <= 0) {
+      throw ArgumentError('КРИТИЧЕСКАЯ ОШИБКА: Order.outlet.id не может быть null или <= 0. Заказ: ${order.id}, торговая точка: ${order.outlet.name}');
+    }
+    
     return OrdersCompanion.insert(
       id: order.id != null ? Value(order.id!) : const Value.absent(),
       creatorId: order.creator.id,
-      outletId: order.outlet.id ?? 0,
+      outletId: order.outlet.id!,
       state: order.state.value,
       paymentType: Value(order.paymentKind.type),
       paymentDetails: Value(order.paymentKind.details),

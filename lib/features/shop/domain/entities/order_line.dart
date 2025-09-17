@@ -1,11 +1,13 @@
 import 'package:equatable/equatable.dart';
 import 'stock_item.dart';
+import 'product.dart';
 
 /// Строка заказа - конкретный товар со склада с количеством и ценой
 class OrderLine extends Equatable {
   final int? id;
   final int orderId;
   final StockItem stockItem; // Конкретный остаток на складе (содержит Product + Warehouse + цены)
+  final Product? product; // Продукт для UI (может быть null если не загружен)
   final int quantity;
   final int pricePerUnit; // в копейках (может отличаться от цены в StockItem из-за скидок)
   final DateTime createdAt;
@@ -15,6 +17,7 @@ class OrderLine extends Equatable {
     this.id,
     required this.orderId,
     required this.stockItem,
+    this.product,
     required this.quantity,
     required this.pricePerUnit,
     required this.createdAt,
@@ -25,6 +28,7 @@ class OrderLine extends Equatable {
   factory OrderLine.create({
     required int orderId,
     required StockItem stockItem,
+    Product? product,
     required int quantity,
     int? pricePerUnit,
   }) {
@@ -32,6 +36,7 @@ class OrderLine extends Equatable {
     return OrderLine(
       orderId: orderId,
       stockItem: stockItem,
+      product: product,
       quantity: quantity,
       pricePerUnit: pricePerUnit ?? stockItem.defaultPrice, // Используем базовую цену по умолчанию
       createdAt: now,
@@ -47,6 +52,19 @@ class OrderLine extends Equatable {
 
   /// Общая стоимость строки заказа
   int get totalCost => quantity * pricePerUnit;
+
+  // UI геттеры для удобства
+  /// Название товара для отображения в UI
+  String get productTitle => product?.title ?? 'Товар №$productCode';
+  
+  /// Описание товара
+  String get productDescription => product?.description ?? '';
+  
+  /// Артикул товара
+  String get productVendorCode => product?.vendorCode ?? '';
+  
+  /// Имя склада для UI
+  String get warehouseName => stockItem.warehouseName;
 
   /// Экономия по сравнению с базовой ценой (если есть скидка)
   int get saving {
@@ -90,6 +108,7 @@ class OrderLine extends Equatable {
     int? id,
     int? orderId,
     StockItem? stockItem,
+    Product? product,
     int? quantity,
     int? pricePerUnit,
     DateTime? createdAt,
@@ -99,6 +118,7 @@ class OrderLine extends Equatable {
       id: id ?? this.id,
       orderId: orderId ?? this.orderId,
       stockItem: stockItem ?? this.stockItem,
+      product: product ?? this.product,
       quantity: quantity ?? this.quantity,
       pricePerUnit: pricePerUnit ?? this.pricePerUnit,
       createdAt: createdAt ?? this.createdAt,
@@ -111,6 +131,7 @@ class OrderLine extends Equatable {
         id,
         orderId,
         stockItem,
+        product,
         quantity,
         pricePerUnit,
         createdAt,

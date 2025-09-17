@@ -2,7 +2,6 @@ import 'package:fieldforce/features/shop/domain/entities/order.dart';
 import 'package:fieldforce/features/shop/domain/entities/order_state.dart';
 import 'package:fieldforce/features/shop/domain/repositories/order_repository.dart';
 
-/// Use case для изменения статуса заказа
 class UpdateOrderStateUseCase {
   final OrderRepository _orderRepository;
 
@@ -27,10 +26,7 @@ class UpdateOrderStateUseCase {
       throw StateError('Не выбран способ оплаты');
     }
 
-    // Обновляем состояние
     final updatedOrder = order.updateState(newState);
-
-    // Сохраняем заказ
     return await _orderRepository.saveOrder(updatedOrder);
   }
 }

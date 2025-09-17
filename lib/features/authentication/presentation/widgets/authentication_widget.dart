@@ -68,11 +68,16 @@ class _AuthenticationWidgetState extends State<AuthenticationWidget> {
       builder: (context, state) {
         final isLoading = state is AuthenticationLoading;
 
-        return Form(
-          key: _formKey,
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
+        return Center(
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.all(24.0),
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 400),
+              child: Form(
+                key: _formKey,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
               // Phone number field
               TextFormField(
                 controller: _phoneController,
@@ -153,7 +158,10 @@ class _AuthenticationWidgetState extends State<AuthenticationWidget> {
                 const SizedBox(height: 8),
                 _buildTestDataInfo(),
               ],
-            ],
+                  ],
+                ),
+              ),
+            ),
           ),
         );
       },

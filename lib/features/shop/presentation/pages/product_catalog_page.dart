@@ -4,7 +4,8 @@ import 'package:logging/logging.dart';
 import 'package:fieldforce/features/shop/domain/repositories/category_repository.dart';
 import 'package:fieldforce/features/shop/domain/entities/category.dart';
 import 'package:fieldforce/features/shop/presentation/widgets/navigation_fab_widget.dart';
-import 'product_list_page.dart';
+import 'category_products_page.dart';
+
 class ProductCatalogPage extends StatefulWidget {
   const ProductCatalogPage({super.key});
 
@@ -72,13 +73,11 @@ class _ProductCatalogPageState extends State<ProductCatalogPage>
     final updateResult = await _categoryRepository.updateCategoryCountsWithCategories(categories);
     if (updateResult.isLeft()) {
       _logger.warning('Не удалось обновить количество продуктов в категориях');
-      // Продолжаем с загруженными категориями
     } else {
       _logger.info('updateCategoryCounts выполнен успешно');
       // Категории уже обновлены в памяти, используем их напрямую
     }
 
-    // Категории уже обновлены, используем их напрямую
     setState(() {
       _isLoading = false;
       _categories = categories;
@@ -126,7 +125,7 @@ class _ProductCatalogPageState extends State<ProductCatalogPage>
   void _onCategoryTap(Category category) {
     Navigator.of(context).push(
       MaterialPageRoute(
-        builder: (context) => ProductListPage(category: category),
+        builder: (context) => CategoryProductsPage(category: category),
       ),
     );
   }
@@ -192,23 +191,22 @@ class _ProductCatalogPageState extends State<ProductCatalogPage>
   Color _getCategoryColor(int level) {
     // Градиент от светлого к темному для ощущения глубины вложенности
     switch (level) {
-      case 0: return const Color(0xFFFAFAFA); // Почти белый для корневых категорий
-      case 1: return const Color(0xFFF5F5F5); // Светло-серый для уровня 1
-      case 2: return const Color(0xFFEEEEEE); // Серый для уровня 2
-      case 3: return const Color(0xFFE8E8E8); // Темно-серый для уровня 3
-      case 4: return const Color(0xFFE0E0E0); // Еще темнее для уровня 4
-      default: return const Color(0xFFD0D0D0); // Самый темный для глубоких уровней
+      case 0: return const Color.fromARGB(255, 255, 255, 255);
+      case 1: return const Color.fromARGB(230, 230, 230, 230);
+      case 2: return const Color.fromARGB(210, 210, 210, 210);
+      case 3: return const Color.fromARGB(190, 190, 190, 190); 
+      default: return const Color.fromARGB(255, 114, 114, 114); // Самый темный для глубоких уровней
     }
   }
 
   Color _getChildCategoryColor(int parentLevel) {
     // Цвета дочерних категорий чуть светлее родительских для контраста
     switch (parentLevel) {
-      case 0: return const Color(0xFFFFFFFF); // Белый для детей корневых
-      case 1: return const Color(0xFFFAFAFA); // Почти белый для детей уровня 1
-      case 2: return const Color(0xFFF8F8F8); // Светло-серый для детей уровня 2
-      case 3: return const Color(0xFFF5F5F5); // Серый для детей уровня 3
-      default: return const Color(0xFFF0F0F0); // Светло-серый для глубоких уровней
+      case 0: return const Color.fromARGB(255, 255, 255, 255);
+      case 1: return const Color.fromARGB(230, 230, 230, 230);
+      case 2: return const Color.fromARGB(210, 210, 210, 210);
+      case 3: return const Color.fromARGB(190, 190, 190, 190); 
+      default: return const Color.fromARGB(180, 180, 180, 180); 
     }
   }
 
@@ -225,48 +223,48 @@ class _ProductCatalogPageState extends State<ProductCatalogPage>
 
   Color _getLevelBorderColor(int level) {
     switch (level) {
-      case 0: return Colors.blue.shade300; // Синяя граница для корневых
-      case 1: return Colors.green.shade300; // Зеленая для уровня 1
-      case 2: return Colors.orange.shade300; // Оранжевая для уровня 2
-      case 3: return Colors.purple.shade300; // Фиолетовая для уровня 3
-      default: return Colors.grey.shade300; // Серая для глубоких уровней
+      case 0: return const Color.fromARGB(255, 253, 228, 2); // Синяя граница для корневых
+      case 1: return const Color.fromARGB(255, 221, 224, 2); 
+      case 2: return const Color.fromARGB(255, 255, 115, 0);
+      case 3: return const Color.fromARGB(255, 255, 33, 0); // 
+      default: return Colors.grey.shade300; // 
     }
   }
 
   double _getLevelBorderWidth(int level) {
     switch (level) {
-      case 0: return 4.0; // Толстая граница для корневых
-      case 1: return 3.0; // Средняя для уровня 1
-      case 2: return 2.0; // Тонкая для уровня 2
-      case 3: return 1.0; // Очень тонкая для уровня 3
-      default: return 0.5; // Минимальная для глубоких уровней
+      case 0: return 4.0;
+      case 1: return 3.0; 
+      case 2: return 2.0;
+      case 3: return 1.0;
+      default: return 0.5;
     }
   }
 
   double _getIconSize(int level) {
     switch (level) {
-      case 0: return 22.0; // Крупная иконка для корневых
-      case 1: return 20.0; // Средняя для уровня 1
-      case 2: return 18.0; // Меньше для уровня 2
-      case 3: return 16.0; // Маленькая для уровня 3
-      default: return 14.0; // Минимальная для глубоких уровней
+      case 0: return 22.0;
+      case 1: return 20.0;
+      case 2: return 18.0;
+      case 3: return 16.0;
+      default: return 14.0;
     }
   }
 
   double _getFontSize(int level) {
     switch (level) {
-      case 0: return 15.0; // Крупный шрифт для корневых
-      case 1: return 14.0; // Средний для уровня 1
-      case 2: return 13.0; // Меньше для уровня 2
-      case 3: return 12.0; // Маленький для уровня 3
-      default: return 11.0; // Минимальный для глубоких уровней
+      case 0: return 15.0;
+      case 1: return 14.0; 
+      case 2: return 13.0;
+      case 3: return 12.0;
+      default: return 11.0;
     }
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.white, // Белый фон для экономии места
+      backgroundColor: Colors.white,
       appBar: _buildAppBar(),
       body: _buildBody(),
       floatingActionButton: _buildFloatingActionButton(),
@@ -276,7 +274,7 @@ class _ProductCatalogPageState extends State<ProductCatalogPage>
   PreferredSizeWidget _buildAppBar() {
     return AppBar(
       elevation: 0,
-      backgroundColor: Colors.blue,
+
       foregroundColor: Colors.white,
       title: const Text(
         'Каталог товаров',
@@ -292,22 +290,22 @@ class _ProductCatalogPageState extends State<ProductCatalogPage>
         },
       ),
       bottom: PreferredSize(
-        preferredSize: const Size.fromHeight(50), // Уменьшаем высоту
+        preferredSize: const Size.fromHeight(40),
         child: Container(
-          padding: const EdgeInsets.fromLTRB(16, 0, 16, 8), // Уменьшаем нижний padding
+          padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
           child: TextField(
             controller: _searchController,
             onChanged: _onSearchChanged,
             decoration: InputDecoration(
               hintText: 'Поиск по категориям...',
-              prefixIcon: const Icon(Icons.search, color: Colors.grey),
+              prefixIcon: const Icon(Icons.search, color: Color.fromARGB(255, 100, 100, 100)),
               filled: true,
               fillColor: Colors.grey.shade100,
               border: const OutlineInputBorder(
-                borderRadius: BorderRadius.zero, // Прямые углы
+                borderRadius: BorderRadius.zero,
                 borderSide: BorderSide.none,
               ),
-              contentPadding: const EdgeInsets.symmetric(vertical: 8), // Уменьшаем вертикальный padding
+              contentPadding: const EdgeInsets.symmetric(vertical: 8),
             ),
           ),
         ),
@@ -336,7 +334,7 @@ class _ProductCatalogPageState extends State<ProductCatalogPage>
       opacity: _fadeAnimation,
       child: RefreshIndicator(
         onRefresh: _loadCategories,
-        color: Colors.blue,
+        color: const Color.fromARGB(255, 97, 118, 134),
         child: CustomScrollView(
           slivers: [
             if (_searchQuery.isEmpty) _buildPopularCategories(),
@@ -400,7 +398,7 @@ class _ProductCatalogPageState extends State<ProductCatalogPage>
                 style: TextStyle(
                   fontSize: 18,
                   fontWeight: FontWeight.bold,
-                  color: Colors.black87,
+                  color: Color.fromARGB(0, 236, 236, 236),
                 ),
               ),
             ),
@@ -532,7 +530,7 @@ class _ProductCatalogPageState extends State<ProductCatalogPage>
                           // Иконка
                           Icon(
                             _getCategoryIcon(category.name),
-                            color: Colors.blue.shade600,
+                            color: const Color.fromARGB(255, 43, 43, 43),
                             size: _getIconSize(level),
                           ),
                           const SizedBox(width: 12),

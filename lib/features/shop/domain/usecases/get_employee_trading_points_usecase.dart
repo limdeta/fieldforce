@@ -1,8 +1,8 @@
+import 'package:fieldforce/features/shop/domain/entities/employee.dart';
+import 'package:fieldforce/features/shop/domain/entities/trading_point.dart';
+import 'package:fieldforce/features/shop/domain/repositories/trading_point_repository.dart';
 import 'package:fieldforce/shared/either.dart';
 import 'package:fieldforce/shared/failures.dart';
-import '../entities/trading_point.dart';
-import '../entities/employee.dart';
-import '../repositories/trading_point_repository.dart';
 
 class GetEmployeeTradingPointsUseCase {
   final TradingPointRepository _repository;

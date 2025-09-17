@@ -186,6 +186,10 @@ LazyDatabase _openConnection(String dbFileName) {
     return NativeDatabase.createInBackground(
       file,
       logStatements: false,
+      setup: (database) {
+        // Включаем foreign key constraints для всех соединений
+        database.execute('PRAGMA foreign_keys = ON');
+      },
     );
   });
 }

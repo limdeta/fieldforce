@@ -108,7 +108,7 @@ class _TradingPointsListPageState extends State<TradingPointsListPage> {
     return Scaffold(
       appBar: AppBar(
         title: const Text('Торговые точки'),
-        backgroundColor: Colors.blue,
+
         foregroundColor: Colors.white,
         actions: [
           IconButton(

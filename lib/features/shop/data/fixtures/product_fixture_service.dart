@@ -5,11 +5,13 @@ import 'package:fieldforce/features/shop/data/services/product_parsing_service.d
 import 'package:fieldforce/features/shop/domain/entities/product.dart';
 import 'package:fieldforce/features/shop/domain/entities/stock_item.dart';
 import 'package:fieldforce/features/shop/domain/repositories/stock_item_repository.dart';
+import 'package:fieldforce/app/database/app_database.dart';
 import 'package:fieldforce/shared/failures.dart';
 import 'package:fieldforce/shared/either.dart';
 import 'package:get_it/get_it.dart';
 import 'package:logging/logging.dart';
-import 'dart:math';
+
+
 
 /// Тип фикстуры для загрузки продуктов
 enum ProductFixtureType {
@@ -22,7 +24,6 @@ enum ProductFixtureType {
 class ProductFixtureService {
   static final Logger _logger = Logger('ProductFixtureService');
   final ProductParsingService _parsingService;
-  final Random _random = Random();
 
   ProductFixtureService(this._parsingService);
 
@@ -37,9 +38,6 @@ class ProductFixtureService {
       };
       
       _logger.info('Загружено ${products.length} продуктов из JSON файлов');
-      
-      // Создаем StockItems для загруженных продуктов
-      await _createStockItemsForProducts(products);
       
       return Right(products);
     } catch (e, st) {
@@ -64,8 +62,16 @@ class ProductFixtureService {
     "brand": null,
     "manufacturer": null,
     "colorImage": null,
-    "defaultImage": null,
-    "images": [],
+    "defaultImage": {
+      "uri": "https://via.placeholder.com/300x300/FF6B35/FFFFFF?text=TEST1",
+      "description": "Тестовое изображение продукта 1"
+    },
+    "images": [
+      {
+        "uri": "https://via.placeholder.com/300x300/FF6B35/FFFFFF?text=TEST1",
+        "description": "Тестовое изображение продукта 1"
+      }
+    ],
     "description": "Тестовый продукт для интеграционных тестов",
     "howToUse": null,
     "ingredients": null,
@@ -78,7 +84,7 @@ class ProductFixtureService {
       "query": "types=1163,1220"
     },
     "priceListCategoryId": null,
-    "amountInPackage": 1,
+    "amountInPackage": 12,
     "vendorCode": "TEST001",
     "type": {
       "id": 1163,
@@ -139,7 +145,7 @@ class ProductFixtureService {
       "query": "types=1163,1220"
     },
     "priceListCategoryId": null,
-    "amountInPackage": 1,
+    "amountInPackage": 6,
     "vendorCode": "TEST002",
     "type": {
       "id": 1163,
@@ -191,23 +197,18 @@ class ProductFixtureService {
       'assets/fixtures/product_example4.json',
     ];
 
-    print('🎭 ProductFixtureService: Начинаем загрузку из ${assetFiles.length} файлов');
 
     for (final assetPath in assetFiles) {
       try {
-        print('🎭 ProductFixtureService: Загружаем файл $assetPath');
         final jsonString = await rootBundle.loadString(assetPath);
         final product = _parsingService.parseProduct(jsonString);
         products.add(product);
-        print('🎭 ProductFixtureService: Загружен продукт ${product.title} (код: ${product.code}) из $assetPath');
       } catch (e) {
-        print('🎭 ProductFixtureService: Ошибка загрузки файла $assetPath: $e');
         // Игнорируем ошибки загрузки отдельных файлов
         continue;
       }
     }
 
-    print('🎭 ProductFixtureService: Всего загружено ${products.length} продуктов из JSON файлов');
     return products;
   }
 
@@ -229,150 +230,105 @@ class ProductFixtureService {
     return products.where((product) => product.type?.id == typeId).toList();
   }
 
-  /// Создает StockItems для списка продуктов
-  Future<void> _createStockItemsForProducts(List<Product> products) async {
+  /// Создает StockItems для списка продуктов  
+  Future<void> createStockItemsForProducts(List<Product> products) async {
     try {
-      final stockItemRepository = GetIt.instance<StockItemRepository>();
+      _logger.info('🏭 Создаем остатки для ${products.length} продуктов: ${products.map((p) => p.code).join(', ')}');
+      
+      // Временно отключаем foreign key constraints для фикстур
+      final database = GetIt.instance<AppDatabase>();
+      await database.customStatement('PRAGMA foreign_keys = OFF');
+      
       final stockItems = <StockItem>[];
-
-      for (final product in products) {
-        final productStockItems = _generateStockItemsForProduct(product.code);
+      
+      for (int i = 0; i < products.length; i++) {
+        final product = products[i];
+        final productStockItems = _createStockForProduct(product, forceInStock: i == 0);
         stockItems.addAll(productStockItems);
       }
 
-      _logger.info('Создаем ${stockItems.length} StockItem записей для ${products.length} продуктов');
+      _logger.info('💾 Сохраняем ${stockItems.length} StockItem записей');
       
+      final stockItemRepository = GetIt.instance<StockItemRepository>();
       final result = await stockItemRepository.saveStockItems(stockItems);
+      
+      // Включаем обратно foreign key constraints
+      await database.customStatement('PRAGMA foreign_keys = ON');
+      
       result.fold(
-        (failure) => _logger.warning('Ошибка сохранения StockItems: ${failure.message}'),
-        (_) => _logger.info('StockItems успешно сохранены'),
+        (failure) => _logger.warning('❌ Ошибка сохранения StockItems: ${failure.message}'),
+        (_) => _logger.info('✅ StockItems успешно сохранены'),
       );
     } catch (e, st) {
-      _logger.severe('Ошибка создания StockItems для продуктов', e, st);
+      _logger.severe('💥 Ошибка создания StockItems для продуктов', e, st);
     }
   }
 
-  /// Генерирует StockItems для конкретного продукта
-  List<StockItem> _generateStockItemsForProduct(int productCode) {
+  /// Создает остатки для конкретного продукта
+  List<StockItem> _createStockForProduct(Product product, {bool forceInStock = false}) {
     final stockItems = <StockItem>[];
     
-    // Тестовые регионы/продавцы
-    const vendorIds = ['vendor_moscow', 'vendor_spb', 'vendor_nsk'];
-    
-    // Тестовые склады по регионам
-    const warehousesByVendor = {
-      'vendor_moscow': [
-        (1, 'Склад Москва Центр', false),
-        (2, 'ПВЗ Москва Арбат', true),
-      ],
-      'vendor_spb': [
-        (4, 'Склад СПб Север', false),
-        (5, 'ПВЗ СПб Невский', true),
-      ],
-      'vendor_nsk': [
-        (6, 'Склад Новосибирск', false),
-      ],
-    };
-
-    // Создаем остатки для случайных регионов (1-2 из 3)
-    final selectedVendors = vendorIds.take(1 + _random.nextInt(2)).toList();
-    
-    for (final vendorId in selectedVendors) {
-      final warehouses = warehousesByVendor[vendorId] ?? [];
-      
-      for (final warehouse in warehouses) {
-        // С вероятностью 80% создаем StockItem для склада
-        if (_random.nextDouble() < 0.8) {
-          final stockItem = _generateStockItem(
-            productCode, 
-            warehouse.$1, // warehouseId
-            warehouse.$2, // warehouseName
-            warehouse.$3, // isPickUpPoint
-            vendorId,
-          );
-          stockItems.add(stockItem);
-        }
-      }
+    switch (product.code) {
+      case 170094: // Туалетная бумага YOKO
+        stockItems.addAll([
+          _createStockItem(product, 1, 'Основной склад', false, 25, 12000), // 120 руб
+        ]);
+        break;
+        
+      case 102969: // Нитроэмаль золотисто-желтая  
+        stockItems.addAll([
+          _createStockItem(product, 1, 'Основной склад', false, 15, 8500),  // 85 руб
+          _createStockItem(product, 2, 'ПВЗ Центральный', true, 3, 9000),   // 90 руб (дороже в ПВЗ)
+        ]);
+        break;
+        
+      case 102970: // Нитроэмаль синяя
+        stockItems.addAll([
+          _createStockItem(product, 1, 'Основной склад', false, 22, 8500),  // 85 руб  
+          _createStockItem(product, 2, 'ПВЗ Центральный', true, 12, 8800),  // 88 руб
+          _createStockItem(product, 3, 'Склад Юг', false, 5, 8200),         // 82 руб (дешевле на южном складе)
+        ]);
+        break;
+        
+      case 102971: // Нитроэмаль красная
+        stockItems.addAll([
+          _createStockItem(product, 1, 'Основной склад', false, 18, 8500),  // 85 руб
+          _createStockItem(product, 3, 'Склад Юг', false, 7, 8200),         // 82 руб
+          // НЕТ в ПВЗ Центральный - для тестирования разных складов
+        ]);
+        break;
+        
+      default:
+        // Для неизвестных товаров - простая схема
+        stockItems.addAll([
+          _createStockItem(product, 1, 'Основной склад', false, 10, 10000), // 100 руб
+        ]);
     }
 
     return stockItems;
   }
-
-  /// Генерирует один StockItem
-  StockItem _generateStockItem(
-    int productCode,
-    int warehouseId, 
-    String warehouseName,
-    bool isPickUpPoint,
-    String vendorId,
-  ) {
-    final basePrice = _generateBasePrice();
-    final hasDiscount = _random.nextDouble() < 0.25; // 25% товаров со скидкой
-    
-    final stock = _generateStock(isPickUpPoint);
-    
+  
+  /// Вспомогательный метод для создания StockItem
+  StockItem _createStockItem(Product product, int warehouseId, String warehouseName, 
+      bool isPickUp, int stock, int price) {
     return StockItem(
-      id: _generateId(),
-      productCode: productCode,
+      id: 0, // Автоинкремент в БД
+      productCode: product.code,
       warehouseId: warehouseId,
       warehouseName: warehouseName,
-      warehouseVendorId: vendorId,
-      isPickUpPoint: isPickUpPoint,
+      warehouseVendorId: 'MAIN_VENDOR',
+      isPickUpPoint: isPickUp,
       stock: stock,
-      publicStock: '${stock} шт.',
-      defaultPrice: basePrice,
-      discountValue: hasDiscount ? ((basePrice - _generateDiscountPrice(basePrice)) / basePrice * 100).round() : 0,
-      offerPrice: hasDiscount ? _generateDiscountPrice(basePrice) : null,
+      multiplicity: 1,
+      publicStock: stock > 0 ? '$stock шт.' : 'Нет в наличии',
+      defaultPrice: price,
+      discountValue: 0,
+      availablePrice: price,
+      offerPrice: price,
       currency: 'RUB',
-      promotionJson: hasDiscount ? _generatePromotionJson() : null,
+      promotionJson: null,
       createdAt: DateTime.now(),
       updatedAt: DateTime.now(),
     );
-  }
-
-  /// Генерирует базовую цену товара (в копейках)
-  int _generateBasePrice() {
-    final priceRanges = [
-      (5000, 15000),   // 50-150 руб
-      (15000, 50000),  // 150-500 руб
-      (50000, 150000), // 500-1500 руб
-    ];
-    
-    final range = priceRanges[_random.nextInt(priceRanges.length)];
-    return range.$1 + _random.nextInt(range.$2 - range.$1);
-  }
-
-  /// Генерирует количество товара на складе
-  int _generateStock(bool isPickUpPoint) {
-    if (isPickUpPoint) {
-      // ПВЗ: 0-20 штук
-      return _random.nextInt(21);
-    } else {
-      // Склад: 0-500 штук, с акцентом на наличие
-      final stockTypes = [0, 5, 15, 50, 100, 250];
-      return stockTypes[_random.nextInt(stockTypes.length)];
-    }
-  }
-
-  /// Генерирует цену со скидкой
-  int _generateDiscountPrice(int basePrice) {
-    final discountPercent = 0.05 + _random.nextDouble() * 0.35; // Скидка 5-40%
-    return (basePrice * (1 - discountPercent)).round();
-  }
-
-  /// Генерирует JSON промоакции
-  String _generatePromotionJson() {
-    final promotions = [
-      '{"type": "discount", "title": "Скидка недели", "percent": 15}',
-      '{"type": "cashback", "title": "Кэшбэк 10%", "percent": 10}',
-      '{"type": "bundle", "title": "При покупке от 3000 руб", "threshold": 300000}',
-    ];
-    
-    return promotions[_random.nextInt(promotions.length)];
-  }
-
-  /// Генерирует уникальный ID (в реальности будет автоинкремент в БД)
-  int _generateId() {
-    return DateTime.now().millisecondsSinceEpoch + _random.nextInt(1000);
   }
 }

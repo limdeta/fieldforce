@@ -68,7 +68,7 @@ class _SplashPageState extends State<SplashPage> {
               width: 120,
               height: 120,
               decoration: BoxDecoration(
-                color: Colors.blue,
+                color: const Color.fromARGB(255, 0, 0, 0),
                 borderRadius: BorderRadius.circular(20),
               ),
               child: const Icon(
@@ -84,7 +84,7 @@ class _SplashPageState extends State<SplashPage> {
               'fieldforce',
               style: Theme.of(context).textTheme.headlineMedium?.copyWith(
                 fontWeight: FontWeight.bold,
-                color: Colors.blue,
+                color: const Color.fromARGB(255, 58, 58, 58),
               ),
             ),
             const SizedBox(height: 8),

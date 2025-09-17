@@ -3,6 +3,7 @@ import 'package:fieldforce/app/domain/entities/regular_point_of_interest.dart';
 import 'package:fieldforce/app/domain/entities/trading_point_of_interest.dart';
 import 'package:fieldforce/app/domain/entities/route.dart' as domain;
 import 'package:flutter/material.dart';
+import 'package:fieldforce/app/theme/app_colors.dart';
 
 /// Детальная страница маршрута со списком всех точек
 class RouteDetailPage extends StatelessWidget {
@@ -18,7 +19,7 @@ class RouteDetailPage extends StatelessWidget {
     return Scaffold(
       appBar: AppBar(
         title: Text(route.name),
-        backgroundColor: Colors.blue,
+        backgroundColor: AppColors.primary,
         foregroundColor: Colors.white,
       ),
       body: Column(
@@ -46,7 +47,7 @@ class RouteDetailPage extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: Colors.blue.shade50,
+        color: AppColors.primary,
         border: Border(
           bottom: BorderSide(color: Colors.grey.shade300),
         ),
@@ -54,13 +55,13 @@ class RouteDetailPage extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
-            route.name,
-            style: const TextStyle(
-              fontSize: 20,
-              fontWeight: FontWeight.bold,
-            ),
-          ),
+          // Text(
+          //   route.name,
+          //   style: const TextStyle(
+          //     fontSize: 20,
+          //     fontWeight: FontWeight.bold,
+          //   ),
+          // ),
           if (route.description != null) ...[
             const SizedBox(height: 4),
             Text(
@@ -336,7 +337,7 @@ class RouteDetailPage extends StatelessWidget {
   Color _getPointStatusColor(VisitStatus status) {
     switch (status) {
       case VisitStatus.planned:
-        return Colors.blue;
+        return AppColors.primary;
       case VisitStatus.enRoute:
         return Colors.orange;
       case VisitStatus.arrived:
@@ -366,7 +367,7 @@ class RouteDetailPage extends StatelessWidget {
   Color _getRouteStatusColor(domain.RouteStatus status) {
     switch (status) {
       case domain.RouteStatus.planned:
-        return Colors.blue;
+        return AppColors.primary;
       case domain.RouteStatus.active:
         return Colors.orange;
       case domain.RouteStatus.completed:

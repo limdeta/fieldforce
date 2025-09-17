@@ -1,4 +1,3 @@
-import 'package:fieldforce/app/domain/entities/app_user.dart';
 import 'package:fieldforce/app/domain/entities/point_of_interest.dart';
 import 'package:fieldforce/app/domain/repositories/route_repository.dart';
 import 'package:fieldforce/app/domain/entities/regular_point_of_interest.dart';
