@@ -9,6 +9,7 @@ abstract interface class AppUserRepository {
   Future<Either<Failure, AppUser>> getAppUserByUserId(int userId);
   Future<Either<Failure, AppUser?>> getAppUserByExternalId(String externalId);
   Future<Either<Failure, AppUser>> createAppUser(Employee employee, User user);
+  Future<Either<Failure, AppUser>> updateAppUser(AppUser appUser);
   Future<Either<Failure, bool>> appUserExists(int employeeId);
   Future<Either<Failure, void>> deleteAppUser(int employeeId);
 }

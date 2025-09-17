@@ -3,8 +3,15 @@
 import 'package:flutter/services.dart';
 import 'package:fieldforce/features/shop/data/services/product_parsing_service.dart';
 import 'package:fieldforce/features/shop/domain/entities/product.dart';
+import 'package:fieldforce/features/shop/domain/entities/stock_item.dart';
+import 'package:fieldforce/features/shop/domain/repositories/stock_item_repository.dart';
+import 'package:fieldforce/app/database/app_database.dart';
 import 'package:fieldforce/shared/failures.dart';
 import 'package:fieldforce/shared/either.dart';
+import 'package:get_it/get_it.dart';
+import 'package:logging/logging.dart';
+
+
 
 /// Тип фикстуры для загрузки продуктов
 enum ProductFixtureType {
@@ -15,6 +22,7 @@ enum ProductFixtureType {
 }
 
 class ProductFixtureService {
+  static final Logger _logger = Logger('ProductFixtureService');
   final ProductParsingService _parsingService;
 
   ProductFixtureService(this._parsingService);
@@ -22,17 +30,18 @@ class ProductFixtureService {
   /// Загружает продукты в зависимости от типа фикстуры
   Future<Either<Failure, List<Product>>> loadProducts(ProductFixtureType fixtureType) async {
     try {
-      print('🎭 ProductFixtureService: Начинаем загрузку продуктов типа $fixtureType');
-      switch (fixtureType) {
-        case ProductFixtureType.compact:
-          return Right(_loadCompactProducts());
-        case ProductFixtureType.full:
-          final products = await _loadFullProducts();
-          print('🎭 ProductFixtureService: Загружено ${products.length} продуктов из JSON файлов');
-          return Right(products);
-      }
-    } catch (e) {
-      print('🎭 ProductFixtureService: Ошибка загрузки фикстуры продуктов: $e');
+      _logger.info('Начинаем загрузку продуктов типа $fixtureType');
+      
+      final products = switch (fixtureType) {
+        ProductFixtureType.compact => _loadCompactProducts(),
+        ProductFixtureType.full => await _loadFullProducts(),
+      };
+      
+      _logger.info('Загружено ${products.length} продуктов из JSON файлов');
+      
+      return Right(products);
+    } catch (e, st) {
+      _logger.severe('Ошибка загрузки фикстуры продуктов', e, st);
       return Left(GeneralFailure('Ошибка загрузки фикстуры продуктов: $e'));
     }
   }
@@ -53,8 +62,16 @@ class ProductFixtureService {
     "brand": null,
     "manufacturer": null,
     "colorImage": null,
-    "defaultImage": null,
-    "images": [],
+    "defaultImage": {
+      "uri": "https://via.placeholder.com/300x300/FF6B35/FFFFFF?text=TEST1",
+      "description": "Тестовое изображение продукта 1"
+    },
+    "images": [
+      {
+        "uri": "https://via.placeholder.com/300x300/FF6B35/FFFFFF?text=TEST1",
+        "description": "Тестовое изображение продукта 1"
+      }
+    ],
     "description": "Тестовый продукт для интеграционных тестов",
     "howToUse": null,
     "ingredients": null,
@@ -67,7 +84,7 @@ class ProductFixtureService {
       "query": "types=1163,1220"
     },
     "priceListCategoryId": null,
-    "amountInPackage": 1,
+    "amountInPackage": 12,
     "vendorCode": "TEST001",
     "type": {
       "id": 1163,
@@ -128,7 +145,7 @@ class ProductFixtureService {
       "query": "types=1163,1220"
     },
     "priceListCategoryId": null,
-    "amountInPackage": 1,
+    "amountInPackage": 6,
     "vendorCode": "TEST002",
     "type": {
       "id": 1163,
@@ -180,23 +197,18 @@ class ProductFixtureService {
       'assets/fixtures/product_example4.json',
     ];
 
-    print('🎭 ProductFixtureService: Начинаем загрузку из ${assetFiles.length} файлов');
 
     for (final assetPath in assetFiles) {
       try {
-        print('🎭 ProductFixtureService: Загружаем файл $assetPath');
         final jsonString = await rootBundle.loadString(assetPath);
         final product = _parsingService.parseProduct(jsonString);
         products.add(product);
-        print('🎭 ProductFixtureService: Загружен продукт ${product.title} (код: ${product.code}) из $assetPath');
       } catch (e) {
-        print('🎭 ProductFixtureService: Ошибка загрузки файла $assetPath: $e');
         // Игнорируем ошибки загрузки отдельных файлов
         continue;
       }
     }
 
-    print('🎭 ProductFixtureService: Всего загружено ${products.length} продуктов из JSON файлов');
     return products;
   }
 
@@ -216,5 +228,107 @@ class ProductFixtureService {
   /// Фильтрует продукты по типу
   List<Product> filterProductsByType(List<Product> products, int typeId) {
     return products.where((product) => product.type?.id == typeId).toList();
+  }
+
+  /// Создает StockItems для списка продуктов  
+  Future<void> createStockItemsForProducts(List<Product> products) async {
+    try {
+      _logger.info('🏭 Создаем остатки для ${products.length} продуктов: ${products.map((p) => p.code).join(', ')}');
+      
+      // Временно отключаем foreign key constraints для фикстур
+      final database = GetIt.instance<AppDatabase>();
+      await database.customStatement('PRAGMA foreign_keys = OFF');
+      
+      final stockItems = <StockItem>[];
+      
+      for (int i = 0; i < products.length; i++) {
+        final product = products[i];
+        final productStockItems = _createStockForProduct(product, forceInStock: i == 0);
+        stockItems.addAll(productStockItems);
+      }
+
+      _logger.info('💾 Сохраняем ${stockItems.length} StockItem записей');
+      
+      final stockItemRepository = GetIt.instance<StockItemRepository>();
+      final result = await stockItemRepository.saveStockItems(stockItems);
+      
+      // Включаем обратно foreign key constraints
+      await database.customStatement('PRAGMA foreign_keys = ON');
+      
+      result.fold(
+        (failure) => _logger.warning('❌ Ошибка сохранения StockItems: ${failure.message}'),
+        (_) => _logger.info('✅ StockItems успешно сохранены'),
+      );
+    } catch (e, st) {
+      _logger.severe('💥 Ошибка создания StockItems для продуктов', e, st);
+    }
+  }
+
+  /// Создает остатки для конкретного продукта
+  List<StockItem> _createStockForProduct(Product product, {bool forceInStock = false}) {
+    final stockItems = <StockItem>[];
+    
+    switch (product.code) {
+      case 170094: // Туалетная бумага YOKO
+        stockItems.addAll([
+          _createStockItem(product, 1, 'Основной склад', false, 25, 12000), // 120 руб
+        ]);
+        break;
+        
+      case 102969: // Нитроэмаль золотисто-желтая  
+        stockItems.addAll([
+          _createStockItem(product, 1, 'Основной склад', false, 15, 8500),  // 85 руб
+          _createStockItem(product, 2, 'ПВЗ Центральный', true, 3, 9000),   // 90 руб (дороже в ПВЗ)
+        ]);
+        break;
+        
+      case 102970: // Нитроэмаль синяя
+        stockItems.addAll([
+          _createStockItem(product, 1, 'Основной склад', false, 22, 8500),  // 85 руб  
+          _createStockItem(product, 2, 'ПВЗ Центральный', true, 12, 8800),  // 88 руб
+          _createStockItem(product, 3, 'Склад Юг', false, 5, 8200),         // 82 руб (дешевле на южном складе)
+        ]);
+        break;
+        
+      case 102971: // Нитроэмаль красная
+        stockItems.addAll([
+          _createStockItem(product, 1, 'Основной склад', false, 18, 8500),  // 85 руб
+          _createStockItem(product, 3, 'Склад Юг', false, 7, 8200),         // 82 руб
+          // НЕТ в ПВЗ Центральный - для тестирования разных складов
+        ]);
+        break;
+        
+      default:
+        // Для неизвестных товаров - простая схема
+        stockItems.addAll([
+          _createStockItem(product, 1, 'Основной склад', false, 10, 10000), // 100 руб
+        ]);
+    }
+
+    return stockItems;
+  }
+  
+  /// Вспомогательный метод для создания StockItem
+  StockItem _createStockItem(Product product, int warehouseId, String warehouseName, 
+      bool isPickUp, int stock, int price) {
+    return StockItem(
+      id: 0, // Автоинкремент в БД
+      productCode: product.code,
+      warehouseId: warehouseId,
+      warehouseName: warehouseName,
+      warehouseVendorId: 'MAIN_VENDOR',
+      isPickUpPoint: isPickUp,
+      stock: stock,
+      multiplicity: 1,
+      publicStock: stock > 0 ? '$stock шт.' : 'Нет в наличии',
+      defaultPrice: price,
+      discountValue: 0,
+      availablePrice: price,
+      offerPrice: price,
+      currency: 'RUB',
+      promotionJson: null,
+      createdAt: DateTime.now(),
+      updatedAt: DateTime.now(),
+    );
   }
 }

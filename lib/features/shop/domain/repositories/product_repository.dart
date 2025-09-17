@@ -3,6 +3,7 @@
 import 'package:fieldforce/shared/either.dart';
 import 'package:fieldforce/shared/failures.dart';
 import '../entities/product.dart';
+import '../entities/product_with_stock.dart';
 
 abstract class ProductRepository {
   /// Получить все продукты
@@ -11,11 +12,25 @@ abstract class ProductRepository {
   /// Получить продукт по ID
   Future<Either<Failure, Product?>> getProductById(int id);
 
-  /// Получить продукт по catalogId (ID из бекенда)
+  /// Получить продукт по catalogId (ID из бекенда)  
   Future<Either<Failure, Product?>> getProductByCatalogId(int catalogId);
+
+  /// Получить продукт по коду товара
+  Future<Either<Failure, Product?>> getProductByCode(int code);
+
+  /// Получить продукт с информацией о складских остатках по коду товара
+  Future<Either<Failure, ProductWithStock?>> getProductWithStockByCode(int code, String vendorId);
 
   /// Получить продукты по категории с пагинацией
   Future<Either<Failure, List<Product>>> getProductsByCategoryPaginated(int categoryId, {int offset = 0, int limit = 20});
+
+  /// Получить продукты по категории с информацией об остатках
+  Future<Either<Failure, List<ProductWithStock>>> getProductsWithStockByCategoryPaginated(
+    int categoryId, 
+    String vendorId, {
+    int offset = 0, 
+    int limit = 20
+  });
 
   /// Получить продукты по типу с пагинацией
   Future<Either<Failure, List<Product>>> getProductsByTypePaginated(int typeId, {int offset = 0, int limit = 20});

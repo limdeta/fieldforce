@@ -2,7 +2,9 @@ import 'package:fieldforce/app/domain/entities/point_of_interest.dart';
 import 'package:fieldforce/features/shop/domain/entities/trading_point.dart';
 import 'package:latlong2/latlong.dart';
 
-/// Торговая точка на маршруте - реализация интерфейса
+/// Торговая точка на маршруте - географическая точка для навигации и визитов
+/// Содержит TradingPoint (бизнес-сущность) + геоданные и статус визита
+/// Сохраняется в таблице TradingPoints (НЕ TradingPointEntities!)
 class TradingPointOfInterest implements PointOfInterest {
   @override
   final int? order;

@@ -1,5 +1,7 @@
 import 'package:drift/drift.dart';
 
+/// Таблица бизнес-сущностей торговых точек из CRM/учетной системы
+/// Используется для заказов, каталогов, остатков товаров
 @DataClassName('TradingPointEntity')
 class TradingPointEntities extends Table {
   IntColumn get id => integer().autoIncrement()();

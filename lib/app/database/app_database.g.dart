@@ -3882,6 +3882,12 @@ class $AppUsersTable extends AppUsers
       requiredDuringInsert: true,
       defaultConstraints:
           GeneratedColumn.constraintIsAlways('REFERENCES users (id)'));
+  static const VerificationMeta _selectedTradingPointIdMeta =
+      const VerificationMeta('selectedTradingPointId');
+  @override
+  late final GeneratedColumn<int> selectedTradingPointId = GeneratedColumn<int>(
+      'selected_trading_point_id', aliasedName, true,
+      type: DriftSqlType.int, requiredDuringInsert: false);
   static const VerificationMeta _createdAtMeta =
       const VerificationMeta('createdAt');
   @override
@@ -3900,7 +3906,7 @@ class $AppUsersTable extends AppUsers
       defaultValue: currentDateAndTime);
   @override
   List<GeneratedColumn> get $columns =>
-      [employeeId, userId, createdAt, updatedAt];
+      [employeeId, userId, selectedTradingPointId, createdAt, updatedAt];
   @override
   String get aliasedName => _alias ?? actualTableName;
   @override
@@ -3923,6 +3929,12 @@ class $AppUsersTable extends AppUsers
     } else if (isInserting) {
       context.missing(_userIdMeta);
     }
+    if (data.containsKey('selected_trading_point_id')) {
+      context.handle(
+          _selectedTradingPointIdMeta,
+          selectedTradingPointId.isAcceptableOrUnknown(
+              data['selected_trading_point_id']!, _selectedTradingPointIdMeta));
+    }
     if (data.containsKey('created_at')) {
       context.handle(_createdAtMeta,
           createdAt.isAcceptableOrUnknown(data['created_at']!, _createdAtMeta));
@@ -3944,6 +3956,9 @@ class $AppUsersTable extends AppUsers
           .read(DriftSqlType.int, data['${effectivePrefix}employee_id'])!,
       userId: attachedDatabase.typeMapping
           .read(DriftSqlType.int, data['${effectivePrefix}user_id'])!,
+      selectedTradingPointId: attachedDatabase.typeMapping.read(
+          DriftSqlType.int,
+          data['${effectivePrefix}selected_trading_point_id']),
       createdAt: attachedDatabase.typeMapping
           .read(DriftSqlType.dateTime, data['${effectivePrefix}created_at'])!,
       updatedAt: attachedDatabase.typeMapping
@@ -3960,11 +3975,13 @@ class $AppUsersTable extends AppUsers
 class AppUserData extends DataClass implements Insertable<AppUserData> {
   final int employeeId;
   final int userId;
+  final int? selectedTradingPointId;
   final DateTime createdAt;
   final DateTime updatedAt;
   const AppUserData(
       {required this.employeeId,
       required this.userId,
+      this.selectedTradingPointId,
       required this.createdAt,
       required this.updatedAt});
   @override
@@ -3972,6 +3989,9 @@ class AppUserData extends DataClass implements Insertable<AppUserData> {
     final map = <String, Expression>{};
     map['employee_id'] = Variable<int>(employeeId);
     map['user_id'] = Variable<int>(userId);
+    if (!nullToAbsent || selectedTradingPointId != null) {
+      map['selected_trading_point_id'] = Variable<int>(selectedTradingPointId);
+    }
     map['created_at'] = Variable<DateTime>(createdAt);
     map['updated_at'] = Variable<DateTime>(updatedAt);
     return map;
@@ -3981,6 +4001,9 @@ class AppUserData extends DataClass implements Insertable<AppUserData> {
     return AppUsersCompanion(
       employeeId: Value(employeeId),
       userId: Value(userId),
+      selectedTradingPointId: selectedTradingPointId == null && nullToAbsent
+          ? const Value.absent()
+          : Value(selectedTradingPointId),
       createdAt: Value(createdAt),
       updatedAt: Value(updatedAt),
     );
@@ -3992,6 +4015,8 @@ class AppUserData extends DataClass implements Insertable<AppUserData> {
     return AppUserData(
       employeeId: serializer.fromJson<int>(json['employeeId']),
       userId: serializer.fromJson<int>(json['userId']),
+      selectedTradingPointId:
+          serializer.fromJson<int?>(json['selectedTradingPointId']),
       createdAt: serializer.fromJson<DateTime>(json['createdAt']),
       updatedAt: serializer.fromJson<DateTime>(json['updatedAt']),
     );
@@ -4002,6 +4027,7 @@ class AppUserData extends DataClass implements Insertable<AppUserData> {
     return <String, dynamic>{
       'employeeId': serializer.toJson<int>(employeeId),
       'userId': serializer.toJson<int>(userId),
+      'selectedTradingPointId': serializer.toJson<int?>(selectedTradingPointId),
       'createdAt': serializer.toJson<DateTime>(createdAt),
       'updatedAt': serializer.toJson<DateTime>(updatedAt),
     };
@@ -4010,11 +4036,15 @@ class AppUserData extends DataClass implements Insertable<AppUserData> {
   AppUserData copyWith(
           {int? employeeId,
           int? userId,
+          Value<int?> selectedTradingPointId = const Value.absent(),
           DateTime? createdAt,
           DateTime? updatedAt}) =>
       AppUserData(
         employeeId: employeeId ?? this.employeeId,
         userId: userId ?? this.userId,
+        selectedTradingPointId: selectedTradingPointId.present
+            ? selectedTradingPointId.value
+            : this.selectedTradingPointId,
         createdAt: createdAt ?? this.createdAt,
         updatedAt: updatedAt ?? this.updatedAt,
       );
@@ -4023,6 +4053,7 @@ class AppUserData extends DataClass implements Insertable<AppUserData> {
     return (StringBuffer('AppUserData(')
           ..write('employeeId: $employeeId, ')
           ..write('userId: $userId, ')
+          ..write('selectedTradingPointId: $selectedTradingPointId, ')
           ..write('createdAt: $createdAt, ')
           ..write('updatedAt: $updatedAt')
           ..write(')'))
@@ -4030,13 +4061,15 @@ class AppUserData extends DataClass implements Insertable<AppUserData> {
   }
 
   @override
-  int get hashCode => Object.hash(employeeId, userId, createdAt, updatedAt);
+  int get hashCode => Object.hash(
+      employeeId, userId, selectedTradingPointId, createdAt, updatedAt);
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
       (other is AppUserData &&
           other.employeeId == this.employeeId &&
           other.userId == this.userId &&
+          other.selectedTradingPointId == this.selectedTradingPointId &&
           other.createdAt == this.createdAt &&
           other.updatedAt == this.updatedAt);
 }
@@ -4044,29 +4077,35 @@ class AppUserData extends DataClass implements Insertable<AppUserData> {
 class AppUsersCompanion extends UpdateCompanion<AppUserData> {
   final Value<int> employeeId;
   final Value<int> userId;
+  final Value<int?> selectedTradingPointId;
   final Value<DateTime> createdAt;
   final Value<DateTime> updatedAt;
   const AppUsersCompanion({
     this.employeeId = const Value.absent(),
     this.userId = const Value.absent(),
+    this.selectedTradingPointId = const Value.absent(),
     this.createdAt = const Value.absent(),
     this.updatedAt = const Value.absent(),
   });
   AppUsersCompanion.insert({
     this.employeeId = const Value.absent(),
     required int userId,
+    this.selectedTradingPointId = const Value.absent(),
     this.createdAt = const Value.absent(),
     this.updatedAt = const Value.absent(),
   }) : userId = Value(userId);
   static Insertable<AppUserData> custom({
     Expression<int>? employeeId,
     Expression<int>? userId,
+    Expression<int>? selectedTradingPointId,
     Expression<DateTime>? createdAt,
     Expression<DateTime>? updatedAt,
   }) {
     return RawValuesInsertable({
       if (employeeId != null) 'employee_id': employeeId,
       if (userId != null) 'user_id': userId,
+      if (selectedTradingPointId != null)
+        'selected_trading_point_id': selectedTradingPointId,
       if (createdAt != null) 'created_at': createdAt,
       if (updatedAt != null) 'updated_at': updatedAt,
     });
@@ -4075,11 +4114,14 @@ class AppUsersCompanion extends UpdateCompanion<AppUserData> {
   AppUsersCompanion copyWith(
       {Value<int>? employeeId,
       Value<int>? userId,
+      Value<int?>? selectedTradingPointId,
       Value<DateTime>? createdAt,
       Value<DateTime>? updatedAt}) {
     return AppUsersCompanion(
       employeeId: employeeId ?? this.employeeId,
       userId: userId ?? this.userId,
+      selectedTradingPointId:
+          selectedTradingPointId ?? this.selectedTradingPointId,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
     );
@@ -4093,6 +4135,10 @@ class AppUsersCompanion extends UpdateCompanion<AppUserData> {
     }
     if (userId.present) {
       map['user_id'] = Variable<int>(userId.value);
+    }
+    if (selectedTradingPointId.present) {
+      map['selected_trading_point_id'] =
+          Variable<int>(selectedTradingPointId.value);
     }
     if (createdAt.present) {
       map['created_at'] = Variable<DateTime>(createdAt.value);
@@ -4108,6 +4154,7 @@ class AppUsersCompanion extends UpdateCompanion<AppUserData> {
     return (StringBuffer('AppUsersCompanion(')
           ..write('employeeId: $employeeId, ')
           ..write('userId: $userId, ')
+          ..write('selectedTradingPointId: $selectedTradingPointId, ')
           ..write('createdAt: $createdAt, ')
           ..write('updatedAt: $updatedAt')
           ..write(')'))
@@ -5253,7 +5300,9 @@ class $ProductsTable extends Products
   @override
   late final GeneratedColumn<int> code = GeneratedColumn<int>(
       'code', aliasedName, false,
-      type: DriftSqlType.int, requiredDuringInsert: true);
+      type: DriftSqlType.int,
+      requiredDuringInsert: true,
+      defaultConstraints: GeneratedColumn.constraintIsAlways('UNIQUE'));
   static const VerificationMeta _bcodeMeta = const VerificationMeta('bcode');
   @override
   late final GeneratedColumn<int> bcode = GeneratedColumn<int>(
@@ -6002,6 +6051,1977 @@ class ProductsCompanion extends UpdateCompanion<ProductData> {
   }
 }
 
+class $OrdersTable extends Orders with TableInfo<$OrdersTable, OrderEntity> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $OrdersTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _idMeta = const VerificationMeta('id');
+  @override
+  late final GeneratedColumn<int> id = GeneratedColumn<int>(
+      'id', aliasedName, false,
+      hasAutoIncrement: true,
+      type: DriftSqlType.int,
+      requiredDuringInsert: false,
+      defaultConstraints:
+          GeneratedColumn.constraintIsAlways('PRIMARY KEY AUTOINCREMENT'));
+  static const VerificationMeta _creatorIdMeta =
+      const VerificationMeta('creatorId');
+  @override
+  late final GeneratedColumn<int> creatorId = GeneratedColumn<int>(
+      'creator_id', aliasedName, false,
+      type: DriftSqlType.int,
+      requiredDuringInsert: true,
+      defaultConstraints:
+          GeneratedColumn.constraintIsAlways('REFERENCES employees (id)'));
+  static const VerificationMeta _outletIdMeta =
+      const VerificationMeta('outletId');
+  @override
+  late final GeneratedColumn<int> outletId = GeneratedColumn<int>(
+      'outlet_id', aliasedName, false,
+      type: DriftSqlType.int,
+      requiredDuringInsert: true,
+      defaultConstraints: GeneratedColumn.constraintIsAlways(
+          'REFERENCES trading_point_entities (id)'));
+  static const VerificationMeta _stateMeta = const VerificationMeta('state');
+  @override
+  late final GeneratedColumn<String> state = GeneratedColumn<String>(
+      'state', aliasedName, false,
+      additionalChecks:
+          GeneratedColumn.checkTextLength(minTextLength: 1, maxTextLength: 20),
+      type: DriftSqlType.string,
+      requiredDuringInsert: true);
+  static const VerificationMeta _paymentTypeMeta =
+      const VerificationMeta('paymentType');
+  @override
+  late final GeneratedColumn<String> paymentType = GeneratedColumn<String>(
+      'payment_type', aliasedName, true,
+      type: DriftSqlType.string, requiredDuringInsert: false);
+  static const VerificationMeta _paymentDetailsMeta =
+      const VerificationMeta('paymentDetails');
+  @override
+  late final GeneratedColumn<String> paymentDetails = GeneratedColumn<String>(
+      'payment_details', aliasedName, true,
+      type: DriftSqlType.string, requiredDuringInsert: false);
+  static const VerificationMeta _paymentIsCashMeta =
+      const VerificationMeta('paymentIsCash');
+  @override
+  late final GeneratedColumn<bool> paymentIsCash = GeneratedColumn<bool>(
+      'payment_is_cash', aliasedName, false,
+      type: DriftSqlType.bool,
+      requiredDuringInsert: false,
+      defaultConstraints: GeneratedColumn.constraintIsAlways(
+          'CHECK ("payment_is_cash" IN (0, 1))'),
+      defaultValue: const Constant(false));
+  static const VerificationMeta _paymentIsCardMeta =
+      const VerificationMeta('paymentIsCard');
+  @override
+  late final GeneratedColumn<bool> paymentIsCard = GeneratedColumn<bool>(
+      'payment_is_card', aliasedName, false,
+      type: DriftSqlType.bool,
+      requiredDuringInsert: false,
+      defaultConstraints: GeneratedColumn.constraintIsAlways(
+          'CHECK ("payment_is_card" IN (0, 1))'),
+      defaultValue: const Constant(false));
+  static const VerificationMeta _paymentIsCreditMeta =
+      const VerificationMeta('paymentIsCredit');
+  @override
+  late final GeneratedColumn<bool> paymentIsCredit = GeneratedColumn<bool>(
+      'payment_is_credit', aliasedName, false,
+      type: DriftSqlType.bool,
+      requiredDuringInsert: false,
+      defaultConstraints: GeneratedColumn.constraintIsAlways(
+          'CHECK ("payment_is_credit" IN (0, 1))'),
+      defaultValue: const Constant(false));
+  static const VerificationMeta _commentMeta =
+      const VerificationMeta('comment');
+  @override
+  late final GeneratedColumn<String> comment = GeneratedColumn<String>(
+      'comment', aliasedName, true,
+      type: DriftSqlType.string, requiredDuringInsert: false);
+  static const VerificationMeta _nameMeta = const VerificationMeta('name');
+  @override
+  late final GeneratedColumn<String> name = GeneratedColumn<String>(
+      'name', aliasedName, true,
+      additionalChecks: GeneratedColumn.checkTextLength(maxTextLength: 20),
+      type: DriftSqlType.string,
+      requiredDuringInsert: false);
+  static const VerificationMeta _isPickupMeta =
+      const VerificationMeta('isPickup');
+  @override
+  late final GeneratedColumn<bool> isPickup = GeneratedColumn<bool>(
+      'is_pickup', aliasedName, false,
+      type: DriftSqlType.bool,
+      requiredDuringInsert: false,
+      defaultConstraints:
+          GeneratedColumn.constraintIsAlways('CHECK ("is_pickup" IN (0, 1))'),
+      defaultValue: const Constant(true));
+  static const VerificationMeta _approvedDeliveryDayMeta =
+      const VerificationMeta('approvedDeliveryDay');
+  @override
+  late final GeneratedColumn<DateTime> approvedDeliveryDay =
+      GeneratedColumn<DateTime>('approved_delivery_day', aliasedName, true,
+          type: DriftSqlType.dateTime, requiredDuringInsert: false);
+  static const VerificationMeta _approvedAssemblyDayMeta =
+      const VerificationMeta('approvedAssemblyDay');
+  @override
+  late final GeneratedColumn<DateTime> approvedAssemblyDay =
+      GeneratedColumn<DateTime>('approved_assembly_day', aliasedName, true,
+          type: DriftSqlType.dateTime, requiredDuringInsert: false);
+  static const VerificationMeta _withRealizationMeta =
+      const VerificationMeta('withRealization');
+  @override
+  late final GeneratedColumn<bool> withRealization = GeneratedColumn<bool>(
+      'with_realization', aliasedName, false,
+      type: DriftSqlType.bool,
+      requiredDuringInsert: false,
+      defaultConstraints: GeneratedColumn.constraintIsAlways(
+          'CHECK ("with_realization" IN (0, 1))'),
+      defaultValue: const Constant(true));
+  static const VerificationMeta _createdAtMeta =
+      const VerificationMeta('createdAt');
+  @override
+  late final GeneratedColumn<DateTime> createdAt = GeneratedColumn<DateTime>(
+      'created_at', aliasedName, false,
+      type: DriftSqlType.dateTime, requiredDuringInsert: true);
+  static const VerificationMeta _updatedAtMeta =
+      const VerificationMeta('updatedAt');
+  @override
+  late final GeneratedColumn<DateTime> updatedAt = GeneratedColumn<DateTime>(
+      'updated_at', aliasedName, false,
+      type: DriftSqlType.dateTime, requiredDuringInsert: true);
+  @override
+  List<GeneratedColumn> get $columns => [
+        id,
+        creatorId,
+        outletId,
+        state,
+        paymentType,
+        paymentDetails,
+        paymentIsCash,
+        paymentIsCard,
+        paymentIsCredit,
+        comment,
+        name,
+        isPickup,
+        approvedDeliveryDay,
+        approvedAssemblyDay,
+        withRealization,
+        createdAt,
+        updatedAt
+      ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'orders';
+  @override
+  VerificationContext validateIntegrity(Insertable<OrderEntity> instance,
+      {bool isInserting = false}) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('id')) {
+      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
+    }
+    if (data.containsKey('creator_id')) {
+      context.handle(_creatorIdMeta,
+          creatorId.isAcceptableOrUnknown(data['creator_id']!, _creatorIdMeta));
+    } else if (isInserting) {
+      context.missing(_creatorIdMeta);
+    }
+    if (data.containsKey('outlet_id')) {
+      context.handle(_outletIdMeta,
+          outletId.isAcceptableOrUnknown(data['outlet_id']!, _outletIdMeta));
+    } else if (isInserting) {
+      context.missing(_outletIdMeta);
+    }
+    if (data.containsKey('state')) {
+      context.handle(
+          _stateMeta, state.isAcceptableOrUnknown(data['state']!, _stateMeta));
+    } else if (isInserting) {
+      context.missing(_stateMeta);
+    }
+    if (data.containsKey('payment_type')) {
+      context.handle(
+          _paymentTypeMeta,
+          paymentType.isAcceptableOrUnknown(
+              data['payment_type']!, _paymentTypeMeta));
+    }
+    if (data.containsKey('payment_details')) {
+      context.handle(
+          _paymentDetailsMeta,
+          paymentDetails.isAcceptableOrUnknown(
+              data['payment_details']!, _paymentDetailsMeta));
+    }
+    if (data.containsKey('payment_is_cash')) {
+      context.handle(
+          _paymentIsCashMeta,
+          paymentIsCash.isAcceptableOrUnknown(
+              data['payment_is_cash']!, _paymentIsCashMeta));
+    }
+    if (data.containsKey('payment_is_card')) {
+      context.handle(
+          _paymentIsCardMeta,
+          paymentIsCard.isAcceptableOrUnknown(
+              data['payment_is_card']!, _paymentIsCardMeta));
+    }
+    if (data.containsKey('payment_is_credit')) {
+      context.handle(
+          _paymentIsCreditMeta,
+          paymentIsCredit.isAcceptableOrUnknown(
+              data['payment_is_credit']!, _paymentIsCreditMeta));
+    }
+    if (data.containsKey('comment')) {
+      context.handle(_commentMeta,
+          comment.isAcceptableOrUnknown(data['comment']!, _commentMeta));
+    }
+    if (data.containsKey('name')) {
+      context.handle(
+          _nameMeta, name.isAcceptableOrUnknown(data['name']!, _nameMeta));
+    }
+    if (data.containsKey('is_pickup')) {
+      context.handle(_isPickupMeta,
+          isPickup.isAcceptableOrUnknown(data['is_pickup']!, _isPickupMeta));
+    }
+    if (data.containsKey('approved_delivery_day')) {
+      context.handle(
+          _approvedDeliveryDayMeta,
+          approvedDeliveryDay.isAcceptableOrUnknown(
+              data['approved_delivery_day']!, _approvedDeliveryDayMeta));
+    }
+    if (data.containsKey('approved_assembly_day')) {
+      context.handle(
+          _approvedAssemblyDayMeta,
+          approvedAssemblyDay.isAcceptableOrUnknown(
+              data['approved_assembly_day']!, _approvedAssemblyDayMeta));
+    }
+    if (data.containsKey('with_realization')) {
+      context.handle(
+          _withRealizationMeta,
+          withRealization.isAcceptableOrUnknown(
+              data['with_realization']!, _withRealizationMeta));
+    }
+    if (data.containsKey('created_at')) {
+      context.handle(_createdAtMeta,
+          createdAt.isAcceptableOrUnknown(data['created_at']!, _createdAtMeta));
+    } else if (isInserting) {
+      context.missing(_createdAtMeta);
+    }
+    if (data.containsKey('updated_at')) {
+      context.handle(_updatedAtMeta,
+          updatedAt.isAcceptableOrUnknown(data['updated_at']!, _updatedAtMeta));
+    } else if (isInserting) {
+      context.missing(_updatedAtMeta);
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {id};
+  @override
+  OrderEntity map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return OrderEntity(
+      id: attachedDatabase.typeMapping
+          .read(DriftSqlType.int, data['${effectivePrefix}id'])!,
+      creatorId: attachedDatabase.typeMapping
+          .read(DriftSqlType.int, data['${effectivePrefix}creator_id'])!,
+      outletId: attachedDatabase.typeMapping
+          .read(DriftSqlType.int, data['${effectivePrefix}outlet_id'])!,
+      state: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}state'])!,
+      paymentType: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}payment_type']),
+      paymentDetails: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}payment_details']),
+      paymentIsCash: attachedDatabase.typeMapping
+          .read(DriftSqlType.bool, data['${effectivePrefix}payment_is_cash'])!,
+      paymentIsCard: attachedDatabase.typeMapping
+          .read(DriftSqlType.bool, data['${effectivePrefix}payment_is_card'])!,
+      paymentIsCredit: attachedDatabase.typeMapping.read(
+          DriftSqlType.bool, data['${effectivePrefix}payment_is_credit'])!,
+      comment: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}comment']),
+      name: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}name']),
+      isPickup: attachedDatabase.typeMapping
+          .read(DriftSqlType.bool, data['${effectivePrefix}is_pickup'])!,
+      approvedDeliveryDay: attachedDatabase.typeMapping.read(
+          DriftSqlType.dateTime,
+          data['${effectivePrefix}approved_delivery_day']),
+      approvedAssemblyDay: attachedDatabase.typeMapping.read(
+          DriftSqlType.dateTime,
+          data['${effectivePrefix}approved_assembly_day']),
+      withRealization: attachedDatabase.typeMapping
+          .read(DriftSqlType.bool, data['${effectivePrefix}with_realization'])!,
+      createdAt: attachedDatabase.typeMapping
+          .read(DriftSqlType.dateTime, data['${effectivePrefix}created_at'])!,
+      updatedAt: attachedDatabase.typeMapping
+          .read(DriftSqlType.dateTime, data['${effectivePrefix}updated_at'])!,
+    );
+  }
+
+  @override
+  $OrdersTable createAlias(String alias) {
+    return $OrdersTable(attachedDatabase, alias);
+  }
+}
+
+class OrderEntity extends DataClass implements Insertable<OrderEntity> {
+  final int id;
+  final int creatorId;
+  final int outletId;
+  final String state;
+  final String? paymentType;
+  final String? paymentDetails;
+  final bool paymentIsCash;
+  final bool paymentIsCard;
+  final bool paymentIsCredit;
+  final String? comment;
+  final String? name;
+  final bool isPickup;
+  final DateTime? approvedDeliveryDay;
+  final DateTime? approvedAssemblyDay;
+  final bool withRealization;
+  final DateTime createdAt;
+  final DateTime updatedAt;
+  const OrderEntity(
+      {required this.id,
+      required this.creatorId,
+      required this.outletId,
+      required this.state,
+      this.paymentType,
+      this.paymentDetails,
+      required this.paymentIsCash,
+      required this.paymentIsCard,
+      required this.paymentIsCredit,
+      this.comment,
+      this.name,
+      required this.isPickup,
+      this.approvedDeliveryDay,
+      this.approvedAssemblyDay,
+      required this.withRealization,
+      required this.createdAt,
+      required this.updatedAt});
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['id'] = Variable<int>(id);
+    map['creator_id'] = Variable<int>(creatorId);
+    map['outlet_id'] = Variable<int>(outletId);
+    map['state'] = Variable<String>(state);
+    if (!nullToAbsent || paymentType != null) {
+      map['payment_type'] = Variable<String>(paymentType);
+    }
+    if (!nullToAbsent || paymentDetails != null) {
+      map['payment_details'] = Variable<String>(paymentDetails);
+    }
+    map['payment_is_cash'] = Variable<bool>(paymentIsCash);
+    map['payment_is_card'] = Variable<bool>(paymentIsCard);
+    map['payment_is_credit'] = Variable<bool>(paymentIsCredit);
+    if (!nullToAbsent || comment != null) {
+      map['comment'] = Variable<String>(comment);
+    }
+    if (!nullToAbsent || name != null) {
+      map['name'] = Variable<String>(name);
+    }
+    map['is_pickup'] = Variable<bool>(isPickup);
+    if (!nullToAbsent || approvedDeliveryDay != null) {
+      map['approved_delivery_day'] = Variable<DateTime>(approvedDeliveryDay);
+    }
+    if (!nullToAbsent || approvedAssemblyDay != null) {
+      map['approved_assembly_day'] = Variable<DateTime>(approvedAssemblyDay);
+    }
+    map['with_realization'] = Variable<bool>(withRealization);
+    map['created_at'] = Variable<DateTime>(createdAt);
+    map['updated_at'] = Variable<DateTime>(updatedAt);
+    return map;
+  }
+
+  OrdersCompanion toCompanion(bool nullToAbsent) {
+    return OrdersCompanion(
+      id: Value(id),
+      creatorId: Value(creatorId),
+      outletId: Value(outletId),
+      state: Value(state),
+      paymentType: paymentType == null && nullToAbsent
+          ? const Value.absent()
+          : Value(paymentType),
+      paymentDetails: paymentDetails == null && nullToAbsent
+          ? const Value.absent()
+          : Value(paymentDetails),
+      paymentIsCash: Value(paymentIsCash),
+      paymentIsCard: Value(paymentIsCard),
+      paymentIsCredit: Value(paymentIsCredit),
+      comment: comment == null && nullToAbsent
+          ? const Value.absent()
+          : Value(comment),
+      name: name == null && nullToAbsent ? const Value.absent() : Value(name),
+      isPickup: Value(isPickup),
+      approvedDeliveryDay: approvedDeliveryDay == null && nullToAbsent
+          ? const Value.absent()
+          : Value(approvedDeliveryDay),
+      approvedAssemblyDay: approvedAssemblyDay == null && nullToAbsent
+          ? const Value.absent()
+          : Value(approvedAssemblyDay),
+      withRealization: Value(withRealization),
+      createdAt: Value(createdAt),
+      updatedAt: Value(updatedAt),
+    );
+  }
+
+  factory OrderEntity.fromJson(Map<String, dynamic> json,
+      {ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return OrderEntity(
+      id: serializer.fromJson<int>(json['id']),
+      creatorId: serializer.fromJson<int>(json['creatorId']),
+      outletId: serializer.fromJson<int>(json['outletId']),
+      state: serializer.fromJson<String>(json['state']),
+      paymentType: serializer.fromJson<String?>(json['paymentType']),
+      paymentDetails: serializer.fromJson<String?>(json['paymentDetails']),
+      paymentIsCash: serializer.fromJson<bool>(json['paymentIsCash']),
+      paymentIsCard: serializer.fromJson<bool>(json['paymentIsCard']),
+      paymentIsCredit: serializer.fromJson<bool>(json['paymentIsCredit']),
+      comment: serializer.fromJson<String?>(json['comment']),
+      name: serializer.fromJson<String?>(json['name']),
+      isPickup: serializer.fromJson<bool>(json['isPickup']),
+      approvedDeliveryDay:
+          serializer.fromJson<DateTime?>(json['approvedDeliveryDay']),
+      approvedAssemblyDay:
+          serializer.fromJson<DateTime?>(json['approvedAssemblyDay']),
+      withRealization: serializer.fromJson<bool>(json['withRealization']),
+      createdAt: serializer.fromJson<DateTime>(json['createdAt']),
+      updatedAt: serializer.fromJson<DateTime>(json['updatedAt']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'id': serializer.toJson<int>(id),
+      'creatorId': serializer.toJson<int>(creatorId),
+      'outletId': serializer.toJson<int>(outletId),
+      'state': serializer.toJson<String>(state),
+      'paymentType': serializer.toJson<String?>(paymentType),
+      'paymentDetails': serializer.toJson<String?>(paymentDetails),
+      'paymentIsCash': serializer.toJson<bool>(paymentIsCash),
+      'paymentIsCard': serializer.toJson<bool>(paymentIsCard),
+      'paymentIsCredit': serializer.toJson<bool>(paymentIsCredit),
+      'comment': serializer.toJson<String?>(comment),
+      'name': serializer.toJson<String?>(name),
+      'isPickup': serializer.toJson<bool>(isPickup),
+      'approvedDeliveryDay': serializer.toJson<DateTime?>(approvedDeliveryDay),
+      'approvedAssemblyDay': serializer.toJson<DateTime?>(approvedAssemblyDay),
+      'withRealization': serializer.toJson<bool>(withRealization),
+      'createdAt': serializer.toJson<DateTime>(createdAt),
+      'updatedAt': serializer.toJson<DateTime>(updatedAt),
+    };
+  }
+
+  OrderEntity copyWith(
+          {int? id,
+          int? creatorId,
+          int? outletId,
+          String? state,
+          Value<String?> paymentType = const Value.absent(),
+          Value<String?> paymentDetails = const Value.absent(),
+          bool? paymentIsCash,
+          bool? paymentIsCard,
+          bool? paymentIsCredit,
+          Value<String?> comment = const Value.absent(),
+          Value<String?> name = const Value.absent(),
+          bool? isPickup,
+          Value<DateTime?> approvedDeliveryDay = const Value.absent(),
+          Value<DateTime?> approvedAssemblyDay = const Value.absent(),
+          bool? withRealization,
+          DateTime? createdAt,
+          DateTime? updatedAt}) =>
+      OrderEntity(
+        id: id ?? this.id,
+        creatorId: creatorId ?? this.creatorId,
+        outletId: outletId ?? this.outletId,
+        state: state ?? this.state,
+        paymentType: paymentType.present ? paymentType.value : this.paymentType,
+        paymentDetails:
+            paymentDetails.present ? paymentDetails.value : this.paymentDetails,
+        paymentIsCash: paymentIsCash ?? this.paymentIsCash,
+        paymentIsCard: paymentIsCard ?? this.paymentIsCard,
+        paymentIsCredit: paymentIsCredit ?? this.paymentIsCredit,
+        comment: comment.present ? comment.value : this.comment,
+        name: name.present ? name.value : this.name,
+        isPickup: isPickup ?? this.isPickup,
+        approvedDeliveryDay: approvedDeliveryDay.present
+            ? approvedDeliveryDay.value
+            : this.approvedDeliveryDay,
+        approvedAssemblyDay: approvedAssemblyDay.present
+            ? approvedAssemblyDay.value
+            : this.approvedAssemblyDay,
+        withRealization: withRealization ?? this.withRealization,
+        createdAt: createdAt ?? this.createdAt,
+        updatedAt: updatedAt ?? this.updatedAt,
+      );
+  @override
+  String toString() {
+    return (StringBuffer('OrderEntity(')
+          ..write('id: $id, ')
+          ..write('creatorId: $creatorId, ')
+          ..write('outletId: $outletId, ')
+          ..write('state: $state, ')
+          ..write('paymentType: $paymentType, ')
+          ..write('paymentDetails: $paymentDetails, ')
+          ..write('paymentIsCash: $paymentIsCash, ')
+          ..write('paymentIsCard: $paymentIsCard, ')
+          ..write('paymentIsCredit: $paymentIsCredit, ')
+          ..write('comment: $comment, ')
+          ..write('name: $name, ')
+          ..write('isPickup: $isPickup, ')
+          ..write('approvedDeliveryDay: $approvedDeliveryDay, ')
+          ..write('approvedAssemblyDay: $approvedAssemblyDay, ')
+          ..write('withRealization: $withRealization, ')
+          ..write('createdAt: $createdAt, ')
+          ..write('updatedAt: $updatedAt')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(
+      id,
+      creatorId,
+      outletId,
+      state,
+      paymentType,
+      paymentDetails,
+      paymentIsCash,
+      paymentIsCard,
+      paymentIsCredit,
+      comment,
+      name,
+      isPickup,
+      approvedDeliveryDay,
+      approvedAssemblyDay,
+      withRealization,
+      createdAt,
+      updatedAt);
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is OrderEntity &&
+          other.id == this.id &&
+          other.creatorId == this.creatorId &&
+          other.outletId == this.outletId &&
+          other.state == this.state &&
+          other.paymentType == this.paymentType &&
+          other.paymentDetails == this.paymentDetails &&
+          other.paymentIsCash == this.paymentIsCash &&
+          other.paymentIsCard == this.paymentIsCard &&
+          other.paymentIsCredit == this.paymentIsCredit &&
+          other.comment == this.comment &&
+          other.name == this.name &&
+          other.isPickup == this.isPickup &&
+          other.approvedDeliveryDay == this.approvedDeliveryDay &&
+          other.approvedAssemblyDay == this.approvedAssemblyDay &&
+          other.withRealization == this.withRealization &&
+          other.createdAt == this.createdAt &&
+          other.updatedAt == this.updatedAt);
+}
+
+class OrdersCompanion extends UpdateCompanion<OrderEntity> {
+  final Value<int> id;
+  final Value<int> creatorId;
+  final Value<int> outletId;
+  final Value<String> state;
+  final Value<String?> paymentType;
+  final Value<String?> paymentDetails;
+  final Value<bool> paymentIsCash;
+  final Value<bool> paymentIsCard;
+  final Value<bool> paymentIsCredit;
+  final Value<String?> comment;
+  final Value<String?> name;
+  final Value<bool> isPickup;
+  final Value<DateTime?> approvedDeliveryDay;
+  final Value<DateTime?> approvedAssemblyDay;
+  final Value<bool> withRealization;
+  final Value<DateTime> createdAt;
+  final Value<DateTime> updatedAt;
+  const OrdersCompanion({
+    this.id = const Value.absent(),
+    this.creatorId = const Value.absent(),
+    this.outletId = const Value.absent(),
+    this.state = const Value.absent(),
+    this.paymentType = const Value.absent(),
+    this.paymentDetails = const Value.absent(),
+    this.paymentIsCash = const Value.absent(),
+    this.paymentIsCard = const Value.absent(),
+    this.paymentIsCredit = const Value.absent(),
+    this.comment = const Value.absent(),
+    this.name = const Value.absent(),
+    this.isPickup = const Value.absent(),
+    this.approvedDeliveryDay = const Value.absent(),
+    this.approvedAssemblyDay = const Value.absent(),
+    this.withRealization = const Value.absent(),
+    this.createdAt = const Value.absent(),
+    this.updatedAt = const Value.absent(),
+  });
+  OrdersCompanion.insert({
+    this.id = const Value.absent(),
+    required int creatorId,
+    required int outletId,
+    required String state,
+    this.paymentType = const Value.absent(),
+    this.paymentDetails = const Value.absent(),
+    this.paymentIsCash = const Value.absent(),
+    this.paymentIsCard = const Value.absent(),
+    this.paymentIsCredit = const Value.absent(),
+    this.comment = const Value.absent(),
+    this.name = const Value.absent(),
+    this.isPickup = const Value.absent(),
+    this.approvedDeliveryDay = const Value.absent(),
+    this.approvedAssemblyDay = const Value.absent(),
+    this.withRealization = const Value.absent(),
+    required DateTime createdAt,
+    required DateTime updatedAt,
+  })  : creatorId = Value(creatorId),
+        outletId = Value(outletId),
+        state = Value(state),
+        createdAt = Value(createdAt),
+        updatedAt = Value(updatedAt);
+  static Insertable<OrderEntity> custom({
+    Expression<int>? id,
+    Expression<int>? creatorId,
+    Expression<int>? outletId,
+    Expression<String>? state,
+    Expression<String>? paymentType,
+    Expression<String>? paymentDetails,
+    Expression<bool>? paymentIsCash,
+    Expression<bool>? paymentIsCard,
+    Expression<bool>? paymentIsCredit,
+    Expression<String>? comment,
+    Expression<String>? name,
+    Expression<bool>? isPickup,
+    Expression<DateTime>? approvedDeliveryDay,
+    Expression<DateTime>? approvedAssemblyDay,
+    Expression<bool>? withRealization,
+    Expression<DateTime>? createdAt,
+    Expression<DateTime>? updatedAt,
+  }) {
+    return RawValuesInsertable({
+      if (id != null) 'id': id,
+      if (creatorId != null) 'creator_id': creatorId,
+      if (outletId != null) 'outlet_id': outletId,
+      if (state != null) 'state': state,
+      if (paymentType != null) 'payment_type': paymentType,
+      if (paymentDetails != null) 'payment_details': paymentDetails,
+      if (paymentIsCash != null) 'payment_is_cash': paymentIsCash,
+      if (paymentIsCard != null) 'payment_is_card': paymentIsCard,
+      if (paymentIsCredit != null) 'payment_is_credit': paymentIsCredit,
+      if (comment != null) 'comment': comment,
+      if (name != null) 'name': name,
+      if (isPickup != null) 'is_pickup': isPickup,
+      if (approvedDeliveryDay != null)
+        'approved_delivery_day': approvedDeliveryDay,
+      if (approvedAssemblyDay != null)
+        'approved_assembly_day': approvedAssemblyDay,
+      if (withRealization != null) 'with_realization': withRealization,
+      if (createdAt != null) 'created_at': createdAt,
+      if (updatedAt != null) 'updated_at': updatedAt,
+    });
+  }
+
+  OrdersCompanion copyWith(
+      {Value<int>? id,
+      Value<int>? creatorId,
+      Value<int>? outletId,
+      Value<String>? state,
+      Value<String?>? paymentType,
+      Value<String?>? paymentDetails,
+      Value<bool>? paymentIsCash,
+      Value<bool>? paymentIsCard,
+      Value<bool>? paymentIsCredit,
+      Value<String?>? comment,
+      Value<String?>? name,
+      Value<bool>? isPickup,
+      Value<DateTime?>? approvedDeliveryDay,
+      Value<DateTime?>? approvedAssemblyDay,
+      Value<bool>? withRealization,
+      Value<DateTime>? createdAt,
+      Value<DateTime>? updatedAt}) {
+    return OrdersCompanion(
+      id: id ?? this.id,
+      creatorId: creatorId ?? this.creatorId,
+      outletId: outletId ?? this.outletId,
+      state: state ?? this.state,
+      paymentType: paymentType ?? this.paymentType,
+      paymentDetails: paymentDetails ?? this.paymentDetails,
+      paymentIsCash: paymentIsCash ?? this.paymentIsCash,
+      paymentIsCard: paymentIsCard ?? this.paymentIsCard,
+      paymentIsCredit: paymentIsCredit ?? this.paymentIsCredit,
+      comment: comment ?? this.comment,
+      name: name ?? this.name,
+      isPickup: isPickup ?? this.isPickup,
+      approvedDeliveryDay: approvedDeliveryDay ?? this.approvedDeliveryDay,
+      approvedAssemblyDay: approvedAssemblyDay ?? this.approvedAssemblyDay,
+      withRealization: withRealization ?? this.withRealization,
+      createdAt: createdAt ?? this.createdAt,
+      updatedAt: updatedAt ?? this.updatedAt,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (id.present) {
+      map['id'] = Variable<int>(id.value);
+    }
+    if (creatorId.present) {
+      map['creator_id'] = Variable<int>(creatorId.value);
+    }
+    if (outletId.present) {
+      map['outlet_id'] = Variable<int>(outletId.value);
+    }
+    if (state.present) {
+      map['state'] = Variable<String>(state.value);
+    }
+    if (paymentType.present) {
+      map['payment_type'] = Variable<String>(paymentType.value);
+    }
+    if (paymentDetails.present) {
+      map['payment_details'] = Variable<String>(paymentDetails.value);
+    }
+    if (paymentIsCash.present) {
+      map['payment_is_cash'] = Variable<bool>(paymentIsCash.value);
+    }
+    if (paymentIsCard.present) {
+      map['payment_is_card'] = Variable<bool>(paymentIsCard.value);
+    }
+    if (paymentIsCredit.present) {
+      map['payment_is_credit'] = Variable<bool>(paymentIsCredit.value);
+    }
+    if (comment.present) {
+      map['comment'] = Variable<String>(comment.value);
+    }
+    if (name.present) {
+      map['name'] = Variable<String>(name.value);
+    }
+    if (isPickup.present) {
+      map['is_pickup'] = Variable<bool>(isPickup.value);
+    }
+    if (approvedDeliveryDay.present) {
+      map['approved_delivery_day'] =
+          Variable<DateTime>(approvedDeliveryDay.value);
+    }
+    if (approvedAssemblyDay.present) {
+      map['approved_assembly_day'] =
+          Variable<DateTime>(approvedAssemblyDay.value);
+    }
+    if (withRealization.present) {
+      map['with_realization'] = Variable<bool>(withRealization.value);
+    }
+    if (createdAt.present) {
+      map['created_at'] = Variable<DateTime>(createdAt.value);
+    }
+    if (updatedAt.present) {
+      map['updated_at'] = Variable<DateTime>(updatedAt.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('OrdersCompanion(')
+          ..write('id: $id, ')
+          ..write('creatorId: $creatorId, ')
+          ..write('outletId: $outletId, ')
+          ..write('state: $state, ')
+          ..write('paymentType: $paymentType, ')
+          ..write('paymentDetails: $paymentDetails, ')
+          ..write('paymentIsCash: $paymentIsCash, ')
+          ..write('paymentIsCard: $paymentIsCard, ')
+          ..write('paymentIsCredit: $paymentIsCredit, ')
+          ..write('comment: $comment, ')
+          ..write('name: $name, ')
+          ..write('isPickup: $isPickup, ')
+          ..write('approvedDeliveryDay: $approvedDeliveryDay, ')
+          ..write('approvedAssemblyDay: $approvedAssemblyDay, ')
+          ..write('withRealization: $withRealization, ')
+          ..write('createdAt: $createdAt, ')
+          ..write('updatedAt: $updatedAt')
+          ..write(')'))
+        .toString();
+  }
+}
+
+class $OrderLinesTable extends OrderLines
+    with TableInfo<$OrderLinesTable, OrderLineEntity> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $OrderLinesTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _idMeta = const VerificationMeta('id');
+  @override
+  late final GeneratedColumn<int> id = GeneratedColumn<int>(
+      'id', aliasedName, false,
+      hasAutoIncrement: true,
+      type: DriftSqlType.int,
+      requiredDuringInsert: false,
+      defaultConstraints:
+          GeneratedColumn.constraintIsAlways('PRIMARY KEY AUTOINCREMENT'));
+  static const VerificationMeta _orderIdMeta =
+      const VerificationMeta('orderId');
+  @override
+  late final GeneratedColumn<int> orderId = GeneratedColumn<int>(
+      'order_id', aliasedName, false,
+      type: DriftSqlType.int,
+      requiredDuringInsert: true,
+      defaultConstraints: GeneratedColumn.constraintIsAlways(
+          'REFERENCES orders (id) ON DELETE CASCADE'));
+  static const VerificationMeta _stockItemIdMeta =
+      const VerificationMeta('stockItemId');
+  @override
+  late final GeneratedColumn<int> stockItemId = GeneratedColumn<int>(
+      'stock_item_id', aliasedName, false,
+      type: DriftSqlType.int, requiredDuringInsert: true);
+  static const VerificationMeta _quantityMeta =
+      const VerificationMeta('quantity');
+  @override
+  late final GeneratedColumn<int> quantity = GeneratedColumn<int>(
+      'quantity', aliasedName, false,
+      type: DriftSqlType.int, requiredDuringInsert: true);
+  static const VerificationMeta _pricePerUnitMeta =
+      const VerificationMeta('pricePerUnit');
+  @override
+  late final GeneratedColumn<int> pricePerUnit = GeneratedColumn<int>(
+      'price_per_unit', aliasedName, false,
+      type: DriftSqlType.int, requiredDuringInsert: true);
+  static const VerificationMeta _createdAtMeta =
+      const VerificationMeta('createdAt');
+  @override
+  late final GeneratedColumn<DateTime> createdAt = GeneratedColumn<DateTime>(
+      'created_at', aliasedName, false,
+      type: DriftSqlType.dateTime, requiredDuringInsert: true);
+  static const VerificationMeta _updatedAtMeta =
+      const VerificationMeta('updatedAt');
+  @override
+  late final GeneratedColumn<DateTime> updatedAt = GeneratedColumn<DateTime>(
+      'updated_at', aliasedName, false,
+      type: DriftSqlType.dateTime, requiredDuringInsert: true);
+  @override
+  List<GeneratedColumn> get $columns =>
+      [id, orderId, stockItemId, quantity, pricePerUnit, createdAt, updatedAt];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'order_lines';
+  @override
+  VerificationContext validateIntegrity(Insertable<OrderLineEntity> instance,
+      {bool isInserting = false}) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('id')) {
+      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
+    }
+    if (data.containsKey('order_id')) {
+      context.handle(_orderIdMeta,
+          orderId.isAcceptableOrUnknown(data['order_id']!, _orderIdMeta));
+    } else if (isInserting) {
+      context.missing(_orderIdMeta);
+    }
+    if (data.containsKey('stock_item_id')) {
+      context.handle(
+          _stockItemIdMeta,
+          stockItemId.isAcceptableOrUnknown(
+              data['stock_item_id']!, _stockItemIdMeta));
+    } else if (isInserting) {
+      context.missing(_stockItemIdMeta);
+    }
+    if (data.containsKey('quantity')) {
+      context.handle(_quantityMeta,
+          quantity.isAcceptableOrUnknown(data['quantity']!, _quantityMeta));
+    } else if (isInserting) {
+      context.missing(_quantityMeta);
+    }
+    if (data.containsKey('price_per_unit')) {
+      context.handle(
+          _pricePerUnitMeta,
+          pricePerUnit.isAcceptableOrUnknown(
+              data['price_per_unit']!, _pricePerUnitMeta));
+    } else if (isInserting) {
+      context.missing(_pricePerUnitMeta);
+    }
+    if (data.containsKey('created_at')) {
+      context.handle(_createdAtMeta,
+          createdAt.isAcceptableOrUnknown(data['created_at']!, _createdAtMeta));
+    } else if (isInserting) {
+      context.missing(_createdAtMeta);
+    }
+    if (data.containsKey('updated_at')) {
+      context.handle(_updatedAtMeta,
+          updatedAt.isAcceptableOrUnknown(data['updated_at']!, _updatedAtMeta));
+    } else if (isInserting) {
+      context.missing(_updatedAtMeta);
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {id};
+  @override
+  OrderLineEntity map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return OrderLineEntity(
+      id: attachedDatabase.typeMapping
+          .read(DriftSqlType.int, data['${effectivePrefix}id'])!,
+      orderId: attachedDatabase.typeMapping
+          .read(DriftSqlType.int, data['${effectivePrefix}order_id'])!,
+      stockItemId: attachedDatabase.typeMapping
+          .read(DriftSqlType.int, data['${effectivePrefix}stock_item_id'])!,
+      quantity: attachedDatabase.typeMapping
+          .read(DriftSqlType.int, data['${effectivePrefix}quantity'])!,
+      pricePerUnit: attachedDatabase.typeMapping
+          .read(DriftSqlType.int, data['${effectivePrefix}price_per_unit'])!,
+      createdAt: attachedDatabase.typeMapping
+          .read(DriftSqlType.dateTime, data['${effectivePrefix}created_at'])!,
+      updatedAt: attachedDatabase.typeMapping
+          .read(DriftSqlType.dateTime, data['${effectivePrefix}updated_at'])!,
+    );
+  }
+
+  @override
+  $OrderLinesTable createAlias(String alias) {
+    return $OrderLinesTable(attachedDatabase, alias);
+  }
+}
+
+class OrderLineEntity extends DataClass implements Insertable<OrderLineEntity> {
+  final int id;
+  final int orderId;
+  final int stockItemId;
+  final int quantity;
+  final int pricePerUnit;
+  final DateTime createdAt;
+  final DateTime updatedAt;
+  const OrderLineEntity(
+      {required this.id,
+      required this.orderId,
+      required this.stockItemId,
+      required this.quantity,
+      required this.pricePerUnit,
+      required this.createdAt,
+      required this.updatedAt});
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['id'] = Variable<int>(id);
+    map['order_id'] = Variable<int>(orderId);
+    map['stock_item_id'] = Variable<int>(stockItemId);
+    map['quantity'] = Variable<int>(quantity);
+    map['price_per_unit'] = Variable<int>(pricePerUnit);
+    map['created_at'] = Variable<DateTime>(createdAt);
+    map['updated_at'] = Variable<DateTime>(updatedAt);
+    return map;
+  }
+
+  OrderLinesCompanion toCompanion(bool nullToAbsent) {
+    return OrderLinesCompanion(
+      id: Value(id),
+      orderId: Value(orderId),
+      stockItemId: Value(stockItemId),
+      quantity: Value(quantity),
+      pricePerUnit: Value(pricePerUnit),
+      createdAt: Value(createdAt),
+      updatedAt: Value(updatedAt),
+    );
+  }
+
+  factory OrderLineEntity.fromJson(Map<String, dynamic> json,
+      {ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return OrderLineEntity(
+      id: serializer.fromJson<int>(json['id']),
+      orderId: serializer.fromJson<int>(json['orderId']),
+      stockItemId: serializer.fromJson<int>(json['stockItemId']),
+      quantity: serializer.fromJson<int>(json['quantity']),
+      pricePerUnit: serializer.fromJson<int>(json['pricePerUnit']),
+      createdAt: serializer.fromJson<DateTime>(json['createdAt']),
+      updatedAt: serializer.fromJson<DateTime>(json['updatedAt']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'id': serializer.toJson<int>(id),
+      'orderId': serializer.toJson<int>(orderId),
+      'stockItemId': serializer.toJson<int>(stockItemId),
+      'quantity': serializer.toJson<int>(quantity),
+      'pricePerUnit': serializer.toJson<int>(pricePerUnit),
+      'createdAt': serializer.toJson<DateTime>(createdAt),
+      'updatedAt': serializer.toJson<DateTime>(updatedAt),
+    };
+  }
+
+  OrderLineEntity copyWith(
+          {int? id,
+          int? orderId,
+          int? stockItemId,
+          int? quantity,
+          int? pricePerUnit,
+          DateTime? createdAt,
+          DateTime? updatedAt}) =>
+      OrderLineEntity(
+        id: id ?? this.id,
+        orderId: orderId ?? this.orderId,
+        stockItemId: stockItemId ?? this.stockItemId,
+        quantity: quantity ?? this.quantity,
+        pricePerUnit: pricePerUnit ?? this.pricePerUnit,
+        createdAt: createdAt ?? this.createdAt,
+        updatedAt: updatedAt ?? this.updatedAt,
+      );
+  @override
+  String toString() {
+    return (StringBuffer('OrderLineEntity(')
+          ..write('id: $id, ')
+          ..write('orderId: $orderId, ')
+          ..write('stockItemId: $stockItemId, ')
+          ..write('quantity: $quantity, ')
+          ..write('pricePerUnit: $pricePerUnit, ')
+          ..write('createdAt: $createdAt, ')
+          ..write('updatedAt: $updatedAt')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(
+      id, orderId, stockItemId, quantity, pricePerUnit, createdAt, updatedAt);
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is OrderLineEntity &&
+          other.id == this.id &&
+          other.orderId == this.orderId &&
+          other.stockItemId == this.stockItemId &&
+          other.quantity == this.quantity &&
+          other.pricePerUnit == this.pricePerUnit &&
+          other.createdAt == this.createdAt &&
+          other.updatedAt == this.updatedAt);
+}
+
+class OrderLinesCompanion extends UpdateCompanion<OrderLineEntity> {
+  final Value<int> id;
+  final Value<int> orderId;
+  final Value<int> stockItemId;
+  final Value<int> quantity;
+  final Value<int> pricePerUnit;
+  final Value<DateTime> createdAt;
+  final Value<DateTime> updatedAt;
+  const OrderLinesCompanion({
+    this.id = const Value.absent(),
+    this.orderId = const Value.absent(),
+    this.stockItemId = const Value.absent(),
+    this.quantity = const Value.absent(),
+    this.pricePerUnit = const Value.absent(),
+    this.createdAt = const Value.absent(),
+    this.updatedAt = const Value.absent(),
+  });
+  OrderLinesCompanion.insert({
+    this.id = const Value.absent(),
+    required int orderId,
+    required int stockItemId,
+    required int quantity,
+    required int pricePerUnit,
+    required DateTime createdAt,
+    required DateTime updatedAt,
+  })  : orderId = Value(orderId),
+        stockItemId = Value(stockItemId),
+        quantity = Value(quantity),
+        pricePerUnit = Value(pricePerUnit),
+        createdAt = Value(createdAt),
+        updatedAt = Value(updatedAt);
+  static Insertable<OrderLineEntity> custom({
+    Expression<int>? id,
+    Expression<int>? orderId,
+    Expression<int>? stockItemId,
+    Expression<int>? quantity,
+    Expression<int>? pricePerUnit,
+    Expression<DateTime>? createdAt,
+    Expression<DateTime>? updatedAt,
+  }) {
+    return RawValuesInsertable({
+      if (id != null) 'id': id,
+      if (orderId != null) 'order_id': orderId,
+      if (stockItemId != null) 'stock_item_id': stockItemId,
+      if (quantity != null) 'quantity': quantity,
+      if (pricePerUnit != null) 'price_per_unit': pricePerUnit,
+      if (createdAt != null) 'created_at': createdAt,
+      if (updatedAt != null) 'updated_at': updatedAt,
+    });
+  }
+
+  OrderLinesCompanion copyWith(
+      {Value<int>? id,
+      Value<int>? orderId,
+      Value<int>? stockItemId,
+      Value<int>? quantity,
+      Value<int>? pricePerUnit,
+      Value<DateTime>? createdAt,
+      Value<DateTime>? updatedAt}) {
+    return OrderLinesCompanion(
+      id: id ?? this.id,
+      orderId: orderId ?? this.orderId,
+      stockItemId: stockItemId ?? this.stockItemId,
+      quantity: quantity ?? this.quantity,
+      pricePerUnit: pricePerUnit ?? this.pricePerUnit,
+      createdAt: createdAt ?? this.createdAt,
+      updatedAt: updatedAt ?? this.updatedAt,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (id.present) {
+      map['id'] = Variable<int>(id.value);
+    }
+    if (orderId.present) {
+      map['order_id'] = Variable<int>(orderId.value);
+    }
+    if (stockItemId.present) {
+      map['stock_item_id'] = Variable<int>(stockItemId.value);
+    }
+    if (quantity.present) {
+      map['quantity'] = Variable<int>(quantity.value);
+    }
+    if (pricePerUnit.present) {
+      map['price_per_unit'] = Variable<int>(pricePerUnit.value);
+    }
+    if (createdAt.present) {
+      map['created_at'] = Variable<DateTime>(createdAt.value);
+    }
+    if (updatedAt.present) {
+      map['updated_at'] = Variable<DateTime>(updatedAt.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('OrderLinesCompanion(')
+          ..write('id: $id, ')
+          ..write('orderId: $orderId, ')
+          ..write('stockItemId: $stockItemId, ')
+          ..write('quantity: $quantity, ')
+          ..write('pricePerUnit: $pricePerUnit, ')
+          ..write('createdAt: $createdAt, ')
+          ..write('updatedAt: $updatedAt')
+          ..write(')'))
+        .toString();
+  }
+}
+
+class $StockItemsTable extends StockItems
+    with TableInfo<$StockItemsTable, StockItemData> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $StockItemsTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _idMeta = const VerificationMeta('id');
+  @override
+  late final GeneratedColumn<int> id = GeneratedColumn<int>(
+      'id', aliasedName, false,
+      hasAutoIncrement: true,
+      type: DriftSqlType.int,
+      requiredDuringInsert: false,
+      defaultConstraints:
+          GeneratedColumn.constraintIsAlways('PRIMARY KEY AUTOINCREMENT'));
+  static const VerificationMeta _productCodeMeta =
+      const VerificationMeta('productCode');
+  @override
+  late final GeneratedColumn<int> productCode = GeneratedColumn<int>(
+      'product_code', aliasedName, false,
+      type: DriftSqlType.int,
+      requiredDuringInsert: true,
+      defaultConstraints:
+          GeneratedColumn.constraintIsAlways('REFERENCES products (code)'));
+  static const VerificationMeta _warehouseIdMeta =
+      const VerificationMeta('warehouseId');
+  @override
+  late final GeneratedColumn<int> warehouseId = GeneratedColumn<int>(
+      'warehouse_id', aliasedName, false,
+      type: DriftSqlType.int, requiredDuringInsert: true);
+  static const VerificationMeta _warehouseNameMeta =
+      const VerificationMeta('warehouseName');
+  @override
+  late final GeneratedColumn<String> warehouseName = GeneratedColumn<String>(
+      'warehouse_name', aliasedName, false,
+      type: DriftSqlType.string, requiredDuringInsert: true);
+  static const VerificationMeta _warehouseVendorIdMeta =
+      const VerificationMeta('warehouseVendorId');
+  @override
+  late final GeneratedColumn<String> warehouseVendorId =
+      GeneratedColumn<String>('warehouse_vendor_id', aliasedName, false,
+          type: DriftSqlType.string, requiredDuringInsert: true);
+  static const VerificationMeta _isPickUpPointMeta =
+      const VerificationMeta('isPickUpPoint');
+  @override
+  late final GeneratedColumn<bool> isPickUpPoint = GeneratedColumn<bool>(
+      'is_pick_up_point', aliasedName, false,
+      type: DriftSqlType.bool,
+      requiredDuringInsert: false,
+      defaultConstraints: GeneratedColumn.constraintIsAlways(
+          'CHECK ("is_pick_up_point" IN (0, 1))'),
+      defaultValue: const Constant(false));
+  static const VerificationMeta _stockMeta = const VerificationMeta('stock');
+  @override
+  late final GeneratedColumn<int> stock = GeneratedColumn<int>(
+      'stock', aliasedName, false,
+      type: DriftSqlType.int,
+      requiredDuringInsert: false,
+      defaultValue: const Constant(0));
+  static const VerificationMeta _multiplicityMeta =
+      const VerificationMeta('multiplicity');
+  @override
+  late final GeneratedColumn<int> multiplicity = GeneratedColumn<int>(
+      'multiplicity', aliasedName, true,
+      type: DriftSqlType.int, requiredDuringInsert: false);
+  static const VerificationMeta _publicStockMeta =
+      const VerificationMeta('publicStock');
+  @override
+  late final GeneratedColumn<String> publicStock = GeneratedColumn<String>(
+      'public_stock', aliasedName, false,
+      type: DriftSqlType.string, requiredDuringInsert: true);
+  static const VerificationMeta _defaultPriceMeta =
+      const VerificationMeta('defaultPrice');
+  @override
+  late final GeneratedColumn<int> defaultPrice = GeneratedColumn<int>(
+      'default_price', aliasedName, false,
+      type: DriftSqlType.int, requiredDuringInsert: true);
+  static const VerificationMeta _discountValueMeta =
+      const VerificationMeta('discountValue');
+  @override
+  late final GeneratedColumn<int> discountValue = GeneratedColumn<int>(
+      'discount_value', aliasedName, false,
+      type: DriftSqlType.int,
+      requiredDuringInsert: false,
+      defaultValue: const Constant(0));
+  static const VerificationMeta _availablePriceMeta =
+      const VerificationMeta('availablePrice');
+  @override
+  late final GeneratedColumn<int> availablePrice = GeneratedColumn<int>(
+      'available_price', aliasedName, true,
+      type: DriftSqlType.int, requiredDuringInsert: false);
+  static const VerificationMeta _offerPriceMeta =
+      const VerificationMeta('offerPrice');
+  @override
+  late final GeneratedColumn<int> offerPrice = GeneratedColumn<int>(
+      'offer_price', aliasedName, true,
+      type: DriftSqlType.int, requiredDuringInsert: false);
+  static const VerificationMeta _currencyMeta =
+      const VerificationMeta('currency');
+  @override
+  late final GeneratedColumn<String> currency = GeneratedColumn<String>(
+      'currency', aliasedName, false,
+      type: DriftSqlType.string,
+      requiredDuringInsert: false,
+      defaultValue: const Constant('RUB'));
+  static const VerificationMeta _promotionJsonMeta =
+      const VerificationMeta('promotionJson');
+  @override
+  late final GeneratedColumn<String> promotionJson = GeneratedColumn<String>(
+      'promotion_json', aliasedName, true,
+      type: DriftSqlType.string, requiredDuringInsert: false);
+  static const VerificationMeta _createdAtMeta =
+      const VerificationMeta('createdAt');
+  @override
+  late final GeneratedColumn<DateTime> createdAt = GeneratedColumn<DateTime>(
+      'created_at', aliasedName, false,
+      type: DriftSqlType.dateTime,
+      requiredDuringInsert: false,
+      defaultValue: currentDateAndTime);
+  static const VerificationMeta _updatedAtMeta =
+      const VerificationMeta('updatedAt');
+  @override
+  late final GeneratedColumn<DateTime> updatedAt = GeneratedColumn<DateTime>(
+      'updated_at', aliasedName, false,
+      type: DriftSqlType.dateTime,
+      requiredDuringInsert: false,
+      defaultValue: currentDateAndTime);
+  @override
+  List<GeneratedColumn> get $columns => [
+        id,
+        productCode,
+        warehouseId,
+        warehouseName,
+        warehouseVendorId,
+        isPickUpPoint,
+        stock,
+        multiplicity,
+        publicStock,
+        defaultPrice,
+        discountValue,
+        availablePrice,
+        offerPrice,
+        currency,
+        promotionJson,
+        createdAt,
+        updatedAt
+      ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'stock_items';
+  @override
+  VerificationContext validateIntegrity(Insertable<StockItemData> instance,
+      {bool isInserting = false}) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('id')) {
+      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
+    }
+    if (data.containsKey('product_code')) {
+      context.handle(
+          _productCodeMeta,
+          productCode.isAcceptableOrUnknown(
+              data['product_code']!, _productCodeMeta));
+    } else if (isInserting) {
+      context.missing(_productCodeMeta);
+    }
+    if (data.containsKey('warehouse_id')) {
+      context.handle(
+          _warehouseIdMeta,
+          warehouseId.isAcceptableOrUnknown(
+              data['warehouse_id']!, _warehouseIdMeta));
+    } else if (isInserting) {
+      context.missing(_warehouseIdMeta);
+    }
+    if (data.containsKey('warehouse_name')) {
+      context.handle(
+          _warehouseNameMeta,
+          warehouseName.isAcceptableOrUnknown(
+              data['warehouse_name']!, _warehouseNameMeta));
+    } else if (isInserting) {
+      context.missing(_warehouseNameMeta);
+    }
+    if (data.containsKey('warehouse_vendor_id')) {
+      context.handle(
+          _warehouseVendorIdMeta,
+          warehouseVendorId.isAcceptableOrUnknown(
+              data['warehouse_vendor_id']!, _warehouseVendorIdMeta));
+    } else if (isInserting) {
+      context.missing(_warehouseVendorIdMeta);
+    }
+    if (data.containsKey('is_pick_up_point')) {
+      context.handle(
+          _isPickUpPointMeta,
+          isPickUpPoint.isAcceptableOrUnknown(
+              data['is_pick_up_point']!, _isPickUpPointMeta));
+    }
+    if (data.containsKey('stock')) {
+      context.handle(
+          _stockMeta, stock.isAcceptableOrUnknown(data['stock']!, _stockMeta));
+    }
+    if (data.containsKey('multiplicity')) {
+      context.handle(
+          _multiplicityMeta,
+          multiplicity.isAcceptableOrUnknown(
+              data['multiplicity']!, _multiplicityMeta));
+    }
+    if (data.containsKey('public_stock')) {
+      context.handle(
+          _publicStockMeta,
+          publicStock.isAcceptableOrUnknown(
+              data['public_stock']!, _publicStockMeta));
+    } else if (isInserting) {
+      context.missing(_publicStockMeta);
+    }
+    if (data.containsKey('default_price')) {
+      context.handle(
+          _defaultPriceMeta,
+          defaultPrice.isAcceptableOrUnknown(
+              data['default_price']!, _defaultPriceMeta));
+    } else if (isInserting) {
+      context.missing(_defaultPriceMeta);
+    }
+    if (data.containsKey('discount_value')) {
+      context.handle(
+          _discountValueMeta,
+          discountValue.isAcceptableOrUnknown(
+              data['discount_value']!, _discountValueMeta));
+    }
+    if (data.containsKey('available_price')) {
+      context.handle(
+          _availablePriceMeta,
+          availablePrice.isAcceptableOrUnknown(
+              data['available_price']!, _availablePriceMeta));
+    }
+    if (data.containsKey('offer_price')) {
+      context.handle(
+          _offerPriceMeta,
+          offerPrice.isAcceptableOrUnknown(
+              data['offer_price']!, _offerPriceMeta));
+    }
+    if (data.containsKey('currency')) {
+      context.handle(_currencyMeta,
+          currency.isAcceptableOrUnknown(data['currency']!, _currencyMeta));
+    }
+    if (data.containsKey('promotion_json')) {
+      context.handle(
+          _promotionJsonMeta,
+          promotionJson.isAcceptableOrUnknown(
+              data['promotion_json']!, _promotionJsonMeta));
+    }
+    if (data.containsKey('created_at')) {
+      context.handle(_createdAtMeta,
+          createdAt.isAcceptableOrUnknown(data['created_at']!, _createdAtMeta));
+    }
+    if (data.containsKey('updated_at')) {
+      context.handle(_updatedAtMeta,
+          updatedAt.isAcceptableOrUnknown(data['updated_at']!, _updatedAtMeta));
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {id};
+  @override
+  List<Set<GeneratedColumn>> get uniqueKeys => [
+        {productCode, warehouseId},
+      ];
+  @override
+  StockItemData map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return StockItemData(
+      id: attachedDatabase.typeMapping
+          .read(DriftSqlType.int, data['${effectivePrefix}id'])!,
+      productCode: attachedDatabase.typeMapping
+          .read(DriftSqlType.int, data['${effectivePrefix}product_code'])!,
+      warehouseId: attachedDatabase.typeMapping
+          .read(DriftSqlType.int, data['${effectivePrefix}warehouse_id'])!,
+      warehouseName: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}warehouse_name'])!,
+      warehouseVendorId: attachedDatabase.typeMapping.read(
+          DriftSqlType.string, data['${effectivePrefix}warehouse_vendor_id'])!,
+      isPickUpPoint: attachedDatabase.typeMapping
+          .read(DriftSqlType.bool, data['${effectivePrefix}is_pick_up_point'])!,
+      stock: attachedDatabase.typeMapping
+          .read(DriftSqlType.int, data['${effectivePrefix}stock'])!,
+      multiplicity: attachedDatabase.typeMapping
+          .read(DriftSqlType.int, data['${effectivePrefix}multiplicity']),
+      publicStock: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}public_stock'])!,
+      defaultPrice: attachedDatabase.typeMapping
+          .read(DriftSqlType.int, data['${effectivePrefix}default_price'])!,
+      discountValue: attachedDatabase.typeMapping
+          .read(DriftSqlType.int, data['${effectivePrefix}discount_value'])!,
+      availablePrice: attachedDatabase.typeMapping
+          .read(DriftSqlType.int, data['${effectivePrefix}available_price']),
+      offerPrice: attachedDatabase.typeMapping
+          .read(DriftSqlType.int, data['${effectivePrefix}offer_price']),
+      currency: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}currency'])!,
+      promotionJson: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}promotion_json']),
+      createdAt: attachedDatabase.typeMapping
+          .read(DriftSqlType.dateTime, data['${effectivePrefix}created_at'])!,
+      updatedAt: attachedDatabase.typeMapping
+          .read(DriftSqlType.dateTime, data['${effectivePrefix}updated_at'])!,
+    );
+  }
+
+  @override
+  $StockItemsTable createAlias(String alias) {
+    return $StockItemsTable(attachedDatabase, alias);
+  }
+}
+
+class StockItemData extends DataClass implements Insertable<StockItemData> {
+  /// Уникальный ID StockItem
+  final int id;
+
+  /// Ссылка на продукт
+  final int productCode;
+
+  /// Данные склада (денормализованы для производительности)
+  final int warehouseId;
+  final String warehouseName;
+  final String warehouseVendorId;
+  final bool isPickUpPoint;
+
+  /// Остатки товара
+  final int stock;
+  final int? multiplicity;
+  final String publicStock;
+
+  /// Ценообразование (все в копейках)
+  final int defaultPrice;
+  final int discountValue;
+  final int? availablePrice;
+  final int? offerPrice;
+  final String currency;
+
+  /// Промоакция (JSON для гибкости)
+  final String? promotionJson;
+
+  /// Метки времени
+  final DateTime createdAt;
+  final DateTime updatedAt;
+  const StockItemData(
+      {required this.id,
+      required this.productCode,
+      required this.warehouseId,
+      required this.warehouseName,
+      required this.warehouseVendorId,
+      required this.isPickUpPoint,
+      required this.stock,
+      this.multiplicity,
+      required this.publicStock,
+      required this.defaultPrice,
+      required this.discountValue,
+      this.availablePrice,
+      this.offerPrice,
+      required this.currency,
+      this.promotionJson,
+      required this.createdAt,
+      required this.updatedAt});
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['id'] = Variable<int>(id);
+    map['product_code'] = Variable<int>(productCode);
+    map['warehouse_id'] = Variable<int>(warehouseId);
+    map['warehouse_name'] = Variable<String>(warehouseName);
+    map['warehouse_vendor_id'] = Variable<String>(warehouseVendorId);
+    map['is_pick_up_point'] = Variable<bool>(isPickUpPoint);
+    map['stock'] = Variable<int>(stock);
+    if (!nullToAbsent || multiplicity != null) {
+      map['multiplicity'] = Variable<int>(multiplicity);
+    }
+    map['public_stock'] = Variable<String>(publicStock);
+    map['default_price'] = Variable<int>(defaultPrice);
+    map['discount_value'] = Variable<int>(discountValue);
+    if (!nullToAbsent || availablePrice != null) {
+      map['available_price'] = Variable<int>(availablePrice);
+    }
+    if (!nullToAbsent || offerPrice != null) {
+      map['offer_price'] = Variable<int>(offerPrice);
+    }
+    map['currency'] = Variable<String>(currency);
+    if (!nullToAbsent || promotionJson != null) {
+      map['promotion_json'] = Variable<String>(promotionJson);
+    }
+    map['created_at'] = Variable<DateTime>(createdAt);
+    map['updated_at'] = Variable<DateTime>(updatedAt);
+    return map;
+  }
+
+  StockItemsCompanion toCompanion(bool nullToAbsent) {
+    return StockItemsCompanion(
+      id: Value(id),
+      productCode: Value(productCode),
+      warehouseId: Value(warehouseId),
+      warehouseName: Value(warehouseName),
+      warehouseVendorId: Value(warehouseVendorId),
+      isPickUpPoint: Value(isPickUpPoint),
+      stock: Value(stock),
+      multiplicity: multiplicity == null && nullToAbsent
+          ? const Value.absent()
+          : Value(multiplicity),
+      publicStock: Value(publicStock),
+      defaultPrice: Value(defaultPrice),
+      discountValue: Value(discountValue),
+      availablePrice: availablePrice == null && nullToAbsent
+          ? const Value.absent()
+          : Value(availablePrice),
+      offerPrice: offerPrice == null && nullToAbsent
+          ? const Value.absent()
+          : Value(offerPrice),
+      currency: Value(currency),
+      promotionJson: promotionJson == null && nullToAbsent
+          ? const Value.absent()
+          : Value(promotionJson),
+      createdAt: Value(createdAt),
+      updatedAt: Value(updatedAt),
+    );
+  }
+
+  factory StockItemData.fromJson(Map<String, dynamic> json,
+      {ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return StockItemData(
+      id: serializer.fromJson<int>(json['id']),
+      productCode: serializer.fromJson<int>(json['productCode']),
+      warehouseId: serializer.fromJson<int>(json['warehouseId']),
+      warehouseName: serializer.fromJson<String>(json['warehouseName']),
+      warehouseVendorId: serializer.fromJson<String>(json['warehouseVendorId']),
+      isPickUpPoint: serializer.fromJson<bool>(json['isPickUpPoint']),
+      stock: serializer.fromJson<int>(json['stock']),
+      multiplicity: serializer.fromJson<int?>(json['multiplicity']),
+      publicStock: serializer.fromJson<String>(json['publicStock']),
+      defaultPrice: serializer.fromJson<int>(json['defaultPrice']),
+      discountValue: serializer.fromJson<int>(json['discountValue']),
+      availablePrice: serializer.fromJson<int?>(json['availablePrice']),
+      offerPrice: serializer.fromJson<int?>(json['offerPrice']),
+      currency: serializer.fromJson<String>(json['currency']),
+      promotionJson: serializer.fromJson<String?>(json['promotionJson']),
+      createdAt: serializer.fromJson<DateTime>(json['createdAt']),
+      updatedAt: serializer.fromJson<DateTime>(json['updatedAt']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'id': serializer.toJson<int>(id),
+      'productCode': serializer.toJson<int>(productCode),
+      'warehouseId': serializer.toJson<int>(warehouseId),
+      'warehouseName': serializer.toJson<String>(warehouseName),
+      'warehouseVendorId': serializer.toJson<String>(warehouseVendorId),
+      'isPickUpPoint': serializer.toJson<bool>(isPickUpPoint),
+      'stock': serializer.toJson<int>(stock),
+      'multiplicity': serializer.toJson<int?>(multiplicity),
+      'publicStock': serializer.toJson<String>(publicStock),
+      'defaultPrice': serializer.toJson<int>(defaultPrice),
+      'discountValue': serializer.toJson<int>(discountValue),
+      'availablePrice': serializer.toJson<int?>(availablePrice),
+      'offerPrice': serializer.toJson<int?>(offerPrice),
+      'currency': serializer.toJson<String>(currency),
+      'promotionJson': serializer.toJson<String?>(promotionJson),
+      'createdAt': serializer.toJson<DateTime>(createdAt),
+      'updatedAt': serializer.toJson<DateTime>(updatedAt),
+    };
+  }
+
+  StockItemData copyWith(
+          {int? id,
+          int? productCode,
+          int? warehouseId,
+          String? warehouseName,
+          String? warehouseVendorId,
+          bool? isPickUpPoint,
+          int? stock,
+          Value<int?> multiplicity = const Value.absent(),
+          String? publicStock,
+          int? defaultPrice,
+          int? discountValue,
+          Value<int?> availablePrice = const Value.absent(),
+          Value<int?> offerPrice = const Value.absent(),
+          String? currency,
+          Value<String?> promotionJson = const Value.absent(),
+          DateTime? createdAt,
+          DateTime? updatedAt}) =>
+      StockItemData(
+        id: id ?? this.id,
+        productCode: productCode ?? this.productCode,
+        warehouseId: warehouseId ?? this.warehouseId,
+        warehouseName: warehouseName ?? this.warehouseName,
+        warehouseVendorId: warehouseVendorId ?? this.warehouseVendorId,
+        isPickUpPoint: isPickUpPoint ?? this.isPickUpPoint,
+        stock: stock ?? this.stock,
+        multiplicity:
+            multiplicity.present ? multiplicity.value : this.multiplicity,
+        publicStock: publicStock ?? this.publicStock,
+        defaultPrice: defaultPrice ?? this.defaultPrice,
+        discountValue: discountValue ?? this.discountValue,
+        availablePrice:
+            availablePrice.present ? availablePrice.value : this.availablePrice,
+        offerPrice: offerPrice.present ? offerPrice.value : this.offerPrice,
+        currency: currency ?? this.currency,
+        promotionJson:
+            promotionJson.present ? promotionJson.value : this.promotionJson,
+        createdAt: createdAt ?? this.createdAt,
+        updatedAt: updatedAt ?? this.updatedAt,
+      );
+  @override
+  String toString() {
+    return (StringBuffer('StockItemData(')
+          ..write('id: $id, ')
+          ..write('productCode: $productCode, ')
+          ..write('warehouseId: $warehouseId, ')
+          ..write('warehouseName: $warehouseName, ')
+          ..write('warehouseVendorId: $warehouseVendorId, ')
+          ..write('isPickUpPoint: $isPickUpPoint, ')
+          ..write('stock: $stock, ')
+          ..write('multiplicity: $multiplicity, ')
+          ..write('publicStock: $publicStock, ')
+          ..write('defaultPrice: $defaultPrice, ')
+          ..write('discountValue: $discountValue, ')
+          ..write('availablePrice: $availablePrice, ')
+          ..write('offerPrice: $offerPrice, ')
+          ..write('currency: $currency, ')
+          ..write('promotionJson: $promotionJson, ')
+          ..write('createdAt: $createdAt, ')
+          ..write('updatedAt: $updatedAt')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(
+      id,
+      productCode,
+      warehouseId,
+      warehouseName,
+      warehouseVendorId,
+      isPickUpPoint,
+      stock,
+      multiplicity,
+      publicStock,
+      defaultPrice,
+      discountValue,
+      availablePrice,
+      offerPrice,
+      currency,
+      promotionJson,
+      createdAt,
+      updatedAt);
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is StockItemData &&
+          other.id == this.id &&
+          other.productCode == this.productCode &&
+          other.warehouseId == this.warehouseId &&
+          other.warehouseName == this.warehouseName &&
+          other.warehouseVendorId == this.warehouseVendorId &&
+          other.isPickUpPoint == this.isPickUpPoint &&
+          other.stock == this.stock &&
+          other.multiplicity == this.multiplicity &&
+          other.publicStock == this.publicStock &&
+          other.defaultPrice == this.defaultPrice &&
+          other.discountValue == this.discountValue &&
+          other.availablePrice == this.availablePrice &&
+          other.offerPrice == this.offerPrice &&
+          other.currency == this.currency &&
+          other.promotionJson == this.promotionJson &&
+          other.createdAt == this.createdAt &&
+          other.updatedAt == this.updatedAt);
+}
+
+class StockItemsCompanion extends UpdateCompanion<StockItemData> {
+  final Value<int> id;
+  final Value<int> productCode;
+  final Value<int> warehouseId;
+  final Value<String> warehouseName;
+  final Value<String> warehouseVendorId;
+  final Value<bool> isPickUpPoint;
+  final Value<int> stock;
+  final Value<int?> multiplicity;
+  final Value<String> publicStock;
+  final Value<int> defaultPrice;
+  final Value<int> discountValue;
+  final Value<int?> availablePrice;
+  final Value<int?> offerPrice;
+  final Value<String> currency;
+  final Value<String?> promotionJson;
+  final Value<DateTime> createdAt;
+  final Value<DateTime> updatedAt;
+  const StockItemsCompanion({
+    this.id = const Value.absent(),
+    this.productCode = const Value.absent(),
+    this.warehouseId = const Value.absent(),
+    this.warehouseName = const Value.absent(),
+    this.warehouseVendorId = const Value.absent(),
+    this.isPickUpPoint = const Value.absent(),
+    this.stock = const Value.absent(),
+    this.multiplicity = const Value.absent(),
+    this.publicStock = const Value.absent(),
+    this.defaultPrice = const Value.absent(),
+    this.discountValue = const Value.absent(),
+    this.availablePrice = const Value.absent(),
+    this.offerPrice = const Value.absent(),
+    this.currency = const Value.absent(),
+    this.promotionJson = const Value.absent(),
+    this.createdAt = const Value.absent(),
+    this.updatedAt = const Value.absent(),
+  });
+  StockItemsCompanion.insert({
+    this.id = const Value.absent(),
+    required int productCode,
+    required int warehouseId,
+    required String warehouseName,
+    required String warehouseVendorId,
+    this.isPickUpPoint = const Value.absent(),
+    this.stock = const Value.absent(),
+    this.multiplicity = const Value.absent(),
+    required String publicStock,
+    required int defaultPrice,
+    this.discountValue = const Value.absent(),
+    this.availablePrice = const Value.absent(),
+    this.offerPrice = const Value.absent(),
+    this.currency = const Value.absent(),
+    this.promotionJson = const Value.absent(),
+    this.createdAt = const Value.absent(),
+    this.updatedAt = const Value.absent(),
+  })  : productCode = Value(productCode),
+        warehouseId = Value(warehouseId),
+        warehouseName = Value(warehouseName),
+        warehouseVendorId = Value(warehouseVendorId),
+        publicStock = Value(publicStock),
+        defaultPrice = Value(defaultPrice);
+  static Insertable<StockItemData> custom({
+    Expression<int>? id,
+    Expression<int>? productCode,
+    Expression<int>? warehouseId,
+    Expression<String>? warehouseName,
+    Expression<String>? warehouseVendorId,
+    Expression<bool>? isPickUpPoint,
+    Expression<int>? stock,
+    Expression<int>? multiplicity,
+    Expression<String>? publicStock,
+    Expression<int>? defaultPrice,
+    Expression<int>? discountValue,
+    Expression<int>? availablePrice,
+    Expression<int>? offerPrice,
+    Expression<String>? currency,
+    Expression<String>? promotionJson,
+    Expression<DateTime>? createdAt,
+    Expression<DateTime>? updatedAt,
+  }) {
+    return RawValuesInsertable({
+      if (id != null) 'id': id,
+      if (productCode != null) 'product_code': productCode,
+      if (warehouseId != null) 'warehouse_id': warehouseId,
+      if (warehouseName != null) 'warehouse_name': warehouseName,
+      if (warehouseVendorId != null) 'warehouse_vendor_id': warehouseVendorId,
+      if (isPickUpPoint != null) 'is_pick_up_point': isPickUpPoint,
+      if (stock != null) 'stock': stock,
+      if (multiplicity != null) 'multiplicity': multiplicity,
+      if (publicStock != null) 'public_stock': publicStock,
+      if (defaultPrice != null) 'default_price': defaultPrice,
+      if (discountValue != null) 'discount_value': discountValue,
+      if (availablePrice != null) 'available_price': availablePrice,
+      if (offerPrice != null) 'offer_price': offerPrice,
+      if (currency != null) 'currency': currency,
+      if (promotionJson != null) 'promotion_json': promotionJson,
+      if (createdAt != null) 'created_at': createdAt,
+      if (updatedAt != null) 'updated_at': updatedAt,
+    });
+  }
+
+  StockItemsCompanion copyWith(
+      {Value<int>? id,
+      Value<int>? productCode,
+      Value<int>? warehouseId,
+      Value<String>? warehouseName,
+      Value<String>? warehouseVendorId,
+      Value<bool>? isPickUpPoint,
+      Value<int>? stock,
+      Value<int?>? multiplicity,
+      Value<String>? publicStock,
+      Value<int>? defaultPrice,
+      Value<int>? discountValue,
+      Value<int?>? availablePrice,
+      Value<int?>? offerPrice,
+      Value<String>? currency,
+      Value<String?>? promotionJson,
+      Value<DateTime>? createdAt,
+      Value<DateTime>? updatedAt}) {
+    return StockItemsCompanion(
+      id: id ?? this.id,
+      productCode: productCode ?? this.productCode,
+      warehouseId: warehouseId ?? this.warehouseId,
+      warehouseName: warehouseName ?? this.warehouseName,
+      warehouseVendorId: warehouseVendorId ?? this.warehouseVendorId,
+      isPickUpPoint: isPickUpPoint ?? this.isPickUpPoint,
+      stock: stock ?? this.stock,
+      multiplicity: multiplicity ?? this.multiplicity,
+      publicStock: publicStock ?? this.publicStock,
+      defaultPrice: defaultPrice ?? this.defaultPrice,
+      discountValue: discountValue ?? this.discountValue,
+      availablePrice: availablePrice ?? this.availablePrice,
+      offerPrice: offerPrice ?? this.offerPrice,
+      currency: currency ?? this.currency,
+      promotionJson: promotionJson ?? this.promotionJson,
+      createdAt: createdAt ?? this.createdAt,
+      updatedAt: updatedAt ?? this.updatedAt,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (id.present) {
+      map['id'] = Variable<int>(id.value);
+    }
+    if (productCode.present) {
+      map['product_code'] = Variable<int>(productCode.value);
+    }
+    if (warehouseId.present) {
+      map['warehouse_id'] = Variable<int>(warehouseId.value);
+    }
+    if (warehouseName.present) {
+      map['warehouse_name'] = Variable<String>(warehouseName.value);
+    }
+    if (warehouseVendorId.present) {
+      map['warehouse_vendor_id'] = Variable<String>(warehouseVendorId.value);
+    }
+    if (isPickUpPoint.present) {
+      map['is_pick_up_point'] = Variable<bool>(isPickUpPoint.value);
+    }
+    if (stock.present) {
+      map['stock'] = Variable<int>(stock.value);
+    }
+    if (multiplicity.present) {
+      map['multiplicity'] = Variable<int>(multiplicity.value);
+    }
+    if (publicStock.present) {
+      map['public_stock'] = Variable<String>(publicStock.value);
+    }
+    if (defaultPrice.present) {
+      map['default_price'] = Variable<int>(defaultPrice.value);
+    }
+    if (discountValue.present) {
+      map['discount_value'] = Variable<int>(discountValue.value);
+    }
+    if (availablePrice.present) {
+      map['available_price'] = Variable<int>(availablePrice.value);
+    }
+    if (offerPrice.present) {
+      map['offer_price'] = Variable<int>(offerPrice.value);
+    }
+    if (currency.present) {
+      map['currency'] = Variable<String>(currency.value);
+    }
+    if (promotionJson.present) {
+      map['promotion_json'] = Variable<String>(promotionJson.value);
+    }
+    if (createdAt.present) {
+      map['created_at'] = Variable<DateTime>(createdAt.value);
+    }
+    if (updatedAt.present) {
+      map['updated_at'] = Variable<DateTime>(updatedAt.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('StockItemsCompanion(')
+          ..write('id: $id, ')
+          ..write('productCode: $productCode, ')
+          ..write('warehouseId: $warehouseId, ')
+          ..write('warehouseName: $warehouseName, ')
+          ..write('warehouseVendorId: $warehouseVendorId, ')
+          ..write('isPickUpPoint: $isPickUpPoint, ')
+          ..write('stock: $stock, ')
+          ..write('multiplicity: $multiplicity, ')
+          ..write('publicStock: $publicStock, ')
+          ..write('defaultPrice: $defaultPrice, ')
+          ..write('discountValue: $discountValue, ')
+          ..write('availablePrice: $availablePrice, ')
+          ..write('offerPrice: $offerPrice, ')
+          ..write('currency: $currency, ')
+          ..write('promotionJson: $promotionJson, ')
+          ..write('createdAt: $createdAt, ')
+          ..write('updatedAt: $updatedAt')
+          ..write(')'))
+        .toString();
+  }
+}
+
 abstract class _$AppDatabase extends GeneratedDatabase {
   _$AppDatabase(QueryExecutor e) : super(e);
   late final $UsersTable users = $UsersTable(this);
@@ -6021,6 +8041,9 @@ abstract class _$AppDatabase extends GeneratedDatabase {
   late final $WorkDaysTable workDays = $WorkDaysTable(this);
   late final $CategoriesTable categories = $CategoriesTable(this);
   late final $ProductsTable products = $ProductsTable(this);
+  late final $OrdersTable orders = $OrdersTable(this);
+  late final $OrderLinesTable orderLines = $OrderLinesTable(this);
+  late final $StockItemsTable stockItems = $StockItemsTable(this);
   @override
   Iterable<TableInfo<Table, Object?>> get allTables =>
       allSchemaEntities.whereType<TableInfo<Table, Object?>>();
@@ -6038,7 +8061,10 @@ abstract class _$AppDatabase extends GeneratedDatabase {
         appUsers,
         workDays,
         categories,
-        products
+        products,
+        orders,
+        orderLines,
+        stockItems
       ];
   @override
   StreamQueryUpdateRules get streamUpdateRules => const StreamQueryUpdateRules(
@@ -6048,6 +8074,13 @@ abstract class _$AppDatabase extends GeneratedDatabase {
                 limitUpdateKind: UpdateKind.delete),
             result: [
               TableUpdate('compact_tracks', kind: UpdateKind.delete),
+            ],
+          ),
+          WritePropagation(
+            on: TableUpdateQuery.onTableName('orders',
+                limitUpdateKind: UpdateKind.delete),
+            result: [
+              TableUpdate('order_lines', kind: UpdateKind.delete),
             ],
           ),
         ],

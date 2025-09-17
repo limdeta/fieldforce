@@ -356,7 +356,7 @@ class DriftCategoryRepository implements CategoryRepository {
         rawJson: Value(jsonEncode(updatedJson)),
       ));
 
-      _logger.info('✅ Категория ${category.name} (id: ${category.id}): обновлено count = $count');
+      // _logger.info('✅ Категория ${category.name} (id: ${category.id}): обновлено count = $count');
     }
 
     _logger.info('Обновление count завершено');

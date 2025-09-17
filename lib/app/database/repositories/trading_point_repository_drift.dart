@@ -69,6 +69,32 @@ class DriftTradingPointRepository implements TradingPointRepository {
   }
 
   @override
+  Future<Either<Failure, TradingPoint?>> getById(int id) async {
+    try {
+      final entity = await (_database.select(_database.tradingPointEntities)
+        ..where((tbl) => tbl.id.equals(id))
+      ).getSingleOrNull();
+
+      if (entity == null) {
+        return const Right(null);
+      }
+
+      final tradingPoint = TradingPoint(
+        id: entity.id,
+        externalId: entity.externalId,
+        name: entity.name,
+        inn: entity.inn,
+        createdAt: entity.createdAt,
+        updatedAt: entity.updatedAt,
+      );
+
+      return Right(tradingPoint);
+    } catch (e) {
+      return Left(DatabaseFailure('Ошибка получения торговой точки по ID: $e'));
+    }
+  }
+
+  @override
   Future<Either<Failure, TradingPoint>> save(TradingPoint tradingPoint) async {
     try {
       final companion = TradingPointEntitiesCompanion.insert(

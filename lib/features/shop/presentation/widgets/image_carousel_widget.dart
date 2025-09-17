@@ -2,6 +2,7 @@
 
 import 'package:flutter/material.dart';
 import 'package:fieldforce/features/shop/domain/entities/product.dart';
+import 'package:fieldforce/shared/services/image_cache_service.dart';
 
 /// Полноэкранная карусель изображений продукта
 class ImageCarouselWidget extends StatefulWidget {
@@ -53,13 +54,7 @@ class _ImageCarouselWidgetState extends State<ImageCarouselWidget> {
     }
   }
 
-  String _getSizedImageUrl(String url, int width) {
-    if (url.contains('?')) {
-      return '$url&w=$width';
-    } else {
-      return '$url?w=$width';
-    }
-  }
+
 
   @override
   Widget build(BuildContext context) {
@@ -94,30 +89,22 @@ class _ImageCarouselWidgetState extends State<ImageCarouselWidget> {
                 minScale: 0.5,
                 maxScale: 3.0,
                 child: Center(
-                  child: Image.network(
-                    _getSizedImageUrl(image.uri, 1000),
+                  child: ImageCacheService.getCachedFullImage(
+                    imageUrl: image.uri, // Используем оригинальный URL без изменений
                     fit: BoxFit.contain,
-                    loadingBuilder: (context, child, loadingProgress) {
-                      if (loadingProgress == null) return child;
-                      return const Center(
-                        child: CircularProgressIndicator(
-                          color: Colors.white,
-                        ),
-                      );
-                    },
-                    errorBuilder: (context, error, stackTrace) {
-                      // Логируем ошибку для отладки
-                      // debugPrint('Ошибка загрузки изображения в карусели: ${image.uri}');
-                      // debugPrint('Ошибка: $error');
-
-                      return Container(
-                        color: Colors.grey.shade800,
-                        child: const Center(
-                          child: Column(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Icon(
-                                Icons.broken_image,
+                    placeholder: const Center(
+                      child: CircularProgressIndicator(
+                        color: Colors.white,
+                      ),
+                    ),
+                    errorWidget: Container(
+                      color: Colors.grey.shade800,
+                      child: const Center(
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(
+                              Icons.broken_image,
                                 color: Colors.white70,
                                 size: 48,
                               ),
@@ -132,9 +119,8 @@ class _ImageCarouselWidgetState extends State<ImageCarouselWidget> {
                             ],
                           ),
                         ),
-                      );
-                    },
-                  ),
+                      ),
+                    ),
                 ),
               );
             },

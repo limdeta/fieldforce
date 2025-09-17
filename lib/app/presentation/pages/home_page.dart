@@ -4,6 +4,7 @@ import '../../domain/entities/app_session.dart';
 import '../../domain/usecases/get_current_app_session_usecase.dart';
 import '../../../features/authentication/domain/usecases/logout_usecase.dart';
 import '../../services/app_session_service.dart';
+import '../../theme/app_colors.dart';
 
 
 /// Главная страница приложения (после авторизации)
@@ -66,7 +67,7 @@ class _HomePageState extends State<HomePage> {
             ScaffoldMessenger.of(context).showSnackBar(
               SnackBar(
                 content: Text('Ошибка выхода: ${failure.message}'),
-                backgroundColor: Colors.red,
+                backgroundColor: AppColors.error,
               ),
             );
           },
@@ -82,7 +83,7 @@ class _HomePageState extends State<HomePage> {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('Ошибка выхода: $e'),
-            backgroundColor: Colors.red,
+            backgroundColor: AppColors.error,
           ),
         );
       }
@@ -141,10 +142,7 @@ class _HomePageState extends State<HomePage> {
                           },
                           icon: const Icon(Icons.map),
                           label: const Text('Открыть карту'),
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: Colors.blue,
-                            foregroundColor: Colors.white,
-                          ),
+
                         ),
                       ),
                       
@@ -160,10 +158,7 @@ class _HomePageState extends State<HomePage> {
                             },
                             icon: const Icon(Icons.admin_panel_settings),
                             label: const Text('Панель администратора'),
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: Colors.purple,
-                              foregroundColor: Colors.white,
-                            ),
+
                           ),
                         ),
                       const SizedBox(height: 16),
@@ -220,8 +215,7 @@ class _HomePageState extends State<HomePage> {
                   icon: const Icon(Icons.logout),
                   label: const Text('Выйти'),
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.red,
-                    foregroundColor: Colors.white,
+                    backgroundColor: AppColors.error,
                   ),
                 ),
               ),

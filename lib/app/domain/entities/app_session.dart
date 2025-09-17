@@ -8,17 +8,22 @@ import 'package:fieldforce/features/authentication/domain/entities/user_session.
 /// - Агрегирует данные из UserSession (security) 
 /// - Предоставляет удобные геттеры для UI слоя
 /// - Является основной сессией для всего приложения
+/// - Хранит информацию о текущей корзине и торговой точке
 class AppSession {
   final AppUser appUser;
   final UserSession securitySession;
   final DateTime createdAt;
   final Map<String, dynamic> appSettings;
+  
+  // === Информация о корзине ===
+  final int? currentOrderId; // ID текущего draft заказа (корзины)
 
   const AppSession({
     required this.appUser,
     required this.securitySession,
     required this.createdAt,
     this.appSettings = const {},
+    this.currentOrderId,
   });
   
   // === Делегирование к SecuritySession ===
@@ -35,6 +40,9 @@ class AppSession {
   String get phoneNumber => appUser.phoneNumber;
   String get displayName => appUser.displayName;
   int get id => appUser.id;
+  
+  /// ID выбранной торговой точки (делегирует к AppUser)
+  int? get currentOutletId => appUser.selectedTradingPointId;
   
   // === Проверки авторизации и прав ===
 
@@ -58,9 +66,20 @@ class AppSession {
 
   /// Может ли пользователь запускать GPS трекинг
   bool get canStartTracking => isAuthenticated && permissions.isNotEmpty;
+  
+  // === Геттеры для корзины ===
+  
+  /// Есть ли активная корзина (draft заказ)
+  bool get hasActiveCart => currentOrderId != null;
+  
+  /// Выбрана ли торговая точка для заказов
+  bool get hasSelectedOutlet => currentOutletId != null;
+  
+  /// Готов ли к работе с заказами (есть и корзина и торговая точка)
+  bool get isReadyForOrders => hasActiveCart && hasSelectedOutlet;
 
   /// Краткая информация о статусе для отладки
-  String get statusInfo => 'Authenticated: $isAuthenticated, Valid: $isValid, Permissions: ${permissions.length}';
+  String get statusInfo => 'Authenticated: $isAuthenticated, Valid: $isValid, Permissions: ${permissions.length}, Cart: $currentOrderId, Outlet: $currentOutletId';
 
   AppSession updateAppUser(AppUser newAppUser) {
     return AppSession(
@@ -68,6 +87,7 @@ class AppSession {
       securitySession: securitySession,
       createdAt: createdAt,
       appSettings: appSettings,
+      currentOrderId: currentOrderId,
     );
   }
   
@@ -77,6 +97,46 @@ class AppSession {
       securitySession: securitySession,
       createdAt: createdAt,
       appSettings: {...appSettings, ...newSettings},
+      currentOrderId: currentOrderId,
+    );
+  }
+  
+  /// Обновить информацию о текущей корзине
+  AppSession updateCurrentCart(int? orderId) {
+    return AppSession(
+      appUser: appUser,
+      securitySession: securitySession,
+      createdAt: createdAt,
+      appSettings: appSettings,
+      currentOrderId: orderId,
+    );
+  }
+  
+  /// Обновить выбранную торговую точку через AppUser
+  /// 
+  /// Требует импорт TradingPoint для использования
+  AppSession updateSelectedTradingPoint(dynamic tradingPoint) {
+    final updatedAppUser = appUser.selectTradingPoint(tradingPoint);
+    return AppSession(
+      appUser: updatedAppUser,
+      securitySession: securitySession,
+      createdAt: createdAt,
+      appSettings: appSettings,
+      currentOrderId: currentOrderId,
+    );
+  }
+  
+  /// Обновить и корзину и торговую точку одновременно
+  /// 
+  /// Требует импорт TradingPoint для использования
+  AppSession updateCartAndTradingPoint(int? orderId, dynamic tradingPoint) {
+    final updatedAppUser = appUser.selectTradingPoint(tradingPoint);
+    return AppSession(
+      appUser: updatedAppUser,
+      securitySession: securitySession,
+      createdAt: createdAt,
+      appSettings: appSettings,
+      currentOrderId: orderId,
     );
   }
 

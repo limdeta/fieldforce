@@ -115,7 +115,7 @@ class LoginPageView extends StatelessWidget {
                 const AuthenticationWidget(
                   initialPhone: '+7-999-111-2233',
                   initialPassword: 'password123',
-                  showTestData: true,
+                  showTestData: false,
                 ),
                 
                 const SizedBox(height: 20),

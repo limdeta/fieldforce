@@ -11,14 +11,14 @@ enum EmployeeRole{
 class Employee implements NavigationUser {
   final int? _id;
   @override
-  String? lastName;
+  final String? lastName;
   @override
-  String? firstName;
-  String? middleName;
-  EmployeeRole role;
-  List<TradingPoint> assignedTradingPoints;
+  final String? firstName;
+  final String? middleName;
+  final EmployeeRole role;
+  final List<TradingPoint> assignedTradingPoints;
 
-  Employee({
+  const Employee({
     int? id,
     required this.lastName,
     required this.firstName,
@@ -26,10 +26,15 @@ class Employee implements NavigationUser {
     required this.role,
     List<TradingPoint>? assignedTradingPoints,
   }) : _id = id,
-       assignedTradingPoints = assignedTradingPoints ?? [];
+       assignedTradingPoints = assignedTradingPoints ?? const [];
 
   @override
-  int get id => _id ?? 0; // Возвращаем 0 если id еще не присвоен
+  int get id {
+    if (_id == null || _id <= 0) {
+      throw StateError('КРИТИЧЕСКАЯ ОШИБКА: Employee.id не может быть null или <= 0. Employee: $firstName $lastName');
+    }
+    return _id;
+  }
 
   @override
   String get fullName => middleName != null

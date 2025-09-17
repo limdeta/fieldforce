@@ -1,3 +1,4 @@
+import 'package:fieldforce/app/theme/app_colors.dart';
 import 'package:fieldforce/features/navigation/tracking/domain/entities/compact_track.dart';
 import 'package:fieldforce/features/navigation/tracking/presentation/bloc/tracking_bloc.dart';
 import 'package:fieldforce/app/presentation/pages/route_detail_page.dart';
@@ -271,7 +272,7 @@ class _SalesRepHomeViewState extends State<SalesRepHomeView> {
             Container(
               width: 60,
               height: 60,
-              decoration: const BoxDecoration(color: Colors.blue),
+              decoration: const BoxDecoration(color: AppColors.primary),
               child: IconButton(
                 onPressed: () => Navigator.pushNamed(context, '/menu'),
                 icon: const Icon(Icons.menu, color: Colors.white, size: 24),
@@ -425,7 +426,7 @@ class _SalesRepHomeViewState extends State<SalesRepHomeView> {
                   },
             style: ElevatedButton.styleFrom(
               minimumSize: const Size.fromHeight(48),
-              backgroundColor: Colors.blue,
+              backgroundColor: AppColors.primary,
               foregroundColor: Colors.white,
             ),
             child: state.isBuildingRoute

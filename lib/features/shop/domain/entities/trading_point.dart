@@ -1,6 +1,8 @@
 import 'package:fieldforce/app/sync/syncable_entity.dart';
 
-/// Торговая точка - минимальная сущность из учетной системы
+/// Торговая точка - бизнес-сущность из CRM/учетной системы
+/// Используется для заказов, каталогов, остатков товаров
+/// Сохраняется в таблице TradingPointEntities (НЕ TradingPoints!)
 class TradingPoint implements SyncableEntity {
   final int? id;
   @override

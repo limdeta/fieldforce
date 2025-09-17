@@ -52,6 +52,25 @@ import 'package:fieldforce/features/shop/domain/repositories/category_repository
 import 'package:fieldforce/app/database/repositories/category_repository_drift.dart';
 import 'package:fieldforce/features/shop/domain/repositories/product_repository.dart';
 import 'package:fieldforce/app/database/repositories/product_repository_drift.dart';
+import 'package:fieldforce/features/shop/domain/repositories/order_repository.dart';
+import 'package:fieldforce/features/shop/data/repositories/order_repository_drift.dart';
+import 'package:fieldforce/features/shop/domain/usecases/create_order_usecase.dart';
+import 'package:fieldforce/features/shop/domain/usecases/add_product_to_order_usecase.dart';
+import 'package:fieldforce/features/shop/domain/usecases/update_order_state_usecase.dart';
+import 'package:fieldforce/features/shop/domain/usecases/get_current_cart_usecase.dart';
+import 'package:fieldforce/features/shop/domain/usecases/update_cart_item_usecase.dart';
+import 'package:fieldforce/features/shop/domain/usecases/update_cart_stock_item_usecase.dart';
+import 'package:fieldforce/features/shop/domain/usecases/remove_from_cart_usecase.dart';
+import 'package:fieldforce/features/shop/domain/usecases/update_cart_usecase.dart';
+import 'package:fieldforce/features/shop/domain/usecases/clear_cart_usecase.dart';
+import 'package:fieldforce/features/shop/domain/usecases/submit_order_usecase.dart';
+import 'package:fieldforce/features/shop/domain/usecases/get_orders_usecase.dart';
+import 'package:fieldforce/features/shop/domain/usecases/get_order_by_id_usecase.dart';
+import 'package:fieldforce/features/shop/presentation/bloc/cart_bloc.dart';
+import 'package:fieldforce/features/shop/presentation/bloc/orders_bloc.dart';
+import 'package:fieldforce/features/shop/data/fixtures/order_fixture_service.dart';
+import 'package:fieldforce/features/shop/domain/repositories/stock_item_repository.dart';
+import 'package:fieldforce/app/database/repositories/stock_item_repository_drift.dart';
 
 final getIt = GetIt.instance;
 
@@ -111,6 +130,88 @@ Future<void> setupTestServiceLocator() async {
 
   getIt.registerLazySingleton<ProductRepository>(
     () => DriftProductRepository(),
+  );
+
+  // Order repositories and use cases
+  getIt.registerLazySingleton<OrderRepository>(
+    () => OrderRepositoryDrift(getIt<AppDatabase>(), getIt<ProductRepository>()),
+  );
+
+  getIt.registerLazySingleton<StockItemRepository>(
+    () => DriftStockItemRepository(),
+  );
+
+  getIt.registerLazySingleton<CreateOrderUseCase>(
+    () => CreateOrderUseCase(getIt<OrderRepository>()),
+  );
+
+  getIt.registerLazySingleton<AddProductToOrderUseCase>(
+    () => AddProductToOrderUseCase(getIt<OrderRepository>()),
+  );
+
+  getIt.registerLazySingleton<UpdateOrderStateUseCase>(
+    () => UpdateOrderStateUseCase(getIt<OrderRepository>()),
+  );
+
+  // Cart Use Cases
+  getIt.registerLazySingleton<GetCurrentCartUseCase>(
+    () => GetCurrentCartUseCase(getIt<OrderRepository>()),
+  );
+
+  getIt.registerLazySingleton<UpdateCartItemUseCase>(
+    () => UpdateCartItemUseCase(getIt<OrderRepository>(), getIt<StockItemRepository>()),
+  );
+  
+  getIt.registerLazySingleton<UpdateCartStockItemUseCase>(
+    () => UpdateCartStockItemUseCase(getIt<OrderRepository>(), getIt<StockItemRepository>()),
+  );
+
+  getIt.registerLazySingleton<RemoveFromCartUseCase>(
+    () => RemoveFromCartUseCase(getIt<OrderRepository>()),
+  );
+
+  getIt.registerLazySingleton<UpdateCartUseCase>(
+    () => UpdateCartUseCase(
+      getIt<OrderRepository>(),
+      getIt<StockItemRepository>(),
+    ),
+  );
+
+  getIt.registerLazySingleton<ClearCartUseCase>(
+    () => ClearCartUseCase(getIt<OrderRepository>()),
+  );
+
+  getIt.registerLazySingleton<SubmitOrderUseCase>(
+    () => SubmitOrderUseCase(getIt<OrderRepository>()),
+  );
+
+  // Orders Use Cases
+  getIt.registerLazySingleton<GetOrdersUseCase>(
+    () => GetOrdersUseCase(getIt<OrderRepository>()),
+  );
+
+  getIt.registerLazySingleton<GetOrderByIdUseCase>(
+    () => GetOrderByIdUseCase(getIt<OrderRepository>()),
+  );
+
+  // BLoCs
+  getIt.registerLazySingleton<CartBloc>(
+    () => CartBloc(
+      getCurrentCartUseCase: getIt<GetCurrentCartUseCase>(),
+      updateCartItemUseCase: getIt<UpdateCartItemUseCase>(),
+      updateCartStockItemUseCase: getIt<UpdateCartStockItemUseCase>(),
+      removeFromCartUseCase: getIt<RemoveFromCartUseCase>(),
+      updateCartUseCase: getIt<UpdateCartUseCase>(),
+      clearCartUseCase: getIt<ClearCartUseCase>(),
+      submitOrderUseCase: getIt<SubmitOrderUseCase>(),
+    ),
+  );
+
+  getIt.registerFactory<OrdersBloc>(
+    () => OrdersBloc(
+      getOrdersUseCase: getIt<GetOrdersUseCase>(),
+      getOrderByIdUseCase: getIt<GetOrderByIdUseCase>(),
+    ),
   );
 
   getIt.registerLazySingleton<AppUserRepository>(
@@ -235,6 +336,12 @@ Future<void> setupTestServiceLocator() async {
     ),
   );
 
+  getIt.registerLazySingleton<OrderFixtureService>(
+    () => OrderFixtureService(
+      orderRepository: getIt<OrderRepository>(),
+    ),
+  );
+
   // --- UserFixture and DevFixtureOrchestrator dependencies ---
   getIt.registerLazySingleton<UserService>(
     () => UserServiceFactory.create(),
@@ -267,6 +374,7 @@ Future<void> setupTestServiceLocator() async {
       getIt<TradingPointsFixtureService>(),
       getIt<CategoryFixtureService>(),
       getIt<ProductFixtureService>(),
+      getIt<OrderFixtureService>(),
       getIt<CreateWorkDayUseCase>(),
     ),
   );

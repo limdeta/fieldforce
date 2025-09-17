@@ -26,8 +26,6 @@ void main() {
       expect(product.code, 170094);
       expect(product.catalogId, 110142);
       expect(product.canBuy, true);
-      expect(product.stockItems.length, 1);
-      expect(product.stockItems[0].defaultPrice, 66847);
       expect(product.category?.id, 99);
       expect(product.category?.name, 'Туалетная бумага');
       expect(product.brand?.name, 'YOKO');
@@ -186,7 +184,6 @@ void main() {
         numericCharacteristics: [],
         stringCharacteristics: [],
         boolCharacteristics: [],
-        stockItems: [], // Пустой список
         canBuy: true,
       );
 

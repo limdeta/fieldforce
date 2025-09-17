@@ -27,7 +27,8 @@ class Product {
   final List<Characteristic> numericCharacteristics;
   final List<Characteristic> stringCharacteristics;
   final List<Characteristic> boolCharacteristics;
-  final List<StockItem> stockItems;
+  // TODO: Восстановить stockItems после рефакторинга
+  // final List<StockItem> stockItems;
   final bool canBuy;
 
   Product({
@@ -57,12 +58,12 @@ class Product {
     required this.numericCharacteristics,
     required this.stringCharacteristics,
     required this.boolCharacteristics,
-    required this.stockItems,
+    // required this.stockItems,
     required this.canBuy,
   });
 
   factory Product.fromJson(Map<String, dynamic> json) {
-    return Product(
+    final product = Product(
       title: json['title'] as String,
       barcodes: (json['barcodes'] as List<dynamic>).map((e) => e as String).toList(),
       code: json['code'] as int,
@@ -89,9 +90,17 @@ class Product {
       numericCharacteristics: (json['numericCharacteristics'] as List<dynamic>).map((e) => Characteristic.fromJson(e)).toList(),
       stringCharacteristics: (json['stringCharacteristics'] as List<dynamic>).map((e) => Characteristic.fromJson(e)).toList(),
       boolCharacteristics: (json['boolCharacteristics'] as List<dynamic>).map((e) => Characteristic.fromJson(e)).toList(),
-      stockItems: (json['stockItems'] as List<dynamic>).map((e) => StockItem.fromJson(e)).toList(),
+      // stockItems: [], // Временно отключено
       canBuy: json['canBuy'] as bool,
     );
+
+    // TODO: Создать StockItems через отдельный сервис
+    // final stockItems = (json['stockItems'] as List<dynamic>)
+    //     .map((e) => StockItem.fromJson(e, product))
+    //     .toList();
+
+    // Возвращаем product напрямую
+    return product;
   }
 
   Map<String, dynamic> toJson() {
@@ -122,7 +131,7 @@ class Product {
       'numericCharacteristics': numericCharacteristics.map((e) => e.toJson()).toList(),
       'stringCharacteristics': stringCharacteristics.map((e) => e.toJson()).toList(),
       'boolCharacteristics': boolCharacteristics.map((e) => e.toJson()).toList(),
-      'stockItems': stockItems.map((e) => e.toJson()).toList(),
+      // 'stockItems': stockItems.map((e) => e.toJson()).toList(), // TODO: Восстановить после рефакторинга
       'canBuy': canBuy,
     };
   }
@@ -340,58 +349,6 @@ class Characteristic {
       'type': type,
       'adaptValue': adaptValue,
       'value': value,
-    };
-  }
-}
-
-class StockItem {
-  final int id;
-  final String publicStock;
-  final Warehouse warehouse;
-  final int defaultPrice;
-  final int discountValue;
-  final int? availablePrice;
-  final int multiplicity;
-  final int offerPrice;
-  final Promotion? promotion;
-
-  StockItem({
-    required this.id,
-    required this.publicStock,
-    required this.warehouse,
-    required this.defaultPrice,
-    required this.discountValue,
-    this.availablePrice,
-    required this.multiplicity,
-    required this.offerPrice,
-    this.promotion,
-  });
-
-  factory StockItem.fromJson(Map<String, dynamic> json) {
-    return StockItem(
-      id: json['id'] as int,
-      publicStock: json['publicStock'] as String,
-      warehouse: Warehouse.fromJson(json['warehouse']),
-      defaultPrice: json['defaultPrice'] as int,
-      discountValue: json['discountValue'] as int,
-      availablePrice: json['availablePrice'] as int?,
-      multiplicity: json['multiplicity'] as int,
-      offerPrice: json['offerPrice'] as int,
-      promotion: json['promotion'] != null ? Promotion.fromJson(json['promotion']) : null,
-    );
-  }
-
-  Map<String, dynamic> toJson() {
-    return {
-      'id': id,
-      'publicStock': publicStock,
-      'warehouse': warehouse.toJson(),
-      'defaultPrice': defaultPrice,
-      'discountValue': discountValue,
-      'availablePrice': availablePrice,
-      'multiplicity': multiplicity,
-      'offerPrice': offerPrice,
-      'promotion': promotion?.toJson(),
     };
   }
 }

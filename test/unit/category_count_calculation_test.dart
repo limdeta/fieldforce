@@ -353,7 +353,6 @@ Product _createEnamelProduct() {
     numericCharacteristics: [],
     stringCharacteristics: [],
     boolCharacteristics: [],
-    stockItems: [],
     canBuy: true,
   );
 }
@@ -394,7 +393,6 @@ Product _createColorantProduct() {
     numericCharacteristics: [],
     stringCharacteristics: [],
     boolCharacteristics: [],
-    stockItems: [],
     canBuy: true,
   );
 }
@@ -435,7 +433,6 @@ Product _createToiletPaperProduct() {
     numericCharacteristics: [],
     stringCharacteristics: [],
     boolCharacteristics: [],
-    stockItems: [],
     canBuy: true,
   );
 }
@@ -483,7 +480,6 @@ Product _createMultiCategoryProduct() {
     numericCharacteristics: [],
     stringCharacteristics: [],
     boolCharacteristics: [],
-    stockItems: [],
     canBuy: true,
   );
 }

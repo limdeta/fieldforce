@@ -9,7 +9,7 @@ class ProductCategoriesPage extends StatelessWidget {
     return Scaffold(
       appBar: AppBar(
         title: const Text('Категории прайса'),
-        backgroundColor: Colors.blue,
+
         foregroundColor: Colors.white,
         leading: IconButton(
           icon: const Icon(Icons.arrow_back),

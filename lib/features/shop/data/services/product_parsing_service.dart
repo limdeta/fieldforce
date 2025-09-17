@@ -33,7 +33,7 @@ class ProductParsingService {
       amountInPackage: product.amountInPackage,
       price: _extractPrice(product),
       discountPrice: _extractDiscountPrice(product),
-      hasPromotion: product.stockItems.any((stock) => stock.promotion != null),
+      hasPromotion: false, // TODO: Определять из отдельной таблицы StockItem
       canBuy: product.canBuy,
     );
   }
@@ -54,14 +54,13 @@ class ProductParsingService {
   }
 
   int? _extractPrice(Product product) {
-    if (product.stockItems.isEmpty) return null;
-    return product.stockItems.first.defaultPrice;
+    // TODO: Получать из отдельной таблицы StockItem по productCode
+    return null;
   }
 
   int? _extractDiscountPrice(Product product) {
-    if (product.stockItems.isEmpty) return null;
-    final stockItem = product.stockItems.first;
-    return stockItem.availablePrice ?? stockItem.offerPrice;
+    // TODO: Получать из отдельной таблицы StockItem по productCode  
+    return null;
   }
 }
 
