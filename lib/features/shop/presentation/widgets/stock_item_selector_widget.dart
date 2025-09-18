@@ -1,11 +1,12 @@
 // lib/features/shop/presentation/widgets/stock_item_selector_widget.dart
 
+import 'package:fieldforce/app/theme/app_colors.dart';
+import 'package:fieldforce/features/shop/domain/entities/stock_item.dart';
+import 'package:fieldforce/features/shop/domain/repositories/stock_item_repository.dart';
 import 'package:flutter/material.dart';
 import 'package:get_it/get_it.dart';
 import 'package:logging/logging.dart';
 
-import '../../domain/entities/stock_item.dart';
-import '../../domain/repositories/stock_item_repository.dart';
 
 /// Универсальный селектор товаров для продукта
 /// 
@@ -15,16 +16,11 @@ import '../../domain/repositories/stock_item_repository.dart';
 /// Этот виджет получает все товары (StockItem) для заданного продукта из базы 
 /// и позволяет выбрать конкретный товар для покупки
 class StockItemSelectorWidget extends StatefulWidget {
-  /// Код продукта для которого нужно показать селектор
   final int productCode;
-  
-  /// Текущий выбранный StockItem (может быть null если не выбран)
   final StockItem? selectedStockItem;
   
-  /// Callback когда пользователь выбрал новый StockItem
   final void Function(StockItem stockItem) onStockItemSelected;
   
-  /// Нужно ли показывать полную информацию (остатки, цены) или компактный вид
   final bool showFullInfo;
 
   const StockItemSelectorWidget({
@@ -102,8 +98,6 @@ class _StockItemSelectorWidgetState extends State<StockItemSelectorWidget> {
     widget.onStockItemSelected(stockItem);
   }
 
-
-
   String _formatPrice(int priceInKopecks) {
     return (priceInKopecks / 100).toStringAsFixed(2);
   }
@@ -158,17 +152,17 @@ class _StockItemSelectorWidgetState extends State<StockItemSelectorWidget> {
     final hasMultipleStockItems = _stockItems.length > 1;
     
     return Container(
-      margin: const EdgeInsets.symmetric(horizontal: 16), // Добавляем отступы по бокам
+      margin: const EdgeInsets.symmetric(horizontal: 16),
       child: hasMultipleStockItems
         ? Material(
             color: Colors.white,
             borderRadius: BorderRadius.circular(4), // Минимальные скругления
-            elevation: 0, // Убираем тень для более четкого вида
+            elevation: 0,
             child: Container(
               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
               decoration: BoxDecoration(
                 borderRadius: BorderRadius.circular(4), // Минимальные скругления
-                border: Border.all(color: Colors.grey.shade400, width: 1.5), // Более четкая рамка
+                border: Border.all(color: Colors.grey.shade300, width: 1.5), // Более четкая рамка
               ),
               child: DropdownButton<StockItem>(
             value: selectedStockItem,
@@ -206,7 +200,7 @@ class _StockItemSelectorWidgetState extends State<StockItemSelectorWidget> {
                             Icon(
                               Icons.check_circle,
                               size: 16,
-                              color: Colors.blue,
+                              color: AppColors.slate800,
                             ),
                             const SizedBox(width: 8),
                           ],
@@ -218,7 +212,7 @@ class _StockItemSelectorWidgetState extends State<StockItemSelectorWidget> {
                                   ? FontWeight.bold 
                                   : FontWeight.normal,
                                 color: widget.selectedStockItem?.id == stockItem.id
-                                  ? Colors.blue 
+                                  ? AppColors.slate800 
                                   : Colors.black,
                                 fontSize: 14,
                               ),
@@ -243,10 +237,10 @@ class _StockItemSelectorWidgetState extends State<StockItemSelectorWidget> {
                                 ? '${_formatPrice(stockItem.offerPrice!)} ₽'
                                 : '${_formatPrice(stockItem.defaultPrice)} ₽',
                               style: TextStyle(
-                                fontSize: 12,
+                                fontSize: 14,
                                 fontWeight: FontWeight.w500,
                                 color: stockItem.offerPrice != null 
-                                  ? Colors.red 
+                                  ? const Color.fromARGB(255, 54, 48, 48) 
                                   : Colors.grey.shade700,
                               ),
                             ),
@@ -264,12 +258,12 @@ class _StockItemSelectorWidgetState extends State<StockItemSelectorWidget> {
         : Material(
             color: Colors.white,
             borderRadius: BorderRadius.circular(4), // Минимальные скругления
-            elevation: 0, // Убираем тень
+            elevation: 0, 
             child: Container(
               padding: const EdgeInsets.all(12),
               decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(4), // Минимальные скругления
-                border: Border.all(color: Colors.grey.shade400, width: 1.5), // Более четкая рамка
+                // borderRadius: BorderRadius.circular(4), // Минимальные скругления
+                // border: Border.all(color: Colors.grey.shade400, width: 1.5), // Более четкая рамка
               ),
               child: selectedStockItem != null
                 ? Column(
@@ -292,21 +286,21 @@ class _StockItemSelectorWidgetState extends State<StockItemSelectorWidget> {
                               'Остаток: ${selectedStockItem.stock} шт.',
                               style: TextStyle(
                                 fontSize: 12,
-                                color: Colors.grey.shade600,
+                                color: AppColors.primary,
                               ),
                             ),
-                            Text(
-                              selectedStockItem.offerPrice != null
-                                ? '${_formatPrice(selectedStockItem.offerPrice!)} ₽'
-                                : '${_formatPrice(selectedStockItem.defaultPrice)} ₽',
-                              style: TextStyle(
-                                fontSize: 12,
-                                fontWeight: FontWeight.w500,
-                                color: selectedStockItem.offerPrice != null 
-                                  ? Colors.red 
-                                  : Colors.grey.shade700,
-                              ),
-                            ),
+                            // Text(
+                            //   selectedStockItem.offerPrice != null
+                            //     ? '${_formatPrice(selectedStockItem.offerPrice!)} ₽'
+                            //     : '${_formatPrice(selectedStockItem.defaultPrice)} ₽',
+                            //   style: TextStyle(
+                            //     fontSize: 12,
+                            //     fontWeight: FontWeight.w500,
+                            //     color: selectedStockItem.offerPrice != null 
+                            //       ? Colors.red 
+                            //       : Colors.grey.shade700,
+                            //   ),
+                            // ),
                           ],
                         ),
                       ],
@@ -316,7 +310,7 @@ class _StockItemSelectorWidgetState extends State<StockItemSelectorWidget> {
                     'Выберите склад',
                     style: TextStyle(
                       fontSize: 14,
-                      color: Colors.grey,
+                      color: Colors.white,
                     ),
                   ),
             ),

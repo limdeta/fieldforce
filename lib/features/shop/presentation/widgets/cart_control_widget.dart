@@ -11,9 +11,9 @@ class CartControlWidget extends StatefulWidget {
   final int? amountInPackage;
   final VoidCallback? onAddToCart;
   final ValueChanged<int>? onQuantityChanged;
-  final VoidCallback? onRemove; // Колбэк для удаления из корзины
+  final VoidCallback? onRemove;
   final bool showCartIcon;
-  final bool isInCart; // Новый параметр для режима корзины
+  final bool isInCart;
 
   const CartControlWidget({
     super.key,
@@ -48,50 +48,37 @@ class _CartControlWidgetState extends State<CartControlWidget> {
   }
 
   void _increment() {
-    print('🛒 [CartControlWidget] _increment вызван, новое количество: ${_quantity + 1}');
     setState(() {
       _quantity++;
     });
-    print('🛒 [CartControlWidget] Вызываем onQuantityChanged($_quantity) колбэк');
     widget.onQuantityChanged?.call(_quantity);
   }
 
   void _decrement() {
     if (_quantity > 0) {
-      print('🛒 [CartControlWidget] _decrement вызван, новое количество: ${_quantity - 1}');
       setState(() {
         _quantity--;
       });
-      print('🛒 [CartControlWidget] Вызываем onQuantityChanged($_quantity) колбэк');
       widget.onQuantityChanged?.call(_quantity);
-    } else {
-      print('🛒 [CartControlWidget] _decrement: количество уже 0, ничего не делаем');
     }
   }
 
   void _addToCart() {
-    print('🛒 [CartControlWidget] _addToCart вызван, добавляем 1 штуку');
     setState(() {
       _quantity = 1;
     });
-    // Вызываем только onQuantityChanged с quantity = 1
-    // onAddToCart НЕ нужен - достаточно onQuantityChanged
-    print('🛒 [CartControlWidget] Вызываем onQuantityChanged(1) для добавления в корзину');
     widget.onQuantityChanged?.call(1);
   }
 
   void _addPackage() {
     if (widget.amountInPackage != null && widget.amountInPackage! > 1) {
-      print('🛒 [CartControlWidget] _addPackage вызван, добавляем ${widget.amountInPackage} штук, новое количество: ${_quantity + widget.amountInPackage!}');
       setState(() {
         _quantity += widget.amountInPackage!;
       });
-      print('🛒 [CartControlWidget] Вызываем onQuantityChanged($_quantity) колбэк после добавления упаковки');
       widget.onQuantityChanged?.call(_quantity);
     }
   }
 
-  /// Виджет контроля количества для переиспользования
   Widget _buildQuantityControl() {
     return Row(
       mainAxisSize: MainAxisSize.min,
@@ -185,7 +172,6 @@ class _CartControlWidgetState extends State<CartControlWidget> {
 
   @override
   Widget build(BuildContext context) {
-    // В режиме корзины показываем только контрол количества
     if (widget.isInCart) {
       return _buildQuantityControl();
     }
@@ -227,8 +213,8 @@ class _CartControlWidgetState extends State<CartControlWidget> {
             icon: const Icon(Icons.shopping_cart),
             label: const Text('В корзину'),
             style: ElevatedButton.styleFrom(
-              backgroundColor: AppColors.success,
-              foregroundColor: Colors.white,
+              backgroundColor: AppColors.completedStatus,
+              foregroundColor: const Color.fromARGB(255, 231, 231, 231),
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(4),

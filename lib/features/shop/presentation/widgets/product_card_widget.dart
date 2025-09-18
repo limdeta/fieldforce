@@ -7,13 +7,10 @@ import 'package:fieldforce/features/shop/domain/entities/product.dart';
 import 'package:fieldforce/features/shop/presentation/widgets/cart_control_widget.dart';
 import 'package:fieldforce/shared/services/image_cache_service.dart';
 
-/// Варианты отображения карточки продукта (аналогично React-версии)
+/// Варианты отображения карточки продукта
 enum ProductCardVariant {
-  /// Компактная карточка для сеток
   card,
-  /// Строка для списков  
   row,
-  /// Специальный режим для корзины
   cart,
 }
 
@@ -30,20 +27,18 @@ class ProductCardWidget extends StatelessWidget {
   final ProductWithStock? productWithStock;
   final OrderLine? orderLine;
   
-  // Варианты отображения (аналогично React-версии)
   final ProductCardVariant variant;
   
   // Режимы отображения
-  final bool showNavigation; // показывать ли стрелку для перехода к деталям
-  final bool showCharacteristics; // показывать ли характеристики
-  final bool showLabels; // показывать ли лейблы (новинка, популярное)
-  final bool compactView; // компактный режим без лишних деталей
+  final bool showNavigation;
+  final bool showCharacteristics;
+  final bool showLabels;
+  final bool compactView;
   
-  // Колбэки
   final VoidCallback? onTap;
   final VoidCallback? onAddToCart;
   final ValueChanged<int>? onQuantityChanged;
-  final VoidCallback? onRemove; // для удаления из корзины
+  final VoidCallback? onRemove;
   
   // Количество в корзине (для каталога)
   final int currentCartQuantity;
@@ -148,14 +143,14 @@ class ProductCardWidget extends StatelessWidget {
                     _buildUnavailableWidget(),
                     
                   // Стрелка навигации
-                  if (showNavigation && onTap != null) ...[
-                    const SizedBox(height: 8),
-                    Icon(
-                      Icons.chevron_right,
-                      color: Colors.grey.shade600,
-                      size: 20,
-                    ),
-                  ],
+                  // if (showNavigation && onTap != null) ...[
+                  //   const SizedBox(height: 8),
+                  //   Icon(
+                  //     Icons.chevron_right,
+                  //     color: Colors.grey.shade600,
+                  //     size: 20,
+                  //   ),
+                  // ],
                 ],
               ),
             ],
@@ -308,7 +303,7 @@ class ProductCardWidget extends StatelessWidget {
                   width: 80,
                   height: 80,
                   decoration: BoxDecoration(
-                    color: Colors.grey.shade200,
+                    color: Colors.grey.shade300,
                     borderRadius: BorderRadius.circular(4),
                   ),
                   child: product.defaultImage != null
@@ -320,7 +315,7 @@ class ProductCardWidget extends StatelessWidget {
                             loadingBuilder: (context, child, loadingProgress) {
                               if (loadingProgress == null) return child;
                               return Container(
-                                color: Colors.grey.shade200,
+                                color: Colors.grey.shade300,
                                 child: const Center(
                                   child: SizedBox(
                                     width: 20,
@@ -332,7 +327,7 @@ class ProductCardWidget extends StatelessWidget {
                             },
                             errorBuilder: (context, error, stackTrace) {
                               return Container(
-                                color: Colors.grey.shade200,
+                                color: Colors.grey.shade300,
                                 child: const Icon(
                                   Icons.broken_image,
                                   color: Colors.grey,

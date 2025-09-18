@@ -1,5 +1,6 @@
 // lib/features/shop/presentation/widgets/stock_item_cart_control_widget.dart
 
+import 'package:fieldforce/app/theme/app_colors.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:logging/logging.dart';
@@ -96,7 +97,7 @@ class _StockItemCartControlWidgetState extends State<StockItemCartControlWidget>
     return ElevatedButton(
       onPressed: widget.stockItem.stock > 0 ? _addToCart : null,
       style: ElevatedButton.styleFrom(
-        backgroundColor: Colors.blue,
+        backgroundColor: AppColors.completedStatus,
         foregroundColor: Colors.white,
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
         shape: RoundedRectangleBorder(

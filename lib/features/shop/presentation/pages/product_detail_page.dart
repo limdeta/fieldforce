@@ -451,7 +451,7 @@ class _ProductDetailPageState extends State<ProductDetailPage> {
           child: Text(
             item,
             style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-              color: Colors.grey.shade700,
+              color: const Color.fromARGB(255, 97, 97, 97),
             ),
           ),
         )),
