@@ -1,5 +1,5 @@
+import 'package:fieldforce/features/authentication/domain/entities/user.dart';
 import 'package:get_it/get_it.dart';
-import '../../../features/authentication/domain/entities/user.dart';
 import 'user_preferences_service.dart';
 
 /// Сервис для инициализации пользовательских настроек после аутентификации
@@ -69,7 +69,7 @@ class UserInitializationService {
         return GetIt.instance<UserPreferencesService>();
       }
     } catch (e) {
-      throw('⚠️ UserPreferencesService не доступен: $e');
+      throw('UserPreferencesService не доступен: $e');
     }
     return null;
   }

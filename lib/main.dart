@@ -20,10 +20,10 @@ import 'app/theme/app_theme.dart';
 import 'app/services/app_lifecycle_manager.dart';
 import 'app/services/simple_update_service.dart';
 import 'app/presentation/pages/routes_page.dart';
+import 'app/presentation/pages/profile_page.dart';
 import 'features/shop/presentation/pages/product_catalog_page.dart';
 import 'features/shop/presentation/pages/product_categories_page.dart';
 import 'features/shop/presentation/pages/promotions_page.dart';
-import 'app/fixtures/user_fixture.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -37,8 +37,6 @@ void main() async {
 
   if (AppConfig.isProd) {
     await prod_di.setupServiceLocator();
-    final userFixture = GetIt.instance<UserFixture>();
-    await userFixture.getBasicUser(userData: userFixture.admin);
   } else {
     await test_di.setupTestServiceLocator();
   }
@@ -80,6 +78,7 @@ class FieldforceApp extends StatelessWidget {
             ),
             '/menu': (context) => const MainMenuPage(),
             '/routes': (context) => const RoutesPage(),
+            '/profile': (context) => const ProfilePage(),
             '/outlets': (context) => const TradingPointsListPage(),
             '/products/catalog': (context) => const ProductCatalogPage(),
             '/products/categories': (context) => const ProductCategoriesPage(),

@@ -31,6 +31,19 @@ class EmployeeRepositoryDrift implements EmployeeRepository {
   }
 
   @override
+  Future<Either<Failure, domain.Employee>> update(domain.Employee employee) async {
+    try {
+      final companion = EmployeeMapper.toDb(employee);
+      await (_database.update(_database.employees)
+        ..where((e) => e.id.equals(employee.id))).write(companion);
+
+      return Right(employee);
+    } catch (e) {
+      return Left(DatabaseFailure('Failed to update employee: $e'));
+    }
+  }
+
+  @override
   Future<Either<Failure, List<domain.Employee>>> getAll() async {
     try {
       final dbEmployees = await _database.select(_database.employees).get();

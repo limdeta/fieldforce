@@ -97,6 +97,28 @@ class CoordinateConverter {
 2. **SalesRepHomePage** - оркестратор, использует CombinedMapWidget
 3. **CoordinateConverter** - решает проблемы совместимости типов
 
+### Рефакторинг аутентификации и разделение ответственности
+
+**Решение App Layer**:
+1. **AuthenticationService** - отвечает только за аутентификацию и создание UserSession
+2. **PostAuthenticationService** - создает бизнес-сущности (Employee, AppUser) после успешной аутентификации
+3. **LoginPage** - оркестратор, координирует последовательность: аутентификация → создание бизнес-сущностей → навигация
+
+**Архитектурный поток**:
+```dart
+// 1. AuthenticationService (auth модуль) - только аутентификация
+final authResult = await authService.authenticateUser(phone, password);
+// Возвращает UserSession с базовым User
+
+// 2. PostAuthenticationService (app слой) - создание бизнес-сущностей  
+await postAuthService.createBusinessEntitiesForUser(authResult.user);
+// Создает Employee и AppUser, связывает их с User
+
+// 3. AppSessionService (app слой) - финальная сессия приложения
+final appSession = await AppSessionService.createFromSecuritySession(userSession);
+// Создает AppSession с полными данными пользователя
+```
+
 ### Миграция с UserSession на AppSession
 
 **Проблема**: Страницы использовали старый UserSession и GetCurrentSessionUseCase.

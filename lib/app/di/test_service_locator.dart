@@ -17,9 +17,14 @@ import 'package:fieldforce/app/database/repositories/employee_repository_drift.d
 import 'package:fieldforce/app/database/repositories/app_user_repository_drift.dart';
 import 'package:fieldforce/app/database/repositories/user_track_repository_drift.dart';
 import 'package:fieldforce/app/services/simple_update_service.dart';
+import 'package:fieldforce/app/services/post_authentication_service.dart';
+import 'package:fieldforce/app/services/session_manager.dart';
 import 'package:fieldforce/features/authentication/domain/repositories/user_repository.dart';
 import 'package:fieldforce/features/authentication/domain/repositories/session_repository.dart';
 import 'package:fieldforce/features/authentication/domain/services/authentication_service.dart';
+import 'package:fieldforce/features/authentication/domain/services/i_auth_api_service.dart';
+import 'package:fieldforce/features/authentication/domain/services/auth_api_service.dart';
+import 'package:fieldforce/features/authentication/domain/services/mock_auth_api_service.dart';
 import 'package:fieldforce/features/authentication/domain/usecases/login_usecase.dart';
 import 'package:fieldforce/features/authentication/domain/usecases/logout_usecase.dart';
 import 'package:fieldforce/features/authentication/domain/usecases/get_current_session_usecase.dart';
@@ -222,10 +227,18 @@ Future<void> setupTestServiceLocator() async {
     ),
   );
 
+  getIt.registerLazySingleton<IAuthApiService>(
+    () => AppConfig.useMockAuth ? MockAuthApiService() : AuthApiService(),
+  );
+
+  // Session manager for handling HTTP sessions and cookies
+  getIt.registerLazySingleton<SessionManager>(() => SessionManager.instance);
+
   getIt.registerLazySingleton<AuthenticationService>(
     () => AuthenticationService(
       userRepository: getIt(),
       sessionRepository: getIt(),
+      authApiService: getIt(),
     ),
   );
 
@@ -376,6 +389,15 @@ Future<void> setupTestServiceLocator() async {
       getIt<ProductFixtureService>(),
       getIt<OrderFixtureService>(),
       getIt<CreateWorkDayUseCase>(),
+    ),
+  );
+
+  // Post authentication service for creating business entities
+  getIt.registerLazySingleton<PostAuthenticationService>(
+    () => PostAuthenticationService(
+      employeeRepository: getIt<EmployeeRepository>(),
+      appUserRepository: getIt<AppUserRepository>(),
+      authApiService: getIt<IAuthApiService>(),
     ),
   );
 }

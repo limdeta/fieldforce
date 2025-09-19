@@ -37,6 +37,7 @@ dependencies:
   
   # Cryptographic functions for password hashing
   crypto: ^3.0.3
+  argon2: ^1.0.1
   
   # Database
   drift: ^2.14.0

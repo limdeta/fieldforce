@@ -3,6 +3,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:fieldforce/app/di/service_locator.dart';
 import 'package:fieldforce/app/services/app_session_service.dart';
 import 'package:fieldforce/app/services/user_initialization_service.dart';
+import 'package:fieldforce/app/services/post_authentication_service.dart';
 import 'package:fieldforce/features/authentication/domain/entities/user.dart';
 import 'package:fieldforce/features/authentication/presentation/bloc/bloc.dart';
 import 'package:fieldforce/features/authentication/presentation/widgets/authentication_widget.dart';
@@ -35,11 +36,27 @@ class LoginPageView extends StatelessWidget {
     AuthenticationAuthenticated state,
   ) async {
     try {
+      // 1. Создаем бизнес-сущности (Employee, AppUser) после успешной аутентификации
+      final postAuthService = getIt<PostAuthenticationService>();
+      final businessEntitiesResult = await postAuthService.createBusinessEntitiesForUser(state.userSession.user);
+
+      businessEntitiesResult.fold(
+        (failure) {
+          // Логируем ошибку, но не прерываем процесс - пользователь уже аутентифицирован
+          debugPrint('Ошибка создания бизнес-сущностей: ${failure.message}');
+        },
+        (_) {
+          debugPrint('Бизнес-сущности успешно созданы');
+        },
+      );
+
+      // 2. Создаем AppSession
       final appSessionResult = await AppSessionService.createFromSecuritySession(state.userSession);
       if (appSessionResult.isLeft()) {
         throw Exception('Не удалось создать сессию приложения');
       }
 
+      // 3. Инициализируем пользовательские настройки
       await UserInitializationService.initializeUserSettings(state.userSession.user);
 
       if (context.mounted) {

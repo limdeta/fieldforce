@@ -209,6 +209,8 @@ class _MainMenuPageState extends State<MainMenuPage> {
     if (item.route != null) {
       if (item.route == '/routes') {
         Navigator.pushNamed(context, '/routes');
+      } else if (item.route == '/profile') {
+        Navigator.pushNamed(context, '/profile');
       } else if (item.route == '/outlets') {
         Navigator.pushNamed(context, '/outlets');
       } else if (item.route == '/products/catalog') {

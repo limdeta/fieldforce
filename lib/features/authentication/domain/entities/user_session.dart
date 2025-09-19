@@ -1,6 +1,7 @@
 
-import '../../../../shared/either.dart';
-import '../../../../shared/failures.dart';
+import 'package:fieldforce/shared/either.dart';
+import 'package:fieldforce/shared/failures.dart';
+
 import 'user.dart';
 
 class UserSession {
@@ -70,8 +71,8 @@ class UserSession {
   bool get isValid {
     if (rememberMe) return true;
     
-    // @todo remove hardcoded session duration
-    final maxSessionDuration = Duration(hours: 8);
+    // Рабочий день = 24 часа для принудительной проверки через API
+    final maxSessionDuration = Duration(hours: 24);
     return DateTime.now().difference(loginTime) < maxSessionDuration;
   }
 
@@ -85,7 +86,7 @@ class UserSession {
   Duration? get timeUntilExpiry {
     if (rememberMe) return null;
     
-    final maxSessionDuration = Duration(hours: 8);
+    final maxSessionDuration = Duration(hours: 24);
     final elapsed = DateTime.now().difference(loginTime);
     final remaining = maxSessionDuration - elapsed;
     

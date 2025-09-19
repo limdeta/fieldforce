@@ -30,6 +30,33 @@ class AppConfig {
         return 'https://test-api.fieldforce.com';
     }
   }
+
+  // Authentication API Configuration
+  static String get authApiUrl {
+    switch (_environment) {
+      case Environment.dev:
+        return ''; // Dev использует mock
+      case Environment.prod:
+        return 'https://localhost:8000/v1_api/login'; // Локальный API для тестирования
+      case Environment.test:
+        return ''; // Test использует mock
+    }
+  }
+
+  // User Info API Configuration
+  static String get userInfoApiUrl {
+    switch (_environment) {
+      case Environment.dev:
+        return ''; // Dev использует mock
+      case Environment.prod:
+        return 'https://localhost:8000/v1_api/users/me'; // API для получения информации о пользователе
+      case Environment.test:
+        return ''; // Test использует mock
+    }
+  }
+
+  // Use mock authentication in dev/test modes
+  static bool get useMockAuth => isDev || isTest;
   
   // Database Configuration
   static String get databaseName {
@@ -82,8 +109,10 @@ class AppConfig {
     print('=== App Configuration ===');
     print('Environment: $_environment');
     print('API Base URL: $apiBaseUrl');
+    print('Auth API URL: $authApiUrl');
     print('Database Name: $databaseName');
     print('Use Mock Data: $useMockData');
+    print('Use Mock Auth: $useMockAuth');
     print('Debug Tools: $enableDebugTools');
     print('Detailed Logging: $enableDetailedLogging');
     print('Check for Updates: $checkForUpdates');

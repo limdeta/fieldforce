@@ -1,5 +1,6 @@
 import 'package:fieldforce/app/domain/usecases/get_current_app_session_usecase.dart';
 import 'package:fieldforce/features/authentication/domain/entities/session_state.dart';
+import 'package:fieldforce/features/authentication/domain/services/authentication_service.dart';
 import 'package:fieldforce/features/navigation/tracking/domain/entities/navigation_user.dart';
 import 'package:fieldforce/features/navigation/tracking/domain/entities/user_track.dart';
 import 'package:fieldforce/features/navigation/tracking/domain/services/location_tracking_service_base.dart';
@@ -12,6 +13,7 @@ class AppLifecycleManager with WidgetsBindingObserver {
 
   final LocationTrackingServiceBase _trackingService;
   final GetCurrentAppSessionUseCase _sessionUsecase;
+  final AuthenticationService _authService;
   
   bool _isInitialized = false;
   bool _wasTrackingBeforePause = false;
@@ -19,8 +21,10 @@ class AppLifecycleManager with WidgetsBindingObserver {
   AppLifecycleManager({
     LocationTrackingServiceBase? trackingService,
     GetCurrentAppSessionUseCase? sessionUsecase,
+    AuthenticationService? authService,
   }) : _trackingService = trackingService ?? GetIt.instance<LocationTrackingServiceBase>(),
-       _sessionUsecase = sessionUsecase ?? GetIt.instance<GetCurrentAppSessionUseCase>();
+       _sessionUsecase = sessionUsecase ?? GetIt.instance<GetCurrentAppSessionUseCase>(),
+       _authService = authService ?? GetIt.instance<AuthenticationService>();
 
   Future<void> initialize() async {
     if (_isInitialized) return;
@@ -67,6 +71,13 @@ class AppLifecycleManager with WidgetsBindingObserver {
     }
     
     _wasTrackingBeforePause = false;
+
+    // Фоновая проверка и обновление сессии при возвращении в приложение
+    try {
+      await _authService.refreshSessionIfNeeded();
+    } catch (e) {
+      _log('Ошибка при обновлении сессии: $e');
+    }
   }
 
   Future<void> _onAppPaused() async {
