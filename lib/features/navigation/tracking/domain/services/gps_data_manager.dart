@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'package:geolocator/geolocator.dart';
+import 'package:logging/logging.dart';
 import 'gps_data_source.dart';
 import 'mock_gps_data_source.dart';
 
@@ -46,7 +47,7 @@ class GpsTestConfig {
 /// Обеспечивает переключение между реальным GPS и мок-данными
 /// для тестирования трекинга в контролируемой среде
 class GpsDataManager {
-  static const String _tag = 'GpsDataManager';
+  static final Logger _logger = Logger('GpsDataManager');
   
   GpsDataSource? _currentSource;
   GpsMode _currentMode = GpsMode.real;
@@ -71,7 +72,7 @@ class GpsDataManager {
     switch (mode) {
       case GpsMode.real:
         _currentSource = RealGpsDataSource();
-        print('🌍 $_tag: Инициализирован реальный GPS');
+        _logger.info('Инициализирован реальный GPS');
         break;
         
       case GpsMode.mock:
@@ -88,7 +89,7 @@ class GpsDataManager {
         }
 
         _currentSource = mockSource;
-        print('🎭 $_tag: Инициализирован мок GPS с конфигурацией: ${testConfig.mockDataPath}');
+        _logger.info('Инициализирован мок GPS с конфигурацией: ${testConfig.mockDataPath}');
         // mockSource.resume();
         break;
     }
@@ -177,7 +178,7 @@ class GpsDataManager {
     if (_currentMode == GpsMode.mock && _currentSource is MockGpsDataSource) {
       final mockSource = _currentSource as MockGpsDataSource;
       mockSource.pause();
-      print('⏸️ $_tag: Мок GPS приостановлен');
+      _logger.info('Мок GPS приостановлен');
     }
   }
 
@@ -185,7 +186,7 @@ class GpsDataManager {
     if (_currentMode == GpsMode.mock && _currentSource is MockGpsDataSource) {
       final mockSource = _currentSource as MockGpsDataSource;
       mockSource.resume();
-      print('▶️ $_tag: Мок GPS возобновлен');
+      _logger.info('Мок GPS возобновлен');
     }
   }
 
@@ -219,35 +220,35 @@ class GpsDataManager {
     try {
       // Для mock: resume поток
       if (_currentSource is MockGpsDataSource) {
-        print('▶️ $_tag: Используется Mock GPS, возобновление потока...');
+        _logger.info('Используется Mock GPS, возобновление потока...');
         await Future.delayed(const Duration(seconds: 1));
         (_currentSource as MockGpsDataSource).resumeStream();
         return true;
       }
 
       // Для реального GPS: проверяем разрешения и подписываемся на поток
-      print('🌍 $_tag: Используется реальный GPS, проверка разрешений...');
-      print(_currentSource);
+      _logger.info('Используется реальный GPS, проверка разрешений...');
+      _logger.fine('Текущий источник: $_currentSource');
       // Defensive timeout already implemented in underlying checkPermissions if desired
       final hasPermission = await checkPermissions().timeout(
         const Duration(seconds: 15),
         onTimeout: () {
-          print('⏱️ $_tag: checkPermissions() timed out');
+          _logger.warning('checkPermissions() timed out');
           return false;
         },
       );
 
-      print('🌍 $_tag: checkPermissions() returned: $hasPermission');
+      _logger.info('checkPermissions() returned: $hasPermission');
       if (hasPermission) {
-        print('✅ $_tag: Location permission granted — GPS started');
+        _logger.info('Location permission granted — GPS started');
         // Subscribe to stream or other start logic here
         return true;
       } else {
-        print('❌ $_tag: Location permission denied - cannot start real GPS');
+        _logger.warning('Location permission denied - cannot start real GPS');
         return false;
       }
     } catch (e, st) {
-      print('❗ $_tag: Exception while starting GPS: $e\n$st');
+      _logger.severe('Exception while starting GPS', e, st);
       return false;
     }
   }

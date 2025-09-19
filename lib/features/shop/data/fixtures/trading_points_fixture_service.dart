@@ -1,4 +1,3 @@
-import 'package:flutter/cupertino.dart';
 import 'package:get_it/get_it.dart';
 import 'package:drift/drift.dart';
 import 'package:fieldforce/app/database/app_database.dart';
@@ -6,8 +5,10 @@ import 'package:fieldforce/features/shop/domain/entities/trading_point.dart';
 import 'package:fieldforce/features/shop/domain/entities/employee.dart';
 import 'package:fieldforce/features/shop/domain/repositories/trading_point_repository.dart';
 import 'package:fieldforce/features/shop/domain/repositories/employee_repository.dart';
+import 'package:logging/logging.dart';
 
 class TradingPointsFixtureService {
+  static final Logger _logger = Logger('TradingPointsFixtureService');
   Future<List<TradingPoint>> createBaseTradingPoints() async {
     final points = [
       // Основные торговые точки для маршрутов
@@ -115,7 +116,7 @@ class TradingPointsFixtureService {
       await _saveTradingPoint(point);
     }
 
-    debugPrint("✅ Создано ${points.length} торговых точек");
+    _logger.info("✅ Создано ${points.length} торговых точек");
     return points;
   }
   
@@ -145,10 +146,10 @@ class TradingPointsFixtureService {
         );
       }
       
-      print('✅ Привязано $successCount из ${tradingPoints.length} торговых точек к сотруднику ${employee.fullName}');
+      _logger.info('✅ Привязано $successCount из ${tradingPoints.length} торговых точек к сотруднику ${employee.fullName}');
       
     } catch (e) {
-      print('❌ Ошибка при привязке торговых точек: $e');
+      _logger.severe('❌ Ошибка при привязке торговых точек: $e');
     }
   }
 

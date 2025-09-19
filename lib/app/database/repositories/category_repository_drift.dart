@@ -328,7 +328,6 @@ class DriftCategoryRepository implements CategoryRepository {
     final productRepository = GetIt.instance<ProductRepository>();
     final allProductsResult = await productRepository.getAllProducts();
     if (allProductsResult.isLeft()) {
-      print('❌ Ошибка получения всех продуктов');
       return Left(DatabaseFailure('Ошибка получения всех продуктов'));
     }
 

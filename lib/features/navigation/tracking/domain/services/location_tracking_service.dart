@@ -2,6 +2,7 @@ import 'dart:async';
 import 'package:fieldforce/features/navigation/tracking/domain/services/location_tracking_service_base.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:get_it/get_it.dart';
+import 'package:logging/logging.dart';
 import 'package:fieldforce/features/navigation/tracking/domain/entities/navigation_user.dart';
 import 'package:fieldforce/features/navigation/tracking/domain/entities/user_track.dart';
 import 'package:fieldforce/features/navigation/tracking/domain/entities/compact_track.dart';
@@ -18,7 +19,7 @@ import 'package:fieldforce/app/services/app_session_service.dart';
 /// - Разделение UI и persistence слоёв
 /// - Оптимизация для real-time обновлений
 class LocationTrackingService implements LocationTrackingServiceBase  {
-  static const String _tag = 'LocationTracking';
+  static final Logger _logger = Logger('LocationTrackingService');
   final GpsDataManager _gpsDataManager;
   late final TrackManager _trackManager;
   StreamSubscription<Position>? _positionSubscription;
@@ -186,7 +187,7 @@ class LocationTrackingService implements LocationTrackingServiceBase  {
 
       return true;
     } catch (e) {
-      print('$_tag: О��ибка паузы трекинга: $e');
+      _logger.warning('Ошибка паузы трекинга: $e');
       return false;
     }
   }
@@ -206,7 +207,7 @@ class LocationTrackingService implements LocationTrackingServiceBase  {
       
       return true;
     } catch (e) {
-      print('$_tag: Ошибка возобновления трекинга: $e');
+      _logger.warning('Ошибка возобновления трекинга: $e');
       return false;
     }
   }
@@ -215,13 +216,13 @@ class LocationTrackingService implements LocationTrackingServiceBase  {
   void _onPositionUpdate(Position position) {
     try {
       if (!_isValidPosition(position)) {
-        print('$_tag: ❌ Позиция отфильтрована как невалидная (точность: ${position.accuracy})');
+        _logger.warning('Позиция отфильтрована как невалидная (точность: ${position.accuracy})');
         return;
       }
       
       // Проверяем минимальное расстояние
       if (!_shouldRecordPosition(position)) {
-        print('$_tag: ❌ Позиция отфильтрована по минимальному расстоянию');
+        _logger.info('Позиция отфильтрована по минимальному расстоянию');
         return;
       }
 
@@ -229,7 +230,7 @@ class LocationTrackingService implements LocationTrackingServiceBase  {
       if (_isActive) {
         _trackManager.addGpsPoint(position);
       } else {
-        print('$_tag: ⚠️ Трекинг неактивен - НЕ добавляем точку в TrackManager');
+        _logger.warning('Трекинг неактивен - НЕ добавляем точку в TrackManager');
       }
 
       _lastPosition = position;
@@ -241,13 +242,13 @@ class LocationTrackingService implements LocationTrackingServiceBase  {
       _positionController.add(position);
       
     } catch (e) {
-      print('$_tag: ❌ Ошибка обработки позиции: $e');
+      _logger.severe('Ошибка обработки позиции: $e');
     }
   }
 
   /// Обработчик ошибок GPS
   void _onPositionError(dynamic error) {
-    print('$_tag: Ошибка GPS: $error');
+    _logger.severe('Ошибка GPS: $error');
   }
 
   bool _isValidPosition(Position position) {
@@ -322,7 +323,7 @@ class LocationTrackingService implements LocationTrackingServiceBase  {
       speedAccuracy: 2.0,
     );
 
-    print('$_tag: Последняя позиция установлена: $lat, $lng');
+    _logger.info("Последняя позиция установлена: $lat, $lng");
   }
 
   void dispose() {

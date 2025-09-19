@@ -7,7 +7,7 @@ import 'dart:io';
 /// Менеджер сессий для работы с PHPSESSID куками
 /// Сохраняет и восстанавливает сессионные куки между запросами
 class SessionManager {
-  static final Logger _logger = Logger('PostAuthenticationService');
+  static final Logger _logger = Logger('SessionManager');
   static const String _sessionCookieKey = 'php_session_cookie';
   static const String _sessionDataKey = 'session_data';
 
