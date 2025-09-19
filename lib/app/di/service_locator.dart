@@ -20,6 +20,8 @@ import 'package:fieldforce/app/database/repositories/user_track_repository_drift
 import 'package:fieldforce/app/services/simple_update_service.dart';
 import 'package:fieldforce/app/services/post_authentication_service.dart';
 import 'package:fieldforce/app/services/session_manager.dart';
+import 'package:fieldforce/app/services/sync_isolate_manager.dart';
+import 'package:fieldforce/app/services/sync_progress_manager.dart';
 import 'package:fieldforce/features/authentication/domain/repositories/user_repository.dart';
 import 'package:fieldforce/features/authentication/domain/repositories/session_repository.dart';
 import 'package:fieldforce/features/authentication/domain/services/authentication_service.dart';
@@ -48,6 +50,10 @@ import 'package:fieldforce/features/navigation/tracking/domain/services/gps_data
 import 'package:fieldforce/features/shop/domain/repositories/category_repository.dart';
 import 'package:fieldforce/app/database/repositories/category_repository_drift.dart';
 import 'package:fieldforce/features/shop/domain/repositories/product_repository.dart';
+import 'package:fieldforce/app/services/sync_isolate_manager.dart';
+import 'package:fieldforce/app/services/sync_progress_manager.dart';
+import 'package:fieldforce/features/shop/data/services/product_sync_service_impl.dart';
+import 'package:fieldforce/features/shop/data/services/product_parsing_service.dart';
 import 'package:fieldforce/app/database/repositories/product_repository_drift.dart';
 import 'package:fieldforce/features/shop/domain/repositories/order_repository.dart';
 import 'package:fieldforce/features/shop/data/repositories/order_repository_drift.dart';
@@ -138,6 +144,11 @@ Future<void> setupServiceLocator() async {
 
   getIt.registerLazySingleton<StockItemRepository>(
     () => DriftStockItemRepository(),
+  );
+
+  // Product parsing service
+  getIt.registerLazySingleton<ProductParsingService>(
+    () => ProductParsingService(),
   );
 
   getIt.registerLazySingleton<CreateOrderUseCase>(
@@ -351,6 +362,24 @@ Future<void> setupServiceLocator() async {
       employeeRepository: getIt<EmployeeRepository>(),
       appUserRepository: getIt<AppUserRepository>(),
       authApiService: getIt<IAuthApiService>(),
+    ),
+  );
+
+  // Sync services for product synchronization
+  getIt.registerLazySingleton<SyncIsolateManager>(
+    () => SyncIsolateManager(),
+  );
+
+  getIt.registerLazySingleton<SyncProgressManager>(
+    () => SyncProgressManager(),
+  );
+
+  // Product sync service implementation
+  getIt.registerLazySingleton(
+    () => ProductSyncServiceImpl(
+      sessionManager: getIt<SessionManager>(),
+      isolateManager: getIt<SyncIsolateManager>(),
+      progressManager: getIt<SyncProgressManager>(),
     ),
   );
 }

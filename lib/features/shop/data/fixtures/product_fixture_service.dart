@@ -23,9 +23,9 @@ enum ProductFixtureType {
 
 class ProductFixtureService {
   static final Logger _logger = Logger('ProductFixtureService');
-  final ProductParsingService _parsingService;
+  final ProductParsingService _parsingService = ProductParsingService();
 
-  ProductFixtureService(this._parsingService);
+  ProductFixtureService();
 
   /// Загружает продукты в зависимости от типа фикстуры
   Future<Either<Failure, List<Product>>> loadProducts(ProductFixtureType fixtureType) async {

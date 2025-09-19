@@ -64,19 +64,19 @@ class Product {
 
   factory Product.fromJson(Map<String, dynamic> json) {
     final product = Product(
-      title: json['title'] as String,
-      barcodes: (json['barcodes'] as List<dynamic>).map((e) => e as String).toList(),
-      code: json['code'] as int,
-      bcode: json['bcode'] as int,
-      catalogId: json['catalogId'] as int,
-      novelty: json['novelty'] as bool,
-      popular: json['popular'] as bool,
-      isMarked: json['isMarked'] as bool,
+      title: json['title'] as String? ?? 'Без названия',
+      barcodes: json['barcodes'] != null ? (json['barcodes'] as List<dynamic>).map((e) => e as String).toList() : <String>[],
+      code: json['code'] as int? ?? 0,
+      bcode: json['bcode'] as int? ?? 0,
+      catalogId: json['catalogId'] as int? ?? 0,
+      novelty: json['novelty'] as bool? ?? false,
+      popular: json['popular'] as bool? ?? false,
+      isMarked: json['isMarked'] as bool? ?? false,
       brand: json['brand'] != null ? Brand.fromJson(json['brand']) : null,
       manufacturer: json['manufacturer'] != null ? Manufacturer.fromJson(json['manufacturer']) : null,
       colorImage: json['colorImage'] != null ? ImageData.fromJson(json['colorImage']) : null,
       defaultImage: json['defaultImage'] != null ? ImageData.fromJson(json['defaultImage']) : null,
-      images: (json['images'] as List<dynamic>).map((e) => ImageData.fromJson(e)).toList(),
+      images: json['images'] != null ? (json['images'] as List<dynamic>).map((e) => ImageData.fromJson(e)).toList() : <ImageData>[],
       description: json['description'] as String?,
       howToUse: json['howToUse'] as String?,
       ingredients: json['ingredients'] as String?,
@@ -86,12 +86,12 @@ class Product {
       amountInPackage: json['amountInPackage'] as int?,
       vendorCode: json['vendorCode'] as String?,
       type: json['type'] != null ? ProductType.fromJson(json['type']) : null,
-      categoriesInstock: (json['categoriesInstock'] as List<dynamic>).map((e) => Category.fromJson(e)).toList(),
-      numericCharacteristics: (json['numericCharacteristics'] as List<dynamic>).map((e) => Characteristic.fromJson(e)).toList(),
-      stringCharacteristics: (json['stringCharacteristics'] as List<dynamic>).map((e) => Characteristic.fromJson(e)).toList(),
-      boolCharacteristics: (json['boolCharacteristics'] as List<dynamic>).map((e) => Characteristic.fromJson(e)).toList(),
+      categoriesInstock: json['categoriesInstock'] != null ? (json['categoriesInstock'] as List<dynamic>).map((e) => Category.fromJson(e)).toList() : <Category>[],
+      numericCharacteristics: json['numericCharacteristics'] != null ? (json['numericCharacteristics'] as List<dynamic>).map((e) => Characteristic.fromJson(e)).toList() : <Characteristic>[],
+      stringCharacteristics: json['stringCharacteristics'] != null ? (json['stringCharacteristics'] as List<dynamic>).map((e) => Characteristic.fromJson(e)).toList() : <Characteristic>[],
+      boolCharacteristics: json['boolCharacteristics'] != null ? (json['boolCharacteristics'] as List<dynamic>).map((e) => Characteristic.fromJson(e)).toList() : <Characteristic>[],
       // stockItems: [], // Временно отключено
-      canBuy: json['canBuy'] as bool,
+      canBuy: json['canBuy'] as bool? ?? true,
     );
 
     // TODO: Создать StockItems через отдельный сервис
@@ -152,9 +152,9 @@ class Brand {
 
   factory Brand.fromJson(Map<String, dynamic> json) {
     return Brand(
-      searchPriority: json['search_priority'] as int,
-      id: json['id'] as int,
-      name: json['name'] as String,
+      searchPriority: json['search_priority'] as int? ?? 0,
+      id: json['id'] as int? ?? 0,
+      name: json['name'] as String? ?? 'Без названия',
       adaptedName: json['adaptedName'] as String?,
     );
   }
@@ -180,8 +180,8 @@ class Manufacturer {
 
   factory Manufacturer.fromJson(Map<String, dynamic> json) {
     return Manufacturer(
-      id: json['id'] as int,
-      name: json['name'] as String,
+      id: json['id'] as int? ?? 0,
+      name: json['name'] as String? ?? 'Без названия',
     );
   }
 
@@ -211,9 +211,9 @@ class ImageData {
   factory ImageData.fromJson(Map<String, dynamic> json) {
     return ImageData(
       id: json['id'] as int?,
-      height: json['height'] as int,
-      width: json['width'] as int,
-      uri: json['uri'] as String,
+      height: json['height'] as int? ?? 0,
+      width: json['width'] as int? ?? 0,
+      uri: json['uri'] as String? ?? '',
       webp: json['webp'] as String?,
     );
   }
@@ -240,8 +240,8 @@ class Series {
 
   factory Series.fromJson(Map<String, dynamic> json) {
     return Series(
-      id: json['id'] as int,
-      name: json['name'] as String,
+      id: json['id'] as int? ?? 0,
+      name: json['name'] as String? ?? 'Без названия',
     );
   }
 
@@ -270,8 +270,8 @@ class Category {
 
   factory Category.fromJson(Map<String, dynamic> json) {
     return Category(
-      id: json['id'] as int,
-      name: json['name'] as String,
+      id: json['id'] as int? ?? 0,
+      name: json['name'] as String? ?? 'Без названия',
       isPublish: json['isPublish'] as bool?,
       description: json['description'] as String?,
       query: json['query'] as String?,
@@ -300,8 +300,8 @@ class ProductType {
 
   factory ProductType.fromJson(Map<String, dynamic> json) {
     return ProductType(
-      id: json['id'] as int,
-      name: json['name'] as String,
+      id: json['id'] as int? ?? 0,
+      name: json['name'] as String? ?? 'Без названия',
     );
   }
 
@@ -332,10 +332,10 @@ class Characteristic {
 
   factory Characteristic.fromJson(Map<String, dynamic> json) {
     return Characteristic(
-      attributeId: json['attributeId'] as int,
-      attributeName: json['attributeName'] as String,
-      id: json['id'] as int,
-      type: json['type'] as String,
+      attributeId: json['attributeId'] as int? ?? 0,
+      attributeName: json['attributeName'] as String? ?? 'Неизвестная характеристика',
+      id: json['id'] as int? ?? 0,
+      type: json['type'] as String? ?? 'unknown',
       adaptValue: json['adaptValue'] as String?,
       value: json['value'],
     );

@@ -71,6 +71,10 @@ class SessionManager {
     return headers;
   }
 
+  String? getSessionCookie() {
+    return _sessionCookie;
+  }
+
   bool hasActiveSession() {
     return _sessionCookie != null && _sessionCookie!.isNotEmpty;
   }

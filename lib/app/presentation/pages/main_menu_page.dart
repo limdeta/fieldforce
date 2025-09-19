@@ -74,7 +74,7 @@ class _MainMenuPageState extends State<MainMenuPage> {
       route: '/orders',
     ),
     MenuItem(
-      title: 'Отправка Данных',
+      title: 'Данные',
       icon: Icons.cloud_upload,
       route: '/data-sync',
     ),
@@ -219,6 +219,8 @@ class _MainMenuPageState extends State<MainMenuPage> {
         Navigator.pushNamed(context, '/cart');
       } else if (item.route == '/orders') {
         Navigator.pushNamed(context, '/orders');
+      } else if (item.route == '/data-sync') {
+        Navigator.pushNamed(context, '/data-sync');
       } else if (item.route == '/check-updates') {
         _handleCheckUpdates();
       } else if (item.route == '/logout') {

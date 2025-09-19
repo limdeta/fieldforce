@@ -55,6 +55,18 @@ class AppConfig {
     }
   }
 
+  // Products API Configuration
+  static String get productsApiUrl {
+    switch (_environment) {
+      case Environment.dev:
+        return 'https://localhost:8000/v1_api/products'; // Dev использует локальный API
+      case Environment.prod:
+        return 'https://localhost:8000/v1_api/products'; // Пока используем локальный для тестирования
+      case Environment.test:
+        return 'https://test-api.fieldforce.com/v1_api/products'; // Test API
+    }
+  }
+
   // Use mock authentication in dev/test modes
   static bool get useMockAuth => isDev || isTest;
   
@@ -110,6 +122,8 @@ class AppConfig {
     print('Environment: $_environment');
     print('API Base URL: $apiBaseUrl');
     print('Auth API URL: $authApiUrl');
+    print('User Info API URL: $userInfoApiUrl');
+    print('Products API URL: $productsApiUrl');
     print('Database Name: $databaseName');
     print('Use Mock Data: $useMockData');
     print('Use Mock Auth: $useMockAuth');
