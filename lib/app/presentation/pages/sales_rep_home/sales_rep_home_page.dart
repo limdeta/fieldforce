@@ -7,11 +7,13 @@ import 'package:fieldforce/features/navigation/tracking/domain/entities/navigati
 import 'package:fieldforce/features/navigation/tracking/presentation/bloc/user_tracks_bloc.dart';
 import 'package:fieldforce/app/presentation/widgets/combined_map_widget.dart';
 import 'package:fieldforce/app/presentation/widgets/app_tracking_button.dart';
+import 'package:fieldforce/app/presentation/widgets/tracking_debug_panel.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:fieldforce/app/domain/entities/route.dart' as shop;
 import 'package:fieldforce/features/navigation/tracking/domain/services/gps_data_manager.dart';
+import 'package:get_it/get_it.dart';
 import 'bloc/sales_rep_home_bloc.dart';
 import 'bloc/sales_rep_home_event.dart' as home_events;
 import 'bloc/sales_rep_home_state.dart';
@@ -41,20 +43,9 @@ class SalesRepHomePage extends StatelessWidget {
         BlocProvider<UserTracksBloc>(
           create: (context) => UserTracksBloc(),
         ),
-        // TrackingBloc для управления трекингом
-        BlocProvider<TrackingBloc>(
-          create: (context) {
-            final bloc = TrackingBloc();
-            // Устанавливаем пользователя из сессии
-            final currentSession = AppSessionService.currentSession;
-            if (currentSession?.appUser != null) {
-              bloc.setUser(currentSession!.appUser);
-              // TrackingBloc создан с пользователем
-            } else {
-              // TrackingBloc создан без пользователя
-            }
-            return bloc;
-          },
+        // TrackingBloc из DI (синглтон для сохранения состояния)
+        BlocProvider<TrackingBloc>.value(
+          value: GetIt.instance<TrackingBloc>(),
         ),
       ],
       child: SalesRepHomeView(gpsDataManager: gpsDataManager),
@@ -93,9 +84,9 @@ class _SalesRepHomeViewState extends State<SalesRepHomeView> {
         _initialized = true;
       });
       
-      // Инициализируем треки для пользователя
+      // Инициализируем треки для пользователя и показываем активный трек
       if (mounted) {
-        context.read<UserTracksBloc>().add(LoadUserTracksEvent(_user!));
+        context.read<UserTracksBloc>().add(LoadUserTracksEvent(_user!, showActiveTrack: true));
       }
     }
   }
@@ -106,14 +97,6 @@ class _SalesRepHomeViewState extends State<SalesRepHomeView> {
       body: MultiBlocListener(
         listeners: [
           // Слушаем обновления треков
-          BlocListener<UserTracksBloc, UserTracksState>(
-            listener: (context, state) {
-              if (state is UserTracksLoaded && state.activeTrack != null) {
-                // Уведомляем SalesRepHomeBloc об обновлении трека
-                context.read<SalesRepHomeBloc>().add(home_events.ActiveTrackUpdatedEvent(state.activeTrack!));
-              }
-            },
-          ),
           // Слушаем обновления позиции из TrackingBloc
           BlocListener<TrackingBloc, TrackingState>(
             listener: (context, state) {
@@ -122,9 +105,13 @@ class _SalesRepHomeViewState extends State<SalesRepHomeView> {
                   _cachedUserLocation = LatLng(state.latitude!, state.longitude!);
                   _cachedUserBearing = state.bearing;
                 });
-                // TODO: Debug - стрелка исчезает при переключении маршрутов. 
-                // Проблема: BlocBuilder<UserTracksBloc> пересоздается и сбрасывает кэшированную позицию.
-                // Нужно вынести CombinedMapWidget из BlocBuilder<UserTracksBloc> или использовать Provider для позиции.
+                // ИСПРАВЛЕНО: Debug панель покажет что происходит с позицией
+              } else if (state is TrackingOff) {
+                // НЕ сбрасываем позицию при остановке - сохраняем последнюю известную
+                // setState(() {
+                //   _cachedUserLocation = null;
+                //   _cachedUserBearing = null;
+                // });
               }
             },
           ),
@@ -178,6 +165,9 @@ class _SalesRepHomeViewState extends State<SalesRepHomeView> {
                     child: AppTrackingButton(),
                   ),
 
+                // Debug панель для трекинга
+                const TrackingDebugPanel(),
+
                 // Верхняя панель с маршрутом
                 if (state is SalesRepHomeLoaded)
                   _buildTopPanel(context, state),
@@ -216,17 +206,31 @@ class _SalesRepHomeViewState extends State<SalesRepHomeView> {
                 liveBuffer = userTracksState.liveBuffer;
               }
 
-              return CombinedMapWidget(
-                route: route,
-                track: track,
-                liveBuffer: liveBuffer,
-                currentUserLocation: _cachedUserLocation,
-                currentUserBearing: _cachedUserBearing,
-                maxConnectionDistance: 250.0, // Максимальное расстояние для соединения сегментов
-                onTap: (point) {
-                  // Обработка нажатия на карту
+              // Получаем позицию из TrackingBloc если кэшированной нет
+              LatLng? userLocation = _cachedUserLocation;
+              double? userBearing = _cachedUserBearing;
+              
+              // Если кэшированной позиции нет, берем из TrackingBloc
+              return BlocBuilder<TrackingBloc, TrackingState>(
+                builder: (context, trackingState) {
+                  if (trackingState is TrackingOn && trackingState.latitude != null) {
+                    userLocation ??= LatLng(trackingState.latitude!, trackingState.longitude!);
+                    userBearing ??= trackingState.bearing;
+                  }
+                  
+                  return CombinedMapWidget(
+                    route: route,
+                    track: track,
+                    liveBuffer: liveBuffer,
+                    currentUserLocation: userLocation,
+                    currentUserBearing: userBearing,
+                    maxConnectionDistance: 250.0, // Максимальное расстояние для соединения сегментов
+                    onTap: (point) {
+                      // Обработка нажатия на карту
+                    },
+                    routePolylinePoints: routePolylinePoints,
+                  );
                 },
-                routePolylinePoints: routePolylinePoints,
               );
             },
           );

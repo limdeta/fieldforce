@@ -510,7 +510,7 @@ class _MapWidgetState extends State<MapWidget> {
   static const double _connectionOpacity = 1.0; // Без прозрачности
   
   // Максимальное расстояние для соединения сегментов (в метрах)
-  static const double _maxConnectionDistance = 150.0;
+  static const double _maxConnectionDistance = 300.0;
 
   /// Рассчитывает расстояние между двумя точками в метрах (формула гаверсинуса)
   double _calculateDistance(double lat1, double lng1, double lat2, double lng2) {
@@ -532,50 +532,73 @@ class _MapWidgetState extends State<MapWidget> {
   List<Polyline> _buildTrackPolylines() {
     final track = widget.track;
     if (track == null) {
+      _logger.fine('🗺️ _buildTrackPolylines: track == null');
       return [];
     }
-
-    // Создаем кэш-ключ с учетом live буфера
-    String cacheKey;
-    if (widget.liveBuffer != null && widget.liveBuffer!.pointCount > 0) {
-      // Для треков с live буфером учитываем количество точек для инвалидации при новых точках
-      cacheKey = '${track.id}_${track.segments.length}_${track.totalPoints}_live${widget.liveBuffer!.pointCount}';
-    } else {
-      // Для завершенных треков используем стабильный ключ
-      cacheKey = '${track.id}_${track.segments.length}';
-    }
     
-    // Проверяем кэш
-    if (_polylineCache!.containsKey(cacheKey)) {
-      return _polylineCache![cacheKey]!;
-    }
+    try {
+      _logger.fine('🗺️ _buildTrackPolylines: track ID=${track.id}, segments=${track.segments.length}, liveBuffer=${widget.liveBuffer?.pointCount}');
+
+      // ОТКЛЮЧАЕМ КЭШ для активных треков с live буфером
+      bool hasLiveBuffer = widget.liveBuffer != null && widget.liveBuffer!.pointCount > 0;
+      
+      String cacheKey;
+      _logger.fine('🗺️ Создаем кэш-ключ... (hasLiveBuffer: $hasLiveBuffer)');
+      
+      if (hasLiveBuffer) {
+        // Для активных треков НЕ используем кэш - всегда пересчитываем
+        _logger.fine('🗺️ Активный трек с live буфером - кэш отключен');
+        cacheKey = 'no-cache-${DateTime.now().millisecondsSinceEpoch}';
+      } else {
+        // Для завершенных треков используем стабильный кэш
+        cacheKey = '${track.id}_${track.segments.length}';
+        // Проверяем кэш
+        if (_polylineCache!.containsKey(cacheKey)) {
+          _logger.fine('🗺️ Используем кэш для завершенного трека');
+          return _polylineCache![cacheKey]!;
+        }
+      }
 
     final polylines = <Polyline>[];
 
     // 1. Рендерим основные сегменты
     for (int i = 0; i < track.segments.length; i++) {
       final segment = track.segments[i];
-      if (segment.pointCount < 2) continue; // Нужно минимум 2 точки для линии
-
-      // Извлекаем координаты из CompactTrack
-      final points = <LatLng>[];
-      for (int j = 0; j < segment.pointCount; j++) {
-        final (lat, lng) = segment.getCoordinates(j);
-        points.add(LatLng(lat, lng));
+      _logger.fine('🗺️ Segment[$i]: ${segment.pointCount} точек');
+      if (segment.pointCount < 2) {
+        _logger.fine('🗺️ Пропускаем segment[$i] - мало точек (${segment.pointCount})');
+        continue; // Нужно минимум 2 точки для линии
       }
 
-      // Все сегменты одинакового цвета HOT PINK
-      polylines.add(
-        Polyline(
-          points: points,
-          strokeWidth: _trackStrokeWidth,
-          color: _trackColor,
-        ),
-      );
+      try {
+        // Извлекаем координаты из CompactTrack
+        final points = <LatLng>[];
+        for (int j = 0; j < segment.pointCount; j++) {
+          final (lat, lng) = segment.getCoordinates(j);
+          points.add(LatLng(lat, lng));
+          if (j < 2) { // Показываем только первые 2 точки чтобы не спамить
+            _logger.fine('🗺️ Point[$j]: $lat, $lng');
+          }
+        }
+        _logger.fine('🗺️ Создаем polyline для segment[$i] с ${points.length} точками');
+
+        // Все сегменты одинакового цвета HOT PINK
+        polylines.add(
+          Polyline(
+            points: points,
+            strokeWidth: _trackStrokeWidth,
+            color: _trackColor,
+          ),
+        );
+        _logger.fine('🗺️ Polyline для segment[$i] добавлен');
+      } catch (e, st) {
+        _logger.severe('❌ Ошибка создания polyline для segment[$i]: $e', e, st);
+      }
     }
 
     // 2. Добавляем live буфер как отдельную линию (если есть)
     if (widget.liveBuffer != null && widget.liveBuffer!.pointCount >= 2) {
+      _logger.fine('🗺️ Создаем live buffer polyline с ${widget.liveBuffer!.pointCount} точками');
       final livePoints = <LatLng>[];
       for (int j = 0; j < widget.liveBuffer!.pointCount; j++) {
         final (lat, lng) = widget.liveBuffer!.getCoordinates(j);
@@ -589,18 +612,31 @@ class _MapWidgetState extends State<MapWidget> {
           color: _liveBufferColor, // Отдельный цвет для live буфера
         ),
       );
+    } else if (widget.liveBuffer != null) {
+      _logger.fine('🗺️ Live buffer пропущен: ${widget.liveBuffer!.pointCount} точек (нужно >= 2)');
+    } else {
+      _logger.fine('🗺️ Live buffer == null');
     }
 
     // 3. Добавляем соединительные линии между сегментами и live буфером
     final connectionLines = _buildConnectionLines(track, widget.liveBuffer);
     polylines.addAll(connectionLines);
 
-    // Кэшируем результат
-    _polylineCache![cacheKey] = polylines;
-    return polylines;
-  }
+      // Кэшируем результат только для завершенных треков
+      if (!hasLiveBuffer) {
+        _polylineCache![cacheKey] = polylines;
+        _logger.fine('🗺️ Результат закэширован для завершенного трека');
+      } else {
+        _logger.fine('🗺️ Кэширование пропущено для активного трека');
+      }
 
-  /// Создает соединительные линии между сегментами и live буфером
+      _logger.fine('🗺️ Возвращаем ${polylines.length} polylines для отображения');
+      return polylines;
+    } catch (e, st) {
+      _logger.severe('❌ Ошибка в _buildTrackPolylines: $e', e, st);
+      return [];
+    }
+  }  /// Создает соединительные линии между сегментами и live буфером
   List<Polyline> _buildConnectionLines(UserTrack track, CompactTrack? liveBuffer) {
     final connectionLines = <Polyline>[];
     
@@ -648,7 +684,9 @@ class _MapWidgetState extends State<MapWidget> {
         // Проверяем расстояние
         final distance = _calculateDistance(endLat, endLng, startLat, startLng);
         final maxDistance = widget.maxConnectionDistance ?? _maxConnectionDistance;
+        
         if (distance <= maxDistance) {
+          // Соединяем только если расстояние разумное
           connectionLines.add(
             Polyline(
               points: [
@@ -660,7 +698,7 @@ class _MapWidgetState extends State<MapWidget> {
             ),
           );
         } else {
-          print('⚠️ Пропускаем соединение с live буфером: расстояние ${distance.toStringAsFixed(1)}м > ${maxDistance}м');
+          _logger.warning('⚠️ Пропускаем соединение до live буфера: расстояние ${distance.toStringAsFixed(1)}м > ${maxDistance}м');
         }
       }
     }

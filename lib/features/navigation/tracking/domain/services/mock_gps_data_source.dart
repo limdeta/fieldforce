@@ -3,6 +3,7 @@ import 'dart:math' as math;
 import 'package:fieldforce/app/services/test_coordinates_loader.dart';
 import 'package:flutter/foundation.dart';
 import 'package:geolocator/geolocator.dart';
+import 'package:logging/logging.dart';
 import 'gps_data_source.dart';
 
 /// Мок источник GPS данных для тестирования
@@ -14,6 +15,7 @@ import 'gps_data_source.dart';
 /// - Реалистичное время между точками
 /// - Настраиваемую скорость воспроизведения
 class MockGpsDataSource implements GpsDataSource {
+  static final Logger _logger = Logger('MockGpsDataSource');
   static const String _tag = 'MockGPS';
 
   // Текущее состояние
@@ -59,7 +61,7 @@ class MockGpsDataSource implements GpsDataSource {
       final loaded = await loader.loadFromAsset(jsonAssetPath);
 
       if (loaded.isEmpty) {
-        print('🎭 $_tag: Loader returned empty route, creating test route');
+        _logger.warning('🎭 $_tag: Loader returned empty route, creating test route');
         return;
       }
 
@@ -78,7 +80,7 @@ class MockGpsDataSource implements GpsDataSource {
       debugPrint('🎭 $_tag: Маршрут загружен (${_routePoints.length} точек)');
 
     } catch (e, st) {
-      print('❌ $_tag: Ошибка загрузки маршрута: $e\n$st');
+      _logger.severe('❌ $_tag: Ошибка загрузки маршрута: $e', e, st);
       // _createTestRoute();
     }
   }

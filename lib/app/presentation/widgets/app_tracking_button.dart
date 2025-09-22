@@ -17,6 +17,17 @@ class AppTrackingButton extends StatelessWidget {
   Widget build(BuildContext context) {
     return BlocBuilder<TrackingBloc, TrackingState>(
       builder: (context, state) {
+        // ИСПРАВЛЕНО: Всегда проверяем и устанавливаем пользователя если его нет
+        if (state is TrackingNoUser) {
+          final currentSession = AppSessionService.currentSession;
+          if (currentSession?.appUser != null) {
+            // Устанавливаем пользователя без запуска трекинга
+            WidgetsBinding.instance.addPostFrameCallback((_) {
+              context.read<TrackingBloc>().setUser(currentSession!.appUser);
+            });
+          }
+        }
+        
         return TrackingToggleButton(
           state: state,
           size: size,

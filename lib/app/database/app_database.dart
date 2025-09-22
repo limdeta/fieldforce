@@ -1,6 +1,7 @@
 import 'dart:io';
 import 'package:drift/drift.dart';
 import 'package:drift/native.dart';
+import 'package:logging/logging.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:path/path.dart' as p;
 import 'package:sqlite3_flutter_libs/sqlite3_flutter_libs.dart';
@@ -24,6 +25,9 @@ import 'tables/order_line_table.dart';
 import 'tables/stock_item_table.dart';
 
 part 'app_database.g.dart';
+
+/// Logger for database operations
+final Logger _dbLogger = Logger('AppDatabase');
 
 @DriftDatabase(tables: [
   Users,
@@ -91,9 +95,9 @@ class AppDatabase extends _$AppDatabase {
 LazyDatabase _openConnection(String dbFileName) {
   return LazyDatabase(() async {
     final dbFolder = await getApplicationDocumentsDirectory();
-    print('=== DB FOLDER: [32m${dbFolder.path}[0m');
+    _dbLogger.info('=== DB FOLDER: ${dbFolder.path}');
     final file = File(p.join(dbFolder.path, dbFileName));
-    print('=== DB FILE: [32m${file.path}[0m');
+    _dbLogger.info('=== DB FILE: ${file.path}');
     // Обеспечиваем поддержку SQLite на всех платформах
     if (Platform.isAndroid) {
       await applyWorkaroundToOpenSqlite3OnOldAndroidVersions();

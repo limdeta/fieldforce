@@ -4,6 +4,7 @@ import 'package:fieldforce/app/domain/usecases/app_user_logout_usecase.dart';
 import 'package:fieldforce/app/domain/usecases/get_current_app_session_usecase.dart';
 import 'package:fieldforce/app/domain/usecases/get_work_days_for_user_usecase.dart';
 import 'package:fieldforce/features/navigation/tracking/domain/services/location_tracking_service.dart';
+import 'package:fieldforce/features/navigation/tracking/domain/services/track_manager.dart';
 import 'package:fieldforce/features/navigation/tracking/domain/usecases/get_user_track_for_date_usecase.dart';
 import 'package:fieldforce/features/navigation/tracking/domain/usecases/get_user_tracks_usecase.dart';
 import 'package:fieldforce/features/shop/domain/repositories/employee_repository.dart';
@@ -29,6 +30,7 @@ import 'package:fieldforce/features/authentication/domain/usecases/login_usecase
 import 'package:fieldforce/features/authentication/domain/usecases/logout_usecase.dart';
 import 'package:fieldforce/features/authentication/domain/usecases/get_current_session_usecase.dart';
 import 'package:fieldforce/features/authentication/presentation/bloc/bloc.dart';
+import 'package:fieldforce/features/navigation/tracking/presentation/bloc/tracking_bloc.dart';
 import 'package:fieldforce/features/shop/data/fixtures/product_fixture_service.dart';
 import 'package:fieldforce/app/database/repositories/trading_point_repository_drift.dart';
 import 'package:fieldforce/app/domain/repositories/app_user_repository.dart';
@@ -308,13 +310,24 @@ Future<void> setupTestServiceLocator() async {
     ),
   );
 
+  // TrackManager как синглтон для управления GPS треками
+  getIt.registerLazySingleton<TrackManager>(
+    () => TrackManager(getIt<UserTrackRepository>()),
+  );
+
   getIt.registerLazySingleton<LocationTrackingServiceBase>(
-    () => LocationTrackingService(getIt<GpsDataManager>()),
+    () => LocationTrackingService(getIt<GpsDataManager>(), getIt<TrackManager>()),
+  );
+
+  // TrackingBloc как синглтон для сохранения состояния между экранами
+  getIt.registerLazySingleton<TrackingBloc>(
+    () => TrackingBloc(),
   );
 
   // GpsDataManager с mock источником для тестов
-  await GpsDataManager().initialize(mode: GpsMode.mock);
-  getIt.registerSingleton<GpsDataManager>(GpsDataManager());
+  final gpsManager = GpsDataManager();
+  await gpsManager.initialize(mode: GpsMode.mock);
+  getIt.registerSingleton<GpsDataManager>(gpsManager);
 
   getIt.registerLazySingleton<GetUserTracksUseCase>(
     () => GetUserTracksUseCase(getIt<UserTrackRepository>()),

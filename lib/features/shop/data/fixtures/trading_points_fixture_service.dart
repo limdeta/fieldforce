@@ -141,7 +141,7 @@ class TradingPointsFixtureService {
       for (final tradingPoint in tradingPoints) {
         final result = await tradingPointRepository.assignToEmployee(tradingPoint, employee);
         result.fold(
-          (failure) => print('⚠️ Не удалось привязать ${tradingPoint.name}: ${failure.message}'),
+          (failure) => _logger.warning('⚠️ Не удалось привязать ${tradingPoint.name}: ${failure.message}'),
           (_) => successCount++,
         );
       }

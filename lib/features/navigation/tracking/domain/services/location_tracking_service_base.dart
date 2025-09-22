@@ -13,6 +13,6 @@ abstract class LocationTrackingServiceBase {
   bool get isTracking;
   UserTrack? get currentTrack;
   Stream<UserTrack> get trackUpdateStream;
-  Stream<CompactTrack>? get liveBufferStream;
+  Stream<CompactTrack> get liveBufferStream;
   Stream<Position>? get positionStream;
 }

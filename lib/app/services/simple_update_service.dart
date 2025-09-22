@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
+import 'package:logging/logging.dart';
 import 'package:upgrader/upgrader.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../config/app_config.dart';
@@ -8,6 +9,7 @@ import '../config/app_config.dart';
 /// Простой сервис автообновлений используя библиотеку upgrader
 /// Но с кастомным источником обновлений (ваш сервер)
 class SimpleUpdateService {
+  static final Logger _logger = Logger('SimpleUpdateService');
   static const String UPDATE_URL = 'https://your-server.com/fieldforce/version.json';
   static const String CURRENT_VERSION = '1.0.0'; // Текущая версия
   
@@ -218,18 +220,18 @@ class SimpleUpdateService {
   /// Открытие ссылки для скачивания обновления
   Future<void> downloadUpdate(String downloadUrl) async {
     try {
-      print('📱 [UpdateService] Открываем ссылку для скачивания: $downloadUrl');
+      _logger.info('📱 Открываем ссылку для скачивания: $downloadUrl');
       
       final uri = Uri.parse(downloadUrl);
       if (await canLaunchUrl(uri)) {
         await launchUrl(uri, mode: LaunchMode.externalApplication);
-        print('✅ [UpdateService] Ссылка открыта в браузере');
+        _logger.info('✅ Ссылка открыта в браузере');
       } else {
-        print('❌ [UpdateService] Не удалось открыть ссылку: $downloadUrl');
+        _logger.warning('❌ Не удалось открыть ссылку: $downloadUrl');
         throw Exception('Не удалось открыть ссылку для скачивания');
       }
     } catch (e) {
-      print('❌ [UpdateService] Ошибка при открытии ссылки: $e');
+      _logger.severe('❌ Ошибка при открытии ссылки: $e');
       rethrow;
     }
   }

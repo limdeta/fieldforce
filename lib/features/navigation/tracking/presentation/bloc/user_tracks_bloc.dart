@@ -9,6 +9,7 @@ import 'package:fieldforce/features/navigation/tracking/domain/services/location
 import 'package:fieldforce/features/navigation/tracking/domain/entities/navigation_user.dart';
 import 'package:fieldforce/shared/failures.dart';
 import 'package:get_it/get_it.dart';
+import 'package:logging/logging.dart';
 
 // EVENTS
 abstract class UserTracksEvent extends Equatable {
@@ -115,6 +116,7 @@ class UserTrackNotFound extends UserTracksState {
 
 // BLOC
 class UserTracksBloc extends Bloc<UserTracksEvent, UserTracksState> {
+  static final Logger _logger = Logger('UserTracksBloc');
   final GetUserTracksUseCase _getUserTracksUseCase = GetIt.instance<GetUserTracksUseCase>();
   final GetUserTrackForDateUseCase _getUserTrackForDateUseCase = GetIt.instance<GetUserTrackForDateUseCase>();
   final LocationTrackingServiceBase _locationTrackingService = GetIt.instance<LocationTrackingServiceBase>();
@@ -174,6 +176,13 @@ class UserTracksBloc extends Bloc<UserTracksEvent, UserTracksState> {
         // Если нужно показать активный трек после загрузки
         if (event.showActiveTrack && currentActiveTrack != null) {
           _displayedTrack = currentActiveTrack;
+          
+          // КРИТИЧНО: Синхронизируем с активным TrackManager для получения live буфера
+          final liveTrack = _locationTrackingService.currentTrack;
+          if (liveTrack != null && liveTrack.id == currentActiveTrack.id) {
+            _logger.fine('🔄 UserTracksBloc: Синхронизируем loaded трек с live TrackManager');
+            _displayedTrack = liveTrack; // Используем live версию с буфером
+          }
         }
         
         emit(UserTracksLoaded(
@@ -254,23 +263,27 @@ class UserTracksBloc extends Bloc<UserTracksEvent, UserTracksState> {
   }
 
   void _subscribeToActiveTrack() {
-    // Подписка на обновления сохраненных треков (редкие обновления)
+    // Подписка на обновления треков с полным состоянием (включая буфер)
     _trackUpdateSubscription = _locationTrackingService.trackUpdateStream.listen(
       (activeTrack) {
+        _logger.fine('🔄 UserTracksBloc: получен trackUpdate для трека ${activeTrack.id}');
         add(ActiveTrackUpdatedEvent(activeTrack));
       },
       onError: (error) {
-        print('❌ UserTracksBloc: Ошибка в trackUpdateStream: $error');
+        _logger.severe('❌ UserTracksBloc: Ошибка в trackUpdateStream: $error');
       },
     );
     
-    // Подписка на live обновления буфера (частые обновления)
-    _liveBufferSubscription = _locationTrackingService.liveBufferStream?.listen(
+    // Подписка на live обновления буфера (частые обновления для real-time отображения)
+    _liveBufferSubscription = _locationTrackingService.liveBufferStream.listen(
       (bufferSegment) {
+        _logger.fine('📡 UserTracksBloc: получен liveBuffer с ${bufferSegment.pointCount} точками');
+        _logger.fine('📡 UserTracksBloc: добавляем LiveBufferUpdatedEvent...');
         add(LiveBufferUpdatedEvent(bufferSegment));
+        _logger.fine('📡 UserTracksBloc: LiveBufferUpdatedEvent добавлен');
       },
       onError: (error) {
-        print('❌ UserTracksBloc: Ошибка в liveBufferStream: $error');
+        _logger.severe('❌ UserTracksBloc: Ошибка в liveBufferStream: $error');
       },
     );
   }
@@ -284,23 +297,31 @@ class UserTracksBloc extends Bloc<UserTracksEvent, UserTracksState> {
       _userTracks.add(event.activeTrack);
     }
     
-    // Обновляем UI только если активный трек сейчас отображается
-    if (_displayedTrack?.id == event.activeTrack.id) {
-      _displayedTrack = event.activeTrack;
-      emit(UserTracksLoaded(
-        userTracks: _userTracks,
-        activeTrack: event.activeTrack,
-        completedTracks: _completedTracks,
-      ));
-    } else {
-      print('[UserTracksBloc] ❌ Активный трек НЕ отображается - игнорируем обновление UI');
+    // ИСПРАВЛЕНО: Всегда обновляем активный трек если он обновился
+    _displayedTrack = event.activeTrack;
+    
+    // КРИТИЧНО: Сохраняем существующий liveBuffer при обновлении трека
+    CompactTrack? currentLiveBuffer;
+    if (state is UserTracksLoaded) {
+      currentLiveBuffer = (state as UserTracksLoaded).liveBuffer;
     }
+    
+    emit(UserTracksLoaded(
+      userTracks: _userTracks,
+      activeTrack: event.activeTrack,
+      completedTracks: _completedTracks,
+      liveBuffer: currentLiveBuffer, // Сохраняем существующий liveBuffer
+    ));
   }
 
   void _onLiveBufferUpdated(LiveBufferUpdatedEvent event, Emitter<UserTracksState> emit) {
+    _logger.fine('🔄 _onLiveBufferUpdated: обновляем liveBuffer с ${event.bufferSegment.pointCount} точками');
     if (state is UserTracksLoaded) {
       final currentState = state as UserTracksLoaded;
       emit(currentState.copyWith(liveBuffer: event.bufferSegment));
+      _logger.fine('✅ liveBuffer обновлен в стейте');
+    } else {
+      _logger.warning('❌ state не является UserTracksLoaded: ${state.runtimeType}');
     }
   }
 

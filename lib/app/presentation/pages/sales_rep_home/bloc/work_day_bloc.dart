@@ -6,6 +6,7 @@ import 'package:fieldforce/app/services/app_session_service.dart';
 import 'package:fieldforce/app/domain/usecases/get_work_days_for_user_usecase.dart';
 import 'package:fieldforce/features/navigation/tracking/domain/services/location_tracking_service_base.dart';
 import 'package:get_it/get_it.dart';
+import 'package:logging/logging.dart';
 
 // EVENTS
 abstract class WorkDayEvent extends Equatable {

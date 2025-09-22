@@ -78,11 +78,7 @@ class TrackingBloc extends Bloc<TrackingEvent, TrackingState> {
       if (_trackingService.isTracking) {
         emit(TrackingOn(latitude: _lastLatitude, longitude: _lastLongitude, bearing: _lastBearing));
       } else if (_currentUser != null) {
-        // Проверяем, был ли трекинг активен до этого (чтобы не останавливать случайно)
-        if (state is TrackingOn) {
-          // Не меняем состояние, если оно было активно
-          return;
-        }
+        // ИСПРАВЛЕНО: НЕ автовосстанавливаем трекинг, только показываем правильное состояние
         emit(TrackingOff());
       } else {
         emit(TrackingNoUser());

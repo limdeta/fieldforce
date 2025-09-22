@@ -9,11 +9,14 @@ import 'package:fieldforce/app/services/app_session_service.dart';
 import 'package:fieldforce/app/services/user_preferences_service.dart';
 import 'package:fieldforce/features/navigation/map/domain/entities/map_point.dart';
 import 'package:fieldforce/features/navigation/path_predictor/osrm_path_prediction_service.dart';
+import 'package:fieldforce/features/navigation/tracking/domain/services/location_tracking_service_base.dart';
+import 'package:logging/logging.dart';
 import 'sales_rep_home_event.dart';
 import 'sales_rep_home_state.dart';
 
 /// BLoC для главной страницы торгового представителя
 class SalesRepHomeBloc extends Bloc<SalesRepHomeEvent, SalesRepHomeState> {
+  static final Logger _logger = Logger('SalesRepHomeBloc');
   final RouteRepository _routeRepository = GetIt.instance<RouteRepository>();
   final UserPreferencesService _preferencesService = GetIt.instance<UserPreferencesService>();
   // final LocationTrackingServiceBase _trackingService = GetIt.instance<LocationTrackingServiceBase>();
@@ -46,6 +49,7 @@ class SalesRepHomeBloc extends Bloc<SalesRepHomeEvent, SalesRepHomeState> {
     if (state is SalesRepHomeLoaded) {
       final currentState = state as SalesRepHomeLoaded;
       final newTrack = event.activeTrack;
+      
       final newState = currentState.copyWith(activeTrack: newTrack);
       emit(newState);
     }
@@ -54,7 +58,19 @@ class SalesRepHomeBloc extends Bloc<SalesRepHomeEvent, SalesRepHomeState> {
   /// Настройка слушателя активного трека
   void _setupActiveTrackListener() {
     _activeTrackSubscription?.cancel();
-    // Подписка на trackUpdateStream отключена - управление через UserTracksBloc
+    
+    // Подписываемся напрямую на LocationTrackingService для получения полного состояния трека
+    final locationService = GetIt.instance<LocationTrackingServiceBase>();
+    
+    _activeTrackSubscription = locationService.trackUpdateStream.listen(
+      (activeTrack) {
+        _logger.fine('📍 SalesRepHomeBloc: Получен обновленный трек ID: ${activeTrack.id}');
+        add(ActiveTrackUpdatedEvent(activeTrack));
+      },
+      onError: (error) {
+        _logger.severe('❌ SalesRepHomeBloc: Ошибка в trackUpdateStream: $error');
+      },
+    );
   }
 
   /// Инициализация BLoC

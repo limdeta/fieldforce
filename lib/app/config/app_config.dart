@@ -104,6 +104,10 @@ class AppConfig {
   static bool get checkForUpdates => isDev; // Включено только для dev пока
   static bool get enableTileCaching => true; // Включение кеширования тайлов карты (экономит трафик, ускоряет загрузку)
   
+  // GPS Debug Flags 
+  static bool get enableGpsDebugMode => const String.fromEnvironment('GPS_DEBUG', defaultValue: 'false') == 'true';
+  static bool get showTrackingDebugInfo => enableGpsDebugMode || isDev;
+  
 
   static void configureFromArgs() {
     // Автоматически определяем тестовое окружение
