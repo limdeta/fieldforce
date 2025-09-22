@@ -36,7 +36,17 @@ class _AuthenticationWidgetState extends State<AuthenticationWidget> {
   void initState() {
     super.initState();
     if (widget.initialPhone != null) {
-      _phoneController.text = widget.initialPhone!;
+      // Store only the local part (10 digits) in the controller so UI shows +7 as prefix
+      final cleaned = widget.initialPhone!.replaceAll(RegExp(r'[^\d]'), '');
+      String localPart = cleaned;
+      if (cleaned.startsWith('7') && cleaned.length == 11) {
+        localPart = cleaned.substring(1);
+      } else if (cleaned.startsWith('8') && cleaned.length == 11) {
+        localPart = cleaned.substring(1);
+      } else if (cleaned.length == 10) {
+        localPart = cleaned;
+      }
+      _phoneController.text = localPart;
     }
     if (widget.initialPassword != null) {
       _passwordController.text = widget.initialPassword!;
@@ -52,9 +62,19 @@ class _AuthenticationWidgetState extends State<AuthenticationWidget> {
 
   void _handleLogin() {
     if (_formKey.currentState?.validate() ?? false) {
+      final raw = _phoneController.text.replaceAll(RegExp(r'\D'), '');
+      String phoneString;
+      if (raw.length == 10) {
+        phoneString = '7$raw';
+      } else if (raw.length == 11 && raw.startsWith('7')) {
+        phoneString = raw;
+      } else {
+        phoneString = raw; // let domain validate
+      }
+
       context.read<AuthenticationBloc>().add(
         AuthenticationLoginRequested(
-          phoneNumber: _phoneController.text.trim(),
+          phoneNumber: phoneString,
           password: _passwordController.text,
           rememberMe: _rememberMe,
         ),
@@ -83,14 +103,19 @@ class _AuthenticationWidgetState extends State<AuthenticationWidget> {
                 controller: _phoneController,
                 decoration: const InputDecoration(
                   labelText: 'Номер телефона',
-                  hintText: '+7-XXX-XXX-XXXX',
+                  hintText: '999-111-2233',
+                  prefixText: '+7 ',
                   prefixIcon: Icon(Icons.phone),
                 ),
                 keyboardType: TextInputType.phone,
                 enabled: !isLoading,
                 validator: (value) {
-                  if (value == null || value.isEmpty) {
+                  final digits = (value ?? '').replaceAll(RegExp(r'\D'), '');
+                  if (digits.isEmpty) {
                     return 'Введите номер телефона';
+                  }
+                  if (digits.length != 10) {
+                    return 'Номер телефона должен содержать 10 цифр без кода страны';
                   }
                   return null;
                 },
@@ -190,14 +215,16 @@ class _AuthenticationWidgetState extends State<AuthenticationWidget> {
               const SizedBox(width: 8),
               Expanded(
                 child: Text(
-                  widget.initialPhone ?? '+7-999-111-2233',
+                  // show full international format for readability
+                  widget.initialPhone != null ? '+7${widget.initialPhone}' : '+7-999-111-2233',
                   style: const TextStyle(fontFamily: 'monospace'),
                 ),
               ),
               IconButton(
                 icon: const Icon(Icons.copy, size: 16),
                 onPressed: () {
-                  _phoneController.text = widget.initialPhone ?? '+7-999-111-2233';
+                  // copy only local part (without +7) into the input field
+                  _phoneController.text = widget.initialPhone ?? '999-111-2233';
                 },
                 tooltip: 'Скопировать',
               ),

@@ -25,7 +25,7 @@ class AppConfig {
       case Environment.dev:
         return 'https://dev-api.fieldforce.com';
       case Environment.prod:
-        return 'https://api.fieldforce.com';
+        return 'https://api.instock-dv.ru/v1_api/';
       case Environment.test:
         return 'https://test-api.fieldforce.com';
     }
@@ -37,7 +37,8 @@ class AppConfig {
       case Environment.dev:
         return ''; // Dev использует mock
       case Environment.prod:
-        return 'https://localhost:8000/v1_api/login'; // Локальный API для тестирования
+        // return 'https://localhost:8000/v1_api/login';
+        return 'https://api.instock-dv.ru/v1_api/login';
       case Environment.test:
         return ''; // Test использует mock
     }
@@ -49,7 +50,8 @@ class AppConfig {
       case Environment.dev:
         return ''; // Dev использует mock
       case Environment.prod:
-        return 'https://localhost:8000/v1_api/users/me'; // API для получения информации о пользователе
+        // return 'https://localhost:8000/v1_api/users/me';
+        return 'https://api.instock-dv.ru/v1_api/users/me';
       case Environment.test:
         return ''; // Test использует mock
     }
@@ -59,11 +61,12 @@ class AppConfig {
   static String get productsApiUrl {
     switch (_environment) {
       case Environment.dev:
-        return 'https://localhost:8000/v1_api/products'; // Dev использует локальный API
+        return 'https://localhost:8000/v1_api/products';
       case Environment.prod:
-        return 'https://localhost:8000/v1_api/products'; // Пока используем локальный для тестирования
+        // return 'https://localhost:8000/v1_api/products';
+        return 'https://api.instock-dv.ru/v1_api/products';
       case Environment.test:
-        return 'https://test-api.fieldforce.com/v1_api/products'; // Test API
+        return 'https://test-api.fieldforce.com/v1_api/products';
     }
   }
 
@@ -71,11 +74,11 @@ class AppConfig {
   static String get categoriesApiUrl {
     switch (_environment) {
       case Environment.dev:
-        return 'https://localhost:8000/v1_api/categories'; // Dev использует локальный API
+        return 'https://localhost:8000/v1_api/categories'; 
       case Environment.prod:
-        return 'https://localhost:8000/v1_api/categories'; // Пока используем локальный для тестирования
+        return 'https://api.instock-dv.ru/v1_api/categories';
       case Environment.test:
-        return 'https://test-api.fieldforce.com/v1_api/categories'; // Test API
+        return ''; // Test API
     }
   }
 

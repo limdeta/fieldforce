@@ -1,6 +1,6 @@
 ﻿import 'dart:async';
 import 'dart:io';
-import 'dart:math';
+// removed unused imports after log cleanup
 import 'dart:isolate';
 import 'package:http/io_client.dart';
 import 'package:logging/logging.dart';
@@ -34,6 +34,8 @@ class ApiProductSyncService implements ProductSyncService {
   }) : _apiUrl = apiUrl, 
        _sessionCookie = sessionCookie;
 
+  // helper removed — keep logging concise in this service
+
   @override
   Future<SyncResult> syncProducts(
     SyncConfig config,
@@ -41,7 +43,7 @@ class ApiProductSyncService implements ProductSyncService {
     ProductRepository productRepository,
     StockItemRepository stockItemRepository,
   ) async {
-    _logger.info('Начало синхронизации продуктов через API');
+  _logger.info('Начало синхронизации продуктов через API');
 
     final startTime = DateTime.now();
     int successCount = 0;
@@ -51,11 +53,9 @@ class ApiProductSyncService implements ProductSyncService {
       // Делаем HTTP запрос к API
       final response = await _makeApiRequest(config);
       
-      // Логируем краткую информацию
-      _logger.info('Полный JSON ответ от API: ${response.substring(0, min(200, response.length))}...');
-      
+  // краткая информация о полученном ответе
       final apiResponse = _parsingService.parseProductApiResponse(response);
-      _logger.info('Получено ${apiResponse.products.length} продуктов из API');
+  _logger.info('Получено ${apiResponse.products.length} продуктов из API');
       
       // Проверяем наличие stockItems в каждом продукте
       int productsWithStockItems = 0;
@@ -66,18 +66,18 @@ class ApiProductSyncService implements ProductSyncService {
           totalStockItems += product.stockItems.length;
         }
       }
-      _logger.info('📊 Продукты с stockItems: $productsWithStockItems/${apiResponse.products.length}, всего stockItems: $totalStockItems');
+  _logger.fine('Продукты с stockItems: $productsWithStockItems/${apiResponse.products.length}, всего stockItems: $totalStockItems');
       
       // Конвертируем продукты
       final convertedProducts = _parsingService.convertApiItemsToProducts(apiResponse.products);
-      _logger.info('Конвертировано ${convertedProducts.length} продуктов');
+  _logger.fine('Конвертировано ${convertedProducts.length} продуктов');
       
       // Сохраняем продукты и stock items в базу данных
-      _logger.info('Сохранение ${convertedProducts.length} продуктов в базу данных...');
+  _logger.info('Сохранение ${convertedProducts.length} продуктов в базу данных...');
       
       final products = convertedProducts.map((data) => data.product).toList();
       final allStockItems = convertedProducts.expand((data) => data.stockItems).toList();
-      _logger.info('📦 Извлечено ${allStockItems.length} stock_items из ${convertedProducts.length} продуктов');
+  _logger.fine('Извлечено ${allStockItems.length} stock_items из ${convertedProducts.length} продуктов');
       
       // Сохраняем продукты
       final productSaveResult = await productRepository.saveProducts(products);
@@ -95,7 +95,7 @@ class ApiProductSyncService implements ProductSyncService {
           (_) => _logger.info('Stock items успешно сохранены (${allStockItems.length} записей)'),
         );
       } else {
-        _logger.warning('⚠️ Stock items отсутствуют! allStockItems.isEmpty = true');
+        _logger.warning('Stock items отсутствуют для текущей партии продуктов');
       }
       
       successCount = convertedProducts.length;
@@ -119,7 +119,7 @@ class ApiProductSyncService implements ProductSyncService {
       );
 
     } catch (e, st) {
-      _logger.severe('Ошибка синхронизации продуктов', e, st);
+  _logger.severe('Ошибка синхронизации продуктов', e, st);
       errorCount++;
 
       final duration = DateTime.now().difference(startTime);
@@ -161,6 +161,7 @@ class ApiProductSyncService implements ProductSyncService {
       final headers = <String, String>{
         'Content-Type': 'application/json',
         'User-Agent': 'FieldForce-Mobile/1.0',
+        'Accept': 'application/json',
       };
 
       // Добавляем сессионную куку
@@ -169,23 +170,23 @@ class ApiProductSyncService implements ProductSyncService {
             ? _sessionCookie 
             : 'PHPSESSID=$_sessionCookie';
         headers['Cookie'] = fullCookie;
-        _logger.info('Используем сессионную куку: $fullCookie');
+          // Умеренная информация о наличии куки (не печатаем полную куку)
+          _logger.fine('Используется сессионная кука');
       } else {
-        _logger.warning('Сессионная кука не установлена!');
+          _logger.fine('Сессионная кука не установлена');
       }
+        _logger.fine('Отправка запроса к ${uri.toString()}');
 
-      _logger.info('Отправка запроса к ');
-      
-      final response = await client.get(uri, headers: headers);
-      _logger.info('Получен ответ: ');
+        final response = await client.get(uri, headers: headers);
 
-      if (response.statusCode != 200) {
-        throw Exception('HTTP : ');
-      }
+        if (response.statusCode != 200) {
+          final responseString = response.body;
+          final preview = responseString.length > 500 ? responseString.substring(0, 500) + '...[truncated]' : responseString;
+          _logger.warning('HTTP ${response.statusCode} ${response.reasonPhrase ?? ''}. Response preview: $preview');
+          throw Exception('HTTP ${response.statusCode}: ${response.reasonPhrase}');
+        }
 
-      final responseString = response.body;
-      _logger.info('Размер ответа:  символов');
-      return responseString;
+        return response.body;
 
     } finally {
       client.close();
