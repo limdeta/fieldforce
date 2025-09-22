@@ -285,7 +285,8 @@ class _CategoryProductsPageState extends State<CategoryProductsPage> {
       onRefresh: _loadProducts,
       child: ListView.builder(
         controller: _scrollController,
-        padding: const EdgeInsets.all(16),
+        // Reduced horizontal padding so cards align with screen edges
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 12),
         itemCount: _products.length + (_hasMore ? 1 : 0),
         itemBuilder: (context, index) {
           if (index == _products.length) {

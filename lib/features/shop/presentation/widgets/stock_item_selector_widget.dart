@@ -22,6 +22,10 @@ class StockItemSelectorWidget extends StatefulWidget {
   final void Function(StockItem stockItem) onStockItemSelected;
   
   final bool showFullInfo;
+  // Optional outer margin so parent can control spacing. Default to zero.
+  final EdgeInsetsGeometry outerMargin;
+  // Compact mode reduces paddings and font sizes for inline usage
+  final bool compact;
 
   const StockItemSelectorWidget({
     super.key,
@@ -29,6 +33,8 @@ class StockItemSelectorWidget extends StatefulWidget {
     required this.onStockItemSelected,
     this.selectedStockItem,
     this.showFullInfo = true,
+    this.outerMargin = EdgeInsets.zero,
+    this.compact = false,
   });
 
   @override
@@ -152,17 +158,19 @@ class _StockItemSelectorWidgetState extends State<StockItemSelectorWidget> {
     final hasMultipleStockItems = _stockItems.length > 1;
     
     return Container(
-      margin: const EdgeInsets.symmetric(horizontal: 16),
+      margin: widget.outerMargin,
       child: hasMultipleStockItems
         ? Material(
             color: Colors.white,
-            borderRadius: BorderRadius.circular(4), // Минимальные скругления
+            borderRadius: BorderRadius.circular(2),
             elevation: 0,
             child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+              // Reduced padding for compact inline selector
+              padding: widget.compact ? const EdgeInsets.symmetric(horizontal: 2, vertical: 0) : const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
               decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(4), // Минимальные скругления
-                border: Border.all(color: Colors.grey.shade300, width: 1.5), // Более четкая рамка
+                borderRadius: BorderRadius.circular(2),
+                // Removed border to make selector look inline; keep a subtle background
+                color: Colors.grey.shade50,
               ),
               child: DropdownButton<StockItem>(
             value: selectedStockItem,
@@ -173,82 +181,102 @@ class _StockItemSelectorWidgetState extends State<StockItemSelectorWidget> {
             },
             isExpanded: true, // Заставляем занимать всю ширину контейнера
             underline: const SizedBox(), // Убираем подчеркивание
-            icon: Icon(
-              Icons.keyboard_arrow_down,
-              size: 20,
-              color: Colors.grey.shade600,
+            icon: Container(
+              width: widget.compact ? 28 : 32,
+              height: widget.compact ? 20 : 24,
+              decoration: BoxDecoration(
+                color: Colors.grey.shade800, // rectangle color (text-color like)
+                borderRadius: BorderRadius.circular(6),
+              ),
+              child: Center(
+                child: Icon(
+                  Icons.keyboard_arrow_down,
+                  size: widget.compact ? 14 : 16,
+                  // Paint the arrow with scaffold background color to make it look like a cutout
+                  color: Theme.of(context).scaffoldBackgroundColor,
+                ),
+              ),
             ),
             dropdownColor: Colors.white, // Белый фон выпадающего списка
             borderRadius: BorderRadius.circular(4), // Минимальные скругления для меню
-            style: const TextStyle(
+            style: TextStyle(
               color: Colors.black,
-              fontSize: 14,
+              fontSize: widget.compact ? 12 : 14,
             ),
             items: _stockItems.map((stockItem) {
               return DropdownMenuItem<StockItem>(
                 value: stockItem,
                 child: Container(
                   width: double.infinity,
-                  padding: const EdgeInsets.symmetric(vertical: 4),
+                  padding: const EdgeInsets.symmetric(vertical: 2),
                   child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Row(
-                        children: [
-                          if (widget.selectedStockItem?.id == stockItem.id) ...[
-                            Icon(
-                              Icons.check_circle,
-                              size: 16,
-                              color: AppColors.slate800,
-                            ),
-                            const SizedBox(width: 8),
-                          ],
-                          Expanded(
-                            child: Text(
-                              stockItem.warehouseName,
-                              style: TextStyle(
-                                fontWeight: widget.selectedStockItem?.id == stockItem.id
-                                  ? FontWeight.bold 
-                                  : FontWeight.normal,
-                                color: widget.selectedStockItem?.id == stockItem.id
-                                  ? AppColors.slate800 
-                                  : Colors.black,
-                                fontSize: 14,
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-                      if (widget.showFullInfo) ...[
-                        const SizedBox(height: 2),
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
                         Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          crossAxisAlignment: CrossAxisAlignment.center,
                           children: [
-                            Text(
-                              'Остаток: ${stockItem.stock} шт.',
-                              style: TextStyle(
-                                fontSize: 12,
-                                color: Colors.grey.shade600,
+                            // Warehouse name
+                            Expanded(
+                              child: Text(
+                                stockItem.warehouseName,
+                                maxLines: 2,
+                                overflow: TextOverflow.ellipsis,
+                                style: TextStyle(
+                                  fontWeight: widget.selectedStockItem?.id == stockItem.id
+                                    ? FontWeight.bold 
+                                    : FontWeight.normal,
+                                  color: widget.selectedStockItem?.id == stockItem.id
+                                    ? AppColors.slate800 
+                                    : Colors.black,
+                                  fontSize: widget.compact ? 12 : 14,
+                                ),
                               ),
                             ),
-                            Text(
-                              stockItem.offerPrice != null
-                                ? '${_formatPrice(stockItem.offerPrice!)} ₽'
-                                : '${_formatPrice(stockItem.defaultPrice)} ₽',
-                              style: TextStyle(
-                                fontSize: 14,
-                                fontWeight: FontWeight.w500,
-                                color: stockItem.offerPrice != null 
-                                  ? const Color.fromARGB(255, 54, 48, 48) 
-                                  : Colors.grey.shade700,
+                            SizedBox(width: widget.compact ? 6 : 8),
+                            // Stock count between name and price (show in fullInfo or compact modes)
+                            if (widget.showFullInfo || widget.compact) ...[
+                              Padding(
+                                padding: EdgeInsets.only(right: widget.compact ? 6 : 8),
+                                child: Text(
+                                  '${stockItem.stock} шт.',
+                                  style: TextStyle(
+                                    fontSize: widget.compact ? 11 : 12,
+                                    color: Colors.grey.shade600,
+                                  ),
+                                ),
+                              ),
+                            ],
+                            // Price aligned to the end, constrained width to avoid overflow
+                            ConstrainedBox(
+                              constraints: widget.compact ? const BoxConstraints(minWidth: 48, maxWidth: 80) : const BoxConstraints(minWidth: 64, maxWidth: 100),
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Flexible(
+                                    child: Text(
+                                      stockItem.offerPrice != null
+                                        ? '${_formatPrice(stockItem.offerPrice!)} ₽'
+                                        : '${_formatPrice(stockItem.defaultPrice)} ₽',
+                                      textAlign: TextAlign.right,
+                                      style: TextStyle(
+                                        fontSize: widget.compact ? 12 : 14,
+                                        fontWeight: widget.compact ? FontWeight.w500 : FontWeight.w500,
+                                        color: stockItem.offerPrice != null 
+                                          ? const Color.fromARGB(255, 54, 48, 48) 
+                                          : Colors.grey.shade700,
+                                      ),
+                                    ),
+                                  ),
+                                  SizedBox(width: widget.compact ? 6 : 8),
+                                ],
                               ),
                             ),
                           ],
                         ),
+                        // removed duplicate bottom stock line; inline count above is used instead
                       ],
-                    ],
-                  ),
+                    ),
                 ),
               );
             }).toList(),
@@ -260,59 +288,52 @@ class _StockItemSelectorWidgetState extends State<StockItemSelectorWidget> {
             borderRadius: BorderRadius.circular(4), // Минимальные скругления
             elevation: 0, 
             child: Container(
-              padding: const EdgeInsets.all(12),
+              padding: widget.compact ? const EdgeInsets.symmetric(horizontal: 6, vertical: 4) : const EdgeInsets.all(8),
               decoration: BoxDecoration(
                 // borderRadius: BorderRadius.circular(4), // Минимальные скругления
                 // border: Border.all(color: Colors.grey.shade400, width: 1.5), // Более четкая рамка
               ),
               child: selectedStockItem != null
-                ? Column(
-                    mainAxisSize: MainAxisSize.min,
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        selectedStockItem.warehouseName,
-                        style: const TextStyle(
-                          fontWeight: FontWeight.w500,
-                          fontSize: 14,
+                  ? Row(
+                      mainAxisSize: MainAxisSize.max,
+                      crossAxisAlignment: CrossAxisAlignment.center,
+                      children: [
+                        // Left: warehouse name
+                        Expanded(
+                          child: Text(
+                            selectedStockItem.warehouseName,
+                            style: TextStyle(
+                              fontWeight: FontWeight.w500,
+                              fontSize: widget.compact ? 13 : 14,
+                            ),
+                            maxLines: 2,
+                            overflow: TextOverflow.ellipsis,
+                          ),
                         ),
-                      ),
-                      if (widget.showFullInfo) ...[
-                        const SizedBox(height: 2),
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          children: [
-                            Text(
-                              'Остаток: ${selectedStockItem.stock} шт.',
+                        // Inline stock count centered between name and price
+                        if (widget.showFullInfo || widget.compact) ...[
+                          Padding(
+                            padding: EdgeInsets.symmetric(horizontal: widget.compact ? 6 : 8),
+                            child: Text(
+                              '${selectedStockItem.stock} шт.',
                               style: TextStyle(
-                                fontSize: 12,
+                                fontSize: widget.compact ? 11 : 12,
                                 color: AppColors.primary,
                               ),
                             ),
-                            // Text(
-                            //   selectedStockItem.offerPrice != null
-                            //     ? '${_formatPrice(selectedStockItem.offerPrice!)} ₽'
-                            //     : '${_formatPrice(selectedStockItem.defaultPrice)} ₽',
-                            //   style: TextStyle(
-                            //     fontSize: 12,
-                            //     fontWeight: FontWeight.w500,
-                            //     color: selectedStockItem.offerPrice != null 
-                            //       ? Colors.red 
-                            //       : Colors.grey.shade700,
-                            //   ),
-                            // ),
-                          ],
-                        ),
+                          ),
+                        ],
+                        // Right: price placeholder (kept empty here) — parent cards should show price
+                        const SizedBox(width: 8),
                       ],
-                    ],
-                  )
-                : const Text(
-                    'Выберите склад',
-                    style: TextStyle(
-                      fontSize: 14,
-                      color: Colors.white,
+                    )
+                  : const Text(
+                      'Выберите склад',
+                      style: TextStyle(
+                        fontSize: 14,
+                        color: Colors.white,
+                      ),
                     ),
-                  ),
             ),
           ),
     );
