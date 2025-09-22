@@ -210,16 +210,7 @@ class _ProductCatalogPageState extends State<ProductCatalogPage>
     }
   }
 
-  // Новые методы для визуальной иерархии
-  String _getLevelPrefix(int level) {
-    switch (level) {
-      case 0: return '●'; // Крупная точка для корневых
-      case 1: return '○'; // Круг для уровня 1
-      case 2: return '◦'; // Маленькая точка для уровня 2
-      case 3: return '•'; // Маркер для уровня 3
-      default: return '·'; // Точка для глубоких уровней
-    }
-  }
+  // Визуальные хелперы для уровней (цвета, размеры) оставлены выше.
 
   Color _getLevelBorderColor(int level) {
     switch (level) {
@@ -241,15 +232,8 @@ class _ProductCatalogPageState extends State<ProductCatalogPage>
     }
   }
 
-  double _getIconSize(int level) {
-    switch (level) {
-      case 0: return 22.0;
-      case 1: return 20.0;
-      case 2: return 18.0;
-      case 3: return 16.0;
-      default: return 14.0;
-    }
-  }
+  // Icon size helper removed because it's currently unused. Sizes are controlled
+  // inline where necessary. Re-add if a new design requires per-level icon sizing.
 
   double _getFontSize(int level) {
     switch (level) {
@@ -292,7 +276,8 @@ class _ProductCatalogPageState extends State<ProductCatalogPage>
       bottom: PreferredSize(
         preferredSize: const Size.fromHeight(40),
         child: Container(
-          padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
+          // Reduced horizontal padding to bring the search field closer to the screen edges
+          padding: const EdgeInsets.fromLTRB(8, 0, 8, 8),
           child: TextField(
             controller: _searchController,
             onChanged: _onSearchChanged,
@@ -338,8 +323,9 @@ class _ProductCatalogPageState extends State<ProductCatalogPage>
         child: CustomScrollView(
           slivers: [
             if (_searchQuery.isEmpty) _buildPopularCategories(),
+            // Reduce horizontal padding so list items reach closer to edges
             SliverPadding(
-              padding: const EdgeInsets.all(16),
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 16),
               sliver: SliverList(
                 delegate: SliverChildBuilderDelegate(
                   (context, index) {
@@ -392,7 +378,8 @@ class _ProductCatalogPageState extends State<ProductCatalogPage>
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             const Padding(
-              padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+              // Align popular section padding with the main list
+              padding: EdgeInsets.symmetric(horizontal: 8, vertical: 8),
               child: Text(
                 'Популярные категории',
                 style: TextStyle(
@@ -405,13 +392,15 @@ class _ProductCatalogPageState extends State<ProductCatalogPage>
             Expanded(
               child: ListView.builder(
                 scrollDirection: Axis.horizontal,
-                padding: const EdgeInsets.symmetric(horizontal: 16),
+                // reduced horizontal padding between screen edge and popular list
+                padding: const EdgeInsets.symmetric(horizontal: 8),
                 itemCount: popularCategories.length,
                 itemBuilder: (context, index) {
                   final category = popularCategories[index];
                   return Container(
                     width: 100,
-                    margin: const EdgeInsets.only(right: 12),
+                    // slightly reduced gap between popular items
+                    margin: const EdgeInsets.only(right: 8),
                     child: _buildPopularCategoryCard(category),
                   );
                 },
@@ -478,8 +467,8 @@ class _ProductCatalogPageState extends State<ProductCatalogPage>
       }
     }
 
-    // Создаем префикс для обозначения уровня
-    final levelPrefix = _getLevelPrefix(level);
+  // Префикс уровня оставлен для возможного будущего использования
+  // final levelPrefix = _getLevelPrefix(level);
 
     return Card(
       key: ValueKey('category_card_${category.id}_level_${level}_expanded_${isExpanded}_parent_${parentId ?? 'root'}'),
@@ -507,9 +496,9 @@ class _ProductCatalogPageState extends State<ProductCatalogPage>
             ),
             child: Row(
               children: [
-                // Левая половина - кликабельна для перехода к товарам
+                // Левая + средняя колонка объединены: название + (count)
                 Expanded(
-                  flex: 1,
+                  flex: 7, // ~70% ширины
                   child: InkWell(
                     key: ValueKey('category_navigate_${category.id}_level_${level}_parent_${parentId ?? 'root'}'),
                     onTap: () => _onCategoryTap(category),
@@ -517,42 +506,16 @@ class _ProductCatalogPageState extends State<ProductCatalogPage>
                       padding: const EdgeInsets.all(12),
                       child: Row(
                         children: [
-                          // Префикс уровня
-                          Text(
-                            levelPrefix,
-                            style: TextStyle(
-                              fontSize: 12,
-                              color: Colors.grey.shade600,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                          const SizedBox(width: 8),
-                          // Иконка
-                          Icon(
-                            _getCategoryIcon(category.name),
-                            color: const Color.fromARGB(255, 43, 43, 43),
-                            size: _getIconSize(level),
-                          ),
-                          const SizedBox(width: 12),
-                          // Название категории
+                          // Название категории и количество в скобках
                           Expanded(
                             child: Text(
-                              category.name,
+                              '${category.name} (${category.count})',
                               style: TextStyle(
                                 fontSize: _getFontSize(level),
                                 fontWeight: level == 0 ? FontWeight.w600 : FontWeight.w500,
                                 color: Colors.black87,
                               ),
-                            ),
-                          ),
-                          const SizedBox(width: 8),
-                          // Количество товаров (справа от названия)
-                          Text(
-                            category.count.toString(),
-                            style: TextStyle(
-                              fontSize: _getFontSize(level) - 2,
-                              fontWeight: FontWeight.w500,
-                              color: Colors.blue.shade700,
+                              overflow: TextOverflow.ellipsis,
                             ),
                           ),
                         ],
@@ -561,9 +524,9 @@ class _ProductCatalogPageState extends State<ProductCatalogPage>
                   ),
                 ),
 
-                // Правая половина - кликабельна для разворачивания/сворачивания
+                // Правая половина - область клика для разворачивания/сворачивания
                 Expanded(
-                  flex: 1,
+                  flex: 3, // ~30% ширины
                   child: InkWell(
                     key: ValueKey('category_expand_${category.id}_level_${level}_parent_${parentId ?? 'root'}'),
                     onTap: hasChildren ? () => _toggleCategoryExpansion(category.id) : null,
