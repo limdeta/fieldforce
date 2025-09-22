@@ -42,19 +42,16 @@ class SessionManager {
   Future<void> saveSessionCookie(http.Response response) async {
     final setCookieHeader = response.headers['set-cookie'];
     if (setCookieHeader != null) {
-      _logger.info('SessionManager: Получен заголовок Set-Cookie: $setCookieHeader');
-      // Ищем PHPSESSID куку
-      final cookies = setCookieHeader.split(',');
-      for (final cookie in cookies) {
-        if (cookie.contains('PHPSESSID=')) {
-          final sessionCookie = _extractSessionCookie(cookie);
-          if (sessionCookie != null) {
-            _sessionCookie = sessionCookie;
-            await _persistSessionCookie(sessionCookie);
-            _logger.info('SessionManager: Сохранена сессионная кука: $sessionCookie');
-            break;
-          }
-        }
+      _logger.fine('SessionManager: Получен заголовок Set-Cookie');
+      // Set-Cookie может содержать запятые в части Expires, поэтому не делаем split(',')
+      // Ищем PHPSESSID с помощью regex по всему заголовку
+      final sessionCookie = _extractSessionCookie(setCookieHeader);
+      if (sessionCookie != null) {
+  _sessionCookie = sessionCookie;
+  await _persistSessionCookie(sessionCookie);
+  _logger.fine('SessionManager: Сессионная кука сохранена');
+      } else {
+        _logger.info('SessionManager: PHPSESSID не найден в Set-Cookie');
       }
     }
   }
@@ -64,14 +61,14 @@ class SessionManager {
 
     if (_sessionCookie != null) {
       headers['Cookie'] = _sessionCookie!;
-      _logger.info('SessionManager: Отправляем заголовок Cookie: $_sessionCookie');
+      _logger.fine('SessionManager: Отправляем заголовок Cookie');
     }
 
     return headers;
   }
 
   String? getSessionCookie() {
-    _logger.info('SessionManager: Запрошена сессионная кука: ${_sessionCookie != null ? 'есть' : 'нет'}');
+  _logger.fine('SessionManager: Запрошена сессионная кука: ${_sessionCookie != null ? 'есть' : 'нет'}');
     return _sessionCookie;
   }
 
@@ -106,9 +103,9 @@ class SessionManager {
     final prefs = await SharedPreferences.getInstance();
     _sessionCookie = prefs.getString(_sessionCookieKey);
     if (_sessionCookie != null) {
-      _logger.info('SessionManager: Восстановлена сессионная кука: $_sessionCookie');
+      _logger.fine('SessionManager: Сессионная кука восстановлена');
     } else {
-      _logger.info('⚠️ SessionManager: Сессионная кука не найдена в хранилище');
+      _logger.fine('SessionManager: Сессионная кука не найдена в хранилище');
     }
   }
 }

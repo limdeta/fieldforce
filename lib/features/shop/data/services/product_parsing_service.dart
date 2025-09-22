@@ -65,15 +65,14 @@ class ProductParsingService {
     final Map<String, dynamic> json = jsonDecode(jsonString);
     final response = ProductApiResponse.fromJson(json);
     
-    // КРИТИЧНО: Проверяем что API вернул продукты с stockItems
+    // Проверяем что API вернул продукты с stockItems
     if (response.products.isNotEmpty) {
       final productsWithoutStock = response.products.where((p) => p.stockItems.isEmpty).toList();
       if (productsWithoutStock.isNotEmpty) {
-        final error = 'КРИТИЧЕСКАЯ ОШИБКА: ${productsWithoutStock.length}/${response.products.length} продуктов без stockItems! '
-            'Примеры: ${productsWithoutStock.take(3).map((p) => '${p.code}:${p.title}').join(', ')}. '
-            'Проблема с PHP сессией или параметрами API!';
-        logger.severe(error);
-        throw Exception(error);
+        final warning = 'Предупреждение: ${productsWithoutStock.length}/${response.products.length} продуктов без stockItems. '
+            'Примеры: ${productsWithoutStock.take(3).map((p) => '${p.code}:${p.title}').join(', ')}.';
+        logger.warning(warning);
+        // Не бросаем исключение — это не критично для процесса импорта. Продолжаем парсить доступные данные.
       }
     }
     
@@ -87,12 +86,19 @@ class ProductParsingService {
   ) {
     final logger = Logger('ProductParsingService');
     
-    // КРИТИЧНО: Если API не возвращает stockItems - это ошибка авторизации/сессии
+    // Если API не возвращает stockItems — логируем предупреждение и возвращаем пустой список stockItems.
     if (apiItem.stockItems.isEmpty) {
-      final error = 'КРИТИЧЕСКАЯ ОШИБКА: API не вернул stockItems для продукта ${apiItem.code}: ${apiItem.title}. '
-          'проблемы с PHP сессией или параметрами запроса!';
-      logger.severe(error);
-      throw Exception(error);
+      final warning = 'Предупреждение: API не вернул stockItems для продукта ${apiItem.code}: ${apiItem.title}.';
+      logger.warning(warning);
+      // Сформируем объект Product из доступных полей, но вернём пустой список stockItems — далее процесс сохранения сможет пропустить их.
+      try {
+        final productJson = _convertApiItemToProductJson(apiItem, rawJson);
+        final product = Product.fromJson(productJson);
+        return (product: product, stockItems: <StockItem>[]);
+      } catch (e, st) {
+        logger.severe('Ошибка конвертации продукта без stockItems ${apiItem.code}: ${apiItem.title}', e, st);
+        rethrow;
+      }
     }
     
     try {

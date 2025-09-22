@@ -63,6 +63,8 @@ class IsolateSyncManager {
        _categoriesApiUrl = categoriesApiUrl,
        _sessionManager = sessionManager;
 
+  // helper removed — keep logs concise
+
   /// Stream уведомлений о прогрессе синхронизации
   Stream<SyncProgress> get progressStream => _progressController.stream;
 
@@ -164,8 +166,8 @@ class IsolateSyncManager {
           'sessionHeaders': _sessionManager.getSessionHeaders(),
         },
       );
-      
-      _sendPortToWorker!.send(command.toJson());
+  // Отправляем команду в worker (session headers передаются при необходимости)
+  _sendPortToWorker!.send(command.toJson());
       
       // Ожидаем результат синхронизации
       final resultCompleter = Completer<SyncResult>();
@@ -233,9 +235,7 @@ class IsolateSyncManager {
         },
       );
       
-      _logger.info('🚀 Отправляем команду в worker: ${command.type}');
-      _logger.info('📊 Конфиг для категорий: ${_syncConfigToJson(config)}');
-      _logger.info('🌐 Categories API URL: $_categoriesApiUrl');
+  _logger.info('Отправляем команду в worker: ${command.type}');
       
       _sendPortToWorker!.send(command.toJson());
       
@@ -422,17 +422,15 @@ class IsolateSyncManager {
   /// Обрабатывает сохранение продуктов и stock items
   Future<void> _handleSaveProducts(Map<String, dynamic> data) async {
     try {
-      _logger.info('📥 Получены данные для сохранения: ${data.keys}');
+      _logger.fine('Получены данные для сохранения');
       
       if (!data.containsKey('apiItems')) {
         throw Exception('Отсутствует ключ apiItems в данных из изолята');
       }
       
       final apiItemsData = data['apiItems'] as List<dynamic>;
-      _logger.info('💾 Обрабатываем ${apiItemsData.length} API товаров из изолята...');
-      
       if (apiItemsData.isEmpty) {
-        _logger.warning('⚠️ Список API товаров пуст');
+        _logger.fine('Список API товаров пуст');
         return;
       }
       
@@ -444,36 +442,24 @@ class IsolateSyncManager {
       for (int i = 0; i < apiItemsData.length; i++) {
         final apiItemData = apiItemsData[i];
         try {
-          _logger.info('🔄 Обрабатываем продукт $i/${apiItemsData.length}');
-          _logger.info('📊 Тип данных продукта $i: ${apiItemData.runtimeType}');
-          
           if (apiItemData == null) {
             throw Exception('Данные продукта $i равны null');
           }
-          
           if (apiItemData is! Map<String, dynamic>) {
-            throw Exception('Данные продукта $i не являются Map<String, dynamic>, а ${apiItemData.runtimeType}');
+            throw Exception('Данные продукта $i не являются Map<String, dynamic>');
           }
-          
-          final itemMap = apiItemData;
-          _logger.info('🔧 Ключи продукта $i: ${itemMap.keys.take(5).toList()}');
-          
-          // Создаём ProductApiItem из данных worker-а
+
+          final Map<String, dynamic> itemMap = apiItemData;
           final apiItem = ProductApiItem.fromJson(itemMap);
-          _logger.info('✅ ProductApiItem создан: ${apiItem.title} (${apiItem.stockItems.length} stockItems)');
-          
-          // Используем существующий метод конвертации + передаем raw JSON для изображений
+
           final result = parsingService.convertApiItemToProduct(apiItem, itemMap);
-          _logger.info('✅ Конвертация завершена: ${result.product.title} (${result.stockItems.length} stock items)');
-          
+
           products.add(result.product);
           allStockItems.addAll(result.stockItems);
-          
-          _logger.info('📦 Продукт добавлен: ${result.product.title} (${result.stockItems.length} stock items)');
-          
-        } catch (e, stackTrace) {
+
+        } catch (e) {
           final productTitle = (apiItemData as Map<String, dynamic>?)?['title'] ?? 'Unknown';
-          _logger.severe('Ошибка конвертации API товара $i: $productTitle', e, stackTrace);
+          _logger.warning('Ошибка конвертации API товара $i: $productTitle — пропускаем');
           // Продолжаем обработку остальных продуктов
         }
       }

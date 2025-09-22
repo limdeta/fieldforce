@@ -18,7 +18,7 @@ import '../../domain/entities/category.dart' as cat;
 /// не блокируя главный UI поток. Он получает команды от главного изолята
 /// и отправляет обратно прогресс и результаты. 
 void syncWorkerEntryPoint(SendPort sendPortToMain) async {
-  developer.log('🚀 Sync Worker: Изолят запущен', name: 'SyncWorker');
+  developer.log('Sync Worker: запущен', name: 'SyncWorker');
 
   final receivePortInWorker = ReceivePort();
   
@@ -97,7 +97,7 @@ class SyncWorker {
 
   /// Обрабатывает команду от главного изолята
   Future<void> handleCommand(SyncMessage message) async {
-    developer.log('📨 Sync Worker: Получена команда ${message.type}', name: 'SyncWorker');
+  developer.log('Sync Worker: команда ${message.type}', name: 'SyncWorker');
 
     switch (message.type) {
       case SyncCommands.startProductSync:
@@ -134,14 +134,14 @@ class SyncWorker {
     if (_isCancelled) return;
 
     final startTime = DateTime.now();
-    developer.log('🛍️ Sync Worker: Начинаем постраничную синхронизацию продуктов', name: 'SyncWorker');
+  developer.log('Sync Worker: начинаем синхронизацию продуктов', name: 'SyncWorker');
 
     try {
       final configData = data['config'] as Map<String, dynamic>;
       final apiUrl = data['apiUrl'] as String;
       final sessionHeaders = data['sessionHeaders'] as Map<String, dynamic>?;
 
-      // Устанавливаем размер страницы для постраничной загрузки
+  // Устанавливаем размер страницы для постраничной загрузки
       const int pageSize = 100; // Загружаем по 100 продуктов за раз
       int currentOffset = 0;
       int totalImported = 0;
@@ -159,10 +159,8 @@ class SyncWorker {
       if (_isCancelled) return;
       
       // Парсим первую страницу чтобы узнать totalCount
-      final firstApiResponse = _parsingService.parseProductApiResponse(firstResponse);
-      totalCount = firstApiResponse.totalCount;
-      
-      developer.log('� Sync Worker: Всего продуктов к импорту: $totalCount', name: 'SyncWorker');
+  final firstApiResponse = _parsingService.parseProductApiResponse(firstResponse);
+  totalCount = firstApiResponse.totalCount;
       
       // Обрабатываем первую страницу
       final firstPageJson = json.decode(firstResponse) as Map<String, dynamic>;
@@ -173,7 +171,7 @@ class SyncWorker {
       final firstPageProducts = firstPageJson['data'] as List<dynamic>;
       totalImported += firstPageProducts.length;
       
-      developer.log('� Worker: Отправляем первую страницу (${firstPageProducts.length} продуктов)', name: 'SyncWorker');
+  developer.log('Sync Worker: отправка первой страницы', name: 'SyncWorker');
       
       _sendPortToMain.send(SyncMessage(
         type: 'save_products',
@@ -190,7 +188,7 @@ class SyncWorker {
       
       // Загружаем остальные страницы
       while (currentOffset < totalCount && !_isCancelled) {
-        developer.log('📄 Sync Worker: Загружаем страницу с offset=$currentOffset', name: 'SyncWorker');
+  developer.log('Sync Worker: загрузка страницы offset=$currentOffset', name: 'SyncWorker');
         
         final pageConfig = Map<String, dynamic>.from(configData);
         pageConfig['limit'] = pageSize;
@@ -204,7 +202,7 @@ class SyncWorker {
         final pageProducts = pageJsonData['data'] as List<dynamic>;
         
         if (pageProducts.isEmpty) {
-          developer.log('📄 Sync Worker: Получена пустая страница, завершаем загрузку', name: 'SyncWorker');
+          developer.log('Sync Worker: получена пустая страница, завершаем', name: 'SyncWorker');
           break;
         }
         
@@ -240,15 +238,10 @@ class SyncWorker {
         durationMs: duration.inMilliseconds,
       ).toJson());
 
-      developer.log('✅ Sync Worker: Постраничная синхронизация завершена. Импортировано: $totalImported/$totalCount продуктов', name: 'SyncWorker');
+  developer.log('Sync Worker: синхронизация продуктов завершена', name: 'SyncWorker');
 
     } catch (e, stackTrace) {
-      developer.log(
-        '❌ Sync Worker: Ошибка синхронизации продуктов: $e',
-        name: 'SyncWorker',
-        error: e,
-        stackTrace: stackTrace,
-      );
+      developer.log('Sync Worker: ошибка синхронизации продуктов', name: 'SyncWorker', error: e, stackTrace: stackTrace);
       
       _sendPortToMain.send(createErrorMessage(
         syncType: 'products',
@@ -263,28 +256,26 @@ class SyncWorker {
     if (_isCancelled) return;
 
     final startTime = DateTime.now();
-    developer.log('📂 Sync Worker: Начинаем синхронизацию категорий', name: 'SyncWorker');
+  developer.log('Sync Worker: начинаем синхронизацию категорий', name: 'SyncWorker');
 
     try {
       final configData = data['config'] as Map<String, dynamic>;
       final apiUrl = data['apiUrl'] as String;
       final sessionHeaders = data['sessionHeaders'] as Map<String, dynamic>?;
 
-      developer.log('🔧 Categories config: $configData', name: 'SyncWorker');
-      developer.log('🌐 Categories API URL: $apiUrl', name: 'SyncWorker');
-      developer.log('🔒 Categories session headers: ${sessionHeaders?.keys}', name: 'SyncWorker');
+  developer.log('Sync Worker: categories sync', name: 'SyncWorker');
 
       _sendProgress('categories', 1, 2, 'Загрузка категорий...');
       
       final response = await _makeCategoryApiRequest(apiUrl, configData, sessionHeaders);
-      developer.log('📥 Categories response length: ${response.length} chars', name: 'SyncWorker');
+  developer.log('Sync Worker: categories response received', name: 'SyncWorker');
       
       if (_isCancelled) return;
       
       _sendProgress('categories', 2, 2, 'Парсинг категорий...');
       
       final categories = _parseCategoriesFromJson(response);
-      developer.log('📂 Parsed categories count: ${categories.length}', name: 'SyncWorker');
+  developer.log('Sync Worker: parsed categories count ${categories.length}', name: 'SyncWorker');
 
       // Отправляем результат
       final duration = DateTime.now().difference(startTime);
@@ -303,15 +294,10 @@ class SyncWorker {
         },
       ).toJson());
 
-      developer.log('✅ Sync Worker: Синхронизация категорий завершена', name: 'SyncWorker');
+  developer.log('Sync Worker: categories sync finished', name: 'SyncWorker');
 
     } catch (e, stackTrace) {
-      developer.log(
-        '❌ Sync Worker: Ошибка синхронизации категорий: $e',
-        name: 'SyncWorker',
-        error: e,
-        stackTrace: stackTrace,
-      );
+      developer.log('Sync Worker: ошибка синхронизации категорий', name: 'SyncWorker', error: e, stackTrace: stackTrace);
       
       _sendPortToMain.send(createErrorMessage(
         syncType: 'categories',
@@ -349,11 +335,12 @@ class SyncWorker {
       }
       
       final uri = Uri.parse(apiUrl).replace(queryParameters: queryParams);
-      developer.log('🔧 Products: Построен URI с параметрами: $queryParams', name: 'SyncWorker');
+  developer.log('Sync Worker: построен URI для продуктов', name: 'SyncWorker');
       
       final headers = <String, String>{
         'Content-Type': 'application/json',
         'User-Agent': 'FieldForce-Mobile/1.0',
+        'Accept': 'application/json',
       };
 
       // Добавляем заголовки сессии (уже готовые от SessionManager)
@@ -361,16 +348,10 @@ class SyncWorker {
         sessionHeaders.forEach((key, value) {
           headers[key] = value.toString();
         });
-        developer.log('🔑 Sync Worker: Используем сессионные заголовки: $sessionHeaders', name: 'SyncWorker');
-      } else {
-        developer.log('⚠️ Sync Worker: СЕССИЯ ОТСУТСТВУЕТ!', name: 'SyncWorker');
       }
 
-      developer.log('🌐 Sync Worker: Отправка запроса к $uri', name: 'SyncWorker');
-      developer.log('📋 Sync Worker: Заголовки запроса: $headers', name: 'SyncWorker');
-      
       final response = await client.get(uri, headers: headers);
-      
+
       if (response.statusCode != 200) {
         throw Exception('HTTP ${response.statusCode}: ${response.reasonPhrase}');
       }

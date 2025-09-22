@@ -29,8 +29,9 @@ void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   hierarchicalLoggingEnabled = true;
   Logger('IsolateSyncManager').level = Level.SEVERE;
+  Logger('ApiProductSyncService').level = Level.SEVERE;
 
-  Logger.root.level = Level.INFO;
+  Logger.root.level = Level.SEVERE;
   Logger.root.onRecord.listen((record) {
     debugPrint('${record.level.name}: ${record.time}: ${record.message}');
   });
