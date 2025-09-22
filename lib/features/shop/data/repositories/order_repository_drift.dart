@@ -189,39 +189,24 @@ class OrderRepositoryDrift implements OrderRepository {
   Future<Order> _buildOrderFromEntity(OrderEntity orderEntity) async {
     _logger.info('📦 Building order from entity: id=${orderEntity.id}, creatorId=${orderEntity.creatorId}');
     
-    // Загружаем сотрудника
-    _logger.info('👤 Loading employee: ${orderEntity.creatorId}');
     final employee = await _getEmployeeById(orderEntity.creatorId);
-    _logger.info('✅ Employee loaded: ${employee.fullName}');
-    
-    // Загружаем торговую точку
-    _logger.info('🏪 Loading outlet: ${orderEntity.outletId}');
     final outlet = await _getTradingPointById(orderEntity.outletId);
-    _logger.info('✅ Outlet loaded: ${outlet.name}');
-    
-    // Загружаем строки заказа
-    _logger.info('📋 Loading order lines for order: ${orderEntity.id}');
     final orderLines = await _getOrderLines(orderEntity.id);
-    _logger.info('✅ Order lines loaded: ${orderLines.length} lines');
     
-    _logger.info('🔨 Creating Order object via mapper');
     final order = OrderMapper.fromDatabaseEntities(
       orderEntity,
       employee,
       outlet,
       orderLines,
     );
-    _logger.info('✅ Order object created successfully: id=${order.id}, state=${order.state}');
     
     return order;
   }
 
   /// Сохраняет строки заказ
   Future<void> _saveOrderLines(int orderId, List<OrderLine> lines) async {
-    _logger.info('Saving ${lines.length} order lines for order: $orderId');
     
     if (lines.isEmpty) {
-      _logger.info('No lines to save for order: $orderId');
       return;
     }
     
@@ -258,131 +243,34 @@ class OrderRepositoryDrift implements OrderRepository {
         continue; // Пропускаем эту строку если товар не найден
       }
       
-      // Загружаем реальный Product через ProductRepository чтобы получить полные данные включая картинки
-      Product? product;
-      try {
-        _logger.info('🔍 Getting full product data for code: ${stockItemEntity.productCode}');
-        final productResult = await _productRepository.getProductByCode(stockItemEntity.productCode);
-        
-        product = productResult.fold(
-          (failure) {
-            _logger.warning('❌ Не удалось получить полный Product: ${failure.message}');
-            return null;
-          },
-          (fullProduct) {
-            _logger.info('✅ Полный Product получен с картинками: ${fullProduct?.title}, images: ${fullProduct?.images.length}');
-            return fullProduct;
-          },
-        );
-        
-        // Fallback: если не получилось через ProductRepository, создаем минимальный
-        if (product == null) {
-          final productEntity = await (_database.select(_database.products)
-            ..where((p) => p.code.equals(stockItemEntity.productCode))).getSingleOrNull();
+        // Загружаем Product через ProductRepository
+        Product? product;
+        try {
+          final productResult = await _productRepository.getProductByCode(stockItemEntity.productCode);
           
-          if (productEntity != null) {
-            _logger.info('⚠️ Fallback: создаем минимальный Product из БД: ${productEntity.title}');
-            product = Product(
-              title: productEntity.title,
-              barcodes: [],
-              code: productEntity.code,
-              bcode: productEntity.code,
-              catalogId: 0,
-              novelty: false,
-              popular: false,
-              isMarked: false,
-              brand: null,
-              manufacturer: null,
-              colorImage: null,
-              defaultImage: null,
-              images: [],
-              description: productEntity.description,
-              howToUse: null,
-              ingredients: null,
-              series: null,
-              category: null,
-              priceListCategoryId: null,
-              amountInPackage: null,
-              vendorCode: productEntity.vendorCode,
-              type: null,
-              categoriesInstock: [],
-              numericCharacteristics: [],
-              stringCharacteristics: [],
-              boolCharacteristics: [],
-              canBuy: true,
-            );
-          }
-        }
-        
-        // Если ничего не получилось, создаем минимальный Product
-        if (product == null) {
-          _logger.warning('Product не найден для productCode: ${stockItemEntity.productCode}');
-          // Создаем минимальный Product если не найден в БД
-          product = Product(
-            title: 'Товар №${stockItemEntity.productCode}',
-            barcodes: [],
-            code: stockItemEntity.productCode,
-            bcode: stockItemEntity.productCode,
-            catalogId: 0,
-            novelty: false,
-            popular: false,
-            isMarked: false,
-            brand: null,
-            manufacturer: null,
-            colorImage: null,
-            defaultImage: null,
-            images: [],
-            description: 'Описание товара №${stockItemEntity.productCode}',
-            howToUse: null,
-            ingredients: null,
-            series: null,
-            category: null,
-            priceListCategoryId: null,
-            amountInPackage: null,
-            vendorCode: 'ART${stockItemEntity.productCode}',
-            type: null,
-            categoriesInstock: [],
-            numericCharacteristics: [],
-            stringCharacteristics: [],
-            boolCharacteristics: [],
-            canBuy: true,
+          product = productResult.fold(
+            (failure) {
+              _logger.severe('❌ КРИТИЧЕСКАЯ ОШИБКА: Product не найден в репозитории: ${stockItemEntity.productCode}. ${failure.message}');
+              _logger.severe('❌ Это указывает на проблему целостности данных: StockItem ссылается на несуществующий Product');
+              return null;
+            },
+            (fullProduct) {
+              _logger.info('✅ Product загружен: ${fullProduct?.title}, images: ${fullProduct?.images.length}');
+              return fullProduct;
+            },
           );
-        }
-      } catch (e) {
-        _logger.warning('Ошибка загрузки Product: $e');
-        // Fallback к заглушке
-        product = Product(
-          title: 'Товар №${stockItemEntity.productCode}',
-          barcodes: [],
-          code: stockItemEntity.productCode,
-          bcode: stockItemEntity.productCode,
-          catalogId: 0,
-          novelty: false,
-          popular: false,
-          isMarked: false,
-          brand: null,
-          manufacturer: null,
-          colorImage: null,
-          defaultImage: null,
-          images: [],
-          description: 'Описание товара №${stockItemEntity.productCode}',
-          howToUse: null,
-          ingredients: null,
-          series: null,
-          category: null,
-          priceListCategoryId: null,
-          amountInPackage: null,
-          vendorCode: 'ART${stockItemEntity.productCode}',
-          type: null,
-          categoriesInstock: [],
-          numericCharacteristics: [],
-          stringCharacteristics: [],
-          boolCharacteristics: [],
-          canBuy: true,
-        );
-      }
-      
-      // Создаем StockItem из данных БД
+          
+          // Если Product не найден - это серьёзная проблема с данными
+          if (product == null) {
+            _logger.severe('❌ ДАННЫЕ НЕ КОНСИСТЕНТНЫ: StockItem.productCode=${stockItemEntity.productCode} не соответствует ни одному Product');
+            _logger.severe('❌ Пропускаем эту строку заказа, так как товар не существует');
+            continue; // Пропускаем строку с некорректными данными
+          }
+        } catch (e) {
+          _logger.severe('❌ Критическая ошибка при загрузке Product ${stockItemEntity.productCode}: $e');
+          _logger.severe('❌ Пропускаем строку заказа из-за ошибки загрузки товара');
+          continue; // Пропускаем строку при критических ошибках
+        }      // Создаем StockItem из данных БД
       final stockItem = StockItem(
         id: stockItemEntity.id,
         productCode: stockItemEntity.productCode,

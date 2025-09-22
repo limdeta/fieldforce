@@ -5377,6 +5377,42 @@ class $ProductsTable extends Products
   late final GeneratedColumn<int> typeId = GeneratedColumn<int>(
       'type_id', aliasedName, true,
       type: DriftSqlType.int, requiredDuringInsert: false);
+  static const VerificationMeta _priceListCategoryIdMeta =
+      const VerificationMeta('priceListCategoryId');
+  @override
+  late final GeneratedColumn<int> priceListCategoryId = GeneratedColumn<int>(
+      'price_list_category_id', aliasedName, true,
+      type: DriftSqlType.int, requiredDuringInsert: false);
+  static const VerificationMeta _defaultImageJsonMeta =
+      const VerificationMeta('defaultImageJson');
+  @override
+  late final GeneratedColumn<String> defaultImageJson = GeneratedColumn<String>(
+      'default_image_json', aliasedName, true,
+      type: DriftSqlType.string, requiredDuringInsert: false);
+  static const VerificationMeta _imagesJsonMeta =
+      const VerificationMeta('imagesJson');
+  @override
+  late final GeneratedColumn<String> imagesJson = GeneratedColumn<String>(
+      'images_json', aliasedName, true,
+      type: DriftSqlType.string, requiredDuringInsert: false);
+  static const VerificationMeta _barcodesJsonMeta =
+      const VerificationMeta('barcodesJson');
+  @override
+  late final GeneratedColumn<String> barcodesJson = GeneratedColumn<String>(
+      'barcodes_json', aliasedName, true,
+      type: DriftSqlType.string, requiredDuringInsert: false);
+  static const VerificationMeta _howToUseMeta =
+      const VerificationMeta('howToUse');
+  @override
+  late final GeneratedColumn<String> howToUse = GeneratedColumn<String>(
+      'how_to_use', aliasedName, true,
+      type: DriftSqlType.string, requiredDuringInsert: false);
+  static const VerificationMeta _ingredientsMeta =
+      const VerificationMeta('ingredients');
+  @override
+  late final GeneratedColumn<String> ingredients = GeneratedColumn<String>(
+      'ingredients', aliasedName, true,
+      type: DriftSqlType.string, requiredDuringInsert: false);
   static const VerificationMeta _rawJsonMeta =
       const VerificationMeta('rawJson');
   @override
@@ -5415,6 +5451,12 @@ class $ProductsTable extends Products
         canBuy,
         categoryId,
         typeId,
+        priceListCategoryId,
+        defaultImageJson,
+        imagesJson,
+        barcodesJson,
+        howToUse,
+        ingredients,
         rawJson,
         createdAt,
         updatedAt
@@ -5508,6 +5550,40 @@ class $ProductsTable extends Products
       context.handle(_typeIdMeta,
           typeId.isAcceptableOrUnknown(data['type_id']!, _typeIdMeta));
     }
+    if (data.containsKey('price_list_category_id')) {
+      context.handle(
+          _priceListCategoryIdMeta,
+          priceListCategoryId.isAcceptableOrUnknown(
+              data['price_list_category_id']!, _priceListCategoryIdMeta));
+    }
+    if (data.containsKey('default_image_json')) {
+      context.handle(
+          _defaultImageJsonMeta,
+          defaultImageJson.isAcceptableOrUnknown(
+              data['default_image_json']!, _defaultImageJsonMeta));
+    }
+    if (data.containsKey('images_json')) {
+      context.handle(
+          _imagesJsonMeta,
+          imagesJson.isAcceptableOrUnknown(
+              data['images_json']!, _imagesJsonMeta));
+    }
+    if (data.containsKey('barcodes_json')) {
+      context.handle(
+          _barcodesJsonMeta,
+          barcodesJson.isAcceptableOrUnknown(
+              data['barcodes_json']!, _barcodesJsonMeta));
+    }
+    if (data.containsKey('how_to_use')) {
+      context.handle(_howToUseMeta,
+          howToUse.isAcceptableOrUnknown(data['how_to_use']!, _howToUseMeta));
+    }
+    if (data.containsKey('ingredients')) {
+      context.handle(
+          _ingredientsMeta,
+          ingredients.isAcceptableOrUnknown(
+              data['ingredients']!, _ingredientsMeta));
+    }
     if (data.containsKey('raw_json')) {
       context.handle(_rawJsonMeta,
           rawJson.isAcceptableOrUnknown(data['raw_json']!, _rawJsonMeta));
@@ -5559,6 +5635,18 @@ class $ProductsTable extends Products
           .read(DriftSqlType.int, data['${effectivePrefix}category_id']),
       typeId: attachedDatabase.typeMapping
           .read(DriftSqlType.int, data['${effectivePrefix}type_id']),
+      priceListCategoryId: attachedDatabase.typeMapping.read(
+          DriftSqlType.int, data['${effectivePrefix}price_list_category_id']),
+      defaultImageJson: attachedDatabase.typeMapping.read(
+          DriftSqlType.string, data['${effectivePrefix}default_image_json']),
+      imagesJson: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}images_json']),
+      barcodesJson: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}barcodes_json']),
+      howToUse: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}how_to_use']),
+      ingredients: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}ingredients']),
       rawJson: attachedDatabase.typeMapping
           .read(DriftSqlType.string, data['${effectivePrefix}raw_json'])!,
       createdAt: attachedDatabase.typeMapping
@@ -5589,6 +5677,12 @@ class ProductData extends DataClass implements Insertable<ProductData> {
   final bool canBuy;
   final int? categoryId;
   final int? typeId;
+  final int? priceListCategoryId;
+  final String? defaultImageJson;
+  final String? imagesJson;
+  final String? barcodesJson;
+  final String? howToUse;
+  final String? ingredients;
   final String rawJson;
   final DateTime createdAt;
   final DateTime updatedAt;
@@ -5607,6 +5701,12 @@ class ProductData extends DataClass implements Insertable<ProductData> {
       required this.canBuy,
       this.categoryId,
       this.typeId,
+      this.priceListCategoryId,
+      this.defaultImageJson,
+      this.imagesJson,
+      this.barcodesJson,
+      this.howToUse,
+      this.ingredients,
       required this.rawJson,
       required this.createdAt,
       required this.updatedAt});
@@ -5636,6 +5736,24 @@ class ProductData extends DataClass implements Insertable<ProductData> {
     }
     if (!nullToAbsent || typeId != null) {
       map['type_id'] = Variable<int>(typeId);
+    }
+    if (!nullToAbsent || priceListCategoryId != null) {
+      map['price_list_category_id'] = Variable<int>(priceListCategoryId);
+    }
+    if (!nullToAbsent || defaultImageJson != null) {
+      map['default_image_json'] = Variable<String>(defaultImageJson);
+    }
+    if (!nullToAbsent || imagesJson != null) {
+      map['images_json'] = Variable<String>(imagesJson);
+    }
+    if (!nullToAbsent || barcodesJson != null) {
+      map['barcodes_json'] = Variable<String>(barcodesJson);
+    }
+    if (!nullToAbsent || howToUse != null) {
+      map['how_to_use'] = Variable<String>(howToUse);
+    }
+    if (!nullToAbsent || ingredients != null) {
+      map['ingredients'] = Variable<String>(ingredients);
     }
     map['raw_json'] = Variable<String>(rawJson);
     map['created_at'] = Variable<DateTime>(createdAt);
@@ -5668,6 +5786,24 @@ class ProductData extends DataClass implements Insertable<ProductData> {
           : Value(categoryId),
       typeId:
           typeId == null && nullToAbsent ? const Value.absent() : Value(typeId),
+      priceListCategoryId: priceListCategoryId == null && nullToAbsent
+          ? const Value.absent()
+          : Value(priceListCategoryId),
+      defaultImageJson: defaultImageJson == null && nullToAbsent
+          ? const Value.absent()
+          : Value(defaultImageJson),
+      imagesJson: imagesJson == null && nullToAbsent
+          ? const Value.absent()
+          : Value(imagesJson),
+      barcodesJson: barcodesJson == null && nullToAbsent
+          ? const Value.absent()
+          : Value(barcodesJson),
+      howToUse: howToUse == null && nullToAbsent
+          ? const Value.absent()
+          : Value(howToUse),
+      ingredients: ingredients == null && nullToAbsent
+          ? const Value.absent()
+          : Value(ingredients),
       rawJson: Value(rawJson),
       createdAt: Value(createdAt),
       updatedAt: Value(updatedAt),
@@ -5692,6 +5828,13 @@ class ProductData extends DataClass implements Insertable<ProductData> {
       canBuy: serializer.fromJson<bool>(json['canBuy']),
       categoryId: serializer.fromJson<int?>(json['categoryId']),
       typeId: serializer.fromJson<int?>(json['typeId']),
+      priceListCategoryId:
+          serializer.fromJson<int?>(json['priceListCategoryId']),
+      defaultImageJson: serializer.fromJson<String?>(json['defaultImageJson']),
+      imagesJson: serializer.fromJson<String?>(json['imagesJson']),
+      barcodesJson: serializer.fromJson<String?>(json['barcodesJson']),
+      howToUse: serializer.fromJson<String?>(json['howToUse']),
+      ingredients: serializer.fromJson<String?>(json['ingredients']),
       rawJson: serializer.fromJson<String>(json['rawJson']),
       createdAt: serializer.fromJson<DateTime>(json['createdAt']),
       updatedAt: serializer.fromJson<DateTime>(json['updatedAt']),
@@ -5715,6 +5858,12 @@ class ProductData extends DataClass implements Insertable<ProductData> {
       'canBuy': serializer.toJson<bool>(canBuy),
       'categoryId': serializer.toJson<int?>(categoryId),
       'typeId': serializer.toJson<int?>(typeId),
+      'priceListCategoryId': serializer.toJson<int?>(priceListCategoryId),
+      'defaultImageJson': serializer.toJson<String?>(defaultImageJson),
+      'imagesJson': serializer.toJson<String?>(imagesJson),
+      'barcodesJson': serializer.toJson<String?>(barcodesJson),
+      'howToUse': serializer.toJson<String?>(howToUse),
+      'ingredients': serializer.toJson<String?>(ingredients),
       'rawJson': serializer.toJson<String>(rawJson),
       'createdAt': serializer.toJson<DateTime>(createdAt),
       'updatedAt': serializer.toJson<DateTime>(updatedAt),
@@ -5736,6 +5885,12 @@ class ProductData extends DataClass implements Insertable<ProductData> {
           bool? canBuy,
           Value<int?> categoryId = const Value.absent(),
           Value<int?> typeId = const Value.absent(),
+          Value<int?> priceListCategoryId = const Value.absent(),
+          Value<String?> defaultImageJson = const Value.absent(),
+          Value<String?> imagesJson = const Value.absent(),
+          Value<String?> barcodesJson = const Value.absent(),
+          Value<String?> howToUse = const Value.absent(),
+          Value<String?> ingredients = const Value.absent(),
           String? rawJson,
           DateTime? createdAt,
           DateTime? updatedAt}) =>
@@ -5756,6 +5911,17 @@ class ProductData extends DataClass implements Insertable<ProductData> {
         canBuy: canBuy ?? this.canBuy,
         categoryId: categoryId.present ? categoryId.value : this.categoryId,
         typeId: typeId.present ? typeId.value : this.typeId,
+        priceListCategoryId: priceListCategoryId.present
+            ? priceListCategoryId.value
+            : this.priceListCategoryId,
+        defaultImageJson: defaultImageJson.present
+            ? defaultImageJson.value
+            : this.defaultImageJson,
+        imagesJson: imagesJson.present ? imagesJson.value : this.imagesJson,
+        barcodesJson:
+            barcodesJson.present ? barcodesJson.value : this.barcodesJson,
+        howToUse: howToUse.present ? howToUse.value : this.howToUse,
+        ingredients: ingredients.present ? ingredients.value : this.ingredients,
         rawJson: rawJson ?? this.rawJson,
         createdAt: createdAt ?? this.createdAt,
         updatedAt: updatedAt ?? this.updatedAt,
@@ -5777,6 +5943,12 @@ class ProductData extends DataClass implements Insertable<ProductData> {
           ..write('canBuy: $canBuy, ')
           ..write('categoryId: $categoryId, ')
           ..write('typeId: $typeId, ')
+          ..write('priceListCategoryId: $priceListCategoryId, ')
+          ..write('defaultImageJson: $defaultImageJson, ')
+          ..write('imagesJson: $imagesJson, ')
+          ..write('barcodesJson: $barcodesJson, ')
+          ..write('howToUse: $howToUse, ')
+          ..write('ingredients: $ingredients, ')
           ..write('rawJson: $rawJson, ')
           ..write('createdAt: $createdAt, ')
           ..write('updatedAt: $updatedAt')
@@ -5785,24 +5957,31 @@ class ProductData extends DataClass implements Insertable<ProductData> {
   }
 
   @override
-  int get hashCode => Object.hash(
-      id,
-      catalogId,
-      code,
-      bcode,
-      title,
-      description,
-      vendorCode,
-      amountInPackage,
-      novelty,
-      popular,
-      isMarked,
-      canBuy,
-      categoryId,
-      typeId,
-      rawJson,
-      createdAt,
-      updatedAt);
+  int get hashCode => Object.hashAll([
+        id,
+        catalogId,
+        code,
+        bcode,
+        title,
+        description,
+        vendorCode,
+        amountInPackage,
+        novelty,
+        popular,
+        isMarked,
+        canBuy,
+        categoryId,
+        typeId,
+        priceListCategoryId,
+        defaultImageJson,
+        imagesJson,
+        barcodesJson,
+        howToUse,
+        ingredients,
+        rawJson,
+        createdAt,
+        updatedAt
+      ]);
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
@@ -5821,6 +6000,12 @@ class ProductData extends DataClass implements Insertable<ProductData> {
           other.canBuy == this.canBuy &&
           other.categoryId == this.categoryId &&
           other.typeId == this.typeId &&
+          other.priceListCategoryId == this.priceListCategoryId &&
+          other.defaultImageJson == this.defaultImageJson &&
+          other.imagesJson == this.imagesJson &&
+          other.barcodesJson == this.barcodesJson &&
+          other.howToUse == this.howToUse &&
+          other.ingredients == this.ingredients &&
           other.rawJson == this.rawJson &&
           other.createdAt == this.createdAt &&
           other.updatedAt == this.updatedAt);
@@ -5841,6 +6026,12 @@ class ProductsCompanion extends UpdateCompanion<ProductData> {
   final Value<bool> canBuy;
   final Value<int?> categoryId;
   final Value<int?> typeId;
+  final Value<int?> priceListCategoryId;
+  final Value<String?> defaultImageJson;
+  final Value<String?> imagesJson;
+  final Value<String?> barcodesJson;
+  final Value<String?> howToUse;
+  final Value<String?> ingredients;
   final Value<String> rawJson;
   final Value<DateTime> createdAt;
   final Value<DateTime> updatedAt;
@@ -5859,6 +6050,12 @@ class ProductsCompanion extends UpdateCompanion<ProductData> {
     this.canBuy = const Value.absent(),
     this.categoryId = const Value.absent(),
     this.typeId = const Value.absent(),
+    this.priceListCategoryId = const Value.absent(),
+    this.defaultImageJson = const Value.absent(),
+    this.imagesJson = const Value.absent(),
+    this.barcodesJson = const Value.absent(),
+    this.howToUse = const Value.absent(),
+    this.ingredients = const Value.absent(),
     this.rawJson = const Value.absent(),
     this.createdAt = const Value.absent(),
     this.updatedAt = const Value.absent(),
@@ -5878,6 +6075,12 @@ class ProductsCompanion extends UpdateCompanion<ProductData> {
     required bool canBuy,
     this.categoryId = const Value.absent(),
     this.typeId = const Value.absent(),
+    this.priceListCategoryId = const Value.absent(),
+    this.defaultImageJson = const Value.absent(),
+    this.imagesJson = const Value.absent(),
+    this.barcodesJson = const Value.absent(),
+    this.howToUse = const Value.absent(),
+    this.ingredients = const Value.absent(),
     required String rawJson,
     this.createdAt = const Value.absent(),
     this.updatedAt = const Value.absent(),
@@ -5905,6 +6108,12 @@ class ProductsCompanion extends UpdateCompanion<ProductData> {
     Expression<bool>? canBuy,
     Expression<int>? categoryId,
     Expression<int>? typeId,
+    Expression<int>? priceListCategoryId,
+    Expression<String>? defaultImageJson,
+    Expression<String>? imagesJson,
+    Expression<String>? barcodesJson,
+    Expression<String>? howToUse,
+    Expression<String>? ingredients,
     Expression<String>? rawJson,
     Expression<DateTime>? createdAt,
     Expression<DateTime>? updatedAt,
@@ -5924,6 +6133,13 @@ class ProductsCompanion extends UpdateCompanion<ProductData> {
       if (canBuy != null) 'can_buy': canBuy,
       if (categoryId != null) 'category_id': categoryId,
       if (typeId != null) 'type_id': typeId,
+      if (priceListCategoryId != null)
+        'price_list_category_id': priceListCategoryId,
+      if (defaultImageJson != null) 'default_image_json': defaultImageJson,
+      if (imagesJson != null) 'images_json': imagesJson,
+      if (barcodesJson != null) 'barcodes_json': barcodesJson,
+      if (howToUse != null) 'how_to_use': howToUse,
+      if (ingredients != null) 'ingredients': ingredients,
       if (rawJson != null) 'raw_json': rawJson,
       if (createdAt != null) 'created_at': createdAt,
       if (updatedAt != null) 'updated_at': updatedAt,
@@ -5945,6 +6161,12 @@ class ProductsCompanion extends UpdateCompanion<ProductData> {
       Value<bool>? canBuy,
       Value<int?>? categoryId,
       Value<int?>? typeId,
+      Value<int?>? priceListCategoryId,
+      Value<String?>? defaultImageJson,
+      Value<String?>? imagesJson,
+      Value<String?>? barcodesJson,
+      Value<String?>? howToUse,
+      Value<String?>? ingredients,
       Value<String>? rawJson,
       Value<DateTime>? createdAt,
       Value<DateTime>? updatedAt}) {
@@ -5963,6 +6185,12 @@ class ProductsCompanion extends UpdateCompanion<ProductData> {
       canBuy: canBuy ?? this.canBuy,
       categoryId: categoryId ?? this.categoryId,
       typeId: typeId ?? this.typeId,
+      priceListCategoryId: priceListCategoryId ?? this.priceListCategoryId,
+      defaultImageJson: defaultImageJson ?? this.defaultImageJson,
+      imagesJson: imagesJson ?? this.imagesJson,
+      barcodesJson: barcodesJson ?? this.barcodesJson,
+      howToUse: howToUse ?? this.howToUse,
+      ingredients: ingredients ?? this.ingredients,
       rawJson: rawJson ?? this.rawJson,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
@@ -6014,6 +6242,24 @@ class ProductsCompanion extends UpdateCompanion<ProductData> {
     if (typeId.present) {
       map['type_id'] = Variable<int>(typeId.value);
     }
+    if (priceListCategoryId.present) {
+      map['price_list_category_id'] = Variable<int>(priceListCategoryId.value);
+    }
+    if (defaultImageJson.present) {
+      map['default_image_json'] = Variable<String>(defaultImageJson.value);
+    }
+    if (imagesJson.present) {
+      map['images_json'] = Variable<String>(imagesJson.value);
+    }
+    if (barcodesJson.present) {
+      map['barcodes_json'] = Variable<String>(barcodesJson.value);
+    }
+    if (howToUse.present) {
+      map['how_to_use'] = Variable<String>(howToUse.value);
+    }
+    if (ingredients.present) {
+      map['ingredients'] = Variable<String>(ingredients.value);
+    }
     if (rawJson.present) {
       map['raw_json'] = Variable<String>(rawJson.value);
     }
@@ -6043,6 +6289,12 @@ class ProductsCompanion extends UpdateCompanion<ProductData> {
           ..write('canBuy: $canBuy, ')
           ..write('categoryId: $categoryId, ')
           ..write('typeId: $typeId, ')
+          ..write('priceListCategoryId: $priceListCategoryId, ')
+          ..write('defaultImageJson: $defaultImageJson, ')
+          ..write('imagesJson: $imagesJson, ')
+          ..write('barcodesJson: $barcodesJson, ')
+          ..write('howToUse: $howToUse, ')
+          ..write('ingredients: $ingredients, ')
           ..write('rawJson: $rawJson, ')
           ..write('createdAt: $createdAt, ')
           ..write('updatedAt: $updatedAt')

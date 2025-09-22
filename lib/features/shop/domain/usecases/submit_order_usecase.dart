@@ -1,13 +1,10 @@
 // lib/features/shop/domain/usecases/submit_order_usecase.dart
 
-
-
 import 'package:fieldforce/features/shop/domain/entities/order.dart';
 import 'package:fieldforce/features/shop/domain/repositories/order_repository.dart';
 import 'package:fieldforce/shared/either.dart';
 import 'package:fieldforce/shared/failures.dart';
 
-/// Параметры для отправки заказа
 class SubmitOrderParams {
   final bool withoutRealization;
   final bool toReview;
@@ -18,7 +15,6 @@ class SubmitOrderParams {
   });
 }
 
-/// Результат отправки заказа (содержит отправленный заказ и новую корзину)
 class SubmitOrderResult {
   final Order submittedOrder;
   final Order newCart;

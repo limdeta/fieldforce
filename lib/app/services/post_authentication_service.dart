@@ -1,6 +1,9 @@
 import 'package:fieldforce/app/domain/repositories/app_user_repository.dart';
+import 'package:fieldforce/app/domain/entities/app_user.dart';
 import 'package:fieldforce/features/shop/domain/repositories/employee_repository.dart';
+import 'package:fieldforce/features/shop/domain/repositories/trading_point_repository.dart';
 import 'package:fieldforce/features/shop/domain/entities/employee.dart';
+import 'package:fieldforce/features/shop/domain/entities/trading_point.dart';
 import 'package:fieldforce/features/authentication/domain/entities/user.dart';
 import 'package:fieldforce/features/authentication/domain/services/i_auth_api_service.dart';
 import 'package:fieldforce/shared/either.dart';
@@ -13,11 +16,13 @@ class PostAuthenticationService {
   static final Logger _logger = Logger('PostAuthenticationService');
   final EmployeeRepository employeeRepository;
   final AppUserRepository appUserRepository;
+  final TradingPointRepository tradingPointRepository;
   final IAuthApiService authApiService;
 
   const PostAuthenticationService({
     required this.employeeRepository,
     required this.appUserRepository,
+    required this.tradingPointRepository,
     required this.authApiService,
   });
 
@@ -103,6 +108,9 @@ class PostAuthenticationService {
             // Можно добавить дополнительную логику для обработки отключенного аккаунта
             // Например, пометить пользователя как неактивного в локальной БД
           }
+          
+          // Экспериментальный парсинг outlet из данных пользователя
+          await _parseAndSelectOutlet(userData, authUser);
           
           final syncResult = await _syncEmployeeData(authUser, userData);
           return syncResult.fold(
@@ -215,6 +223,116 @@ class PostAuthenticationService {
         return EmployeeRole.manager;
       default:
         return EmployeeRole.sales; // По умолчанию
+    }
+  }
+
+  /// Экспериментальный метод для парсинга и автоматического выбора outlet
+  /// Извлекает outlet из данных пользователя и устанавливает его как текущий
+  Future<void> _parseAndSelectOutlet(Map<String, dynamic> userData, User authUser) async {
+    try {
+      // Экспериментальный парсинг outlet из userData
+      final outletData = userData['outlet'];
+      if (outletData == null) {
+        _logger.info('🏪 Outlet не найден в данных пользователя - пропускаем авто-выбор');
+        return;
+      }
+
+      _logger.info('🏪 Найден outlet в данных пользователя: $outletData');
+
+      // Пытаемся извлечь ID outlet
+      int? outletId;
+      String? outletExternalId;
+
+      if (outletData is Map<String, dynamic>) {
+        outletId = outletData['id'] as int?;
+        outletExternalId = outletData['externalId'] as String?;
+      } else if (outletData is int) {
+        outletId = outletData;
+      } else if (outletData is String) {
+        outletExternalId = outletData;
+      }
+
+      if (outletId == null && outletExternalId == null) {
+        _logger.warning('🏪 Не удалось извлечь ID или externalId outlet из данных: $outletData');
+        return;
+      }
+
+      // Ищем TradingPoint в базе данных
+      final tradingPointResult = outletId != null
+          ? await tradingPointRepository.getById(outletId)
+          : await tradingPointRepository.getByExternalId(outletExternalId!);
+
+      _logger.info('🏪 Ищем TradingPoint: outletId=$outletId, outletExternalId=$outletExternalId');
+
+      TradingPoint? tradingPoint = tradingPointResult.fold(
+        (failure) {
+          _logger.warning('🏪 TradingPoint не найден: ${failure.message}');
+          return null;
+        },
+        (point) => point,
+      );
+
+      // Если TradingPoint не найден, создаем его из данных API
+      if (tradingPoint == null && outletData is Map<String, dynamic>) {
+        _logger.info('🏪 TradingPoint не найден, создаем из данных API...');
+        try {
+          final newTradingPoint = TradingPoint(
+            id: outletData['id'],
+            externalId: outletData['vendorId']?.toString() ?? outletData['id'].toString(),
+            name: outletData['name'],
+          );
+
+          final createResult = await tradingPointRepository.save(newTradingPoint);
+          tradingPoint = createResult.fold(
+            (failure) {
+              _logger.warning('🏪 Ошибка создания TradingPoint: ${failure.message}');
+              return null;
+            },
+            (created) {
+              _logger.info('🏪 TradingPoint создан: ${created.name} (ID: ${created.id})');
+              return created;
+            },
+          );
+        } catch (e) {
+          _logger.warning('🏪 Ошибка создания TradingPoint из API данных: $e');
+        }
+      }
+
+      if (tradingPoint == null) {
+        _logger.warning('🏪 TradingPoint не найден и не удалось создать');
+        return;
+      }
+
+      _logger.info('🏪 Найден TradingPoint: ${tradingPoint.name} (ID: ${tradingPoint.id})');
+
+      // Получаем текущего пользователя по userId
+      final currentUserResult = await appUserRepository.getAppUserByUserId(authUser.id!);
+      _logger.info('🏪 Получаем AppUser для userId=${authUser.id}');
+      
+      final currentUser = currentUserResult.fold(
+        (failure) {
+          _logger.warning('🏪 AppUser не найден: ${failure.message}');
+          return null;
+        },
+        (user) => user,
+      );
+
+      if (currentUser == null) {
+        _logger.warning('🏪 Текущий AppUser не найден - не можем установить outlet');
+        return;
+      }
+
+      // Обновляем AppUser с выбранным trading point
+      final updatedUser = currentUser.selectTradingPoint(tradingPoint);
+      final updateResult = await appUserRepository.updateAppUser(updatedUser);
+
+      updateResult.fold(
+        (failure) => _logger.warning('🏪 Ошибка обновления AppUser с outlet: ${failure.message}'),
+        (updatedAppUser) => _logger.info('🏪 ✅ Outlet успешно выбран: ${tradingPoint!.name}'),
+      );
+
+    } catch (e, st) {
+      _logger.warning('🏪 Ошибка при парсинге outlet: $e', e, st);
     }
   }
 }

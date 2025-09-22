@@ -63,12 +63,16 @@ class SessionManager {
     final headers = <String, String>{};
 
     if (_sessionCookie != null) {
-      final cookieHeader = 'PHPSESSID=$_sessionCookie';
-      headers['Cookie'] = cookieHeader;
-       _logger.info('SessionManager: Отправляем заголовок Cookie: $cookieHeader');
+      headers['Cookie'] = _sessionCookie!;
+      _logger.info('SessionManager: Отправляем заголовок Cookie: $_sessionCookie');
     }
 
     return headers;
+  }
+
+  String? getSessionCookie() {
+    _logger.info('SessionManager: Запрошена сессионная кука: ${_sessionCookie != null ? 'есть' : 'нет'}');
+    return _sessionCookie;
   }
 
   bool hasActiveSession() {
@@ -88,7 +92,7 @@ class SessionManager {
   }
 
   String? _extractSessionCookie(String cookieString) {
-    final regex = RegExp(r'PHPSESSID=([^;]+)');
+    final regex = RegExp(r'(PHPSESSID=[^;]+)');
     final match = regex.firstMatch(cookieString);
     return match?.group(1);
   }

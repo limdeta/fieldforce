@@ -14,14 +14,9 @@ enum ProductCardVariant {
   cart,
 }
 
-/// Единый переиспользуемый виджет для отображения карточки продукта
-/// Работает как с ProductWithStock (каталог), так и с OrderLine (корзина)
-/// Следует формату compact_view для унификации отображения
-/// 
-/// Поддерживает различные варианты отображения:
 /// - card: компактная карточка для сеток
 /// - row: строка для списков
-/// - cart: специальный режим для корзины
+/// - cart
 class ProductCardWidget extends StatelessWidget {
   // Данные продукта (один из вариантов должен быть передан)
   final ProductWithStock? productWithStock;
@@ -309,32 +304,29 @@ class ProductCardWidget extends StatelessWidget {
                   child: product.defaultImage != null
                       ? ClipRRect(
                           borderRadius: BorderRadius.circular(4),
-                          child: Image.network(
-                            product.defaultImage!.uri,
+                          child: ImageCacheService.getCachedThumbnail(
+                            imageUrl: product.defaultImage!.getOptimalUrl(),
+                            width: 80,
+                            height: 80,
                             fit: BoxFit.cover,
-                            loadingBuilder: (context, child, loadingProgress) {
-                              if (loadingProgress == null) return child;
-                              return Container(
-                                color: Colors.grey.shade300,
-                                child: const Center(
-                                  child: SizedBox(
-                                    width: 20,
-                                    height: 20,
-                                    child: CircularProgressIndicator(strokeWidth: 2),
-                                  ),
+                            placeholder: Container(
+                              color: Colors.grey.shade300,
+                              child: const Center(
+                                child: SizedBox(
+                                  width: 20,
+                                  height: 20,
+                                  child: CircularProgressIndicator(strokeWidth: 2),
                                 ),
-                              );
-                            },
-                            errorBuilder: (context, error, stackTrace) {
-                              return Container(
-                                color: Colors.grey.shade300,
-                                child: const Icon(
-                                  Icons.broken_image,
-                                  color: Colors.grey,
-                                  size: 32,
-                                ),
-                              );
-                            },
+                              ),
+                            ),
+                            errorWidget: Container(
+                              color: Colors.grey.shade300,
+                              child: const Icon(
+                                Icons.broken_image,
+                                color: Colors.grey,
+                                size: 32,
+                              ),
+                            ),
                           ),
                         )
                       : const Icon(
@@ -500,7 +492,7 @@ class ProductCardWidget extends StatelessWidget {
         borderRadius: BorderRadius.circular(7), // Немного меньше чем у контейнера для отступа
         child: imageData != null 
           ? ImageCacheService.getCachedThumbnail(
-              imageUrl: imageData.uri,
+              imageUrl: imageData.getOptimalUrl(),
               width: 56,
               height: 56,
               fit: BoxFit.cover,

@@ -30,7 +30,6 @@ import 'package:fieldforce/features/authentication/domain/usecases/logout_usecas
 import 'package:fieldforce/features/authentication/domain/usecases/get_current_session_usecase.dart';
 import 'package:fieldforce/features/authentication/presentation/bloc/bloc.dart';
 import 'package:fieldforce/features/shop/data/fixtures/product_fixture_service.dart';
-import 'package:fieldforce/features/shop/data/services/product_parsing_service.dart';
 import 'package:fieldforce/app/database/repositories/trading_point_repository_drift.dart';
 import 'package:fieldforce/app/domain/repositories/app_user_repository.dart';
 import 'package:fieldforce/features/navigation/tracking/domain/repositories/user_track_repository.dart';
@@ -76,6 +75,8 @@ import 'package:fieldforce/features/shop/presentation/bloc/orders_bloc.dart';
 import 'package:fieldforce/features/shop/data/fixtures/order_fixture_service.dart';
 import 'package:fieldforce/features/shop/domain/repositories/stock_item_repository.dart';
 import 'package:fieldforce/app/database/repositories/stock_item_repository_drift.dart';
+import 'package:fieldforce/features/shop/data/services/product_sync_service_impl.dart';
+import 'package:fieldforce/features/shop/data/services/isolate_sync_manager.dart';
 
 final getIt = GetIt.instance;
 
@@ -266,10 +267,6 @@ Future<void> setupTestServiceLocator() async {
     () => CategoryParsingService(),
   );
 
-  getIt.registerLazySingleton<ProductParsingService>(
-    () => ProductParsingService(),
-  );
-
   getIt.registerLazySingleton<LogoutUseCase>(
     () => LogoutUseCase(authenticationService: getIt()),
   );
@@ -344,9 +341,7 @@ Future<void> setupTestServiceLocator() async {
   );
 
   getIt.registerLazySingleton<ProductFixtureService>(
-    () => ProductFixtureService(
-      getIt<ProductParsingService>(),
-    ),
+    () => ProductFixtureService(),
   );
 
   getIt.registerLazySingleton<OrderFixtureService>(
@@ -397,7 +392,31 @@ Future<void> setupTestServiceLocator() async {
     () => PostAuthenticationService(
       employeeRepository: getIt<EmployeeRepository>(),
       appUserRepository: getIt<AppUserRepository>(),
+      tradingPointRepository: getIt<TradingPointRepository>(),
       authApiService: getIt<IAuthApiService>(),
+    ),
+  );
+
+  // Sync services for product synchronization
+  // Удалены устаревшие SyncIsolateManager и SyncProgressManager
+  // ЧЗХ ТУТ ПРОИСХОДИТ ВООБЩЕ?
+  // New isolate-based sync manager for tests
+  getIt.registerLazySingleton(
+    () => IsolateSyncManager(
+      productRepository: getIt<ProductRepository>(),
+      stockItemRepository: getIt<StockItemRepository>(),
+      categoryRepository: getIt<CategoryRepository>(),
+      productsApiUrl: 'test://products',
+      categoriesApiUrl: 'test//categories',
+      sessionManager: getIt<SessionManager>(),
+    ),
+  );
+
+  // Product sync service implementation
+  getIt.registerLazySingleton(
+    () => ProductSyncServiceImpl(
+      sessionManager: getIt<SessionManager>(),
+      isolateManager: getIt<IsolateSyncManager>(),
     ),
   );
 }

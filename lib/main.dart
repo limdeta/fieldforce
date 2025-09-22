@@ -1,7 +1,6 @@
 import 'package:fieldforce/app/di/test_service_locator.dart' as test_di;
 import 'package:fieldforce/features/shop/presentation/trading_points_list_page.dart';
 import 'package:fieldforce/features/shop/presentation/pages/cart_page.dart';
-import 'package:fieldforce/features/shop/presentation/pages/orders_page.dart';
 import 'package:fieldforce/features/shop/presentation/bloc/cart_bloc.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -21,14 +20,17 @@ import 'app/services/app_lifecycle_manager.dart';
 import 'app/services/simple_update_service.dart';
 import 'app/presentation/pages/routes_page.dart';
 import 'app/presentation/pages/profile_page.dart';
+import 'app/presentation/pages/data_page.dart';
 import 'features/shop/presentation/pages/product_catalog_page.dart';
 import 'features/shop/presentation/pages/product_categories_page.dart';
 import 'features/shop/presentation/pages/promotions_page.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  hierarchicalLoggingEnabled = true;
+  Logger('IsolateSyncManager').level = Level.SEVERE;
 
-  Logger.root.level = Level.SEVERE;
+  Logger.root.level = Level.INFO;
   Logger.root.onRecord.listen((record) {
     debugPrint('${record.level.name}: ${record.time}: ${record.message}');
   });
@@ -84,7 +86,7 @@ class FieldforceApp extends StatelessWidget {
             '/products/categories': (context) => const ProductCategoriesPage(),
             '/products/promotions': (context) => const PromotionsPage(),
             '/cart': (context) => const CartPage(),
-            '/orders': (context) => const OrdersPage(),
+            '/data-sync': (context) => const DataPage(),
           },
           ),
         ),

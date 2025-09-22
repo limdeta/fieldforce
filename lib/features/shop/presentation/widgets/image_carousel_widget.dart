@@ -90,7 +90,7 @@ class _ImageCarouselWidgetState extends State<ImageCarouselWidget> {
                 maxScale: 3.0,
                 child: Center(
                   child: ImageCacheService.getCachedFullImage(
-                    imageUrl: image.uri, // Используем оригинальный URL без изменений
+                    imageUrl: image.getOptimalUrl(), // Используем оптимальный URL (WebP если доступен)
                     fit: BoxFit.contain,
                     placeholder: const Center(
                       child: CircularProgressIndicator(
@@ -181,7 +181,6 @@ class _ImageCarouselWidgetState extends State<ImageCarouselWidget> {
   }
 }
 
-/// Диалог для показа полноэкранной карусели изображений
 void showImageCarousel(BuildContext context, List<ImageData> images, {int initialIndex = 0}) {
   Navigator.of(context).push(
     MaterialPageRoute(

@@ -133,7 +133,7 @@ class AuthApiService implements IAuthApiService {
 
   /// Преобразует данные API в формат, ожидаемый приложением
   Map<String, dynamic> _transformUserData(Map<String, dynamic> apiData) {
-    return {
+    final transformedData = {
       'id': apiData['id'],
       'firstName': apiData['firstName'],
       'fatherName': apiData['fatherName'],
@@ -142,6 +142,30 @@ class AuthApiService implements IAuthApiService {
       // Дополнительные поля для совместимости с существующим кодом
       'fullName': _buildFullName(apiData),
     };
+
+    // ЭКСПЕРИМЕНТ: Парсим outlet из данных пользователя
+    // Это временное решение для автоматического выбора торговой точки
+    if (apiData.containsKey('outlet') && apiData['outlet'] != null) {
+      _logger.info('ЭКСПЕРИМЕНТ: Найден outlet в данных пользователя, парсим...');
+      try {
+        final outletData = apiData['outlet'] as Map<String, dynamic>;
+        transformedData['outlet'] = {
+          'id': outletData['id'],
+          'vendorId': outletData['vendorId'],
+          'name': outletData['name'],
+          'address': outletData['address'],
+          'longitude': outletData['address']?['longitude'],
+          'latitude': outletData['address']?['latitude'],
+        };
+        _logger.info('ЭКСПЕРИМЕНТ: Outlet успешно распарсен: ${transformedData['outlet']['name']}');
+      } catch (e) {
+        _logger.warning('ЭКСПЕРИМЕНТ: Ошибка парсинга outlet из данных пользователя', e);
+      }
+    } else {
+      _logger.info('ЭКСПЕРИМЕНТ: Outlet не найден в данных пользователя');
+    }
+
+    return transformedData;
   }
 
   /// Строит полное имя пользователя
