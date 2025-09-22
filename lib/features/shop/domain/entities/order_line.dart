@@ -7,9 +7,9 @@ class OrderLine extends Equatable {
   final int? id;
   final int orderId;
   final StockItem stockItem; // Конкретный остаток на складе (содержит Product + Warehouse + цены)
-  final Product? product; // Продукт для UI (может быть null если не загружен)
+  final Product? product;
   final int quantity;
-  final int pricePerUnit; // в копейках (может отличаться от цены в StockItem из-за скидок)
+  final int pricePerUnit;
   final DateTime createdAt;
   final DateTime updatedAt;
 
@@ -24,7 +24,6 @@ class OrderLine extends Equatable {
     required this.updatedAt,
   });
 
-  /// Создает новую строку заказа
   factory OrderLine.create({
     required int orderId,
     required StockItem stockItem,
@@ -44,29 +43,15 @@ class OrderLine extends Equatable {
     );
   }
 
-  /// ID продукта из stockItem
   int get productCode => stockItem.productCode;
-
-  /// ID склада из stockItem
   int get warehouseId => stockItem.warehouseId;
-
-  /// Общая стоимость строки заказа
   int get totalCost => quantity * pricePerUnit;
 
-  // UI геттеры для удобства
-  /// Название товара для отображения в UI
-  String get productTitle => product?.title ?? 'Товар №$productCode';
-  
-  /// Описание товара
-  String get productDescription => product?.description ?? '';
-  
-  /// Артикул товара
-  String get productVendorCode => product?.vendorCode ?? '';
-  
-  /// Имя склада для UI
+  String get productTitle => product?.title ?? 'ОШИБКА: товар не найден (код: $productCode)';
+  String get productDescription => product?.description ?? 'Товар не найден в базе данных';
+  String get productVendorCode => product?.vendorCode ?? 'НЕТ ДАННЫХ';
   String get warehouseName => stockItem.warehouseName;
 
-  /// Экономия по сравнению с базовой ценой (если есть скидка)
   int get saving {
     final basePrice = stockItem.defaultPrice;
     if (basePrice > pricePerUnit) {
@@ -75,12 +60,10 @@ class OrderLine extends Equatable {
     return 0;
   }
 
-  /// Общая стоимость по базовой цене без скидки
   int get totalBaseCost {
     return quantity * stockItem.defaultPrice;
   }
 
-  /// Обновляет количество товара в строке
   OrderLine updateQuantity(int newQuantity) {
     if (newQuantity <= 0) {
       throw ArgumentError('Quantity must be positive');
@@ -92,7 +75,6 @@ class OrderLine extends Equatable {
     );
   }
 
-  /// Обновляет цену за единицу товара
   OrderLine updatePrice(int newPricePerUnit) {
     if (newPricePerUnit <= 0) {
       throw ArgumentError('Price must be positive');

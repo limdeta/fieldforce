@@ -27,6 +27,8 @@ import 'features/shop/presentation/pages/promotions_page.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  hierarchicalLoggingEnabled = true;
+  Logger('IsolateSyncManager').level = Level.SEVERE;
 
   Logger.root.level = Level.INFO;
   Logger.root.onRecord.listen((record) {

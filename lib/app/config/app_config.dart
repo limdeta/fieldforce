@@ -67,6 +67,18 @@ class AppConfig {
     }
   }
 
+  // Categories API Configuration
+  static String get categoriesApiUrl {
+    switch (_environment) {
+      case Environment.dev:
+        return 'https://localhost:8000/v1_api/categories'; // Dev использует локальный API
+      case Environment.prod:
+        return 'https://localhost:8000/v1_api/categories'; // Пока используем локальный для тестирования
+      case Environment.test:
+        return 'https://test-api.fieldforce.com/v1_api/categories'; // Test API
+    }
+  }
+
   // Use mock authentication in dev/test modes
   static bool get useMockAuth => isDev || isTest;
   

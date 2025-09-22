@@ -2,6 +2,7 @@
 
 import 'package:fieldforce/features/shop/domain/entities/stock_item.dart';
 import 'package:fieldforce/features/shop/domain/repositories/stock_item_repository.dart';
+import 'package:fieldforce/app/database/mappers/stock_item_mapper.dart';
 import 'package:get_it/get_it.dart';
 import 'package:drift/drift.dart';
 import 'package:fieldforce/shared/either.dart';
@@ -9,7 +10,6 @@ import 'package:fieldforce/shared/failures.dart';
 import 'package:fieldforce/app/database/app_database.dart';
 import 'package:logging/logging.dart';
 
-/// Drift реализация репозитория остатков и цен товаров
 class DriftStockItemRepository implements StockItemRepository {
   static final Logger _logger = Logger('DriftStockItemRepository');
   final AppDatabase _database = GetIt.instance<AppDatabase>();
@@ -21,7 +21,7 @@ class DriftStockItemRepository implements StockItemRepository {
         ..where((tbl) => tbl.productCode.equals(productCode))
       ).get();
 
-      final stockItems = entities.map(_mapToStockItem).toList();
+      final stockItems = StockItemMapper.fromDataList(entities);
       return Right(stockItems);
     } catch (e, st) {
       _logger.severe('Ошибка получения остатков для продукта $productCode', e, st);
@@ -36,7 +36,7 @@ class DriftStockItemRepository implements StockItemRepository {
         ..where((tbl) => tbl.warehouseVendorId.equals(vendorId))
       ).get();
 
-      final stockItems = entities.map(_mapToStockItem).toList();
+      final stockItems = StockItemMapper.fromDataList(entities);
       return Right(stockItems);
     } catch (e, st) {
       _logger.severe('Ошибка получения остатков для продавца $vendorId', e, st);
@@ -62,7 +62,7 @@ class DriftStockItemRepository implements StockItemRepository {
       }
 
       final entities = await query.get();
-      final stockItems = entities.map(_mapToStockItem).toList();
+      final stockItems = StockItemMapper.fromDataList(entities);
       return Right(stockItems);
     } catch (e, st) {
       _logger.severe('Ошибка получения доступных остатков', e, st);
@@ -79,7 +79,7 @@ class DriftStockItemRepository implements StockItemRepository {
 
       if (entity == null) return const Right(null);
 
-      final stockItem = _mapToStockItem(entity);
+      final stockItem = StockItemMapper.fromData(entity);
       return Right(stockItem);
     } catch (e, st) {
       _logger.severe('Ошибка получения остатка для продукта $productCode на складе $warehouseId', e, st);
@@ -110,15 +110,35 @@ class DriftStockItemRepository implements StockItemRepository {
       ..where((tbl) => tbl.code.equals(stockItem.productCode))
     ).getSingleOrNull();
     
-    _logger.info('🔍 StockItem productCode=${stockItem.productCode}: продукт существует=${productExists != null}');
-    if (productExists != null) {
-      _logger.info('🔍 Найден продукт: id=${productExists.id}, code=${productExists.code}, catalogId=${productExists.catalogId}');
+    if (productExists == null) {
+      _logger.warning('⚠️ Попытка сохранить StockItem для несуществующего продукта с кодом ${stockItem.productCode}');
+      return; // Пропускаем сохранение StockItem если продукт не существует
     }
     
-    final companion = _mapToStockItemData(stockItem);
+    // Проверяем существует ли уже StockItem с такой комбинацией productCode + warehouseId
+    final existing = await (_database.select(_database.stockItems)
+      ..where((tbl) => 
+        tbl.productCode.equals(stockItem.productCode) & 
+        tbl.warehouseId.equals(stockItem.warehouseId)
+      )
+    ).getSingleOrNull();
     
-    // Просто INSERT - если есть конфликт UNIQUE, то произойдет ошибка которая поможет найти проблему
-    await _database.into(_database.stockItems).insert(companion);
+    final companion = StockItemMapper.toCompanion(stockItem, excludeId: true);
+    
+    if (existing != null) {
+      // Обновляем существующий StockItem
+      await (_database.update(_database.stockItems)
+        ..where((tbl) => 
+          tbl.productCode.equals(stockItem.productCode) & 
+          tbl.warehouseId.equals(stockItem.warehouseId)
+        )
+      ).write(companion);
+      _logger.fine('Обновлен StockItem для продукта ${stockItem.productCode}, склад ${stockItem.warehouseId}');
+    } else {
+      // Создаем новый StockItem
+      await _database.into(_database.stockItems).insert(companion);
+      _logger.fine('Создан новый StockItem для продукта ${stockItem.productCode}, склад ${stockItem.warehouseId}');
+    }
   }
 
   @override
@@ -131,10 +151,7 @@ class DriftStockItemRepository implements StockItemRepository {
               tbl.productCode.equals(update.productCode) & 
               tbl.warehouseId.equals(update.warehouseId)
             )
-          ).write(StockItemsCompanion(
-            stock: Value(update.newStock),
-            updatedAt: Value(DateTime.now()),
-          ));
+          ).write(StockItemMapper.toStockUpdateCompanion(update));
         }
       });
       
@@ -156,11 +173,7 @@ class DriftStockItemRepository implements StockItemRepository {
               tbl.productCode.equals(update.productCode) & 
               tbl.warehouseId.equals(update.warehouseId)
             )
-          ).write(StockItemsCompanion(
-            defaultPrice: update.defaultPrice != null ? Value(update.defaultPrice!) : const Value.absent(),
-            offerPrice: update.offerPrice != null ? Value(update.offerPrice!) : const Value.absent(),
-            updatedAt: Value(DateTime.now()),
-          ));
+          ).write(StockItemMapper.toPriceUpdateCompanion(update));
         }
       });
       
@@ -187,51 +200,7 @@ class DriftStockItemRepository implements StockItemRepository {
     }
   }
 
-  /// Маппинг из БД в доменную модель
-  StockItem _mapToStockItem(StockItemData data) {
-    return StockItem(
-      id: data.id,
-      productCode: data.productCode,
-      warehouseId: data.warehouseId,
-      warehouseName: data.warehouseName,
-      warehouseVendorId: data.warehouseVendorId,
-      isPickUpPoint: data.isPickUpPoint,
-      stock: data.stock,
-      multiplicity: data.multiplicity,
-      publicStock: data.publicStock,
-      defaultPrice: data.defaultPrice,
-      discountValue: data.discountValue,
-      availablePrice: data.availablePrice,
-      offerPrice: data.offerPrice,
-      currency: data.currency,
-      promotionJson: data.promotionJson,
-      createdAt: data.createdAt,
-      updatedAt: data.updatedAt,
-    );
-  }
-
-  /// Маппинг из доменной модели в БД
-  StockItemsCompanion _mapToStockItemData(StockItem stockItem) {
-    return StockItemsCompanion(
-      id: stockItem.id == 0 ? const Value.absent() : Value(stockItem.id),
-      productCode: Value(stockItem.productCode),
-      warehouseId: Value(stockItem.warehouseId),
-      warehouseName: Value(stockItem.warehouseName),
-      warehouseVendorId: Value(stockItem.warehouseVendorId),
-      isPickUpPoint: Value(stockItem.isPickUpPoint),
-      stock: Value(stockItem.stock),
-      multiplicity: stockItem.multiplicity != null ? Value(stockItem.multiplicity!) : const Value.absent(),
-      publicStock: Value(stockItem.publicStock),
-      defaultPrice: Value(stockItem.defaultPrice),
-      discountValue: Value(stockItem.discountValue),
-      availablePrice: stockItem.availablePrice != null ? Value(stockItem.availablePrice!) : const Value.absent(),
-      offerPrice: stockItem.offerPrice != null ? Value(stockItem.offerPrice!) : const Value.absent(),
-      currency: Value(stockItem.currency),
-      promotionJson: Value(stockItem.promotionJson),
-      createdAt: Value(stockItem.createdAt),
-      updatedAt: Value(stockItem.updatedAt),
-    );
-  }
+  // Маппинг теперь вынесен в StockItemMapper для лучшей организации кода
 
   @override
   Future<Either<Failure, StockItem>> getById(int stockItemId) async {
@@ -240,7 +209,7 @@ class DriftStockItemRepository implements StockItemRepository {
         ..where((tbl) => tbl.id.equals(stockItemId))
       ).getSingle();
 
-      final stockItem = _mapToStockItem(entity);
+      final stockItem = StockItemMapper.fromData(entity);
       return Right(stockItem);
     } catch (e, st) {
       _logger.severe('Ошибка получения остатка по ID $stockItemId', e, st);

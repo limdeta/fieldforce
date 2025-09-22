@@ -1,5 +1,4 @@
 ﻿import 'dart:async';
-import 'dart:convert';
 import 'dart:io';
 import 'dart:math';
 import 'dart:isolate';
@@ -13,9 +12,7 @@ import '../../domain/repositories/product_repository.dart';
 import '../../domain/repositories/stock_item_repository.dart';
 import 'product_parsing_service.dart';
 
-/// Абстрактный сервис синхронизации продуктов
 abstract class ProductSyncService {
-  /// Синхронизирует продукты согласно конфигурации
   Future<SyncResult> syncProducts(
     SyncConfig config,
     SendPort progressPort,
@@ -24,7 +21,6 @@ abstract class ProductSyncService {
   );
 }
 
-/// Реализация синхронизации через API
 class ApiProductSyncService implements ProductSyncService {
   static final Logger _logger = Logger('ApiProductSyncService');
   
@@ -55,43 +51,58 @@ class ApiProductSyncService implements ProductSyncService {
       // Делаем HTTP запрос к API
       final response = await _makeApiRequest(config);
       
-      // Логируем полный ответ для отладки
-      _logger.info('Полный JSON ответ от API: ...');
+      // Логируем краткую информацию
+      _logger.info('Полный JSON ответ от API: ${response.substring(0, min(200, response.length))}...');
       
       final apiResponse = _parsingService.parseProductApiResponse(response);
-      _logger.info('Получено  продуктов из API');
-      _logger.info('Общее количество: , текущая страница: ');
+      _logger.info('Получено ${apiResponse.products.length} продуктов из API');
+      
+      // Проверяем наличие stockItems в каждом продукте
+      int productsWithStockItems = 0;
+      int totalStockItems = 0;
+      for (final product in apiResponse.products) {
+        if (product.stockItems.isNotEmpty) {
+          productsWithStockItems++;
+          totalStockItems += product.stockItems.length;
+        }
+      }
+      _logger.info('📊 Продукты с stockItems: $productsWithStockItems/${apiResponse.products.length}, всего stockItems: $totalStockItems');
       
       // Конвертируем продукты
       final convertedProducts = _parsingService.convertApiItemsToProducts(apiResponse.products);
-      _logger.info('Конвертировано  продуктов');
+      _logger.info('Конвертировано ${convertedProducts.length} продуктов');
       
       // Сохраняем продукты и stock items в базу данных
-      _logger.info('Сохранение  продуктов в базу данных...');
+      _logger.info('Сохранение ${convertedProducts.length} продуктов в базу данных...');
       
       final products = convertedProducts.map((data) => data.product).toList();
       final allStockItems = convertedProducts.expand((data) => data.stockItems).toList();
+      _logger.info('📦 Извлечено ${allStockItems.length} stock_items из ${convertedProducts.length} продуктов');
       
       // Сохраняем продукты
       final productSaveResult = await productRepository.saveProducts(products);
       productSaveResult.fold(
-        (failure) => throw Exception('Ошибка сохранения продуктов: '),
+        (failure) => throw Exception('Ошибка сохранения продуктов: ${failure.message}'),
         (_) => _logger.info('Продукты успешно сохранены'),
       );
       
       // Сохраняем stock items
       if (allStockItems.isNotEmpty) {
+        _logger.info('💾 Сохраняем ${allStockItems.length} stock_items...');
         final stockSaveResult = await stockItemRepository.saveStockItems(allStockItems);
         stockSaveResult.fold(
-          (failure) => throw Exception('Ошибка сохранения остатков: '),
-          (_) => _logger.info('Stock items успешно сохранены ( записей)'),
+          (failure) => throw Exception('Ошибка сохранения остатков: ${failure.message}'),
+          (_) => _logger.info('Stock items успешно сохранены (${allStockItems.length} записей)'),
         );
+      } else {
+        _logger.warning('⚠️ Stock items отсутствуют! allStockItems.isEmpty = true');
       }
       
       successCount = convertedProducts.length;
       
       // Отправляем финальный прогресс
       final progress = SyncProgress(
+        type: 'products',
         current: successCount,
         total: apiResponse.totalCount,
         status: 'Синхронизация завершена',
@@ -101,6 +112,7 @@ class ApiProductSyncService implements ProductSyncService {
 
       final duration = DateTime.now().difference(startTime);
       return SyncResult.success(
+        type: 'products',
         successCount: successCount,
         duration: duration,
         startTime: startTime,
@@ -112,6 +124,7 @@ class ApiProductSyncService implements ProductSyncService {
 
       final duration = DateTime.now().difference(startTime);
       return SyncResult.withErrors(
+        type: 'products',
         successCount: successCount,
         errorCount: errorCount,
         errors: [e.toString()],
@@ -152,8 +165,11 @@ class ApiProductSyncService implements ProductSyncService {
 
       // Добавляем сессионную куку
       if (_sessionCookie != null && _sessionCookie.isNotEmpty) {
-        headers['Cookie'] = 'PHPSESSID=';
-        _logger.info('Используем сессионную куку: PHPSESSID=...');
+        final fullCookie = _sessionCookie.startsWith('PHPSESSID=') 
+            ? _sessionCookie 
+            : 'PHPSESSID=$_sessionCookie';
+        headers['Cookie'] = fullCookie;
+        _logger.info('Используем сессионную куку: $fullCookie');
       } else {
         _logger.warning('Сессионная кука не установлена!');
       }
@@ -177,7 +193,6 @@ class ApiProductSyncService implements ProductSyncService {
   }
 }
 
-/// Реализация синхронизации из JSON файла (для будущего)
 class JsonDumpProductSyncService implements ProductSyncService {
   @override
   Future<SyncResult> syncProducts(
@@ -191,7 +206,6 @@ class JsonDumpProductSyncService implements ProductSyncService {
   }
 }
 
-/// Реализация синхронизации из сжатого архива (для будущего)
 class ArchiveProductSyncService implements ProductSyncService {
   @override
   Future<SyncResult> syncProducts(
@@ -205,7 +219,6 @@ class ArchiveProductSyncService implements ProductSyncService {
   }
 }
 
-/// Фабрика для создания сервиса синхронизации
 class ProductSyncServiceFactory {
   static ProductSyncService create(
     SyncConfig config, 

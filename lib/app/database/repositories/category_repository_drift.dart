@@ -10,7 +10,6 @@ import 'package:fieldforce/app/database/app_database.dart';
 import 'package:fieldforce/features/shop/domain/entities/category.dart' as tree_category;
 import 'package:fieldforce/features/shop/domain/entities/product.dart' as product_entity;
 
-/// Drift реализация репозитория категорий
 class DriftCategoryRepository implements CategoryRepository {
   final AppDatabase _database = GetIt.instance<AppDatabase>();
   static final Logger _logger = Logger('DriftCategoryRepository');
@@ -104,7 +103,6 @@ class DriftCategoryRepository implements CategoryRepository {
   Future<Either<Failure, void>> saveCategories(List<tree_category.Category> categories) async {
     try {
       await _database.transaction(() async {
-        // Очистить существующие категории
         await _database.delete(_database.categories).go();
 
         // Используем Set для отслеживания сохраненных ID и предотвращения дубликатов
@@ -223,12 +221,17 @@ class DriftCategoryRepository implements CategoryRepository {
   @override
   Future<Either<Failure, List<tree_category.Category>>> getAllDescendants(int categoryId) async {
     try {
+      _logger.info('🔍 getAllDescendants: categoryId=$categoryId');
+      
       // Сначала получаем категорию, чтобы узнать её lft и rgt
       final parentEntity = await (_database.select(_database.categories)
         ..where((tbl) => tbl.categoryId.equals(categoryId))
       ).getSingleOrNull();
 
+      _logger.fine('🔍 getAllDescendants: parentEntity = ${parentEntity != null ? 'найден' : 'не найден'}');
+      
       if (parentEntity == null) {
+        _logger.warning('⚠️ getAllDescendants: категория $categoryId не найдена');
         return Right([]);
       }
 
@@ -245,6 +248,7 @@ class DriftCategoryRepository implements CategoryRepository {
         return tree_category.Category.fromJson(categoryJson);
       }).toList();
 
+      _logger.info('✅ getAllDescendants: найдено ${categories.length} потомков для категории $categoryId');
       return Right(categories);
     } catch (e) {
       return Left(DatabaseFailure('Ошибка получения потомков категории: $e'));
@@ -370,10 +374,8 @@ class DriftCategoryRepository implements CategoryRepository {
   }
 
   void _updateCategoryCountRecursive(tree_category.Category category, Map<int, int> categoryCounts) {
-    // Обновляем count в существующем mutable объекте
     category.count = categoryCounts[category.id] ?? 0;
 
-    // Рекурсивно обновляем всех потомков
     for (final child in category.children) {
       _updateCategoryCountRecursive(child, categoryCounts);
     }
@@ -383,10 +385,8 @@ class DriftCategoryRepository implements CategoryRepository {
   Map<int, int> _calculateCategoryCounts(List<tree_category.Category> categories, List<product_entity.Product> products) {
     final counts = <int, int>{};
 
-    // Получаем все категории в плоском виде
     final allCategories = _flattenCategories(categories);
 
-    // Для каждой категории рассчитываем количество продуктов
     for (final category in allCategories) {
       final categoryProducts = _findProductsInCategoryAndDescendants(products, category);
       counts[category.id] = categoryProducts.length;
@@ -395,12 +395,10 @@ class DriftCategoryRepository implements CategoryRepository {
     return counts;
   }
 
-  /// Находит продукты в категории и всех её потомках
   List<product_entity.Product> _findProductsInCategoryAndDescendants(List<product_entity.Product> products, tree_category.Category category) {
     final result = <product_entity.Product>[];
     final categoryIds = {category.id};
 
-    // Добавляем ID всех потомков
     for (final descendant in category.getAllDescendants()) {
       categoryIds.add(descendant.id);
     }
@@ -416,7 +414,6 @@ class DriftCategoryRepository implements CategoryRepository {
     return result;
   }
 
-  /// Преобразует дерево категорий в плоский список
   List<tree_category.Category> _flattenCategories(List<tree_category.Category> categories) {
     final result = <tree_category.Category>[];
     final seenIds = <int>{};

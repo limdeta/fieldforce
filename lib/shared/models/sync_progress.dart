@@ -2,6 +2,9 @@ import 'package:equatable/equatable.dart';
 
 /// Модель прогресса синхронизации
 class SyncProgress extends Equatable {
+  /// Тип синхронизации
+  final String type;
+
   /// Текущий прогресс (обработано элементов)
   final int current;
 
@@ -18,6 +21,7 @@ class SyncProgress extends Equatable {
   final int? estimatedTimeRemaining;
 
   const SyncProgress({
+    required this.type,
     required this.current,
     required this.total,
     required this.status,
@@ -26,7 +30,8 @@ class SyncProgress extends Equatable {
   });
 
   /// Создает начальный прогресс
-  factory SyncProgress.initial() => const SyncProgress(
+  factory SyncProgress.initial(String type) => SyncProgress(
+        type: type,
         current: 0,
         total: 0,
         status: 'Подготовка...',
@@ -35,10 +40,12 @@ class SyncProgress extends Equatable {
 
   /// Создает прогресс с неизвестным общим количеством
   factory SyncProgress.indeterminate({
+    required String type,
     required int current,
     required String status,
   }) =>
       SyncProgress(
+        type: type,
         current: current,
         total: 0,
         status: status,
@@ -46,7 +53,8 @@ class SyncProgress extends Equatable {
       );
 
   /// Создает завершенный прогресс
-  factory SyncProgress.completed(int total) => SyncProgress(
+  factory SyncProgress.completed(String type, int total) => SyncProgress(
+        type: type,
         current: total,
         total: total,
         status: 'Завершено',
@@ -54,7 +62,8 @@ class SyncProgress extends Equatable {
       );
 
   /// Создает прогресс с ошибкой
-  factory SyncProgress.error(String errorMessage) => const SyncProgress(
+  factory SyncProgress.error(String type, String errorMessage) => SyncProgress(
+        type: type,
         current: 0,
         total: 0,
         status: 'Ошибка',

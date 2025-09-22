@@ -6,6 +6,7 @@ void main() {
     test('withErrors сохраняет ошибки', () {
       final errors = ['Ошибка 1', 'Ошибка 2', 'Ошибка 3'];
       final result = SyncResult.withErrors(
+        type: 'test',
         successCount: 5,
         errorCount: 2,
         errors: errors,
@@ -23,6 +24,7 @@ void main() {
     test('withErrors ограничивает количество ошибок до 10', () {
       final manyErrors = List.generate(15, (i) => 'Ошибка $i');
       final result = SyncResult.withErrors(
+        type: 'test',
         successCount: 0,
         errorCount: 15,
         errors: manyErrors,

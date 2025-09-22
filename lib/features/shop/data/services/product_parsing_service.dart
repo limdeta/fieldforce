@@ -8,30 +8,26 @@ import 'package:fieldforce/features/shop/data/mappers/product_api_models.dart';
 
 /// Сервис для парсинга JSON продуктов из API
 class ProductParsingService {
-  /// Парсит JSON строку в объект Product
   Product parseProduct(String jsonString) {
     final Map<String, dynamic> json = jsonDecode(jsonString);
     return Product.fromJson(json);
   }
 
-  /// Парсит список JSON строк в список Product
   List<Product> parseProducts(List<String> jsonStrings) {
     return jsonStrings.map(parseProduct).toList();
   }
 
-  /// Парсит JSON массив в список Product
   List<Product> parseProductsFromJsonArray(String jsonArrayString) {
     final List<dynamic> jsonArray = jsonDecode(jsonArrayString);
     return jsonArray.map((json) => Product.fromJson(json)).toList();
   }
 
-  /// Создает компактное представление продукта для списков
   ProductCompactView createCompactView(Product product) {
     return ProductCompactView(
       id: product.catalogId,
       title: product.title,
       code: product.code,
-      imageUrl: product.defaultImage?.uri ?? product.images.firstOrNull?.uri,
+      imageUrl: product.defaultImage?.getOptimalUrl() ?? product.images.firstOrNull?.getOptimalUrl(),
       weight: _extractWeight(product),
       amountInPackage: product.amountInPackage,
       price: _extractPrice(product),
@@ -41,7 +37,6 @@ class ProductParsingService {
     );
   }
 
-  /// Создает компактные представления для списка продуктов
   List<ProductCompactView> createCompactViews(List<Product> products) {
     return products.map(createCompactView).toList();
   }
@@ -66,53 +61,64 @@ class ProductParsingService {
     return null;
   }  /// Парсит API ответ с продуктами и пагинацией
   ProductApiResponse parseProductApiResponse(String jsonString) {
+    final logger = Logger('ProductParsingService');
     final Map<String, dynamic> json = jsonDecode(jsonString);
-    return ProductApiResponse.fromJson(json);
+    final response = ProductApiResponse.fromJson(json);
+    
+    // КРИТИЧНО: Проверяем что API вернул продукты с stockItems
+    if (response.products.isNotEmpty) {
+      final productsWithoutStock = response.products.where((p) => p.stockItems.isEmpty).toList();
+      if (productsWithoutStock.isNotEmpty) {
+        final error = 'КРИТИЧЕСКАЯ ОШИБКА: ${productsWithoutStock.length}/${response.products.length} продуктов без stockItems! '
+            'Примеры: ${productsWithoutStock.take(3).map((p) => '${p.code}:${p.title}').join(', ')}. '
+            'Проблема с PHP сессией или параметрами API!';
+        logger.severe(error);
+        throw Exception(error);
+      }
+    }
+    
+    return response;
   }
 
   /// Конвертирует ProductApiItem в Product и список StockItem
-  ({Product product, List<StockItem> stockItems}) convertApiItemToProduct(ProductApiItem apiItem) {
+  ({Product product, List<StockItem> stockItems}) convertApiItemToProduct(
+    ProductApiItem apiItem, 
+    Map<String, dynamic>? rawJson,
+  ) {
     final logger = Logger('ProductParsingService');
     
+    // КРИТИЧНО: Если API не возвращает stockItems - это ошибка авторизации/сессии
+    if (apiItem.stockItems.isEmpty) {
+      final error = 'КРИТИЧЕСКАЯ ОШИБКА: API не вернул stockItems для продукта ${apiItem.code}: ${apiItem.title}. '
+          'проблемы с PHP сессией или параметрами запроса!';
+      logger.severe(error);
+      throw Exception(error);
+    }
+    
     try {
-      logger.info('Начало конвертации продукта ${apiItem.code}: ${apiItem.title}');
-      logger.info('StockItems count: ${apiItem.stockItems.length}');
+      final productJson = _convertApiItemToProductJson(apiItem, rawJson);
       
-      // Создаем JSON для Product.fromJson без stockItems
-      logger.info('Создание Product JSON...');
-      final productJson = _convertApiItemToProductJson(apiItem);
-      logger.info('Product JSON создан, содержит ${productJson.length} полей');
-      
-      // Проверяем ключевые поля
-      logger.info('Проверка ключевых полей: code=${productJson['code']}, title=${productJson['title']}, canBuy=${productJson['canBuy']}');
-      
-      logger.info('Создание Product объекта из JSON...');
       final product = Product.fromJson(productJson);
-      logger.info('Product объект создан: ${product.title}');
       
       // Конвертируем StockItemApi в StockItem
-      logger.info('Начинаем конвертацию ${apiItem.stockItems.length} stock items');
       final stockItems = apiItem.stockItems.map((stockApi) => 
         _convertApiStockToStockItem(stockApi, apiItem.code)
       ).toList();
       
-      logger.info('Всего конвертировано ${stockItems.length} stock items');
       return (product: product, stockItems: stockItems);
       
     } catch (e, st) {
       logger.severe('Ошибка конвертации продукта ${apiItem.code}: ${apiItem.title}', e, st);
-      logger.severe('Stack trace: $st');
       rethrow;
     }
   }
 
-  /// Конвертирует список ProductApiItem в продукты и stock items
   List<({Product product, List<StockItem> stockItems})> convertApiItemsToProducts(List<ProductApiItem> apiItems) {
     final logger = Logger('ProductParsingService');
     
     return apiItems.map((apiItem) {
       try {
-        return convertApiItemToProduct(apiItem);
+        return convertApiItemToProduct(apiItem, null);
       } catch (e, st) {
         logger.severe('Ошибка конвертации продукта ${apiItem.code}: ${apiItem.title}', e, st);
         rethrow;
@@ -120,7 +126,7 @@ class ProductParsingService {
     }).toList();
   }
 
-  Map<String, dynamic> _convertApiItemToProductJson(ProductApiItem apiItem) {
+  Map<String, dynamic> _convertApiItemToProductJson(ProductApiItem apiItem, Map<String, dynamic>? rawJson) {
     return {
       'title': apiItem.title,
       'barcodes': apiItem.barcodes,
@@ -141,27 +147,10 @@ class ProductParsingService {
         'id': apiItem.manufacturer!.id,
         'name': apiItem.manufacturer!.name,
       } : null,
-      'colorImage': apiItem.colorImage != null ? {
-        'id': null,
-        'height': 1000, // По умолчанию
-        'width': 1000, // По умолчанию
-        'uri': apiItem.colorImage!.url,
-        'webp': apiItem.colorImage!.url, // Используем url как webp
-      } : null,
-      'defaultImage': apiItem.defaultImage != null ? {
-        'id': null,
-        'height': 1000, // По умолчанию
-        'width': 1000, // По умолчанию
-        'uri': apiItem.defaultImage!.url,
-        'webp': apiItem.defaultImage!.url, // Используем url как webp
-      } : null,
-      'images': apiItem.images.map((img) => {
-        'id': null,
-        'height': 1000, // По умолчанию
-        'width': 1000, // По умолчанию
-        'uri': img.url,
-        'webp': img.url, // Используем url как webp
-      }).toList(),
+      'colorImage': rawJson?['colorImage'],
+      // Берем изображения прямо из rawJson чтобы сохранить все поля как есть
+      'defaultImage': rawJson?['defaultImage'],
+      'images': rawJson?['images'] ?? [],
       'description': apiItem.description,
       'howToUse': apiItem.howToUse,
       'ingredients': apiItem.ingredients,
@@ -172,7 +161,7 @@ class ProductParsingService {
       'category': apiItem.category != null ? {
         'id': apiItem.category!.id,
         'name': apiItem.category!.name,
-        'isPublish': true, // По умолчанию
+        'isPublish': true,
         'description': null,
         'query': null,
       } : null,
@@ -186,24 +175,24 @@ class ProductParsingService {
       'categoriesInstock': apiItem.categoriesInstock.map((cat) => {
         'id': cat.id,
         'name': cat.name,
-        'isPublish': true, // По умолчанию
+        'isPublish': true,
         'description': null,
         'query': null,
       }).toList(),
       'numericCharacteristics': apiItem.numericCharacteristics.map((char) => {
-        'attributeId': 0, // По умолчанию
+        'attributeId': 0,
         'attributeName': char.name,
         'attributeValue': char.value?.toString(),
         'adaptValue': char.value?.toString(),
       }).toList(),
       'stringCharacteristics': apiItem.stringCharacteristics.map((char) => {
-        'attributeId': 0, // По умолчанию
+        'attributeId': 0,
         'attributeName': char.name,
         'attributeValue': char.value?.toString(),
         'adaptValue': char.value?.toString(),
       }).toList(),
       'boolCharacteristics': apiItem.boolCharacteristics.map((char) => {
-        'attributeId': 0, // По умолчанию
+        'attributeId': 0, 
         'attributeName': char.name,
         'attributeValue': char.value?.toString(),
         'adaptValue': char.value?.toString(),
@@ -216,7 +205,7 @@ class ProductParsingService {
     final logger = Logger('ProductParsingService');
     
     try {
-      logger.info('Конвертация StockItemApi: warehouseId=${apiStock.warehouseId}, price=${apiStock.price}, stock=${apiStock.stock}');
+      // logger.info('Конвертация StockItemApi: warehouseId=${apiStock.warehouseId}, price=${apiStock.price}, stock=${apiStock.stock}');
       
       final stockItem = StockItem(
         id: 0, // Автоинкремент в БД
@@ -228,17 +217,17 @@ class ProductParsingService {
         stock: apiStock.stock,
         multiplicity: 1, // По умолчанию
         publicStock: apiStock.stock > 0 ? '${apiStock.stock} шт.' : 'Нет в наличии',
-        defaultPrice: (apiStock.price * 100).round(), // Конвертируем в копейки
-        discountValue: 0, // TODO: Добавить поддержку скидок
-        availablePrice: (apiStock.price * 100).round(),
-        offerPrice: (apiStock.price * 100).round(),
+        defaultPrice: apiStock.price.round(), // API уже возвращает цены в копейках
+        discountValue: 0, // TODO: Добавить поддержку скидок  
+        availablePrice: apiStock.availablePrice?.round() ?? apiStock.price.round(),
+        offerPrice: apiStock.offerPrice?.round() ?? apiStock.price.round(),
         currency: 'RUB',
         promotionJson: null, // TODO: Добавить поддержку акций
         createdAt: DateTime.now(),
         updatedAt: DateTime.now(),
       );
       
-      logger.info('StockItem успешно создан: ${stockItem.warehouseName}, price=${stockItem.defaultPrice}');
+      // logger.info('StockItem успешно создан: ${stockItem.warehouseName}, price=${stockItem.defaultPrice}');
       return stockItem;
       
     } catch (e, st) {
@@ -248,7 +237,6 @@ class ProductParsingService {
   }
 }
 
-/// Компактное представление продукта для списков
 class ProductCompactView {
   final int id;
   final String title;
@@ -274,18 +262,15 @@ class ProductCompactView {
     required this.canBuy,
   });
 
-  /// Форматированная цена для отображения
   String get formattedPrice {
     if (price == null) return 'Цена не указана';
     return '${(price! / 100).toStringAsFixed(2)} ₽';
   }
 
-  /// Форматированная скидочная цена для отображения
   String get formattedDiscountPrice {
     if (discountPrice == null) return '';
     return '${(discountPrice! / 100).toStringAsFixed(2)} ₽';
   }
 
-  /// Есть ли скидка
   bool get hasDiscount => discountPrice != null && discountPrice! < (price ?? 0);
 }

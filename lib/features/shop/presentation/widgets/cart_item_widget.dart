@@ -6,7 +6,6 @@ import 'package:fieldforce/features/shop/presentation/widgets/stock_item_cart_co
 import 'package:fieldforce/shared/services/image_cache_service.dart';
 
 /// Виджет элемента корзины
-/// Простой и специфичный для корзины: отображение OrderLine, управление количеством, удаление
 class CartItemWidget extends StatelessWidget {
   final OrderLine orderLine;
   final VoidCallback? onTap;
@@ -48,7 +47,7 @@ class CartItemWidget extends StatelessWidget {
                     ? ClipRRect(
                         borderRadius: BorderRadius.circular(4),
                         child: ImageCacheService.getCachedThumbnail(
-                          imageUrl: orderLine.product!.defaultImage!.uri,
+                          imageUrl: orderLine.product!.defaultImage!.getOptimalUrl(),
                           width: 60,
                           height: 60,
                         ),

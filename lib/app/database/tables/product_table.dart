@@ -3,7 +3,6 @@
 import 'package:drift/drift.dart';
 
 /// Таблица для хранения продуктов
-/// Храним как JSON blob для простоты работы со сложной структурой
 @DataClassName('ProductData')
 class Products extends Table {
   IntColumn get id => integer().autoIncrement()();
@@ -20,7 +19,13 @@ class Products extends Table {
   BoolColumn get canBuy => boolean()();
   IntColumn get categoryId => integer().nullable()(); // ID основной категории
   IntColumn get typeId => integer().nullable()(); // ID типа продукта
-  TextColumn get rawJson => text()(); // Полный JSON продукта для быстрого доступа
+  IntColumn get priceListCategoryId => integer().nullable()(); // ID категории прайс-листа
+  TextColumn get defaultImageJson => text().nullable()(); // JSON объект defaultImage как в API
+  TextColumn get imagesJson => text().nullable()(); // JSON массив images как в API
+  TextColumn get barcodesJson => text().nullable()(); // JSON массив штрихкодов
+  TextColumn get howToUse => text().nullable()(); // Как использовать
+  TextColumn get ingredients => text().nullable()(); // Состав
+  TextColumn get rawJson => text()(); // Полный JSON продукта с категориями, брендами и характеристиками
 
   // Индексы для быстрого поиска
   @override

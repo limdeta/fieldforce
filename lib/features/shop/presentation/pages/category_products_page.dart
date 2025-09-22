@@ -66,6 +66,8 @@ class _CategoryProductsPageState extends State<CategoryProductsPage> {
   }
 
   Future<void> _loadProducts() async {
+    _logger.info('🚀 _loadProducts: начинаем загрузку для категории "${widget.category.name}" (id: ${widget.category.id})');
+    
     setState(() {
       _isLoading = true;
       _error = null;
@@ -87,6 +89,8 @@ class _CategoryProductsPageState extends State<CategoryProductsPage> {
   }
 
   Future<void> _loadProductsInternal({required bool reset}) async {
+    _logger.info('🔄 _loadProductsInternal: categoryId=${widget.category.id}, name="${widget.category.name}", reset=$reset, offset=$_currentOffset, limit=$_limit');
+    
     // Используем ProductWithStock для отображения остатков
     // В соответствии с архитектурой StockItem-centered
     final result = await _productRepository.getProductsWithStockByCategoryPaginated(
@@ -96,7 +100,10 @@ class _CategoryProductsPageState extends State<CategoryProductsPage> {
       limit: _limit,
     );
 
-    if (!mounted) return;
+    if (!mounted) {
+      _logger.warning('⚠️ _loadProductsInternal: компонент не смонтирован, прерываем');
+      return;
+    }
 
     if (result.isLeft()) {
       setState(() {
@@ -163,8 +170,8 @@ class _CategoryProductsPageState extends State<CategoryProductsPage> {
           ),
         ),
         elevation: 0,
-        backgroundColor: Theme.of(context).colorScheme.surface,
-        foregroundColor: Theme.of(context).colorScheme.onSurface,
+        backgroundColor: Colors.black,
+        foregroundColor: Colors.white,
         actions: [
           // Показываем количество товаров в категории
           if (widget.category.count > 0)

@@ -69,6 +69,9 @@ class _ProductDetailPageState extends State<ProductDetailPage> {
         child: Scaffold(
           appBar: AppBar(
             title: const Text('Детали продукта'),
+            backgroundColor: Colors.black,
+            foregroundColor: Colors.white,
+            elevation: 0,
             leading: IconButton(
               icon: const Icon(Icons.arrow_back),
               onPressed: () => Navigator.of(context).pop(),
@@ -86,12 +89,24 @@ class _ProductDetailPageState extends State<ProductDetailPage> {
   Widget _buildProductContent(BuildContext context, ProductWithStock productWithStock) {
     final product = productWithStock.product;
     
-    // Собираем все изображения для карусели
+    // Собираем все изображения для карусели (без дублирования)
     final List<ImageData> allImages = [];
+    
+    // Добавляем defaultImage первым, если он есть
     if (product.defaultImage != null) {
       allImages.add(product.defaultImage!);
     }
-    allImages.addAll(product.images);
+    
+    // Добавляем остальные изображения, исключая дубликат defaultImage
+    for (final image in product.images) {
+      // Проверяем, не является ли это изображение тем же самым, что и defaultImage
+      final isDuplicate = product.defaultImage != null && 
+          image.getOptimalUrl() == product.defaultImage!.getOptimalUrl();
+      
+      if (!isDuplicate) {
+        allImages.add(image);
+      }
+    }
 
     return SingleChildScrollView(
       child: Column(
@@ -122,9 +137,9 @@ class _ProductDetailPageState extends State<ProductDetailPage> {
                             return Container(
                               color: Colors.grey.shade200,
                               child: Hero(
-                                tag: 'product_image_${image.uri}_$index',
+                                tag: 'product_image_${image.getOptimalUrl()}_$index',
                                 child: ImageCacheService.getCachedFullImage(
-                                  imageUrl: image.uri, // Используем оригинальный URL без изменений
+                                  imageUrl: image.getOptimalUrl(), // Используем оптимальный URL (WebP если доступен)
                                   fit: BoxFit.contain,
                                   placeholder: const Center(
                                     child: CircularProgressIndicator(),

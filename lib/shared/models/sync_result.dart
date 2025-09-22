@@ -2,6 +2,9 @@ import 'package:equatable/equatable.dart';
 
 /// Результат синхронизации
 class SyncResult extends Equatable {
+  /// Тип синхронизации
+  final String type;
+
   /// Количество успешно обработанных элементов
   final int successCount;
 
@@ -21,6 +24,7 @@ class SyncResult extends Equatable {
   final DateTime? endTime;
 
   const SyncResult({
+    required this.type,
     required this.successCount,
     required this.errorCount,
     required this.errors,
@@ -47,11 +51,13 @@ class SyncResult extends Equatable {
 
   /// Создает успешный результат
   factory SyncResult.success({
+    required String type,
     required int successCount,
     required Duration duration,
     required DateTime startTime,
   }) =>
       SyncResult(
+        type: type,
         successCount: successCount,
         errorCount: 0,
         errors: [],
@@ -62,6 +68,7 @@ class SyncResult extends Equatable {
 
   /// Создает результат с ошибками
   factory SyncResult.withErrors({
+    required String type,
     required int successCount,
     required int errorCount,
     required List<String> errors,
@@ -69,6 +76,7 @@ class SyncResult extends Equatable {
     required DateTime startTime,
   }) =>
       SyncResult(
+        type: type,
         successCount: successCount,
         errorCount: errorCount,
         errors: errors.take(10).toList(), // Ограничиваем для производительности
@@ -79,11 +87,13 @@ class SyncResult extends Equatable {
 
   /// Создает результат полной неудачи
   factory SyncResult.failure({
+    required String type,
     required List<String> errors,
     required Duration duration,
     required DateTime startTime,
   }) =>
       SyncResult(
+        type: type,
         successCount: 0,
         errorCount: 1,
         errors: errors.take(10).toList(),

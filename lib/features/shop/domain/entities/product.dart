@@ -207,6 +207,17 @@ class ImageData {
     required this.uri,
     this.webp,
   });
+  
+  /// Получает оптимальный URL для отображения изображения
+  /// Предпочитает WebP, если доступен, иначе использует обычный URI
+  String getOptimalUrl() {
+    // Если есть WebP и он не пустой, используем его
+    if (webp != null && webp!.isNotEmpty) {
+      return webp!;
+    }
+    // Иначе возвращаем обычный URI
+    return uri;
+  }
 
   factory ImageData.fromJson(Map<String, dynamic> json) {
     return ImageData(

@@ -5,28 +5,24 @@ import 'package:fieldforce/features/shop/domain/entities/product.dart';
 import 'package:fieldforce/features/shop/domain/entities/product_with_stock.dart';
 import 'package:fieldforce/features/shop/domain/repositories/category_repository.dart';
 import 'package:fieldforce/features/shop/domain/repositories/product_repository.dart';
+import 'package:fieldforce/app/database/mappers/product_mapper.dart';
 import 'package:get_it/get_it.dart';
 import 'package:drift/drift.dart';
 import 'package:fieldforce/shared/either.dart';
 import 'package:fieldforce/shared/failures.dart';
 import 'package:fieldforce/app/database/app_database.dart';
+import 'package:logging/logging.dart';
 
-/// Drift реализация репозитория продуктов
 class DriftProductRepository implements ProductRepository {
   final AppDatabase _database = GetIt.instance<AppDatabase>();
+  
+  static final Logger _logger = Logger('DriftProductRepository');
 
   @override
   Future<Either<Failure, List<Product>>> getAllProducts() async {
     try {
       final entities = await _database.select(_database.products).get();
-
-      final products = <Product>[];
-
-      for (final entity in entities) {
-        final productJson = jsonDecode(entity.rawJson) as Map<String, dynamic>;
-        final product = Product.fromJson(productJson);
-        products.add(product);
-      }
+      final products = ProductMapper.fromDataList(entities);
 
       return Right(products);
     } catch (e) {
@@ -43,8 +39,7 @@ class DriftProductRepository implements ProductRepository {
 
       if (entity == null) return const Right(null);
 
-      final productJson = jsonDecode(entity.rawJson) as Map<String, dynamic>;
-      final product = Product.fromJson(productJson);
+      final product = ProductMapper.fromData(entity);
       return Right(product);
     } catch (e) {
       return Left(DatabaseFailure('Ошибка получения продукта: $e'));
@@ -144,7 +139,6 @@ class DriftProductRepository implements ProductRepository {
       final ancestorsResult = await categoryRepository.getAllAncestors(categoryId);
 
       if (descendantsResult.isLeft() || ancestorsResult.isLeft()) {
-        print('🎭 ProductRepository: Ошибка получения иерархии категорий');
         return Left(DatabaseFailure('Ошибка получения иерархии категорий'));
       }
 
@@ -156,14 +150,10 @@ class DriftProductRepository implements ProductRepository {
       relevantCategoryIds.addAll(descendants.map((c) => c.id));
       relevantCategoryIds.addAll(ancestors.map((c) => c.id));
 
-      // print('🎭 ProductRepository: Ищем в категориях: $relevantCategoryIds');
-
       // Сначала ищем по точному совпадению categoryId
       final directMatches = await (_database.select(_database.products)
         ..where((tbl) => tbl.categoryId.equals(categoryId))
       ).get();
-
-      // print('🎭 ProductRepository: Найдено ${directMatches.length} прямых совпадений для категории $categoryId');
 
       // Затем ищем продукты, у которых categoryId есть в массиве categoriesInstock
       final allEntities = await _database.select(_database.products).get();
@@ -187,16 +177,13 @@ class DriftProductRepository implements ProductRepository {
           }
         } catch (e) {
           // Игнорируем ошибки парсинга отдельных продуктов
+          // TODO вывести эти ошибки в отдельный лог
           continue;
         }
       }
 
-      // print('🎭 ProductRepository: Найдено ${instockMatches.length} совпадений в categoriesInstock для иерархии категории $categoryId');
-
-      // Объединяем результаты
       final allMatches = [...directMatches, ...instockMatches];
 
-      // Применяем пагинацию
       final paginatedEntities = allMatches.skip(offset).take(limit).toList();
 
       final products = paginatedEntities.map((entity) {
@@ -219,6 +206,8 @@ class DriftProductRepository implements ProductRepository {
     int limit = 20
   }) async {
     try {
+      _logger.info('getProductsWithStockByCategoryPaginated: categoryId=$categoryId, vendorId=$vendorId, offset=$offset, limit=$limit');
+      
       // Получаем иерархию категорий как в обычном методе
       final categoryRepository = GetIt.instance<CategoryRepository>();
       final descendantsResult = await categoryRepository.getAllDescendants(categoryId);
@@ -234,38 +223,104 @@ class DriftProductRepository implements ProductRepository {
       relevantCategoryIds.addAll(descendants.map((c) => c.id));
       relevantCategoryIds.addAll(ancestors.map((c) => c.id));
 
+      _logger.info('Relevant category IDs: $relevantCategoryIds');
+
+      // Проверяем какие warehouseVendorId есть в базе
+      final allStockItems = await _database.select(_database.stockItems).get();
+      final uniqueVendorIds = allStockItems.map((s) => s.warehouseVendorId).toSet();
+      _logger.info('Unique warehouseVendorId in stock_items: $uniqueVendorIds');
+      
+      final stockItemsForVendor = allStockItems.where((s) => s.warehouseVendorId == vendorId).toList();
+      _logger.info('Stock items for vendorId=$vendorId: ${stockItemsForVendor.length} items');
+      if (stockItemsForVendor.isNotEmpty) {
+        _logger.info('Sample stock items: ${stockItemsForVendor.take(3).map((s) => 'productCode=${s.productCode}, warehouseVendorId=${s.warehouseVendorId}').join('; ')}');
+      }
+
       // JOIN с stock_items для получения остатков
       final query = _database.select(_database.products).join([
-        leftOuterJoin(
+        innerJoin(
           _database.stockItems, 
-          _database.stockItems.productCode.equalsExp(_database.products.code) &
-          _database.stockItems.warehouseVendorId.equals(vendorId)
+          _database.stockItems.productCode.equalsExp(_database.products.code)
         ),
       ]);
 
-      // Фильтры по категориям
-      query.where(_database.products.categoryId.isIn(relevantCategoryIds.toList()));
+      final allProductsQuery = _database.select(_database.products);
+      final allProductEntities = await allProductsQuery.get();
+      
+      _logger.info('🔍 Всего продуктов в БД: ${allProductEntities.length}');
+      
+      final matchingProducts = <ProductData>[];
+      
+      for (final productEntity in allProductEntities) {
+        try {
+          final productJson = jsonDecode(productEntity.rawJson) as Map<String, dynamic>;
+          final categoriesInstock = productJson['categoriesInstock'] as List<dynamic>? ?? [];
+          
+          // Проверяем есть ли пересечение с нужными категориями
+          final productCategoryIds = categoriesInstock
+              .cast<Map<String, dynamic>>()
+              .map((cat) => cat['id'] as int?)
+              .where((id) => id != null)
+              .cast<int>()
+              .toSet();
+          
+          if (productCategoryIds.intersection(relevantCategoryIds).isNotEmpty) {
+            matchingProducts.add(productEntity);
+          }
+        } catch (e) {
+          _logger.warning('Ошибка парсинга categoriesInstock для продукта ${productEntity.code}: $e');
+        }
+      }
+      
+      _logger.info('🔍 Продукты с categoriesInstock в категориях ${relevantCategoryIds}: ${matchingProducts.length} найдено');
+      
+      if (matchingProducts.isNotEmpty) {
+        final sampleProducts = matchingProducts.take(3).map((p) => 'code=${p.code}, title=${p.title}').join('; ');
+        _logger.info('🔍 Примеры продуктов: $sampleProducts');
+        
+        // Проверим есть ли StockItems для этих productCode
+        final productCodes = matchingProducts.map((p) => p.code).toList();
+        final matchingStockItems = await (_database.select(_database.stockItems)
+          ..where((tbl) => tbl.productCode.isIn(productCodes) & tbl.warehouseVendorId.equals(vendorId))
+        ).get();
+        _logger.info('🔍 StockItems для этих продуктов: ${matchingStockItems.length} найдено');
+      }
+
+      // Теперь делаем JOIN только для найденных продуктов
+      final matchingProductCodes = matchingProducts.map((p) => p.code).toList();
+      
+      if (matchingProductCodes.isEmpty) {
+        // Если нет подходящих продуктов, возвращаем пустой результат
+        _logger.info('📊 JOIN результат: 0 строк найдено (нет продуктов в категориях)');
+        _logger.info('✅ Возвращаем 0 ProductWithStock для категории $categoryId');
+        return Right([]);
+      }
+
+      // Фильтры по найденным продуктам и vendorId  
+      query.where(
+        _database.products.code.isIn(matchingProductCodes) &
+        _database.stockItems.warehouseVendorId.equals(vendorId)
+      );
 
       // Пагинация
       query.limit(limit, offset: offset);
 
       final result = await query.get();
+      _logger.info('📊 JOIN результат: ${result.length} строк найдено');
 
       final productWithStockList = <ProductWithStock>[];
-      final productStockMap = <int, List<StockItemData>>{}; // productCode -> [StockItemData]
+      final productStockMap = <int, List<StockItemData>>{};
 
       // Группируем остатки по продуктам
       for (final row in result) {
         final productEntity = row.readTable(_database.products);
-        final stockEntity = row.readTableOrNull(_database.stockItems);
+        final stockEntity = row.readTable(_database.stockItems);
         
         if (!productStockMap.containsKey(productEntity.code)) {
           productStockMap[productEntity.code] = [];
         }
         
-        if (stockEntity != null) {
-          productStockMap[productEntity.code]!.add(stockEntity);
-        }
+        productStockMap[productEntity.code]!.add(stockEntity);
       }
 
       // Создаём ProductWithStock для каждого продукта
@@ -301,10 +356,9 @@ class DriftProductRepository implements ProductRepository {
         ));
       }
 
+      _logger.info('✅ Возвращаем ${productWithStockList.length} ProductWithStock для категории $categoryId');
       return Right(productWithStockList);
     } catch (e, st) {
-      print('❌ Ошибка getProductsWithStockByCategoryPaginated: $e');
-      print('Stack trace: $st');
       return Left(DatabaseFailure('Ошибка получения продуктов с остатками: $e'));
     }
   }
@@ -357,38 +411,21 @@ class DriftProductRepository implements ProductRepository {
       });
       return const Right(null);
     } catch (e) {
-      print('🎭 ProductRepository: Ошибка сохранения продуктов: $e');
       return Left(DatabaseFailure('Ошибка сохранения продуктов: $e'));
     }
   }
 
   Future<void> _saveProduct(Product product) async {
-    // Проверяем существование продукта по catalogId
     final existing = await (_database.select(_database.products)
-      ..where((tbl) => tbl.catalogId.equals(product.catalogId))
+      ..where((tbl) => tbl.code.equals(product.code))
     ).getSingleOrNull();
 
-    final companion = ProductsCompanion(
-      catalogId: Value(product.catalogId),
-      code: Value(product.code),
-      bcode: Value(product.bcode),
-      title: Value(product.title),
-      description: Value(product.description),
-      vendorCode: Value(product.vendorCode),
-      amountInPackage: Value(product.amountInPackage),
-      novelty: Value(product.novelty),
-      popular: Value(product.popular),
-      isMarked: Value(product.isMarked),
-      canBuy: Value(product.canBuy),
-      categoryId: Value(product.category?.id),
-      typeId: Value(product.type?.id),
-      rawJson: Value(jsonEncode(product.toJson())),
-    );
+    final companion = ProductMapper.toCompanion(product);
 
     if (existing != null) {
       // Обновляем существующий продукт
       await (_database.update(_database.products)
-        ..where((tbl) => tbl.catalogId.equals(product.catalogId))
+        ..where((tbl) => tbl.code.equals(product.code))
       ).write(companion);
     } else {
       // Создаем новый продукт
@@ -416,7 +453,7 @@ class DriftProductRepository implements ProductRepository {
       );
 
       await (_database.update(_database.products)
-        ..where((tbl) => tbl.catalogId.equals(product.catalogId))
+        ..where((tbl) => tbl.code.equals(product.code))
       ).write(companion);
 
       return const Right(null);
@@ -426,10 +463,10 @@ class DriftProductRepository implements ProductRepository {
   }
 
   @override
-  Future<Either<Failure, void>> deleteProduct(int catalogId) async {
+  Future<Either<Failure, void>> deleteProduct(int code) async {
     try {
       await (_database.delete(_database.products)
-        ..where((tbl) => tbl.catalogId.equals(catalogId))
+        ..where((tbl) => tbl.code.equals(code))
       ).go();
       return const Right(null);
     } catch (e) {
@@ -549,11 +586,9 @@ class DriftProductRepository implements ProductRepository {
 
 
       final totalCount = (directCount ?? 0) + instockCount;
-      // print('🎭 ProductRepository: Всего продуктов в категории $categoryId: $totalCount');
 
       return Right(totalCount);
     } catch (e) {
-      // print('🎭 ProductRepository: Ошибка подсчета продуктов в категории $categoryId: $e');
       return Left(DatabaseFailure('Ошибка получения количества продуктов в категории: $e'));
     }
   }

@@ -26,17 +26,37 @@ class _DataPageState extends State<DataPage> {
   SyncResult? _lastResult;
   bool _isLoading = false;
 
+  // Состояние для синхронизации категорий
+  SyncProgress? _categoryProgress;
+  SyncResult? _categoryResult;
+  bool _isCategoryLoading = false;
+
+  // Настройки синхронизации
+  String _categories = '29, 156'; // Дефолтные категории
+  final TextEditingController _categoriesController = TextEditingController();
+
   @override
   void initState() {
     super.initState();
+    _categoriesController.text = _categories;
     _setupProgressListener();
+  }
+
+  @override
+  void dispose() {
+    _categoriesController.dispose();
+    super.dispose();
   }
 
   void _setupProgressListener() {
     _syncService.syncProgress.listen((progress) {
       if (mounted) {
         setState(() {
-          _currentProgress = progress;
+          if (progress.type == 'products') {
+            _currentProgress = progress;
+          } else if (progress.type == 'categories') {
+            _categoryProgress = progress;
+          }
         });
       }
     });
@@ -44,8 +64,13 @@ class _DataPageState extends State<DataPage> {
     _syncService.syncResults.listen((result) {
       if (mounted) {
         setState(() {
-          _lastResult = result;
-          _isLoading = false;
+          if (result.type == 'products') {
+            _lastResult = result;
+            _isLoading = false;
+          } else if (result.type == 'categories') {
+            _categoryResult = result;
+            _isCategoryLoading = false;
+          }
         });
       }
     });
@@ -54,21 +79,32 @@ class _DataPageState extends State<DataPage> {
   Future<void> _startProductSync() async {
     setState(() {
       _isLoading = true;
+      _currentProgress = null;
+      _lastResult = null;
     });
 
     try {
+      // Парсим категории - если пустое поле, не передаем параметр categories
+      final trimmedCategories = _categoriesController.text.trim();
+      final categoriesParam = trimmedCategories.isEmpty ? null : trimmedCategories;
+      
       final config = SyncConfig.api(
-        categories: '29',
-        limit: 20,
+        categories: categoriesParam,
+        limit: 100, // Фиксированный размер страницы для внутренней пагинации  
         offset: 0,
         maxConcurrent: 1,
       );
 
       _logger.info('Запуск синхронизации продуктов с конфигом: $config');
-      final result = await _syncService.sync(config);
+      final result = await _syncService.syncProducts(config);
       _logger.info('Синхронизация завершена: $result');
 
       if (mounted) {
+        setState(() {
+          _lastResult = result;
+          _isLoading = false;
+        });
+
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('Синхронизация завершена: ${result.successCount} продуктов'),
@@ -91,6 +127,77 @@ class _DataPageState extends State<DataPage> {
           ),
         );
       }
+    }
+  }
+
+  Future<void> _startCategorySync() async {
+    setState(() {
+      _isCategoryLoading = true;
+      _categoryProgress = null;
+      _categoryResult = null;
+    });
+
+    try {
+      // Парсим категории - если пустое поле, не передаем параметр categories
+      final trimmedCategories = _categoriesController.text.trim();
+      final categoriesParam = trimmedCategories.isEmpty ? null : trimmedCategories;
+      
+      final config = SyncConfig.api(
+        categories: categoriesParam,
+        limit: 20,
+        offset: 0,
+        maxConcurrent: 1,
+      );
+
+      _logger.info('Запуск синхронизации категорий с конфигом: $config');
+      final result = await _syncService.syncCategories(config);
+      _logger.info('Синхронизация категорий завершена: $result');
+
+      if (mounted) {
+        setState(() {
+          _categoryResult = result;
+          _isCategoryLoading = false;
+        });
+
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Синхронизация завершена: ${result.successCount} категорий'),
+            backgroundColor: Colors.green,
+          ),
+        );
+      }
+    } catch (e, st) {
+      _logger.severe('Ошибка синхронизации категорий', e, st);
+      
+      if (mounted) {
+        setState(() {
+          _isCategoryLoading = false;
+        });
+
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Ошибка синхронизации: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
+  }
+
+  Future<void> _startFullSync() async {
+    // Сначала синхронизируем категории
+    await _startCategorySync();
+    
+    // Затем синхронизируем продукты
+    await _startProductSync();
+    
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Полная синхронизация завершена'),
+          backgroundColor: Colors.green,
+        ),
+      );
     }
   }
 
@@ -147,6 +254,11 @@ class _DataPageState extends State<DataPage> {
 
               const SizedBox(height: 32),
 
+              // Раздел синхронизации категорий
+              _buildCategorySyncSection(),
+
+              const SizedBox(height: 32),
+
               // Раздел статистики
               if (_lastResult != null) _buildStatisticsSection(),
 
@@ -165,6 +277,8 @@ class _DataPageState extends State<DataPage> {
       ),
     );
   }
+
+
 
   Widget _buildProductSyncSection() {
     return Card(
@@ -195,6 +309,19 @@ class _DataPageState extends State<DataPage> {
             ),
             const SizedBox(height: 16),
 
+            // Настройки категорий для продуктов
+            TextFormField(
+              controller: _categoriesController,
+              decoration: const InputDecoration(
+                labelText: 'Категории продуктов',
+                hintText: 'Например: 29, 156 (через запятую)',
+                helperText: 'Оставьте пустым для загрузки всех категорий',
+                border: OutlineInputBorder(),
+                prefixIcon: Icon(Icons.category),
+              ),
+            ),
+            const SizedBox(height: 12),
+
             // Прогресс синхронизации
             if (_currentProgress != null)
               SyncProgressWidget(
@@ -209,6 +336,57 @@ class _DataPageState extends State<DataPage> {
               _getSyncStatusText(),
               style: TextStyle(
                 color: _getSyncStatusColor(),
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildCategorySyncSection() {
+    return Card(
+      elevation: 2,
+      child: Padding(
+        padding: const EdgeInsets.all(16.0),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                const Icon(Icons.category, color: AppColors.primary),
+                const SizedBox(width: 8),
+                const Text(
+                  'Категории',
+                  style: TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                const Spacer(),
+                IconButton(
+                  onPressed: _isCategoryLoading ? null : _startCategorySync,
+                  icon: const Icon(Icons.refresh),
+                  tooltip: 'Синхронизировать',
+                ),
+              ],
+            ),
+            const SizedBox(height: 16),
+            // Прогресс синхронизации
+            if (_categoryProgress != null)
+              SyncProgressWidget(
+                progress: _categoryProgress!,
+                isActive: _isCategoryLoading,
+              ),
+
+            const SizedBox(height: 16),
+
+            // Статус
+            Text(
+              _getCategorySyncStatusText(),
+              style: TextStyle(
+                color: _getCategorySyncStatusColor(),
                 fontWeight: FontWeight.w500,
               ),
             ),
@@ -356,13 +534,14 @@ class _DataPageState extends State<DataPage> {
   }
 
   Widget _buildActionButtons() {
-    return Row(
+    return Column(
       children: [
-        Expanded(
+        SizedBox(
+          width: double.infinity,
           child: ElevatedButton.icon(
-            onPressed: _isLoading ? null : _startProductSync,
+            onPressed: (_isLoading || _isCategoryLoading) ? null : _startFullSync,
             icon: const Icon(Icons.sync),
-            label: const Text('Синхронизировать продукты'),
+            label: const Text('Синхронизировать всё'),
             style: ElevatedButton.styleFrom(
               backgroundColor: AppColors.primary,
               foregroundColor: Colors.white,
@@ -370,15 +549,18 @@ class _DataPageState extends State<DataPage> {
             ),
           ),
         ),
-        if (_isLoading) ...[
-          const SizedBox(width: 16),
-          ElevatedButton.icon(
-            onPressed: _cancelSync,
-            icon: const Icon(Icons.cancel),
-            label: const Text('Отменить'),
-            style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.red,
-              foregroundColor: Colors.white,
+        if (_isLoading || _isCategoryLoading) ...[
+          const SizedBox(height: 16),
+          SizedBox(
+            width: double.infinity,
+            child: ElevatedButton.icon(
+              onPressed: _cancelSync,
+              icon: const Icon(Icons.cancel),
+              label: const Text('Отменить синхронизацию'),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.red,
+                foregroundColor: Colors.white,
+              ),
             ),
           ),
         ],
@@ -388,18 +570,18 @@ class _DataPageState extends State<DataPage> {
 
   String _getSyncStatusText() {
     if (_isLoading) {
-      return _currentProgress?.status ?? 'Синхронизация...';
+      return _currentProgress?.status ?? 'Синхронизация продуктов...';
     }
 
     if (_lastResult != null) {
       if (_lastResult!.isSuccessful) {
-        return 'Синхронизация завершена успешно';
+        return 'Продукты синхронизированы успешно';
       } else if (_lastResult!.hasErrors) {
-        return 'Синхронизация завершена с ошибками';
+        return 'Синхронизация продуктов завершена с ошибками';
       }
     }
 
-    return 'Готов к синхронизации';
+    return 'Продукты готовы к синхронизации';
   }
 
   Color _getSyncStatusColor() {
@@ -411,6 +593,38 @@ class _DataPageState extends State<DataPage> {
       if (_lastResult!.isSuccessful) {
         return Colors.green;
       } else if (_lastResult!.hasErrors) {
+        return Colors.orange;
+      }
+    }
+
+    return Colors.grey;
+  }
+
+  String _getCategorySyncStatusText() {
+    if (_isCategoryLoading) {
+      return _categoryProgress?.status ?? 'Синхронизация категорий...';
+    }
+
+    if (_categoryResult != null) {
+      if (_categoryResult!.isSuccessful) {
+        return 'Категории синхронизированы успешно';
+      } else if (_categoryResult!.hasErrors) {
+        return 'Синхронизация категорий завершена с ошибками';
+      }
+    }
+
+    return 'Категории готовы к синхронизации';
+  }
+
+  Color _getCategorySyncStatusColor() {
+    if (_isCategoryLoading) {
+      return Colors.blue;
+    }
+
+    if (_categoryResult != null) {
+      if (_categoryResult!.isSuccessful) {
+        return Colors.green;
+      } else if (_categoryResult!.hasErrors) {
         return Colors.orange;
       }
     }

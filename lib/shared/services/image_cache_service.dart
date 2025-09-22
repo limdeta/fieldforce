@@ -7,6 +7,28 @@ import 'package:logging/logging.dart';
 class ImageCacheService {
   static final Logger _logger = Logger('ImageCacheService');
 
+  /// Добавляет параметр ширины к URL изображения для оптимизации загрузки
+  static String _addWidthParameter(String imageUrl, int width) {
+    if (imageUrl.isEmpty) return imageUrl;
+    
+    // Проверяем, нет ли уже параметра w в URL
+    final uri = Uri.tryParse(imageUrl);
+    if (uri == null) return imageUrl;
+    
+    // Проверяем что это действительно HTTP/HTTPS URL
+    if (!uri.hasScheme || (!uri.scheme.startsWith('http'))) return imageUrl;
+    
+    // Если параметр w уже есть, не добавляем повторно
+    if (uri.queryParameters.containsKey('w')) return imageUrl;
+    
+    // Добавляем параметр w к существующим query параметрам
+    final newQueryParameters = Map<String, String>.from(uri.queryParameters);
+    newQueryParameters['w'] = width.toString();
+    
+    final newUri = uri.replace(queryParameters: newQueryParameters);
+    return newUri.toString();
+  }
+
   // Конфигурация для разных типов изображений
   static const Duration _defaultCacheTimeout = Duration(days: 7);
   static const Duration _thumbnailCacheTimeout = Duration(days: 30); // Дольше храним миниатюры
@@ -28,8 +50,11 @@ class ImageCacheService {
     Widget? placeholder,
     Widget? errorWidget,
   }) {
+    // Добавляем параметр w=300 для превью
+    final optimizedUrl = _addWidthParameter(imageUrl, 300);
+    
     return _getCachedImage(
-      imageUrl: imageUrl,
+      imageUrl: optimizedUrl,
       width: width,
       height: height,
       fit: fit,
@@ -48,8 +73,11 @@ class ImageCacheService {
     Widget? placeholder,
     Widget? errorWidget,
   }) {
+    // Добавляем параметр w=1000 для полных изображений
+    final optimizedUrl = _addWidthParameter(imageUrl, 1000);
+    
     return _getCachedImage(
-      imageUrl: imageUrl,
+      imageUrl: optimizedUrl,
       width: width,
       height: height,
       fit: fit,
@@ -88,7 +116,7 @@ class ImageCacheService {
       );
     }
 
-    _logger.fine('Loading ${isThumbnail ? 'thumbnail' : 'full'} image: $imageUrl');
+    _logger.info('Loading ${isThumbnail ? 'thumbnail' : 'full'} image: $imageUrl');
 
     return CachedNetworkImage(
       imageUrl: imageUrl,
@@ -114,7 +142,7 @@ class ImageCacheService {
       
       // Обработчик ошибок загрузки
       errorListener: (exception) {
-        _logger.warning('Failed to load ${isThumbnail ? 'thumbnail' : 'full'} image: $imageUrl', exception);
+        _logger.severe('Failed to load ${isThumbnail ? 'thumbnail' : 'full'} image: $imageUrl', exception);
         // Помечаем URL как битый для предотвращения повторных запросов
         _markAsBrokenUrl(imageUrl);
       },
@@ -204,8 +232,10 @@ class ImageCacheService {
     
     for (final url in imageUrls) {
       try {
-        await cacheManager.getSingleFile(url);
-        _logger.fine('Precached image: $url');
+        // Добавляем параметр ширины в зависимости от типа изображения
+        final optimizedUrl = _addWidthParameter(url, thumbnail ? 300 : 1000);
+        await cacheManager.getSingleFile(optimizedUrl);
+        _logger.fine('Precached image: $optimizedUrl');
       } catch (e) {
         _logger.warning('Failed to precache image: $url', e);
       }

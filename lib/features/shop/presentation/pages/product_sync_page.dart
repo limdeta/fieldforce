@@ -24,8 +24,7 @@ class _ProductSyncPageState extends State<ProductSyncPage> {
   bool _isLoading = false;
 
   // Настройки синхронизации
-  String _categories = '29';
-  int _limit = 20;
+  String _categories = '29, 156'; // Дефолтные категории
   int _maxConcurrent = 1;
 
   @override
@@ -59,13 +58,17 @@ class _ProductSyncPageState extends State<ProductSyncPage> {
     });
 
     try {
+      // Парсим категории - если пустое поле, не передаем параметр categories
+      final trimmedCategories = _categories.trim();
+      final categoriesParam = trimmedCategories.isEmpty ? null : trimmedCategories;
+      
       final config = SyncConfig.api(
-        categories: _categories,
-        limit: _limit,
+        categories: categoriesParam,
+        limit: 100, // Фиксированный размер страницы для внутренней пагинации
         maxConcurrent: _maxConcurrent,
       );
 
-      final result = await _syncService.sync(config);
+      final result = await _syncService.syncProducts(config);
 
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -268,23 +271,34 @@ class _ProductSyncPageState extends State<ProductSyncPage> {
               initialValue: _categories,
               decoration: const InputDecoration(
                 labelText: 'Категории',
-                hintText: 'Например: 29',
+                hintText: 'Например: 29, 156 (через запятую)',
+                helperText: 'Оставьте пустым для загрузки всех категорий',
                 border: OutlineInputBorder(),
               ),
               onChanged: (value) => _categories = value,
             ),
             const SizedBox(height: 16),
 
-            // Размер страницы
-            TextFormField(
-              initialValue: _limit.toString(),
-              decoration: const InputDecoration(
-                labelText: 'Размер страницы',
-                hintText: 'Например: 20',
-                border: OutlineInputBorder(),
+            // Информация о пагинации
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: Colors.blue.shade50,
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(color: Colors.blue.shade200),
               ),
-              keyboardType: TextInputType.number,
-              onChanged: (value) => _limit = int.tryParse(value) ?? 20,
+              child: const Row(
+                children: [
+                  Icon(Icons.info_outline, color: Colors.blue),
+                  SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      'Укажите ID категорий через запятую (например: 29, 156). Если поле пустое, будут загружены все продукты из всех категорий. Синхронизация происходит постранично по 100 товаров за раз.',
+                      style: TextStyle(color: Colors.blue, fontSize: 12),
+                    ),
+                  ),
+                ],
+              ),
             ),
             const SizedBox(height: 16),
 

@@ -8,7 +8,6 @@ import 'package:fieldforce/features/shop/presentation/widgets/stock_item_cart_co
 import 'package:fieldforce/shared/services/image_cache_service.dart';
 
 /// Виджет карточки товара для каталога
-/// Специфичен для каталога: выбор склада, добавление в корзину, навигация
 class ProductCatalogCardWidget extends StatelessWidget {
   final ProductWithStock productWithStock;
   final StockItem? selectedStockItem;
@@ -50,9 +49,35 @@ class ProductCatalogCardWidget extends StatelessWidget {
                     ? ClipRRect(
                         borderRadius: BorderRadius.circular(4),
                         child: ImageCacheService.getCachedThumbnail(
-                          imageUrl: productWithStock.product.defaultImage!.uri,
+                          imageUrl: productWithStock.product.defaultImage!.getOptimalUrl(),
                           width: 80,
                           height: 80,
+                          placeholder: Container(
+                            width: 80,
+                            height: 80,
+                            decoration: BoxDecoration(
+                              color: Colors.grey.shade200,
+                              borderRadius: BorderRadius.circular(4),
+                            ),
+                            child: Icon(
+                              Icons.image,
+                              color: Colors.grey.shade400,
+                              size: 32,
+                            ),
+                          ),
+                          errorWidget: Container(
+                            width: 80,
+                            height: 80,
+                            decoration: BoxDecoration(
+                              color: Colors.grey.shade200,
+                              borderRadius: BorderRadius.circular(4),
+                            ),
+                            child: Icon(
+                              Icons.broken_image,
+                              color: Colors.grey.shade400,
+                              size: 32,
+                            ),
+                          ),
                         ),
                       )
                     : Icon(
@@ -118,7 +143,7 @@ class ProductCatalogCardWidget extends StatelessWidget {
                     children: [
                       if (selectedStockItem?.offerPrice != null)
                         Text(
-                          '${(selectedStockItem!.defaultPrice / 100).toStringAsFixed(2)} ₽',
+                          '${(selectedStockItem!.defaultPrice / 100).toStringAsFixed(0)} ₽',
                           style: TextStyle(
                             fontSize: 12,
                             color: Colors.grey.shade600,
@@ -127,8 +152,8 @@ class ProductCatalogCardWidget extends StatelessWidget {
                         ),
                       Text(
                         selectedStockItem != null
-                          ? '${((selectedStockItem!.offerPrice ?? selectedStockItem!.defaultPrice) / 100).toStringAsFixed(2)} ₽'
-                          : '${(productWithStock.displayPrice / 100).toStringAsFixed(2)} ₽',
+                          ? '${((selectedStockItem!.offerPrice ?? selectedStockItem!.defaultPrice) / 100).toStringAsFixed(0)} ₽'
+                          : '${(productWithStock.displayPrice / 100).toStringAsFixed(0)} ₽',
                         style: TextStyle(
                           fontWeight: FontWeight.bold,
                           fontSize: 16,

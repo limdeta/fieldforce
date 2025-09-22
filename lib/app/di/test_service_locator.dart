@@ -75,9 +75,8 @@ import 'package:fieldforce/features/shop/presentation/bloc/orders_bloc.dart';
 import 'package:fieldforce/features/shop/data/fixtures/order_fixture_service.dart';
 import 'package:fieldforce/features/shop/domain/repositories/stock_item_repository.dart';
 import 'package:fieldforce/app/database/repositories/stock_item_repository_drift.dart';
-import 'package:fieldforce/app/services/sync_isolate_manager.dart';
-import 'package:fieldforce/app/services/sync_progress_manager.dart';
 import 'package:fieldforce/features/shop/data/services/product_sync_service_impl.dart';
+import 'package:fieldforce/features/shop/data/services/isolate_sync_manager.dart';
 
 final getIt = GetIt.instance;
 
@@ -393,25 +392,31 @@ Future<void> setupTestServiceLocator() async {
     () => PostAuthenticationService(
       employeeRepository: getIt<EmployeeRepository>(),
       appUserRepository: getIt<AppUserRepository>(),
+      tradingPointRepository: getIt<TradingPointRepository>(),
       authApiService: getIt<IAuthApiService>(),
     ),
   );
 
   // Sync services for product synchronization
-  getIt.registerLazySingleton<SyncIsolateManager>(
-    () => SyncIsolateManager(),
-  );
-
-  getIt.registerLazySingleton<SyncProgressManager>(
-    () => SyncProgressManager(),
+  // Удалены устаревшие SyncIsolateManager и SyncProgressManager
+  // ЧЗХ ТУТ ПРОИСХОДИТ ВООБЩЕ?
+  // New isolate-based sync manager for tests
+  getIt.registerLazySingleton(
+    () => IsolateSyncManager(
+      productRepository: getIt<ProductRepository>(),
+      stockItemRepository: getIt<StockItemRepository>(),
+      categoryRepository: getIt<CategoryRepository>(),
+      productsApiUrl: 'test://products',
+      categoriesApiUrl: 'test//categories',
+      sessionManager: getIt<SessionManager>(),
+    ),
   );
 
   // Product sync service implementation
   getIt.registerLazySingleton(
     () => ProductSyncServiceImpl(
       sessionManager: getIt<SessionManager>(),
-      isolateManager: getIt<SyncIsolateManager>(),
-      progressManager: getIt<SyncProgressManager>(),
+      isolateManager: getIt<IsolateSyncManager>(),
     ),
   );
 }

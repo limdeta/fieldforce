@@ -1,48 +1,64 @@
 import 'dart:async';
-import 'dart:isolate';
 
 import 'package:get_it/get_it.dart';
 import '../../../../app/services/session_manager.dart';
-import '../../../../app/services/sync_isolate_manager.dart';
-import '../../../../app/services/sync_progress_manager.dart';
-import '../../../../app/config/app_config.dart';
+
 import '../../../../shared/models/sync_config.dart';
 import '../../../../shared/models/sync_progress.dart';
 import '../../../../shared/models/sync_result.dart';
-import '../../domain/repositories/product_repository.dart';
-import '../../domain/repositories/stock_item_repository.dart';
-import 'product_sync_service.dart';
+import 'isolate_sync_manager.dart';
 
 /// Конкретная реализация сервиса синхронизации продуктов
 class ProductSyncServiceImpl {
   final SessionManager _sessionManager;
-  final SyncIsolateManager _isolateManager;
-  final SyncProgressManager _progressManager;
+  final IsolateSyncManager _isolateManager;
 
   bool _isActive = false;
   bool _isPaused = false;
-  Completer<void>? _pauseCompleter;
 
   ProductSyncServiceImpl({
     required SessionManager sessionManager,
-    required SyncIsolateManager isolateManager,
-    required SyncProgressManager progressManager,
+    required IsolateSyncManager isolateManager,
   })  : _sessionManager = sessionManager,
-        _isolateManager = isolateManager,
-        _progressManager = progressManager;
+        _isolateManager = isolateManager;
 
-  Stream<SyncProgress> get syncProgress => _progressManager.progressStream;
+  Stream<SyncProgress> get syncProgress => _isolateManager.progressStream;
 
-  Stream<SyncResult> get syncResults => _progressManager.resultStream;
+  Stream<SyncResult> get syncResults => _isolateManager.resultStream;
 
-  Stream<String> get syncStatus => _progressManager.statusStream;
+  Stream<String> get syncStatus => _isolateManager.progressStream
+      .map((progress) => progress.status);
 
   bool get isActive => _isActive;
 
   bool get isPaused => _isPaused;
 
-  Future<SyncResult> sync(SyncConfig config) async {
-    if (_isActive) {
+  Future<SyncResult> syncCategories(SyncConfig config) async {
+    if (_isActive || _isolateManager.isRunning) {
+      throw StateError('Синхронизация уже активна');
+    }
+
+    try {
+      if (!_sessionManager.hasActiveSession()) {
+        throw StateError('Сессия недействительна, требуется повторная аутентификация');
+      }
+
+      _isActive = true;
+      _isPaused = false;
+
+      final result = await _isolateManager.syncCategories(config);
+      _isActive = false;
+
+      return result;
+
+    } catch (e) {
+      _isActive = false;
+      rethrow;
+    }
+  }
+
+  Future<SyncResult> syncProducts(SyncConfig config) async {
+    if (_isActive || _isolateManager.isRunning) {
       throw StateError('Синхронизация уже активна');
     }
 
@@ -52,71 +68,45 @@ class ProductSyncServiceImpl {
         throw StateError('Сессия недействительна, требуется повторная аутентификация');
       }
 
-      // Начинаем синхронизацию
+      // Начинаем синхронизацию через новый изолят-менеджер
       _isActive = true;
       _isPaused = false;
-      _progressManager.startSync();
 
-      // Временно выполняем синхронизацию в основном потоке для отладки
-      final result = await _performSyncInMainThread(config);
-
-      // Завершаем синхронизацию
-      _progressManager.completeSync(result);
+      final result = await _isolateManager.syncProducts(config);
       _isActive = false;
 
       return result;
 
     } catch (e) {
       _isActive = false;
-      _progressManager.failSync(e);
       rethrow;
     }
   }
 
   Future<void> cancel() async {
-    if (!_isActive) return;
+    if (!_isActive && !_isolateManager.isRunning) return;
 
     _isActive = false;
     _isPaused = false;
-    _pauseCompleter?.complete();
 
-    await _isolateManager.cancelIsolate();
-    _progressManager.cancelSync();
+    await _isolateManager.cancelSync();
   }
 
   Future<void> pause() async {
     if (!_isActive || _isPaused) return;
 
     _isPaused = true;
-    _pauseCompleter = Completer<void>();
-    // TODO: Реализовать паузу в изоляте
-    await _pauseCompleter!.future;
+    await _isolateManager.pauseSync();
   }
 
   Future<void> resume() async {
     if (!_isActive || !_isPaused) return;
 
     _isPaused = false;
-    _pauseCompleter?.complete();
+    await _isolateManager.resumeSync();
   }
 
-  Future<SyncResult> _performSyncInMainThread(SyncConfig config) async {
-    final apiUrl = AppConfig.productsApiUrl;
-    final sessionCookie = _sessionManager.getSessionCookie();
-    
-    // Получаем репозитории из DI
-    final productRepository = GetIt.instance<ProductRepository>();
-    final stockItemRepository = GetIt.instance<StockItemRepository>();
-    
-    // Создаем сервис синхронизации на основе конфига
-    final syncService = ProductSyncServiceFactory.create(config, apiUrl, sessionCookie);
 
-    // Создаем порт для прогресса (в основном потоке просто игнорируем)
-    final progressPort = ReceivePort();
-    
-    // Запускаем синхронизацию
-    return syncService.syncProducts(config, progressPort.sendPort, productRepository, stockItemRepository);
-  }
 
   /// Регистрация сервиса в DI
   static void register(GetIt getIt) {
@@ -124,7 +114,6 @@ class ProductSyncServiceImpl {
       ProductSyncServiceImpl(
         sessionManager: getIt(),
         isolateManager: getIt(),
-        progressManager: getIt(),
       ),
     );
   }
