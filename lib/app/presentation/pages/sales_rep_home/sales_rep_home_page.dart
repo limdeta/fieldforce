@@ -22,15 +22,13 @@ import 'bloc/sales_rep_home_state.dart';
 class SalesRepHomePage extends StatelessWidget {
   final GpsDataManager gpsDataManager;
 
-  const SalesRepHomePage({
-    super.key,
-    required this.gpsDataManager,
-  });
+  const SalesRepHomePage({super.key, required this.gpsDataManager});
 
   @override
   Widget build(BuildContext context) {
     // Получаем аргументы маршрута
-    final arguments = ModalRoute.of(context)?.settings.arguments as Map<String, dynamic>?;
+    final arguments =
+        ModalRoute.of(context)?.settings.arguments as Map<String, dynamic>?;
     final preselectedRoute = arguments?['selectedRoute'] as shop.Route?;
 
     return MultiBlocProvider(
@@ -38,15 +36,18 @@ class SalesRepHomePage extends StatelessWidget {
         // Основные блоки
         BlocProvider<SalesRepHomeBloc>(
           create: (context) => SalesRepHomeBloc()
-            ..add(home_events.SalesRepHomeInitializeEvent(preselectedRoute: preselectedRoute)),
+            ..add(
+              home_events.SalesRepHomeInitializeEvent(
+                preselectedRoute: preselectedRoute,
+              ),
+            ),
         ),
-        BlocProvider<UserTracksBloc>(
-          create: (context) => UserTracksBloc(),
+        // Use singleton UserTracksBloc from DI so it survives navigation
+        BlocProvider<UserTracksBloc>.value(
+          value: GetIt.instance<UserTracksBloc>(),
         ),
         // TrackingBloc из DI (синглтон для сохранения состояния)
-        BlocProvider<TrackingBloc>.value(
-          value: GetIt.instance<TrackingBloc>(),
-        ),
+        BlocProvider<TrackingBloc>.value(value: GetIt.instance<TrackingBloc>()),
       ],
       child: SalesRepHomeView(gpsDataManager: gpsDataManager),
     );
@@ -64,7 +65,7 @@ class SalesRepHomeView extends StatefulWidget {
 class _SalesRepHomeViewState extends State<SalesRepHomeView> {
   NavigationUser? _user;
   bool _initialized = false;
-  
+
   // Кэширование последней известной позиции пользователя
   LatLng? _cachedUserLocation;
   double? _cachedUserBearing;
@@ -83,10 +84,12 @@ class _SalesRepHomeViewState extends State<SalesRepHomeView> {
         _user = session.appUser;
         _initialized = true;
       });
-      
+
       // Инициализируем треки для пользователя и показываем активный трек
       if (mounted) {
-        context.read<UserTracksBloc>().add(LoadUserTracksEvent(_user!, showActiveTrack: true));
+        context.read<UserTracksBloc>().add(
+          LoadUserTracksEvent(_user!, showActiveTrack: true),
+        );
       }
     }
   }
@@ -100,9 +103,14 @@ class _SalesRepHomeViewState extends State<SalesRepHomeView> {
           // Слушаем обновления позиции из TrackingBloc
           BlocListener<TrackingBloc, TrackingState>(
             listener: (context, state) {
-              if (state is TrackingOn && state.latitude != null && state.longitude != null) {
+              if (state is TrackingOn &&
+                  state.latitude != null &&
+                  state.longitude != null) {
                 setState(() {
-                  _cachedUserLocation = LatLng(state.latitude!, state.longitude!);
+                  _cachedUserLocation = LatLng(
+                    state.latitude!,
+                    state.longitude!,
+                  );
                   _cachedUserBearing = state.bearing;
                 });
                 // ИСПРАВЛЕНО: Debug панель покажет что происходит с позицией
@@ -141,9 +149,11 @@ class _SalesRepHomeViewState extends State<SalesRepHomeView> {
           // Слушаем изменения маршрута для синхронизации треков
           BlocListener<SalesRepHomeBloc, SalesRepHomeState>(
             listener: (context, state) {
-              if (state is SalesRepHomeLoaded && state.currentRoute != null && _user != null) {
+              if (state is SalesRepHomeLoaded &&
+                  state.currentRoute != null &&
+                  _user != null) {
                 // Route changed
-                
+
                 // Синхронизируем треки с новым маршрутом
                 _syncTracksWithRoute(state.currentRoute!);
               }
@@ -169,8 +179,7 @@ class _SalesRepHomeViewState extends State<SalesRepHomeView> {
                 const TrackingDebugPanel(),
 
                 // Верхняя панель с маршрутом
-                if (state is SalesRepHomeLoaded)
-                  _buildTopPanel(context, state),
+                if (state is SalesRepHomeLoaded) _buildTopPanel(context, state),
 
                 // Нижняя панель с кнопками
                 if (state is SalesRepHomeLoaded &&
@@ -209,22 +218,27 @@ class _SalesRepHomeViewState extends State<SalesRepHomeView> {
               // Получаем позицию из TrackingBloc если кэшированной нет
               LatLng? userLocation = _cachedUserLocation;
               double? userBearing = _cachedUserBearing;
-              
+
               // Если кэшированной позиции нет, берем из TrackingBloc
               return BlocBuilder<TrackingBloc, TrackingState>(
                 builder: (context, trackingState) {
-                  if (trackingState is TrackingOn && trackingState.latitude != null) {
-                    userLocation ??= LatLng(trackingState.latitude!, trackingState.longitude!);
+                  if (trackingState is TrackingOn &&
+                      trackingState.latitude != null) {
+                    userLocation ??= LatLng(
+                      trackingState.latitude!,
+                      trackingState.longitude!,
+                    );
                     userBearing ??= trackingState.bearing;
                   }
-                  
+
                   return CombinedMapWidget(
                     route: route,
                     track: track,
                     liveBuffer: liveBuffer,
                     currentUserLocation: userLocation,
                     currentUserBearing: userBearing,
-                    maxConnectionDistance: 250.0, // Максимальное расстояние для соединения сегментов
+                    maxConnectionDistance:
+                        250.0, // Максимальное расстояние для соединения сегментов
                     onTap: (point) {
                       // Обработка нажатия на карту
                     },
@@ -286,88 +300,91 @@ class _SalesRepHomeViewState extends State<SalesRepHomeView> {
             // Информация о маршруте или уведомление
             Expanded(
               child: route != null
-                ? GestureDetector(
-                    onTap: () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (context) => RouteDetailPage(route: route),
+                  ? GestureDetector(
+                      onTap: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => RouteDetailPage(route: route),
+                          ),
+                        );
+                      },
+                      child: Container(
+                        height: 60,
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 12,
+                          vertical: 8,
                         ),
-                      );
-                    },
-                    child: Container(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Text(
+                              route.name,
+                              style: const TextStyle(
+                                fontWeight: FontWeight.bold,
+                                fontSize: 14,
+                              ),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                            Row(
+                              children: [
+                                Container(
+                                  width: 8,
+                                  height: 8,
+                                  decoration: BoxDecoration(
+                                    color: _getRouteStatusColor(route.status),
+                                    shape: BoxShape.circle,
+                                  ),
+                                ),
+                                const SizedBox(width: 4),
+                                Text(
+                                  _getRouteStatusText(route.status),
+                                  style: TextStyle(
+                                    color: Colors.grey.shade600,
+                                    fontSize: 12,
+                                  ),
+                                ),
+                                const Spacer(),
+                                Text(
+                                  '${_getCompletedCount(route)}/${route.pointsOfInterest.length}',
+                                  style: TextStyle(
+                                    color: Colors.grey.shade600,
+                                    fontSize: 12,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ],
+                        ),
+                      ),
+                    )
+                  : Container(
                       height: 60,
-                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                      child: Column(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 12,
+                        vertical: 8,
+                      ),
+                      child: const Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
                           Text(
-                            route.name,
-                            style: const TextStyle(
+                            'Маршрут не установлен',
+                            style: TextStyle(
                               fontWeight: FontWeight.bold,
                               fontSize: 14,
+                              color: Colors.grey,
                             ),
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
                           ),
-                          Row(
-                            children: [
-                              Container(
-                                width: 8,
-                                height: 8,
-                                decoration: BoxDecoration(
-                                  color: _getRouteStatusColor(route.status),
-                                  shape: BoxShape.circle,
-                                ),
-                              ),
-                              const SizedBox(width: 4),
-                              Text(
-                                _getRouteStatusText(route.status),
-                                style: TextStyle(
-                                  color: Colors.grey.shade600,
-                                  fontSize: 12,
-                                ),
-                              ),
-                              const Spacer(),
-                              Text(
-                                '${_getCompletedCount(route)}/${route.pointsOfInterest.length}',
-                                style: TextStyle(
-                                  color: Colors.grey.shade600,
-                                  fontSize: 12,
-                                ),
-                              ),
-                            ],
+                          Text(
+                            'Выберите маршрут для начала работы',
+                            style: TextStyle(color: Colors.grey, fontSize: 12),
                           ),
                         ],
                       ),
                     ),
-                  )
-                : Container(
-                    height: 60,
-                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                    child: const Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Text(
-                          'Маршрут не установлен',
-                          style: TextStyle(
-                            fontWeight: FontWeight.bold,
-                            fontSize: 14,
-                            color: Colors.grey,
-                          ),
-                        ),
-                        Text(
-                          'Выберите маршрут для начала работы',
-                          style: TextStyle(
-                            color: Colors.grey,
-                            fontSize: 12,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
             ),
 
             // Кнопка скрыть/показать панель (только если есть маршрут)
@@ -377,9 +394,7 @@ class _SalesRepHomeViewState extends State<SalesRepHomeView> {
                 height: 60,
                 decoration: BoxDecoration(
                   color: Colors.grey.shade100,
-                  border: Border(
-                    left: BorderSide(color: Colors.grey.shade300),
-                  ),
+                  border: Border(left: BorderSide(color: Colors.grey.shade300)),
                 ),
                 child: IconButton(
                   icon: Icon(
@@ -425,7 +440,9 @@ class _SalesRepHomeViewState extends State<SalesRepHomeView> {
                 ? null
                 : () {
                     context.read<SalesRepHomeBloc>().add(
-                      home_events.BuildRouteEvent(currentLocation: _cachedUserLocation),
+                      home_events.BuildRouteEvent(
+                        currentLocation: _cachedUserLocation,
+                      ),
                     );
                   },
             style: ElevatedButton.styleFrom(
@@ -466,10 +483,7 @@ class _SalesRepHomeViewState extends State<SalesRepHomeView> {
             const SizedBox(height: 16),
             Text(
               message ?? 'Загрузка...',
-              style: const TextStyle(
-                color: Colors.white,
-                fontSize: 16,
-              ),
+              style: const TextStyle(color: Colors.white, fontSize: 16),
             ),
           ],
         ),
@@ -509,9 +523,7 @@ class _SalesRepHomeViewState extends State<SalesRepHomeView> {
   }
 
   int _getCompletedCount(shop.Route route) {
-    return route.pointsOfInterest
-        .where((point) => point.isVisited)
-        .length;
+    return route.pointsOfInterest.where((point) => point.isVisited).length;
   }
 
   /// Синхронизирует треки с выбранным маршрутом
@@ -524,12 +536,16 @@ class _SalesRepHomeViewState extends State<SalesRepHomeView> {
     // Загружаем треки в зависимости от типа маршрута
     if (route.isActive) {
       // Active route - loading all tracks and showing active
-      context.read<UserTracksBloc>().add(LoadUserTracksEvent(_user!, showActiveTrack: true));
+      context.read<UserTracksBloc>().add(
+        LoadUserTracksEvent(_user!, showActiveTrack: true),
+      );
     } else {
       // Historical route - loading track for route date
       final routeDate = route.startTime ?? DateTime.now();
       // Loading track for route date
-      context.read<UserTracksBloc>().add(LoadUserTrackForDateEvent(_user!, routeDate));
+      context.read<UserTracksBloc>().add(
+        LoadUserTrackForDateEvent(_user!, routeDate),
+      );
     }
   }
 }

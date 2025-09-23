@@ -24,7 +24,6 @@ class RouteSelectedEvent extends SalesRepPageEvent {
   List<Object?> get props => [route];
 }
 
-
 class TrackUpdatedEvent extends SalesRepPageEvent {
   final UserTrack? track;
   TrackUpdatedEvent(this.track);
@@ -39,6 +38,7 @@ abstract class SalesRepPageState extends Equatable {
 }
 
 class SalesRepPageInitial extends SalesRepPageState {}
+
 class SalesRepPageLoading extends SalesRepPageState {
   final String? message;
   SalesRepPageLoading({this.message});
@@ -51,11 +51,7 @@ class SalesRepPageLoaded extends SalesRepPageState {
   final UserTrack? activeTrack;
   final NavigationUser? user;
 
-  SalesRepPageLoaded({
-    this.selectedRoute,
-    this.activeTrack,
-    this.user,
-  });
+  SalesRepPageLoaded({this.selectedRoute, this.activeTrack, this.user});
 
   @override
   List<Object?> get props => [selectedRoute, activeTrack, user];
@@ -88,26 +84,37 @@ class SalesRepPageBloc extends Bloc<SalesRepPageEvent, SalesRepPageState> {
     on<TrackUpdatedEvent>(_onTrackUpdated);
   }
 
-  void _onInitializePage(InitializePageEvent event, Emitter<SalesRepPageState> emit) {
+  void _onInitializePage(
+    InitializePageEvent event,
+    Emitter<SalesRepPageState> emit,
+  ) {
     emit(SalesRepPageLoading(message: 'Загрузка страницы...'));
     // Инициализация будет происходить через слушатели других блоков
   }
 
-  void _onRouteSelected(RouteSelectedEvent event, Emitter<SalesRepPageState> emit) {
+  void _onRouteSelected(
+    RouteSelectedEvent event,
+    Emitter<SalesRepPageState> emit,
+  ) {
     print('[SalesRepPageBloc] Route selected: ${event.route.name}');
 
     if (state is SalesRepPageLoaded) {
       final currentState = state as SalesRepPageLoaded;
-      emit(currentState.copyWith(
-        selectedRoute: event.route,
-        activeTrack: null, // Сбрасываем, так как будет загружен новый
-      ));
+      emit(
+        currentState.copyWith(
+          selectedRoute: event.route,
+          activeTrack: null, // Сбрасываем, так как будет загружен новый
+        ),
+      );
     } else {
       emit(SalesRepPageLoaded(selectedRoute: event.route));
     }
   }
 
-  void _onTrackUpdated(TrackUpdatedEvent event, Emitter<SalesRepPageState> emit) {
+  void _onTrackUpdated(
+    TrackUpdatedEvent event,
+    Emitter<SalesRepPageState> emit,
+  ) {
     print('[SalesRepPageBloc] Track updated: id=${event.track?.id}');
 
     if (state is SalesRepPageLoaded) {

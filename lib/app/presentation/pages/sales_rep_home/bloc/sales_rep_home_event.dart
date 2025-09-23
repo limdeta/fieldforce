@@ -4,7 +4,7 @@ import 'package:fieldforce/app/domain/entities/route.dart' as shop;
 import 'package:fieldforce/features/navigation/tracking/domain/entities/user_track.dart';
 
 /// События для SalesRepHome BLoC
-/// 
+///
 /// События представляют намерения пользователя или внешние триггеры
 abstract class SalesRepHomeEvent extends Equatable {
   const SalesRepHomeEvent();

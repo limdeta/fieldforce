@@ -18,7 +18,8 @@ import 'sales_rep_home_state.dart';
 class SalesRepHomeBloc extends Bloc<SalesRepHomeEvent, SalesRepHomeState> {
   static final Logger _logger = Logger('SalesRepHomeBloc');
   final RouteRepository _routeRepository = GetIt.instance<RouteRepository>();
-  final UserPreferencesService _preferencesService = GetIt.instance<UserPreferencesService>();
+  final UserPreferencesService _preferencesService =
+      GetIt.instance<UserPreferencesService>();
   // final LocationTrackingServiceBase _trackingService = GetIt.instance<LocationTrackingServiceBase>();
 
   StreamSubscription<List<shop.Route>>? _routesSubscription;
@@ -49,7 +50,7 @@ class SalesRepHomeBloc extends Bloc<SalesRepHomeEvent, SalesRepHomeState> {
     if (state is SalesRepHomeLoaded) {
       final currentState = state as SalesRepHomeLoaded;
       final newTrack = event.activeTrack;
-      
+
       final newState = currentState.copyWith(activeTrack: newTrack);
       emit(newState);
     }
@@ -58,17 +59,21 @@ class SalesRepHomeBloc extends Bloc<SalesRepHomeEvent, SalesRepHomeState> {
   /// Настройка слушателя активного трека
   void _setupActiveTrackListener() {
     _activeTrackSubscription?.cancel();
-    
+
     // Подписываемся напрямую на LocationTrackingService для получения полного состояния трека
     final locationService = GetIt.instance<LocationTrackingServiceBase>();
-    
+
     _activeTrackSubscription = locationService.trackUpdateStream.listen(
       (activeTrack) {
-        _logger.fine('📍 SalesRepHomeBloc: Получен обновленный трек ID: ${activeTrack.id}');
+        _logger.fine(
+          '📍 SalesRepHomeBloc: Получен обновленный трек ID: ${activeTrack.id}',
+        );
         add(ActiveTrackUpdatedEvent(activeTrack));
       },
       onError: (error) {
-        _logger.severe('❌ SalesRepHomeBloc: Ошибка в trackUpdateStream: $error');
+        _logger.severe(
+          '❌ SalesRepHomeBloc: Ошибка в trackUpdateStream: $error',
+        );
       },
     );
   }
@@ -78,33 +83,41 @@ class SalesRepHomeBloc extends Bloc<SalesRepHomeEvent, SalesRepHomeState> {
     SalesRepHomeInitializeEvent event,
     Emitter<SalesRepHomeState> emit,
   ) async {
-    emit(SalesRepHomeLoading(
-      message: 'Инициализация...',
-      preselectedRoute: event.preselectedRoute,
-    ));
+    emit(
+      SalesRepHomeLoading(
+        message: 'Инициализация...',
+        preselectedRoute: event.preselectedRoute,
+      ),
+    );
 
     try {
       final sessionResult = await AppSessionService.getCurrentAppSession();
       if (sessionResult.isLeft()) {
-        emit(const SalesRepHomeError(
-          message: 'Не удалось получить сессию пользователя',
-          canRetry: true,
-        ));
+        emit(
+          const SalesRepHomeError(
+            message: 'Не удалось получить сессию пользователя',
+            canRetry: true,
+          ),
+        );
         return;
       }
 
       final session = sessionResult.fold((l) => null, (r) => r);
       if (session == null) {
-        emit(const SalesRepHomeError(
-          message: 'Пользователь не найден в сессии',
-          canRetry: true,
-        ));
+        emit(
+          const SalesRepHomeError(
+            message: 'Пользователь не найден в сессии',
+            canRetry: true,
+          ),
+        );
         return;
       }
 
       // Если передан preselectedRoute, сохраняем его в настройки
       if (event.preselectedRoute != null) {
-        await _preferencesService.setSelectedRouteId(event.preselectedRoute!.id);
+        await _preferencesService.setSelectedRouteId(
+          event.preselectedRoute!.id,
+        );
         // Preselected route saved
       }
 
@@ -113,12 +126,10 @@ class SalesRepHomeBloc extends Bloc<SalesRepHomeEvent, SalesRepHomeState> {
 
       _setupRouteStreamListener(session);
       add(const LoadUserRoutesEvent());
-
     } catch (e) {
-      emit(SalesRepHomeError(
-        message: 'Ошибка инициализации: $e',
-        canRetry: true,
-      ));
+      emit(
+        SalesRepHomeError(message: 'Ошибка инициализации: $e', canRetry: true),
+      );
     }
   }
 
@@ -129,7 +140,10 @@ class SalesRepHomeBloc extends Bloc<SalesRepHomeEvent, SalesRepHomeState> {
   ) async {
     try {
       final sessionResult = await AppSessionService.getCurrentAppSession();
-      final session = sessionResult.fold((l) => throw Exception('No session'), (r) => r);
+      final session = sessionResult.fold(
+        (l) => throw Exception('No session'),
+        (r) => r,
+      );
 
       if (session == null) {
         throw Exception('Session is null');
@@ -137,10 +151,12 @@ class SalesRepHomeBloc extends Bloc<SalesRepHomeEvent, SalesRepHomeState> {
 
       emit(const SalesRepHomeLoading(message: 'Загрузка маршрутов...'));
     } catch (e) {
-      emit(SalesRepHomeError(
-        message: 'Ошибка загрузки маршрутов: $e',
-        canRetry: true,
-      ));
+      emit(
+        SalesRepHomeError(
+          message: 'Ошибка загрузки маршрутов: $e',
+          canRetry: true,
+        ),
+      );
     }
   }
 
@@ -161,10 +177,14 @@ class SalesRepHomeBloc extends Bloc<SalesRepHomeEvent, SalesRepHomeState> {
       }
     } catch (e) {
       // Критическая ошибка
-      emit(SalesRepHomeError(
-        message: 'Ошибка выбора маршрута: $e',
-        currentRoute: (state is SalesRepHomeLoaded) ? (state as SalesRepHomeLoaded).currentRoute : null,
-      ));
+      emit(
+        SalesRepHomeError(
+          message: 'Ошибка выбора маршрута: $e',
+          currentRoute: (state is SalesRepHomeLoaded)
+              ? (state as SalesRepHomeLoaded).currentRoute
+              : null,
+        ),
+      );
     }
   }
 
@@ -209,41 +229,58 @@ class SalesRepHomeBloc extends Bloc<SalesRepHomeEvent, SalesRepHomeState> {
         return;
       }
 
-      final mapPoints = routePoints.map((poi) => MapPoint(
-        latitude: poi.coordinates.latitude,
-        longitude: poi.coordinates.longitude,
-      )).toList();
+      final mapPoints = routePoints
+          .map(
+            (poi) => MapPoint(
+              latitude: poi.coordinates.latitude,
+              longitude: poi.coordinates.longitude,
+            ),
+          )
+          .toList();
 
       // Добавляем текущую позицию пользователя или последнюю точку из трека в начало
       LatLng? startPoint = event.currentLocation;
-      if (startPoint == null && currentState.activeTrack != null && currentState.activeTrack!.segments.isNotEmpty) {
+      if (startPoint == null &&
+          currentState.activeTrack != null &&
+          currentState.activeTrack!.segments.isNotEmpty) {
         final lastSegment = currentState.activeTrack!.liveSegmentIndex != null
-            ? currentState.activeTrack!.segments[currentState.activeTrack!.liveSegmentIndex!]
+            ? currentState.activeTrack!.segments[currentState
+                  .activeTrack!
+                  .liveSegmentIndex!]
             : currentState.activeTrack!.segments.last;
         if (lastSegment.isNotEmpty) {
-          final lastTrackPoint = lastSegment.getCoordinates(lastSegment.pointCount - 1);
+          final lastTrackPoint = lastSegment.getCoordinates(
+            lastSegment.pointCount - 1,
+          );
           startPoint = LatLng(lastTrackPoint.$1, lastTrackPoint.$2);
         }
       }
 
       if (startPoint != null) {
-        mapPoints.insert(0, MapPoint(
-          latitude: startPoint.latitude,
-          longitude: startPoint.longitude,
-        ));
+        mapPoints.insert(
+          0,
+          MapPoint(
+            latitude: startPoint.latitude,
+            longitude: startPoint.longitude,
+          ),
+        );
       }
 
-      final result = await pathPredictionService.predictRouteGeometry(mapPoints);
+      final result = await pathPredictionService.predictRouteGeometry(
+        mapPoints,
+      );
 
       if (result.routePoints.isNotEmpty) {
-        final polylinePoints = result.routePoints.map((point) =>
-          LatLng(point.latitude, point.longitude)
-        ).toList();
+        final polylinePoints = result.routePoints
+            .map((point) => LatLng(point.latitude, point.longitude))
+            .toList();
 
-        emit(currentState.copyWith(
-          isBuildingRoute: false,
-          routePolylinePoints: polylinePoints,
-        ));
+        emit(
+          currentState.copyWith(
+            isBuildingRoute: false,
+            routePolylinePoints: polylinePoints,
+          ),
+        );
       } else {
         emit(currentState.copyWith(isBuildingRoute: false));
       }
@@ -258,45 +295,53 @@ class SalesRepHomeBloc extends Bloc<SalesRepHomeEvent, SalesRepHomeState> {
     Emitter<SalesRepHomeState> emit,
   ) async {
     if (event.routes.isEmpty) {
-      emit(const SalesRepHomeLoaded(
-        availableRoutes: [],
-      ));
+      emit(const SalesRepHomeLoaded(availableRoutes: []));
       return;
     }
 
     shop.Route? routeToDisplay;
-    
+
     // Сначала проверяем, есть ли preselectedRoute в состоянии инициализации
     if (state is SalesRepHomeLoading) {
       final loadingState = state as SalesRepHomeLoading;
       if (loadingState.preselectedRoute != null) {
         // Ищем preselectedRoute в загруженных маршрутах
-        routeToDisplay = event.routes.where((route) => route.id == loadingState.preselectedRoute!.id).firstOrNull;
+        routeToDisplay = event.routes
+            .where((route) => route.id == loadingState.preselectedRoute!.id)
+            .firstOrNull;
         // Found preselected route
       }
     }
-    
+
     // Если preselectedRoute не найден или не был установлен, ищем сохраненный маршрут из настроек
     if (routeToDisplay == null) {
       final savedRouteId = _preferencesService.getSelectedRouteId();
       if (savedRouteId != null) {
-        routeToDisplay = event.routes.where((route) => route.id == savedRouteId).firstOrNull;
+        routeToDisplay = event.routes
+            .where((route) => route.id == savedRouteId)
+            .firstOrNull;
         // Found saved route: ${routeToDisplay?.name ?? "null"} (id=$savedRouteId)
       }
     }
-    
+
     // Если сохраненный маршрут не найден - используем активный или сегодняшний
     if (routeToDisplay == null) {
       routeToDisplay = _findCurrentRoute(event.routes);
       // Using current route
     }
 
-    emit(SalesRepHomeLoaded(
-      currentRoute: routeToDisplay,
-      availableRoutes: event.routes,
-      showRoutePanel: state is SalesRepHomeLoaded ? (state as SalesRepHomeLoaded).showRoutePanel : true,
-      isBuildingRoute: state is SalesRepHomeLoaded ? (state as SalesRepHomeLoaded).isBuildingRoute : false,
-    ));
+    emit(
+      SalesRepHomeLoaded(
+        currentRoute: routeToDisplay,
+        availableRoutes: event.routes,
+        showRoutePanel: state is SalesRepHomeLoaded
+            ? (state as SalesRepHomeLoaded).showRoutePanel
+            : true,
+        isBuildingRoute: state is SalesRepHomeLoaded
+            ? (state as SalesRepHomeLoaded).isBuildingRoute
+            : false,
+      ),
+    );
   }
 
   Future<void> _onSyncTracksWithRoute(
@@ -329,15 +374,17 @@ class SalesRepHomeBloc extends Bloc<SalesRepHomeEvent, SalesRepHomeState> {
   }
 
   shop.Route? _findCurrentRoute(List<shop.Route> routes) {
-    var activeRoute = routes.where((r) => r.status == shop.RouteStatus.active).firstOrNull;
+    var activeRoute = routes
+        .where((r) => r.status == shop.RouteStatus.active)
+        .firstOrNull;
     if (activeRoute != null) return activeRoute;
 
     final today = DateTime.now();
     var todayRoute = routes.where((r) {
       if (r.startTime == null) return false;
       return r.startTime!.year == today.year &&
-             r.startTime!.month == today.month &&
-             r.startTime!.day == today.day;
+          r.startTime!.month == today.month &&
+          r.startTime!.day == today.day;
     }).firstOrNull;
 
     if (todayRoute != null) return todayRoute;
