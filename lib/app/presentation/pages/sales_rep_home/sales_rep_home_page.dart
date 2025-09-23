@@ -17,6 +17,7 @@ import 'package:latlong2/latlong.dart';
 import 'package:fieldforce/app/domain/entities/route.dart' as shop;
 import 'package:fieldforce/features/navigation/tracking/domain/services/gps_data_manager.dart';
 import 'package:get_it/get_it.dart';
+import 'package:fieldforce/features/navigation/tracking/domain/services/location_tracking_service_base.dart';
 import 'bloc/sales_rep_home_bloc.dart';
 import 'bloc/sales_rep_home_event.dart' as home_events;
 import 'bloc/sales_rep_home_state.dart';
@@ -263,6 +264,28 @@ class _SalesRepHomeViewState extends State<SalesRepHomeView> {
                 // Если в SalesRepHomeBloc нет activeTrack, используем отображаемый трек из UserTracksBloc
                 if (track == null && userTracksState.activeTrack != null) {
                   track = userTracksState.activeTrack;
+                }
+
+                // Defensive: if the UI state lacks liveBuffer or displayed track
+                // (for example when returning from a pushed route), attempt to
+                // replay the last known snapshot from the LocationTrackingService
+                // so the map receives immediate data without waiting for a new
+                // GPS point. This is cheap and guarded to avoid spamming events.
+                try {
+                  final locationService = GetIt.instance<LocationTrackingServiceBase>();
+                  final snapshot = locationService.getCurrentSnapshot();
+                  if (!snapshot.isEmpty) {
+                    // If bloc doesn't have persisted track but snapshot does, set it
+                    if (snapshot.persistedTrack != null && userTracksState.activeTrack == null) {
+                      context.read<UserTracksBloc>().add(SetDisplayedTrackEvent(snapshot.persistedTrack));
+                    }
+                    // If snapshot has live buffer but bloc state doesn't, push it
+                    if (snapshot.liveBuffer != null && (userTracksState.liveBuffer == null || userTracksState.liveBuffer!.pointCount == 0)) {
+                      context.read<UserTracksBloc>().add(LiveBufferUpdatedEvent(snapshot.liveBuffer!));
+                    }
+                  }
+                } catch (e) {
+                  // Ignore failures here - this is a best-effort UI hydration
                 }
               }
 
