@@ -7,6 +7,8 @@ import 'package:fieldforce/features/navigation/tracking/domain/services/location
 import 'package:flutter/foundation.dart';
 import 'package:flutter/widgets.dart';
 import 'package:get_it/get_it.dart';
+import 'package:fieldforce/features/navigation/tracking/presentation/bloc/tracking_bloc.dart';
+import 'package:fieldforce/features/navigation/tracking/presentation/bloc/user_tracks_bloc.dart';
 
 /// Менеджер жизненного цикла приложения для GPS трекинга
 class AppLifecycleManager with WidgetsBindingObserver {
@@ -114,7 +116,71 @@ class AppLifecycleManager with WidgetsBindingObserver {
             },
             onFound: (userSession) async {
               _log('Пользователь найден: ${userSession.externalId}');
-              _log('Восстановление трека пока не реализовано');
+
+              // Получаем AppSession/ AppUser через usecase (AppSession содержит AppUser который реализует NavigationUser)
+              try {
+                final appSessionResult = await _sessionUsecase.call();
+                await appSessionResult.fold(
+                  (failure) async {
+                    _log('Не удалось получить AppSession: ${failure.message}');
+                  },
+                  (appSession) async {
+                    if (appSession == null) {
+                      _log('AppSession не найдена, пропускаем восстановление трекинга');
+                      return;
+                    }
+
+                    final user = appSession.appUser as NavigationUser;
+
+                    // Если сервис трекинга уже активен — синхронизируем BLoC'ы
+                    if (_trackingService.isTracking) {
+                      _log('TrackingService уже активен - синхронизируем состояние');
+                      try {
+                        if (GetIt.instance.isRegistered<TrackingBloc>()) {
+                          final trackingBloc = GetIt.instance<TrackingBloc>();
+                          trackingBloc.setUser(user);
+                          trackingBloc.add(TrackingCheckStatus());
+                        }
+                        if (GetIt.instance.isRegistered<UserTracksBloc>()) {
+                          final userTracksBloc = GetIt.instance<UserTracksBloc>();
+                          userTracksBloc.add(LoadUserTracksEvent(user, showActiveTrack: true));
+                        }
+                      } catch (e) {
+                        _log('Ошибка синхронизации BLoC при активном трекинге: $e');
+                      }
+
+                      return;
+                    }
+
+                    // Если трек уже существует в сервисе (например, был создан до паузы), синхронизируем BLoC'ы
+                    final currentTrack = _trackingService.currentTrack;
+                    if (currentTrack != null) {
+                      _log('Найден существующий трек в сервисе (ID: ${currentTrack.id}) - синхронизируем состояние без автозапуска');
+
+                      try {
+                        if (GetIt.instance.isRegistered<TrackingBloc>()) {
+                          final trackingBloc = GetIt.instance<TrackingBloc>();
+                          trackingBloc.setUser(user);
+                          trackingBloc.add(TrackingCheckStatus());
+                        }
+                        if (GetIt.instance.isRegistered<UserTracksBloc>()) {
+                          final userTracksBloc = GetIt.instance<UserTracksBloc>();
+                          userTracksBloc.add(LoadUserTracksEvent(user, showActiveTrack: true));
+                        }
+                      } catch (e) {
+                        _log('Ошибка синхронизации BLoC после обнаружения трека: $e');
+                      }
+
+                      return;
+                    }
+
+                    // Если ничего не найдено — не автозапускаем трекинг, оставляем управление пользователю через кнопку
+                    _log('Трек не обнаружен и автозапуск отключён в lifecycle manager — ничего не делаем');
+                  },
+                );
+              } catch (e) {
+                _log('Ошибка при попытке восстановления трекинга: $e');
+              }
             },
           );
         },

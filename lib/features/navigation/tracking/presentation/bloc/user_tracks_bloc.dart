@@ -134,10 +134,43 @@ class UserTracksBloc extends Bloc<UserTracksEvent, UserTracksState> {
   NavigationUser? _lastLoadedUser;
   DateTime? _lastLoadTime;
   static const Duration _cacheTimeout = Duration(minutes: 5);
+  // Grace window to avoid UI blinking when subscribing: during this period
+  // we will prefer snapshot-provided state and ignore clears from route switches
+  bool _inGraceWindow = false;
+  Timer? _graceTimer;
 
   UserTrack? get activeTrack => _userTracks.where((track) => track.status.isActive).firstOrNull;
 
   UserTracksBloc() : super(UserTracksInitial()) {
+    // Attempt synchronous snapshot restore to avoid blank UI on subscribe
+    try {
+  final snapshot = _locationTrackingService.getCurrentSnapshot();
+  if (!snapshot.isEmpty) {
+        _logger.fine('🔁 UserTracksBloc: restoring snapshot on construction');
+        if (snapshot.persistedTrack != null) {
+          _displayedTrack = snapshot.persistedTrack;
+          _userTracks = snapshot.persistedTrack != null ? [snapshot.persistedTrack!] : [];
+          if (snapshot.persistedTrack!.status.name == 'completed') {
+            _completedTracks = [snapshot.persistedTrack!];
+          }
+        }
+        if (snapshot.liveBuffer != null) {
+          // emit a live buffer update if we have one
+          add(LiveBufferUpdatedEvent(snapshot.liveBuffer!));
+        }
+      }
+    } catch (e, st) {
+      _logger.warning('Ошибка получения snapshot при инициализации UserTracksBloc', e, st);
+    }
+
+    // Start short grace window where UI won't be cleared immediately
+    _inGraceWindow = true;
+    _graceTimer?.cancel();
+    _graceTimer = Timer(const Duration(milliseconds: 300), () {
+      _inGraceWindow = false;
+      _graceTimer = null;
+      _logger.fine('⏱️ UserTracksBloc: grace window ended');
+    });
     on<LoadUserTracksEvent>(_onLoadUserTracks);
     on<LoadUserTrackForDateEvent>(_onLoadUserTrackForDate);
     on<ClearTracksEvent>(_onClearTracks);
@@ -235,9 +268,16 @@ class UserTracksBloc extends Bloc<UserTracksEvent, UserTracksState> {
   }
 
   void _onClearTracks(ClearTracksEvent event, Emitter<UserTracksState> emit) {
-    // print('[UserTracksBloc] Clearing all tracks including displayedTrack');
+    // If we're in grace window, defer clearing to avoid blinking when UI
+    // is just subscribing/reconciling state.
+    if (_inGraceWindow) {
+      _logger.fine('🔕 ClearTracksEvent ignored during grace window');
+      return;
+    }
+
+    _logger.fine('[UserTracksBloc] Clearing all tracks including displayedTrack');
     _userTracks.clear();
-    _displayedTrack = null; // Очищаем отображаемый трек!
+    _displayedTrack = null;
     _completedTracks.clear();
     _error = null;
     _lastLoadedUser = null;

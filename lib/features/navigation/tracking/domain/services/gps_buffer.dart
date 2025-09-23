@@ -78,6 +78,16 @@ class GpsBuffer {
     return _builder.build();
   }
 
+  /// Возвращает полный текущий сегмент (включая все точки) и очищает буфер.
+  /// Используется для ручного принудительного сохранения (pause/stop/flush).
+  CompactTrack drain() {
+    _cancelFlushTimer();
+    final seg = _builder.build();
+    _builder.clear();
+    _lastPosition = null;
+    return seg;
+  }
+
   void clear() {
     _builder.clear();
     _lastPosition = null;

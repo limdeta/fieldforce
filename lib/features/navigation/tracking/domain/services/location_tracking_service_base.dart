@@ -1,4 +1,5 @@
 import 'package:geolocator/geolocator.dart';
+import 'package:fieldforce/features/navigation/tracking/domain/entities/track_snapshot.dart';
 import 'package:fieldforce/features/navigation/tracking/domain/entities/user_track.dart';
 import 'package:fieldforce/features/navigation/tracking/domain/entities/navigation_user.dart';
 import 'package:fieldforce/features/navigation/tracking/domain/entities/compact_track.dart';
@@ -14,5 +15,7 @@ abstract class LocationTrackingServiceBase {
   UserTrack? get currentTrack;
   Stream<UserTrack> get trackUpdateStream;
   Stream<CompactTrack> get liveBufferStream;
-  Stream<Position>? get positionStream;
+  Stream<Position> get positionStream;
+  // Synchronous snapshot of current tracking state to allow immediate UI restore
+  TrackSnapshot getCurrentSnapshot();
 }

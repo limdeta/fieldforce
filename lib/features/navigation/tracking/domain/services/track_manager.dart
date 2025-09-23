@@ -7,7 +7,6 @@ import 'package:fieldforce/features/navigation/tracking/domain/repositories/user
 import 'package:fieldforce/features/navigation/tracking/domain/services/gps_buffer.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:logging/logging.dart';
-import 'package:fieldforce/app/config/app_config.dart';
 
 /// Менеджер GPS треков
 /// 
@@ -24,6 +23,8 @@ class TrackManager {
   final GpsBuffer _buffer = GpsBuffer();
   
   UserTrack? _currentTrack;
+  /// Keep the last saved/completed track in memory so UI can show it after stop
+  UserTrack? _lastSavedTrack;
   StreamSubscription? _autoFlushSubscription;
   Timer? _persistTimer;
   int _updateCounter = 0; // Счетчик отправленных обновлений
@@ -46,11 +47,13 @@ class TrackManager {
   Stream<CompactTrack> get liveBufferStream => _buffer.updateStream;
   
   UserTrack? get currentTrackForUI {
-    if (_currentTrack == null) return null;
-    
-    // Возвращаем трек только с сохраненными сегментами
-    // Live buffer передается отдельно через liveBufferStream
-    return _currentTrack!;
+    // If we have an active in-memory track, prefer it. Otherwise return
+    // the last saved/completed track so UI can render the latest data even
+    // after stopTracking() has been called.
+    final track = _currentTrack ?? _lastSavedTrack;
+    if (track == null) return null;
+    // Return only saved segments here; live buffer is provided separately
+    return track;
   }
 
   /// Единый метод запуска трекинга - автоматически определяет нужно ли создавать новый трек или продолжать существующий
@@ -60,8 +63,17 @@ class TrackManager {
     _logger.info('🚀 TrackManager.startTracking для пользователя: ${user.fullName} (ID: ${user.id})');
     
     if (_currentTrack != null) {
-      _logger.info('🛑 Останавливаем предыдущий трек...');
-      await stopTracking();
+      // If we already have a _currentTrack in memory but it's paused, resume it.
+      if (_currentTrack!.status != TrackStatus.active) {
+        _logger.info('🔄 TrackManager.startTracking: есть трек в памяти, возобновляем (ID: ${_currentTrack!.id})');
+        _currentTrack = _currentTrack!.copyWith(status: TrackStatus.active, endTime: null);
+        // clear live buffer on resume to avoid showing stale points
+        _buffer.clear();
+        return true;
+      }
+
+      _logger.info('⚠️ TrackManager.startTracking: трек уже активен (ID: ${_currentTrack!.id}), ничего не делаем.');
+      return true;
     }
 
     // Ищем трек за сегодня
@@ -78,12 +90,20 @@ class TrackManager {
     if (tracksResult.isRight()) {
       final tracks = tracksResult.getOrElse(() => []);
       _logger.info('📊 Найдено треков за день: ${tracks.length}');
-      // В dev режиме не продолжаем существующие треки, чтобы избежать наложения
-      if (!AppConfig.isDev) {
-        // Ищем активный или трек на паузе
-        existingTrack = tracks.where((track) =>
-          track.status == TrackStatus.active || track.status == TrackStatus.paused
-        ).firstOrNull;
+      // Always try to continue an existing active or paused track for the day
+      final candidates = tracks.where((track) =>
+        track.status == TrackStatus.active || track.status == TrackStatus.paused
+      ).toList();
+      if (candidates.isNotEmpty) {
+        // If there are duplicates (shouldn't happen by business rules) prefer the most recent one
+        if (candidates.length > 1) {
+          _logger.warning('⚠️ TrackManager.startTracking: найдено несколько активных/паузы треков (${candidates.length}), выбираем самый свежий и логируем дубликаты');
+          for (final t in candidates) {
+            _logger.info('   candidate: id=${t.id}, start=${t.startTime}, status=${t.status}, segments=${t.segments.length}');
+          }
+          candidates.sort((a, b) => b.startTime.compareTo(a.startTime));
+        }
+        existingTrack = candidates.first;
       }
     } else {
       _logger.warning('❌ Ошибка получения треков: ${tracksResult.fold((l) => l.toString(), (r) => '')}');
@@ -95,7 +115,10 @@ class TrackManager {
         status: TrackStatus.active,
         endTime: null,
       );
+      // Keep lastSavedTrack pointing to the persisted track so UI can render immediately
+      try { _lastSavedTrack = _currentTrack; } catch (_) {}
     } else {
+      // No existing track for today — create a new one
       _logger.info('🆕 TrackManager: Создаем новый трек для нового дня');
       _currentTrack = UserTrack.empty(
         id: DateTime.now().millisecondsSinceEpoch,
@@ -105,10 +128,12 @@ class TrackManager {
           'created_at': DateTime.now().toIso8601String(),
         },
       );
+      // For a brand new track we do not have a lastSavedTrack yet
     }
 
     _logger.info('✅ Трек готов: ID=${_currentTrack!.id}, Status=${_currentTrack!.status}');
-    _buffer.clear();
+  // When starting, clear live buffer to avoid showing stale points.
+  _buffer.clear();
     
     return true;
   }
@@ -117,22 +142,42 @@ class TrackManager {
     if (_currentTrack == null) return;
     
     // Сохраняем финальный сегмент из буфера если есть данные
+    // For now we do NOT finalize the track on stop: instead we persist any
+    // buffered points and mark the track as paused so it can be resumed later
+    // during the same day. Closing a track (status=completed) will be done
+    // only when day finalization is introduced.
     if (_buffer.hasData) {
-      final finalSegment = _buffer.flush();
+      _logger.info('TRACK_SAVE_START: draining buffer for stopTracking (pause semantics)');
+      final finalSegment = _buffer.drain();
       if (finalSegment.pointCount > 0) {
         _currentTrack!.segments.add(finalSegment);
-        await _repository.saveOrUpdateUserTrack(_currentTrack!);
+        _logger.info('TRACK_SAVE_SAVING: finalSegment.pointCount=${finalSegment.pointCount}');
+        final result = await _repository.saveOrUpdateUserTrack(_currentTrack!);
+        if (result.isRight()) {
+          _logger.info('TRACK_SAVE_COMPLETE: saved final segment (pause) and will emit track');
+          // Уведомляем UI об обновлённом треке
+          _trackUpdateController.add(_currentTrack!);
+          // Cache last saved so UI can show persisted state
+          try { _lastSavedTrack = _currentTrack; } catch (_) {}
+        } else {
+          _logger.warning('TRACK_SAVE_FAILED: failed to save final segment (pause)');
+        }
       }
     }
-    
-    _currentTrack = _currentTrack!.copyWith(
-      status: TrackStatus.completed,
-      endTime: DateTime.now(),
-    );
-    
-    await _repository.saveOrUpdateUserTrack(_currentTrack!);
 
-    _currentTrack = null;
+    // Mark the in-memory track as paused (do not complete or drop it)
+    _currentTrack = _currentTrack!.copyWith(
+      status: TrackStatus.paused,
+    );
+
+    final result2 = await _repository.saveOrUpdateUserTrack(_currentTrack!);
+    if (result2.isRight()) {
+      _trackUpdateController.add(_currentTrack!);
+      try { _lastSavedTrack = _currentTrack; } catch (_) {}
+    }
+
+    // Clear the live buffer but keep the _currentTrack in memory so we can
+    // continue appending points until explicit end-of-day finalization.
     _buffer.clear();
   }
   
@@ -141,10 +186,20 @@ class TrackManager {
     
     // Сохраняем текущий буфер как сегмент
     if (_buffer.hasData) {
-      final segment = _buffer.flush();
+      _logger.info('TRACK_SAVE_START: draining buffer for pauseTracking');
+      final segment = _buffer.drain();
       if (segment.pointCount > 0) {
+        _logger.info('TRACK_SAVE_SAVING: pause segment.pointCount=${segment.pointCount}');
         _currentTrack!.segments.add(segment);
-        await _repository.saveOrUpdateUserTrack(_currentTrack!);
+        final result = await _repository.saveOrUpdateUserTrack(_currentTrack!);
+        if (result.isRight()) {
+          _logger.info('TRACK_SAVE_COMPLETE: pause saved segment and will emit track');
+          // Уведомляем UI, чтобы он увидел сохранённый сегмент
+          _trackUpdateController.add(_currentTrack!);
+          _lastSavedTrack = _currentTrack;
+        } else {
+          _logger.warning('TRACK_SAVE_FAILED: pause failed to save segment');
+        }
       }
     }
     
@@ -152,7 +207,35 @@ class TrackManager {
       status: TrackStatus.paused,
     );
     
-    await _repository.saveOrUpdateUserTrack(_currentTrack!);
+    final result2 = await _repository.saveOrUpdateUserTrack(_currentTrack!);
+    if (result2.isRight()) {
+      _trackUpdateController.add(_currentTrack!);
+    }
+  }
+
+  /// Слить текущий буфер в трек и сохранить без изменения статуса трека
+  Future<void> flushBufferToCurrentTrack() async {
+    if (_currentTrack == null) return;
+    if (!_buffer.hasData) return;
+
+  final segment = _buffer.drain();
+    if (segment.pointCount == 0) return;
+
+    try {
+      _logger.info('TRACK_SAVE_START: explicit flushBufferToCurrentTrack');
+      _currentTrack!.segments.add(segment);
+      final result = await _repository.saveOrUpdateUserTrack(_currentTrack!);
+      if (result.isRight()) {
+        _logger.info('TRACK_SAVE_COMPLETE: flush saved segment');
+        _trackUpdateController.add(_currentTrack!);
+        _logger.info('💾 TrackManager.flushBufferToCurrentTrack: buffered segment saved and emitted');
+        _lastSavedTrack = _currentTrack;
+      } else {
+        _logger.severe('❌ TrackManager.flushBufferToCurrentTrack: ошибка сохранения');
+      }
+    } catch (e, st) {
+      _logger.severe('❌ TrackManager.flushBufferToCurrentTrack: исключение', e, st);
+    }
   }
   
   Future<void> resumeTracking() async {
@@ -212,6 +295,8 @@ class TrackManager {
       final result = await _repository.saveOrUpdateUserTrack(_currentTrack!);
       if (result.isRight()) {
         _logger.info('💾 TrackManager._onAutoFlush: автосегмент сохранен в БД! Сегментов стало: ${_currentTrack!.segments.length}');
+        // Cache last saved track for UI restore
+        try { _lastSavedTrack = _currentTrack; } catch (_) {}
       } else {
         _logger.severe('❌ TrackManager._onAutoFlush: ошибка сохранения в БД: ${result.fold((l) => l.toString(), (r) => '')}');
       }

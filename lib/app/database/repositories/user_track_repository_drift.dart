@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'package:drift/drift.dart';
 import 'package:fieldforce/app/database/database.dart';
+import 'package:logging/logging.dart';
 import 'package:fieldforce/features/navigation/tracking/domain/entities/compact_track.dart';
 import 'package:fieldforce/features/navigation/tracking/domain/entities/navigation_user.dart';
 import 'package:fieldforce/features/navigation/tracking/domain/entities/user_track.dart';
@@ -13,6 +14,7 @@ import 'package:fieldforce/app/database/mappers/user_track_mapper.dart';
 class UserTrackRepositoryDrift implements UserTrackRepository {
   final AppDatabase _database;
   final EmployeeRepositoryDrift _employeeRepository;
+  static final Logger _logger = Logger('UserTrackRepository');
 
   UserTrackRepositoryDrift(this._database, this._employeeRepository);
 
@@ -158,9 +160,50 @@ class UserTrackRepositoryDrift implements UserTrackRepository {
       if (userId == null) {
         return Left(const NotFoundFailure('User not found in database'));
       }
-      
+      // Before inserting, check if there is already a track for this user for the same day.
+      // If yes, merge incoming segments into the existing track and update it instead of creating a new one.
+      final startOfDay = DateTime(track.startTime.year, track.startTime.month, track.startTime.day);
+      final endOfDay = startOfDay.add(const Duration(days: 1));
 
-      // Сохраняем основную запись UserTrack
+      final existing = await (_database.select(_database.userTracks)
+            ..where((tbl) => tbl.userId.equals(userId)
+                & tbl.startTime.isBiggerOrEqualValue(startOfDay)
+                & tbl.startTime.isSmallerOrEqualValue(endOfDay)))
+          .getSingleOrNull();
+
+      if (existing != null) {
+        final msg = 'UserTrackRepository: attempt to create new same-day track for userId=$userId; merging into existing id=${existing.id}';
+        // Print immediately for runtime visibility (developer requested)
+        print(msg);
+        _logger.warning(msg);
+        // Load existing segments and map existing DB row to domain model
+        final existingSegments = await _loadCompactTrackSegments(existing.id);
+        final navigationUser = await _getNavigationUserById(existing.userId);
+        final existingTrack = UserTrackMapper.fromDb(
+          userTrackData: existing,
+          user: navigationUser ?? track.user,
+          segments: existingSegments,
+        );
+
+        // Merge segments (append incoming segments)
+        final mergedSegments = <CompactTrack>[];
+        mergedSegments.addAll(existingTrack.segments);
+        mergedSegments.addAll(track.segments);
+
+        final mergedTrack = UserTrack.fromSegments(
+          id: existingTrack.id,
+          user: existingTrack.user,
+          segments: mergedSegments,
+          status: existingTrack.status,
+          metadata: existingTrack.metadata,
+        );
+
+        // Update DB with merged segments
+        final updateResult = await updateUserTrack(mergedTrack);
+        return updateResult;
+      }
+
+  // Сохраняем основную запись UserTrack (нет существующего трека за день)
       final userTrackCompanion = UserTracksCompanion.insert(
         userId: userId,
         startTime: track.startTime,
@@ -172,12 +215,15 @@ class UserTrackRepositoryDrift implements UserTrackRepository {
         metadata: Value(_encodeMetadata(track.metadata)),
       );
 
-      final userTrackId = await _database.into(_database.userTracks).insert(userTrackCompanion);
+  final userTrackId = await _database.into(_database.userTracks).insert(userTrackCompanion);
+  final insertMsg = 'UserTrackRepository: inserted new UserTrack id=$userTrackId for userId=$userId';
+  print(insertMsg);
+  _logger.info(insertMsg);
 
       // Сохраняем сегменты CompactTrack
       for (int i = 0; i < track.segments.length; i++) {
         final segment = track.segments[i];
-        
+
         final compactTrackCompanion = UserTrackMapper.compactTrackToCompanion(
           segment,
           userTrackId,
@@ -186,7 +232,6 @@ class UserTrackRepositoryDrift implements UserTrackRepository {
 
         await _database.into(_database.compactTracks).insert(compactTrackCompanion);
       }
-      
 
       // Возвращаем трек с новым ID
       final savedTrack = UserTrack(

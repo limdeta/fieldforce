@@ -30,6 +30,11 @@ void main() async {
   hierarchicalLoggingEnabled = true;
   Logger('IsolateSyncManager').level = Level.SEVERE;
   Logger('ApiProductSyncService').level = Level.SEVERE;
+  // Logger('TrackManager').level = Level.INFO;
+  // Logger('LocationTrackingService').level = Level.INFO;
+  // Logger('TrackingBloc').level = Level.INFO;
+  // Logger('UserTracksBloc').level = Level.INFO;
+  // Logger('UserTrackRepository').level = Level.INFO;
 
   Logger.root.level = Level.SEVERE;
   Logger.root.onRecord.listen((record) {

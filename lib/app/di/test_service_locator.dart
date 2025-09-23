@@ -31,6 +31,7 @@ import 'package:fieldforce/features/authentication/domain/usecases/logout_usecas
 import 'package:fieldforce/features/authentication/domain/usecases/get_current_session_usecase.dart';
 import 'package:fieldforce/features/authentication/presentation/bloc/bloc.dart';
 import 'package:fieldforce/features/navigation/tracking/presentation/bloc/tracking_bloc.dart';
+import 'package:fieldforce/features/navigation/tracking/presentation/bloc/user_tracks_bloc.dart';
 import 'package:fieldforce/features/shop/data/fixtures/product_fixture_service.dart';
 import 'package:fieldforce/app/database/repositories/trading_point_repository_drift.dart';
 import 'package:fieldforce/app/domain/repositories/app_user_repository.dart';
@@ -323,6 +324,9 @@ Future<void> setupTestServiceLocator() async {
   getIt.registerLazySingleton<TrackingBloc>(
     () => TrackingBloc(),
   );
+
+  // UserTracksBloc as a singleton so its subscriptions and state survive navigation
+  getIt.registerLazySingleton<UserTracksBloc>(() => UserTracksBloc());
 
   // GpsDataManager с mock источником для тестов
   final gpsManager = GpsDataManager();

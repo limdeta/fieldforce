@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:fieldforce/app/theme/app_colors.dart';
 import 'package:fieldforce/features/navigation/tracking/domain/entities/compact_track.dart';
 import 'package:fieldforce/features/navigation/tracking/presentation/bloc/tracking_bloc.dart';
@@ -5,6 +7,7 @@ import 'package:fieldforce/app/presentation/pages/route_detail_page.dart';
 import 'package:fieldforce/app/services/app_session_service.dart';
 import 'package:fieldforce/features/navigation/tracking/domain/entities/navigation_user.dart';
 import 'package:fieldforce/features/navigation/tracking/presentation/bloc/user_tracks_bloc.dart';
+import 'package:fieldforce/features/navigation/tracking/domain/entities/user_track.dart';
 import 'package:fieldforce/app/presentation/widgets/combined_map_widget.dart';
 import 'package:fieldforce/app/presentation/widgets/app_tracking_button.dart';
 import 'package:fieldforce/app/presentation/widgets/tracking_debug_panel.dart';
@@ -69,11 +72,41 @@ class _SalesRepHomeViewState extends State<SalesRepHomeView> {
   // Кэширование последней известной позиции пользователя
   LatLng? _cachedUserLocation;
   double? _cachedUserBearing;
+  // Подписка на обновления TrackingBloc чтобы восстанавливать последнее положение
+  StreamSubscription? _trackingBlocSubscription;
 
   @override
   void initState() {
     super.initState();
     _initializeUser();
+    // Подписываемся на TrackingBloc и восстанавливаем состояние после первого фрейма
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      try {
+        final trackingBloc = context.read<TrackingBloc>();
+
+        // Восстанавливаем последнюю известную позицию из текущего состояния, если есть
+        final currentState = trackingBloc.state;
+        if (currentState is TrackingOn && currentState.latitude != null && currentState.longitude != null) {
+          setState(() {
+            _cachedUserLocation = LatLng(currentState.latitude!, currentState.longitude!);
+            _cachedUserBearing = currentState.bearing;
+          });
+        }
+
+        // Подписываемся на последующие обновления позиций
+        _trackingBlocSubscription = trackingBloc.stream.listen((state) {
+          if (!mounted) return;
+          if (state is TrackingOn && state.latitude != null && state.longitude != null) {
+            setState(() {
+              _cachedUserLocation = LatLng(state.latitude!, state.longitude!);
+              _cachedUserBearing = state.bearing;
+            });
+          }
+        });
+      } catch (e) {
+        // Если контекст/блок ещё не доступен — игнорируем, это не критично
+      }
+    });
   }
 
   Future<void> _initializeUser() async {
@@ -90,6 +123,14 @@ class _SalesRepHomeViewState extends State<SalesRepHomeView> {
         context.read<UserTracksBloc>().add(
           LoadUserTracksEvent(_user!, showActiveTrack: true),
         );
+
+        // Обязательно установим пользователя в TrackingBloc чтобы кнопка трекинга работала
+        try {
+          final trackingBloc = context.read<TrackingBloc>();
+          trackingBloc.setUser(_user!);
+        } catch (_) {
+          // Если блок недоступен — игнорируем (не критично)
+        }
       }
     }
   }
@@ -198,13 +239,19 @@ class _SalesRepHomeViewState extends State<SalesRepHomeView> {
     );
   }
 
+  @override
+  void dispose() {
+    _trackingBlocSubscription?.cancel();
+    super.dispose();
+  }
+
   /// Карта с маршрутом и треками (основной компонент)
   Widget _buildMapArea(BuildContext context, SalesRepHomeState state) {
     return BlocBuilder<SalesRepHomeBloc, SalesRepHomeState>(
       builder: (context, blocState) {
         if (blocState is SalesRepHomeLoaded) {
           final route = blocState.currentRoute;
-          final track = blocState.activeTrack;
+          var track = blocState.activeTrack;
           final routePolylinePoints = blocState.routePolylinePoints;
 
           // Получаем liveBuffer из UserTracksBloc
@@ -213,6 +260,10 @@ class _SalesRepHomeViewState extends State<SalesRepHomeView> {
               CompactTrack? liveBuffer;
               if (userTracksState is UserTracksLoaded) {
                 liveBuffer = userTracksState.liveBuffer;
+                // Если в SalesRepHomeBloc нет activeTrack, используем отображаемый трек из UserTracksBloc
+                if (track == null && userTracksState.activeTrack != null) {
+                  track = userTracksState.activeTrack;
+                }
               }
 
               // Получаем позицию из TrackingBloc если кэшированной нет
@@ -250,11 +301,22 @@ class _SalesRepHomeViewState extends State<SalesRepHomeView> {
           );
         }
 
-        // Состояние загрузки или ошибки - показываем пустую карту
+        // Состояние загрузки или ошибка - показываем карту с последним известным треком/буфером
+        final userTracksState = context.read<UserTracksBloc>().state;
+        UserTrack? displayedTrack;
+        CompactTrack? liveBuffer;
+        if (userTracksState is UserTracksLoaded) {
+          displayedTrack = userTracksState.activeTrack;
+          liveBuffer = userTracksState.liveBuffer;
+        } else {
+          displayedTrack = null;
+          liveBuffer = null;
+        }
+
         return CombinedMapWidget(
           route: null,
-          track: null,
-          liveBuffer: null,
+          track: displayedTrack,
+          liveBuffer: liveBuffer,
           currentUserLocation: _cachedUserLocation,
           currentUserBearing: _cachedUserBearing,
           maxConnectionDistance: 150.0,
@@ -530,8 +592,12 @@ class _SalesRepHomeViewState extends State<SalesRepHomeView> {
   void _syncTracksWithRoute(shop.Route route) {
     if (_user == null) return;
 
-    // Очищаем старые треки
-    context.read<UserTracksBloc>().add(ClearTracksEvent());
+    // NOTE: do NOT clear displayed tracks immediately. Clearing here causes
+    // the map to 'blink' (active track disappears) when navigating away and
+    // back. Instead, let the subsequent LoadUserTracksEvent /
+    // LoadUserTrackForDateEvent replace the tracks when new data arrives.
+    // If a full clear is ever required, dispatch ClearTracksEvent explicitly
+    // from user action.
 
     // Загружаем треки в зависимости от типа маршрута
     if (route.isActive) {
