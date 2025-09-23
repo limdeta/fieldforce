@@ -47,3 +47,8 @@ android {
 flutter {
     source = "../.."
 }
+
+dependencies {
+    // Location APIs for the native foreground service
+    implementation("com.google.android.gms:play-services-location:21.0.1")
+}

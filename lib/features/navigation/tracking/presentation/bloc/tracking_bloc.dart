@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:logging/logging.dart';
 import 'package:fieldforce/features/navigation/tracking/domain/services/location_tracking_service_base.dart';
 import 'package:fieldforce/features/navigation/tracking/domain/entities/navigation_user.dart';
 import 'package:get_it/get_it.dart';
@@ -38,6 +39,7 @@ class TrackingBloc extends Bloc<TrackingEvent, TrackingState> {
   final LocationTrackingServiceBase _trackingService;
   NavigationUser? _currentUser;
   StreamSubscription? _positionSubscription;
+  static final Logger _logger = Logger('TrackingBloc');
   
   // Последняя известная позиция пользователя
   double? _lastLatitude;
@@ -50,6 +52,7 @@ class TrackingBloc extends Bloc<TrackingEvent, TrackingState> {
 
     //  регистрируем все обработчики событий
     on<TrackingTogglePressed>((event, emit) async {
+      _logger.info('TrackingTogglePressed received - current state=${state.runtimeType}');
       if (_currentUser == null) {
         emit(TrackingNoUser());
         return;
@@ -122,7 +125,19 @@ class TrackingBloc extends Bloc<TrackingEvent, TrackingState> {
   Future<void> _pauseTracking(Emitter<TrackingState> emit) async {
     try {
       if (_trackingService.isTracking) {
-        await _trackingService.pauseTracking();
+        _logger.info('Attempting to pause tracking via trackingService');
+        final paused = await _trackingService.pauseTracking();
+        _logger.info('pauseTracking returned: $paused');
+
+        if (!paused) {
+          _logger.warning('pauseTracking failed; attempting full stop');
+          try {
+            final stopped = await _trackingService.stopTracking();
+            _logger.info('stopTracking fallback returned: $stopped');
+          } catch (e, st) {
+            _logger.severe('stopTracking fallback failed', e, st);
+          }
+        }
       }
 
       emit(TrackingOff());
@@ -142,7 +157,7 @@ class TrackingBloc extends Bloc<TrackingEvent, TrackingState> {
     _positionSubscription?.cancel();
     
     try {
-      _positionSubscription = _trackingService.positionStream?.listen(
+        _positionSubscription = _trackingService.positionStream.listen(
         (position) {
           // Сохраняем последнюю позицию
           _lastLatitude = position.latitude;
