@@ -9,6 +9,7 @@ import 'package:flutter/widgets.dart';
 import 'package:get_it/get_it.dart';
 import 'package:fieldforce/features/navigation/tracking/presentation/bloc/tracking_bloc.dart';
 import 'package:fieldforce/features/navigation/tracking/presentation/bloc/user_tracks_bloc.dart';
+import 'package:fieldforce/features/navigation/tracking/domain/services/gps_data_manager.dart';
 
 /// Менеджер жизненного цикла приложения для GPS трекинга
 class AppLifecycleManager with WidgetsBindingObserver {
@@ -19,6 +20,9 @@ class AppLifecycleManager with WidgetsBindingObserver {
   
   bool _isInitialized = false;
   bool _wasTrackingBeforePause = false;
+  DateTime? lastResumeAt;
+  DateTime? _lastGpsRecheckAt;
+  static const Duration _gpsRecheckCooldown = Duration(seconds: 5);
 
   AppLifecycleManager({
     LocationTrackingServiceBase? trackingService,
@@ -80,6 +84,42 @@ class AppLifecycleManager with WidgetsBindingObserver {
     } catch (e) {
       _log('Ошибка при обновлении сессии: $e');
     }
+    // При восстановлении приложения делаем автоматический re-check прав GPS
+    // — но откладываем его на следующий фрейм и добавляем небольшую задержку
+    // чтобы не выполнять тяжёлую работу во время рендера и избежать гонки на
+    // ресурсы UI (ошибка с Image.dispose могла быть вызвана преждевременным
+    // освобождением ресурсов при резком переводе в фон/возврате).
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      lastResumeAt = DateTime.now();
+      await Future.delayed(const Duration(milliseconds: 300));
+      try {
+        if (GetIt.instance.isRegistered<TrackingBloc>()) {
+          final trackingBloc = GetIt.instance<TrackingBloc>();
+          trackingBloc.add(TrackingCheckStatus());
+        }
+        // Only re-check/start native GPS if cooldown elapsed to avoid
+        // repeated quick calls that interfere with Settings UI.
+        final now = DateTime.now();
+        final last = _lastGpsRecheckAt;
+        if (GetIt.instance.isRegistered<GpsDataManager>() && (last == null || now.difference(last) > _gpsRecheckCooldown)) {
+          _lastGpsRecheckAt = now;
+          try {
+            final gpsManager = GetIt.instance.get<GpsDataManager>();
+            try {
+              await gpsManager.startGps();
+            } catch (e) {
+              _log('Ошибка при вызове GpsDataManager.startGps(): $e');
+            }
+          } catch (e) {
+            _log('Ошибка при попытке получить GpsDataManager из DI: $e');
+          }
+        } else {
+          _log('Пропускаем повторный re-check GPS (в пределах cooldown)');
+        }
+      } catch (e) {
+        _log('Ошибка при автоматическом re-check прав GPS: $e');
+      }
+    });
   }
 
   Future<void> _onAppPaused() async {

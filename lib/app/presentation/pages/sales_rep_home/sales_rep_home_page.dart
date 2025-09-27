@@ -10,12 +10,14 @@ import 'package:fieldforce/features/navigation/tracking/presentation/bloc/user_t
 import 'package:fieldforce/features/navigation/tracking/domain/entities/user_track.dart';
 import 'package:fieldforce/app/presentation/widgets/combined_map_widget.dart';
 import 'package:fieldforce/app/presentation/widgets/app_tracking_button.dart';
-import 'package:fieldforce/app/presentation/widgets/tracking_debug_panel.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:fieldforce/app/domain/entities/route.dart' as shop;
 import 'package:fieldforce/features/navigation/tracking/domain/services/gps_data_manager.dart';
+import 'dart:io' show Platform;
+import 'package:geolocator/geolocator.dart';
+import 'package:logging/logging.dart';
 import 'package:get_it/get_it.dart';
 import 'package:fieldforce/features/navigation/tracking/domain/services/location_tracking_service_base.dart';
 import 'bloc/sales_rep_home_bloc.dart';
@@ -156,12 +158,36 @@ class _SalesRepHomeViewState extends State<SalesRepHomeView> {
                   _cachedUserBearing = state.bearing;
                 });
                 // ИСПРАВЛЕНО: Debug панель покажет что происходит с позицией
-              } else if (state is TrackingOff) {
-                // НЕ сбрасываем позицию при остановке - сохраняем последнюю известную
-                // setState(() {
-                //   _cachedUserLocation = null;
-                //   _cachedUserBearing = null;
-                // });
+                // If we are on Android and tracking just turned on, verify
+                // whether the app has background ("always") location permission.
+                // If not, show a SnackBar with an explicit "Open settings" action
+                // — do NOT auto-open settings.
+                try {
+                  WidgetsBinding.instance.addPostFrameCallback((_) async {
+                    try {
+                      if (!Platform.isAndroid) return;
+                      final perm = await Geolocator.checkPermission();
+                      if (perm != LocationPermission.always) {
+                        Logger('SalesRepHomePage').info('Background permission not granted (current=$perm) - prompting user to open settings');
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(
+                            content: const Text('Для стабильной работы в фоне нужно разрешить «Всегда» для местоположения.'),
+                            action: SnackBarAction(
+                              label: 'Открыть настройки',
+                              onPressed: () async {
+                                final opened = await Geolocator.openAppSettings();
+                                Logger('SalesRepHomePage').info('User chose to open app settings: opened=$opened');
+                              },
+                            ),
+                            duration: const Duration(seconds: 8),
+                          ),
+                        );
+                      }
+                    } catch (e, st) {
+                      Logger('SalesRepHomePage').warning('Failed while checking background permission', e, st);
+                    }
+                  });
+                } catch (_) {}
               }
             },
           ),
@@ -217,8 +243,8 @@ class _SalesRepHomeViewState extends State<SalesRepHomeView> {
                     child: AppTrackingButton(),
                   ),
 
-                // Debug панель для трекинга
-                const TrackingDebugPanel(),
+                // debug drain button removed (was causing accidental bulk ingestion that can corrupt tracks)
+
 
                 // Верхняя панель с маршрутом
                 if (state is SalesRepHomeLoaded) _buildTopPanel(context, state),

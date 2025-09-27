@@ -1,23 +1,27 @@
 import 'dart:async';
+import 'dart:io' show Platform;
+
+import 'package:flutter/services.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:logging/logging.dart';
+import 'package:get_it/get_it.dart';
+import 'package:fieldforce/features/navigation/tracking/domain/services/track_manager.dart';
+import 'package:flutter/foundation.dart';
+
 import 'gps_data_source.dart';
 import 'mock_gps_data_source.dart';
+import 'background_ingest_utils.dart';
 
-/// Режимы GPS трекинга
-enum GpsMode {
-  real,
-  mock
-}
+/// Clean GpsDataManager implementing the native Room contract.
+enum GpsMode { real, mock }
 
-/// Конфигурация для режима тестирования GPS
 class GpsTestConfig {
   final String? mockDataPath;
   final double speedMultiplier;
   final bool addGpsNoise;
   final double baseAccuracy;
-  final double? startProgress; // 0.0 - 1.0, с какого момента начать
-  
+  final double? startProgress;
+
   const GpsTestConfig({
     this.mockDataPath,
     this.speedMultiplier = 1.0,
@@ -25,133 +29,97 @@ class GpsTestConfig {
     this.baseAccuracy = 5.0,
     this.startProgress,
   });
-  
-  static const GpsTestConfig defaultTest = GpsTestConfig(
+
+  static const defaultTest = GpsTestConfig(
     mockDataPath: 'assets/data/tracks/continuation_scenario.json',
-    speedMultiplier: 1.5, // Немного ускорено для лучшего восприятия
+    speedMultiplier: 1.5,
     addGpsNoise: true,
     baseAccuracy: 4.0,
   );
-  
-  static const GpsTestConfig fastTest = GpsTestConfig(
+
+  static const fastTest = GpsTestConfig(
     mockDataPath: 'assets/data/tracks/current_day_track.json',
-    speedMultiplier: 10.0, // Очень быстро для быстрой проверки
+    speedMultiplier: 10.0,
     addGpsNoise: false,
     baseAccuracy: 3.0,
-    startProgress: 0.8, // Начать с 80% маршрута
+    startProgress: 0.8,
   );
 }
 
-/// Менеджер GPS источников данных
-/// 
-/// Обеспечивает переключение между реальным GPS и мок-данными
-/// для тестирования трекинга в контролируемой среде
 class GpsDataManager {
   static final Logger _logger = Logger('GpsDataManager');
-  
+
   GpsDataSource? _currentSource;
   GpsMode _currentMode = GpsMode.real;
-  GpsTestConfig? _testConfig;
+
+  static const MethodChannel _platformChannel = MethodChannel('fieldforce/background_location');
+  final StreamController<Position> _nativePositionController = StreamController<Position>.broadcast();
 
   static final GpsDataManager _instance = GpsDataManager._internal();
   factory GpsDataManager() => _instance;
-  GpsDataManager._internal();
+
+  bool _nativeServiceStarted = false;
+  bool _hasBackgroundPermission = false;
+  bool _permissionRequestInProgress = false;
+  DateTime? _lastPermissionRequestAt;
+
+  GpsDataManager._internal() {
+    _platformChannel.setMethodCallHandler((call) async {
+      try {
+        if (call.method == 'onLocation') {
+          final args = Map<String, dynamic>.from(call.arguments as Map);
+          final double lat = (args['latitude'] as num).toDouble();
+          final double lon = (args['longitude'] as num).toDouble();
+          final double accuracy = args.containsKey('accuracy') ? (args['accuracy'] as num).toDouble() : 0.0;
+          final int timestamp = args.containsKey('timestamp') ? (args['timestamp'] as int) : DateTime.now().millisecondsSinceEpoch;
+
+          final pos = Position(
+            latitude: lat,
+            longitude: lon,
+            timestamp: DateTime.fromMillisecondsSinceEpoch(timestamp),
+            accuracy: accuracy,
+            altitude: 0.0,
+            heading: 0.0,
+            altitudeAccuracy: 0.0,
+            headingAccuracy: 0.0,
+            speed: 0.0,
+            speedAccuracy: 0.0,
+          );
+
+          _nativePositionController.add(pos);
+        } else if (call.method == 'onStatus') {
+          _logger.info('GpsDataManager: native status=${call.arguments}');
+        }
+      } catch (e, st) {
+        _logger.warning('Error handling platform channel call', e, st);
+      }
+    });
+  }
 
   GpsMode get currentMode => _currentMode;
   GpsDataSource? get currentSource => _currentSource;
-  
-  /// Инициализирует GPS с указанным режимом
-  Future<void> initialize({
-    required GpsMode mode,
-    GpsTestConfig testConfig = GpsTestConfig.defaultTest,
-  }) async {
+
+  Future<void> initialize({required GpsMode mode, GpsTestConfig testConfig = GpsTestConfig.defaultTest}) async {
     await _disposeCurrentSource();
-    _currentMode = mode;
-    _testConfig = testConfig;
-    
+  _currentMode = mode;
+
     switch (mode) {
       case GpsMode.real:
         _currentSource = RealGpsDataSource();
-        _logger.info('Инициализирован реальный GPS');
         break;
-        
       case GpsMode.mock:
         final mockSource = MockGpsDataSource(
           speedMultiplier: testConfig.speedMultiplier,
           addGpsNoise: testConfig.addGpsNoise,
           baseAccuracy: testConfig.baseAccuracy,
         );
-
-        await mockSource.loadRoute(testConfig.mockDataPath!);
-
-        if (testConfig.startProgress != null) {
-          mockSource.setProgress(testConfig.startProgress!);
-        }
-
+        if (testConfig.mockDataPath != null) await mockSource.loadRoute(testConfig.mockDataPath!);
+        if (testConfig.startProgress != null) mockSource.setProgress(testConfig.startProgress!);
         _currentSource = mockSource;
-        _logger.info('Инициализирован мок GPS с конфигурацией: ${testConfig.mockDataPath}');
-        // mockSource.resume();
         break;
     }
   }
 
-  Future<void> initializeForDevelopment({
-    GpsTestConfig? config,
-  }) async {
-    final testConfig = config ?? GpsTestConfig.defaultTest;
-    await initialize(mode: GpsMode.mock, testConfig: testConfig);
-  }
-
-  Future<void> initializeForDemo() async {
-    await initialize(mode: GpsMode.mock, testConfig: GpsTestConfig.fastTest);
-  }
-
-  Future<void> switchToRealGps() async {
-    await initialize(mode: GpsMode.real);
-  }
-
-  Future<void> switchToMockGps(GpsTestConfig config) async {
-    await initialize(mode: GpsMode.mock, testConfig: config);
-  }
-
-  Stream<Position> getPositionStream({required LocationSettings settings}) {
-    if (_currentSource == null) {
-      throw StateError('GPS источник не инициализирован. Вызовите initialize() сначала.');
-    }
-    return _currentSource!.getPositionStream(settings: settings).map((position) {
-      return position;
-    });
-  }
-
-  Future<bool> checkPermissions() async {
-    if (_currentSource == null) {
-      throw StateError('GPS источник не инициализирован');
-    }
-    
-    return _currentSource!.checkPermissions();
-  }
-
-  Future<Position> getCurrentPosition({required LocationSettings settings}) async {
-    if (_currentSource == null) {
-      throw StateError('GPS источник не инициализирован');
-    }
-    
-    return _currentSource!.getCurrentPosition(settings: settings);
-  }
-  
-  /// Получить информацию о воспроизведении (только для мок режима)
-  Map<String, dynamic>? getPlaybackInfo() {
-    if (_currentSource is MockGpsDataSource) {
-      return (_currentSource as MockGpsDataSource).getPlaybackInfo();
-    }
-    return null;
-  }
-
-  Future<void> dispose() async {
-    await _disposeCurrentSource();
-  }
-  
-  /// Освобождает текущий источник данных
   Future<void> _disposeCurrentSource() async {
     if (_currentSource != null) {
       await _currentSource!.dispose();
@@ -159,106 +127,261 @@ class GpsDataManager {
     }
   }
 
-  Map<String, dynamic> getConfigInfo() {
-    return {
-      'mode': _currentMode.toString(),
-      'isInitialized': _currentSource != null,
-      'testConfig': _testConfig != null ? {
-        'mockDataPath': _testConfig!.mockDataPath,
-        'speedMultiplier': _testConfig!.speedMultiplier,
-        'addGpsNoise': _testConfig!.addGpsNoise,
-        'baseAccuracy': _testConfig!.baseAccuracy,
-        'startProgress': _testConfig!.startProgress,
-      } : null,
-      'playbackInfo': getPlaybackInfo(),
-    };
-  }
-
-  void pauseMockGps() {
-    if (_currentMode == GpsMode.mock && _currentSource is MockGpsDataSource) {
-      final mockSource = _currentSource as MockGpsDataSource;
-      mockSource.pause();
-      _logger.info('Мок GPS приостановлен');
+  Stream<Position> getPositionStream({required LocationSettings settings}) {
+    if (_currentSource == null) {
+      if (Platform.isAndroid) return _nativePositionController.stream;
+      throw StateError('GPS source not initialized');
     }
+
+    return Stream<Position>.multi((controller) {
+      final subs = <StreamSubscription<Position>>[];
+      subs.add(_currentSource!.getPositionStream(settings: settings).listen(controller.add, onError: controller.addError));
+      if (Platform.isAndroid) subs.add(_nativePositionController.stream.listen(controller.add, onError: controller.addError));
+      controller.onCancel = () {
+        for (final s in subs) s.cancel();
+      };
+    });
   }
 
-  void resumeMockGps() {
-    if (_currentMode == GpsMode.mock && _currentSource is MockGpsDataSource) {
-      final mockSource = _currentSource as MockGpsDataSource;
-      mockSource.resume();
-      _logger.info('Мок GPS возобновлен');
-    }
+  Future<bool> checkPermissions() async {
+    if (_currentSource == null) throw StateError('GPS source not initialized');
+    return _currentSource!.checkPermissions();
   }
 
-  /// Управление mock GPS ��отоком (если источник поддерживает)
-  void pauseMockStream() {
-    if (_currentSource is MockGpsDataSource) {
-      (_currentSource as MockGpsDataSource).pauseStream();
-    }
-  }
-
-  void resumeMockStream() {
-    if (_currentSource is MockGpsDataSource) {
-      (_currentSource as MockGpsDataSource).resumeStream();
-    }
-  }
-
-  void stopMockStream() {
-    if (_currentSource is MockGpsDataSource) {
-      (_currentSource as MockGpsDataSource).stopStream();
-    }
-  }
-
-  void throwMockError([dynamic error]) {
-    if (_currentSource is MockGpsDataSource) {
-      (_currentSource as MockGpsDataSource).throwError(error);
-    }
-  }
-
-  /// Включить GPS (start)
-  Future<bool> startGps() async {
+  // Native-backed Room PoC helpers
+  /// Reads a batch from native Room and returns a list of maps representing points.
+  Future<List<Map<String, dynamic>>> readBatchFromNative({int limit = 200}) async {
+    if (!Platform.isAndroid) return [];
     try {
-      // Для mock: resume поток
-      if (_currentSource is MockGpsDataSource) {
-        _logger.info('Используется Mock GPS, возобновление потока...');
-        await Future.delayed(const Duration(seconds: 1));
-        (_currentSource as MockGpsDataSource).resumeStream();
-        return true;
+      final res = await _platformChannel.invokeMethod<List>('readBatch', {'limit': limit});
+      if (res == null) return [];
+      // Each element should be a Map coming from the platform channel
+      final out = <Map<String, dynamic>>[];
+      for (final e in res) {
+        try {
+          final m = Map<String, dynamic>.from(e as Map);
+          out.add(m);
+        } catch (_) {
+          // ignore malformed
+        }
       }
-
-      // Для реального GPS: проверяем разрешения и подписываемся на поток
-      _logger.info('Используется реальный GPS, проверка разрешений...');
-      _logger.fine('Текущий источник: $_currentSource');
-      // Defensive timeout already implemented in underlying checkPermissions if desired
-      final hasPermission = await checkPermissions().timeout(
-        const Duration(seconds: 15),
-        onTimeout: () {
-          _logger.warning('checkPermissions() timed out');
-          return false;
-        },
-      );
-
-      _logger.info('checkPermissions() returned: $hasPermission');
-      if (hasPermission) {
-        _logger.info('Location permission granted — GPS started');
-        // Subscribe to stream or other start logic here
-        return true;
-      } else {
-        _logger.warning('Location permission denied - cannot start real GPS');
-        return false;
-      }
+      return out;
     } catch (e, st) {
-      _logger.severe('Exception while starting GPS', e, st);
+      _logger.warning('readBatchFromNative failed', e, st);
+      return [];
+    }
+  }
+
+  Future<bool> markProcessedOnNative(List<int> ids) async {
+    if (!Platform.isAndroid) return false;
+    try {
+      final res = await _platformChannel.invokeMethod<bool>('markProcessed', {'ids': ids});
+      return res == true;
+    } catch (e, st) {
+      _logger.warning('markProcessedOnNative failed', e, st);
       return false;
     }
   }
 
-  /// Отключить GPS (stop)
-  void stopGps() {
-    if (_currentSource == null) return;
-    if (_currentSource is MockGpsDataSource) {
-      (_currentSource as MockGpsDataSource).pauseStream();
+  /// Read one batch, parse minimal info and run isolate worker for heavy merging.
+  Future<int> processOneBatchFromNative({int limit = 200}) async {
+    final batch = await readBatchFromNative(limit: limit);
+    if (batch.isEmpty) return 0;
+
+    final rawIds = <int>[];
+    for (final m in batch) {
+      try {
+        rawIds.add((m['id'] as num).toInt());
+      } catch (_) {
+        // skip malformed
+      }
     }
-    //gpsState.value = GpsToggleState.off;
+    if (rawIds.isEmpty) return 0;
+
+    try {
+      final Map<String, dynamic> res = await compute<_BatchProcessInput, Map<String, dynamic>>(
+        _processBatchIsolate,
+        _BatchProcessInput(batch.map((e) => e).toList()),
+      );
+
+      final List<dynamic>? idsDyn = res['ids'] as List<dynamic>?;
+      final List<dynamic>? pointsDyn = res['points'] as List<dynamic>?;
+      if (idsDyn == null || idsDyn.isEmpty) return 0;
+
+      final ids = idsDyn.map((e) => (e as num).toInt()).toList();
+
+      // Rehydrate points on main isolate, order them, split by time gaps into
+      // CompactTrack segments and persist them atomically via TrackManager.
+      try {
+        final trackManager = GetIt.instance<TrackManager>();
+        if (pointsDyn == null || pointsDyn.isEmpty) {
+          // Nothing to persist; ack ids to avoid reprocessing
+          final ok = await markProcessedOnNative(ids);
+          if (!ok) _logger.warning('Failed to mark processed ids on native side');
+          return ids.length;
+        }
+
+        // Rehydrate and collect points
+        final pts = <Map<String, dynamic>>[];
+        for (final p in pointsDyn) {
+          try {
+            final m = p as Map<String, dynamic>;
+            pts.add(m);
+          } catch (_) {
+            // ignore malformed
+          }
+        }
+
+        if (pts.isEmpty) {
+          final ok = await markProcessedOnNative(ids);
+          if (!ok) _logger.warning('Failed to mark processed ids on native side');
+          return ids.length;
+        }
+
+        // Sort by timestamp ascending
+        pts.sort((a, b) => (a['timestamp'] as num).toInt().compareTo((b['timestamp'] as num).toInt()));
+
+        // Используем общую логику разделения на сегменты (5 минут по умолчанию)
+        final segments = splitIntoSegments(pts);
+
+        if (segments.isEmpty) {
+          final ok = await markProcessedOnNative(ids);
+          if (!ok) _logger.warning('Failed to mark processed ids on native side');
+          return ids.length;
+        }
+
+        final persisted = await trackManager.persistExternalSegments(segments);
+        if (persisted) {
+          final ok = await markProcessedOnNative(ids);
+          if (!ok) _logger.warning('Failed to mark processed ids on native side');
+          return ids.length;
+        } else {
+          _logger.warning('persistExternalSegments failed - skipping native ack');
+          return 0;
+        }
+      } catch (e, st) {
+        _logger.warning('Failed persisting points via TrackManager', e, st);
+        return 0;
+      }
+    } catch (e, st) {
+      _logger.warning('Isolate batch processing failed', e, st);
+      final ok = await markProcessedOnNative(rawIds);
+      return ok ? rawIds.length : 0;
+    }
+  }
+
+  Future<int> drainNativeQueue({int maxBatches = 100, int batchSize = 200}) async {
+    var total = 0;
+    for (var i = 0; i < maxBatches; i++) {
+      final processed = await processOneBatchFromNative(limit: batchSize);
+      if (processed == 0) break;
+      total += processed;
+      await Future.delayed(const Duration(milliseconds: 50));
+    }
+    return total;
+  }
+
+  // Получаем разрешения и стартуем наш Kotlin FGS
+  Future<bool> startGps() async {
+    try {
+      if (_currentSource is MockGpsDataSource) {
+        (_currentSource as MockGpsDataSource).resumeStream();
+        return true;
+      }
+
+      final hasPermission = await checkPermissions();
+      if (!hasPermission) return false;
+
+      if (Platform.isAndroid) {
+        try {
+          final current = await Geolocator.checkPermission();
+          if (current == LocationPermission.denied) {
+            await Geolocator.requestPermission();
+          }
+
+          final after = await Geolocator.checkPermission();
+          final now = DateTime.now();
+          final recentlyRequested = _lastPermissionRequestAt != null && now.difference(_lastPermissionRequestAt!).inSeconds < 3;
+
+          if (after != LocationPermission.always && !_permissionRequestInProgress && !recentlyRequested) {
+            _permissionRequestInProgress = true;
+            _lastPermissionRequestAt = DateTime.now();
+            try {
+              await Geolocator.requestPermission();
+            } finally {
+              _permissionRequestInProgress = false;
+            }
+          }
+
+          final finalPerm = await Geolocator.checkPermission();
+          _hasBackgroundPermission = finalPerm == LocationPermission.always;
+          if (_hasBackgroundPermission && !_nativeServiceStarted) {
+            await _platformChannel.invokeMethod('startService', {'minDistance': 5.0, 'intervalMillis': 15000});
+            _nativeServiceStarted = true;
+          }
+        } catch (e, st) {
+          _logger.warning('startGps: error while requesting permissions/startService', e, st);
+        }
+      }
+
+      return true;
+    } catch (e, st) {
+      _logger.warning('startGps failed', e, st);
+      return false;
+    }
+  }
+
+  void stopGps() {
+    try {
+      if (_currentSource is MockGpsDataSource) {
+        (_currentSource as MockGpsDataSource).pauseStream();
+      }
+      if (Platform.isAndroid) {
+        _platformChannel.invokeMethod('stopService');
+      }
+    } catch (e, st) {
+      _logger.warning('stopGps failed', e, st);
+    } finally {
+      _nativeServiceStarted = false;
+      _hasBackgroundPermission = false;
+    }
   }
 }
+
+class _BatchProcessInput {
+  final List<Map<String, dynamic>> points;
+  _BatchProcessInput(this.points);
+}
+
+// Isolate entrypoint: normalize maps, ensure types, and return ids + points.
+Map<String, dynamic> _processBatchIsolate(_BatchProcessInput input) {
+  final ids = <int>[];
+  final points = <Map<String, dynamic>>[];
+
+  for (final m in input.points) {
+    try {
+      final id = (m['id'] as num).toInt();
+      final lat = (m['latitude'] as num).toDouble();
+      final lon = (m['longitude'] as num).toDouble();
+      final acc = m.containsKey('accuracy') ? (m['accuracy'] as num).toDouble() : 0.0;
+      final timestamp = m.containsKey('timestamp') ? (m['timestamp'] as num).toInt() : DateTime.now().millisecondsSinceEpoch;
+
+      ids.add(id);
+      points.add({
+        'id': id,
+        'latitude': lat,
+        'longitude': lon,
+        'accuracy': acc,
+        'timestamp': timestamp,
+      });
+    } catch (_) {
+      // ignore malformed entry
+    }
+  }
+
+  return {
+    'ids': ids,
+    'points': points,
+  };
+}
+

@@ -35,6 +35,7 @@ void main() async {
   // Logger('TrackingBloc').level = Level.INFO;
   // Logger('UserTracksBloc').level = Level.INFO;
   // Logger('UserTrackRepository').level = Level.INFO;
+  // Logger('GpsDataManager').level = Level.FINE;
 
   Logger.root.level = Level.SEVERE;
   Logger.root.onRecord.listen((record) {
