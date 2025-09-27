@@ -5,6 +5,7 @@ import 'package:fieldforce/features/navigation/tracking/domain/entities/user_tra
 import 'package:fieldforce/features/navigation/tracking/domain/enums/track_status.dart';
 import 'package:fieldforce/features/navigation/tracking/domain/repositories/user_track_repository.dart';
 import 'package:fieldforce/features/navigation/tracking/domain/services/gps_buffer.dart';
+import 'package:fieldforce/features/navigation/tracking/domain/services/external_segment_persister.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:logging/logging.dart';
 
@@ -31,7 +32,9 @@ class TrackManager {
 
   final StreamController<UserTrack> _trackUpdateController = StreamController<UserTrack>.broadcast();
   
-  TrackManager(this._repository) {
+  final ExternalSegmentPersister _externalPersister;
+
+  TrackManager(this._repository, {ExternalSegmentPersister? externalPersister}) : _externalPersister = externalPersister ?? DefaultExternalSegmentPersister(_repository) {
     // КРИТИЧНО: подписываемся на автосбросы буфера
     _logger.info('🔌 TrackManager: подписываемся на autoFlushes');
     _autoFlushSubscription = _buffer.autoFlushes.listen((segment) {
@@ -214,12 +217,12 @@ class TrackManager {
   }
 
   /// Слить текущий буфер в трек и сохранить без изменения статуса трека
-  Future<void> flushBufferToCurrentTrack() async {
-    if (_currentTrack == null) return;
-    if (!_buffer.hasData) return;
+  Future<bool> flushBufferToCurrentTrack() async {
+    if (_currentTrack == null) return false;
+    if (!_buffer.hasData) return false;
 
-  final segment = _buffer.drain();
-    if (segment.pointCount == 0) return;
+    final segment = _buffer.drain();
+    if (segment.pointCount == 0) return false;
 
     try {
       _logger.info('TRACK_SAVE_START: explicit flushBufferToCurrentTrack');
@@ -230,12 +233,44 @@ class TrackManager {
         _trackUpdateController.add(_currentTrack!);
         _logger.info('💾 TrackManager.flushBufferToCurrentTrack: buffered segment saved and emitted');
         _lastSavedTrack = _currentTrack;
+        return true;
       } else {
         _logger.severe('❌ TrackManager.flushBufferToCurrentTrack: ошибка сохранения');
+        return false;
       }
     } catch (e, st) {
       _logger.severe('❌ TrackManager.flushBufferToCurrentTrack: исключение', e, st);
+      return false;
     }
+  }
+
+  /// Persist externally-provided segments (for example from native background queue).
+  ///
+  /// Rules:
+  /// - Segments should be ordered by time before calling this method.
+  /// - Segments that are entirely older than the current track end by more than
+  ///   [allowedBackfillSeconds] will be dropped as likely invalid/replayed points.
+  /// - Each accepted segment is appended to the in-memory current track and
+  ///   persisted via repository.saveOrUpdateUserTrack. The method returns true
+  ///   only if all persistence operations succeed.
+  Future<bool> persistExternalSegments(List<CompactTrack> segments, {int allowedBackfillSeconds = 30}) async {
+    if (segments.isEmpty) return true;
+
+    if (_currentTrack == null) {
+      _logger.warning('TrackManager.persistExternalSegments: no active _currentTrack in memory');
+      return false;
+    }
+
+    _logger.info('TrackManager.persistExternalSegments: delegating to persister for track id=${_currentTrack!.id} segments=${segments.length}');
+    print('TRACE: persistExternalSegments -> track id=${_currentTrack!.id} segments=${segments.length}');
+    final success = await _externalPersister.persistExternalSegments(_currentTrack!, segments, allowedBackfillSeconds: allowedBackfillSeconds);
+    print('TRACE: persister returned $success');
+    if (success) {
+      _updateCounter++;
+      _trackUpdateController.add(_currentTrack!);
+      try { _lastSavedTrack = _currentTrack; } catch (_) {}
+    }
+    return success;
   }
   
   Future<void> resumeTracking() async {

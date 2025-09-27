@@ -18,53 +18,55 @@ import com.google.android.gms.location.LocationRequest
 import com.google.android.gms.location.LocationResult
 import com.google.android.gms.location.LocationServices
 import com.google.android.gms.location.Priority
-import io.flutter.plugin.common.MethodChannel
-import io.flutter.embedding.engine.FlutterEngine
-import io.flutter.FlutterInjector
+import com.instock.fieldforce.db.BgGpsDatabase
+import com.instock.fieldforce.db.BgGpsPoint
 
 class LocationForegroundService : Service() {
     private val CHANNEL_ID = "fieldforce_location_channel"
     private val NOTIF_ID = 8472
     private lateinit var fusedClient: FusedLocationProviderClient
     private lateinit var locationCallback: LocationCallback
-    private var engine: FlutterEngine? = null
-    private var methodChannel: MethodChannel? = null
+    // Use Room DB for background points
+    private val writeExecutor = java.util.concurrent.Executors.newSingleThreadExecutor()
+    private var db: BgGpsDatabase? = null
 
     override fun onCreate() {
         super.onCreate()
         fusedClient = LocationServices.getFusedLocationProviderClient(this)
         createNotificationChannel()
 
-        // Initialize Flutter engine for MethodChannel communication if needed
+        // Initialize DB instance (lazy-backed)
         try {
-            val injector = FlutterInjector.instance()
-            engine = FlutterEngine(this)
-            // Note: don't execute a Dart entrypoint here; we'll only use MethodChannel to send events
-            methodChannel = MethodChannel(engine!!.dartExecutor.binaryMessenger, "fieldforce/background_location")
+            db = BgGpsDatabase.getInstance(applicationContext)
         } catch (e: Exception) {
-            // Best-effort, if engine can't be created we still continue with local behavior
+            // best-effort
+            db = null
         }
 
         locationCallback = object : LocationCallback() {
             override fun onLocationResult(result: LocationResult) {
                 for (loc in result.locations) {
-                    sendLocationToFlutter(loc)
+                    persistLocationToDb(loc)
                 }
             }
         }
     }
 
-    private fun sendLocationToFlutter(loc: Location) {
-        val map = HashMap<String, Any?>()
-        map["latitude"] = loc.latitude
-        map["longitude"] = loc.longitude
-        map["accuracy"] = loc.accuracy
-        map["timestamp"] = loc.time
-        map["isBackground"] = true
-        try {
-            methodChannel?.invokeMethod("onLocation", map)
-        } catch (e: Exception) {
-            // swallow: flutter engine may not be available in some contexts
+    private fun persistLocationToDb(loc: Location) {
+        val dao = db?.bgGpsPointDao() ?: return
+        val point = BgGpsPoint(
+            latitude = loc.latitude,
+            longitude = loc.longitude,
+            accuracy = loc.accuracy,
+            timestamp = loc.time,
+            processed = false
+        )
+        writeExecutor.execute {
+            try {
+                dao.insert(point)
+            } catch (e: Exception) {
+                // ignore write errors for PoC
+            }
         }
     }
 
@@ -79,7 +81,9 @@ class LocationForegroundService : Service() {
 
     override fun onDestroy() {
         stopLocationUpdates()
-        engine?.destroy()
+        try {
+            writeExecutor.shutdownNow()
+        } catch (_: Exception) {}
         super.onDestroy()
     }
 

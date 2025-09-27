@@ -10,7 +10,6 @@ import 'package:fieldforce/features/navigation/tracking/presentation/bloc/user_t
 import 'package:fieldforce/features/navigation/tracking/domain/entities/user_track.dart';
 import 'package:fieldforce/app/presentation/widgets/combined_map_widget.dart';
 import 'package:fieldforce/app/presentation/widgets/app_tracking_button.dart';
-import 'package:fieldforce/app/presentation/widgets/tracking_debug_panel.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:latlong2/latlong.dart';
@@ -244,8 +243,8 @@ class _SalesRepHomeViewState extends State<SalesRepHomeView> {
                     child: AppTrackingButton(),
                   ),
 
-                // Debug панель для трекинга
-                const TrackingDebugPanel(),
+                // debug drain button removed (was causing accidental bulk ingestion that can corrupt tracks)
+
 
                 // Верхняя панель с маршрутом
                 if (state is SalesRepHomeLoaded) _buildTopPanel(context, state),

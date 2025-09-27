@@ -640,6 +640,10 @@ class _MapWidgetState extends State<MapWidget> {
   List<Polyline> _buildConnectionLines(UserTrack track, CompactTrack? liveBuffer) {
     final connectionLines = <Polyline>[];
     
+    // Конфигурация для разрыва соединений
+    const int maxTimeGapMinutes = 10; // 10 минут максимальный разрыв по времени
+    final maxTimeGapMs = maxTimeGapMinutes * 60 * 1000; // в миллисекундах
+    
     // 1. Соединения между сегментами трека
     for (int i = 0; i < track.segments.length - 1; i++) {
       final currentSegment = track.segments[i];
@@ -649,15 +653,24 @@ class _MapWidgetState extends State<MapWidget> {
       
       // Получаем последнюю точку текущего сегмента
       final (endLat, endLng) = currentSegment.getCoordinates(currentSegment.pointCount - 1);
+      final endTime = currentSegment.getTimestamp(currentSegment.pointCount - 1);
       
       // Получаем первую точку следующего сегмента
       final (startLat, startLng) = nextSegment.getCoordinates(0);
+      final startTime = nextSegment.getTimestamp(0);
       
       // Проверяем расстояние
       final distance = _calculateDistance(endLat, endLng, startLat, startLng);
       final maxDistance = widget.maxConnectionDistance ?? _maxConnectionDistance;
       if (distance > maxDistance) {
         // print('⚠️ Пропускаем соединение между сегментами ${i} и ${i+1}: расстояние ${distance.toStringAsFixed(1)}м > ${maxDistance}м');
+        continue;
+      }
+      
+      // Проверяем временной разрыв
+      final timeDiff = startTime.difference(endTime).inMilliseconds;
+      if (timeDiff > maxTimeGapMs) {
+        _logger.fine('⏱️ Пропускаем соединение между сегментами ${i} и ${i+1}: временной разрыв ${(timeDiff / 60000).toStringAsFixed(1)} мин > $maxTimeGapMinutes мин');
         continue;
       }
       
@@ -679,14 +692,20 @@ class _MapWidgetState extends State<MapWidget> {
       final lastSegment = track.segments.last;
       if (lastSegment.pointCount > 0) {
         final (endLat, endLng) = lastSegment.getCoordinates(lastSegment.pointCount - 1);
+        final endTime = lastSegment.getTimestamp(lastSegment.pointCount - 1);
+        
         final (startLat, startLng) = liveBuffer.getCoordinates(0);
+        final startTime = liveBuffer.getTimestamp(0);
         
         // Проверяем расстояние
         final distance = _calculateDistance(endLat, endLng, startLat, startLng);
         final maxDistance = widget.maxConnectionDistance ?? _maxConnectionDistance;
         
-        if (distance <= maxDistance) {
-          // Соединяем только если расстояние разумное
+        // Проверяем временной разрыв
+        final timeDiff = startTime.difference(endTime).inMilliseconds;
+        
+        if (distance <= maxDistance && timeDiff <= maxTimeGapMs) {
+          // Соединяем только если расстояние и время разумные
           connectionLines.add(
             Polyline(
               points: [
@@ -698,7 +717,12 @@ class _MapWidgetState extends State<MapWidget> {
             ),
           );
         } else {
-          _logger.warning('⚠️ Пропускаем соединение до live буфера: расстояние ${distance.toStringAsFixed(1)}м > ${maxDistance}м');
+          if (distance > maxDistance) {
+            _logger.fine('⚠️ Пропускаем соединение до live буфера: расстояние ${distance.toStringAsFixed(1)}м > ${maxDistance}м');
+          }
+          if (timeDiff > maxTimeGapMs) {
+            _logger.fine('⏱️ Пропускаем соединение до live буфера: временной разрыв ${(timeDiff / 60000).toStringAsFixed(1)} мин > $maxTimeGapMinutes мин');
+          }
         }
       }
     }
