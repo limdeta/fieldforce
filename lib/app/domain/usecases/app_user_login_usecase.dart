@@ -19,7 +19,7 @@ class AppUserLoginUseCase {
   Future<Either<AuthFailure, AppSession>> call({
     required String phoneNumber,
     required String password,
-    bool rememberMe = false,
+    bool rememberMe = true,
   }) async {
     final authResult = await _loginUseCase.call(
       phoneString: phoneNumber,

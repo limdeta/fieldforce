@@ -1,6 +1,5 @@
 import 'package:fieldforce/app/domain/usecases/get_current_app_session_usecase.dart';
 import 'package:fieldforce/features/authentication/domain/entities/session_state.dart';
-import 'package:fieldforce/features/authentication/domain/services/authentication_service.dart';
 import 'package:fieldforce/features/navigation/tracking/domain/entities/navigation_user.dart';
 import 'package:fieldforce/features/navigation/tracking/domain/entities/user_track.dart';
 import 'package:fieldforce/features/navigation/tracking/domain/services/location_tracking_service_base.dart';
@@ -16,7 +15,6 @@ class AppLifecycleManager with WidgetsBindingObserver {
 
   final LocationTrackingServiceBase _trackingService;
   final GetCurrentAppSessionUseCase _sessionUsecase;
-  final AuthenticationService _authService;
   
   bool _isInitialized = false;
   bool _wasTrackingBeforePause = false;
@@ -27,10 +25,8 @@ class AppLifecycleManager with WidgetsBindingObserver {
   AppLifecycleManager({
     LocationTrackingServiceBase? trackingService,
     GetCurrentAppSessionUseCase? sessionUsecase,
-    AuthenticationService? authService,
   }) : _trackingService = trackingService ?? GetIt.instance<LocationTrackingServiceBase>(),
-       _sessionUsecase = sessionUsecase ?? GetIt.instance<GetCurrentAppSessionUseCase>(),
-       _authService = authService ?? GetIt.instance<AuthenticationService>();
+       _sessionUsecase = sessionUsecase ?? GetIt.instance<GetCurrentAppSessionUseCase>();
 
   Future<void> initialize() async {
     if (_isInitialized) return;
@@ -78,12 +74,6 @@ class AppLifecycleManager with WidgetsBindingObserver {
     
     _wasTrackingBeforePause = false;
 
-    // Фоновая проверка и обновление сессии при возвращении в приложение
-    try {
-      await _authService.refreshSessionIfNeeded();
-    } catch (e) {
-      _log('Ошибка при обновлении сессии: $e');
-    }
     // При восстановлении приложения делаем автоматический re-check прав GPS
     // — но откладываем его на следующий фрейм и добавляем небольшую задержку
     // чтобы не выполнять тяжёлую работу во время рендера и избежать гонки на
@@ -97,8 +87,6 @@ class AppLifecycleManager with WidgetsBindingObserver {
           final trackingBloc = GetIt.instance<TrackingBloc>();
           trackingBloc.add(TrackingCheckStatus());
         }
-        // Only re-check/start native GPS if cooldown elapsed to avoid
-        // repeated quick calls that interfere with Settings UI.
         final now = DateTime.now();
         final last = _lastGpsRecheckAt;
         if (GetIt.instance.isRegistered<GpsDataManager>() && (last == null || now.difference(last) > _gpsRecheckCooldown)) {
@@ -172,7 +160,7 @@ class AppLifecycleManager with WidgetsBindingObserver {
 
                     final user = appSession.appUser as NavigationUser;
 
-                    // Если сервис трекинга уже активен — синхронизируем BLoC'ы
+                    // Если сервис трекинга уже активен — синхронизируем BLoC
                     if (_trackingService.isTracking) {
                       _log('TrackingService уже активен - синхронизируем состояние');
                       try {

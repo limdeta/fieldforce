@@ -1,5 +1,4 @@
 import 'package:fieldforce/app/domain/repositories/app_user_repository.dart';
-import 'package:fieldforce/app/domain/entities/app_user.dart';
 import 'package:fieldforce/features/shop/domain/repositories/employee_repository.dart';
 import 'package:fieldforce/features/shop/domain/repositories/trading_point_repository.dart';
 import 'package:fieldforce/features/shop/domain/entities/employee.dart';

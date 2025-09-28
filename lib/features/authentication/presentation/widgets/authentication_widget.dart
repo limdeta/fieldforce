@@ -30,13 +30,12 @@ class _AuthenticationWidgetState extends State<AuthenticationWidget> {
   final _formKey = GlobalKey<FormState>();
   final _phoneController = TextEditingController();
   final _passwordController = TextEditingController();
-  bool _rememberMe = false;
+  bool _rememberMe = true;
 
   @override
   void initState() {
     super.initState();
     if (widget.initialPhone != null) {
-      // Store only the local part (10 digits) in the controller so UI shows +7 as prefix
       final cleaned = widget.initialPhone!.replaceAll(RegExp(r'[^\d]'), '');
       String localPart = cleaned;
       if (cleaned.startsWith('7') && cleaned.length == 11) {
@@ -69,7 +68,7 @@ class _AuthenticationWidgetState extends State<AuthenticationWidget> {
       } else if (raw.length == 11 && raw.startsWith('7')) {
         phoneString = raw;
       } else {
-        phoneString = raw; // let domain validate
+        phoneString = raw;
       }
 
       context.read<AuthenticationBloc>().add(
@@ -98,7 +97,6 @@ class _AuthenticationWidgetState extends State<AuthenticationWidget> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
-              // Phone number field
               TextFormField(
                 controller: _phoneController,
                 decoration: const InputDecoration(
@@ -142,7 +140,6 @@ class _AuthenticationWidgetState extends State<AuthenticationWidget> {
               
               const SizedBox(height: 16),
               
-              // Remember me checkbox
               Row(
                 children: [
                   Checkbox(
@@ -159,7 +156,6 @@ class _AuthenticationWidgetState extends State<AuthenticationWidget> {
               
               const SizedBox(height: 24),
               
-              // Login button
               ElevatedButton(
                 onPressed: isLoading ? null : _handleLogin,
                 child: isLoading
@@ -171,7 +167,6 @@ class _AuthenticationWidgetState extends State<AuthenticationWidget> {
                     : const Text('Войти'),
               ),
               
-              // Test data section
               if (widget.showTestData) ...[
                 const SizedBox(height: 20),
                 const Divider(),
@@ -215,7 +210,6 @@ class _AuthenticationWidgetState extends State<AuthenticationWidget> {
               const SizedBox(width: 8),
               Expanded(
                 child: Text(
-                  // show full international format for readability
                   widget.initialPhone != null ? '+7${widget.initialPhone}' : '+7-999-111-2233',
                   style: const TextStyle(fontFamily: 'monospace'),
                 ),
@@ -223,7 +217,6 @@ class _AuthenticationWidgetState extends State<AuthenticationWidget> {
               IconButton(
                 icon: const Icon(Icons.copy, size: 16),
                 onPressed: () {
-                  // copy only local part (without +7) into the input field
                   _phoneController.text = widget.initialPhone ?? '999-111-2233';
                 },
                 tooltip: 'Скопировать',

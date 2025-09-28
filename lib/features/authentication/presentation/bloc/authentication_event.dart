@@ -17,7 +17,7 @@ class AuthenticationLoginRequested extends AuthenticationEvent {
   const AuthenticationLoginRequested({
     required this.phoneNumber,
     required this.password,
-    this.rememberMe = false,
+    this.rememberMe = true,
   });
 
   @override

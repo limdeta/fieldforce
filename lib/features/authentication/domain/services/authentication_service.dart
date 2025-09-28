@@ -26,7 +26,7 @@ class AuthenticationService {
   Future<Either<AuthFailure, UserSession>> authenticateUser(
     PhoneNumber phoneNumber,
     String password, {
-    bool rememberMe = false,
+    bool rememberMe = true,
   }) async {
     try {
       // 1. Сначала пытаемся аутентифицироваться через внешний API
@@ -73,10 +73,8 @@ class AuthenticationService {
       (failure) => Left(AuthFailure('Сервер недоступен. Требуется подключение к интернету для первого входа.')),
       (existingSession) async {
         if (existingSession != null && existingSession.isValid) {
-          // Есть валидная сессия - разрешаем вход без API
           return Right(existingSession);
         } else {
-          // Нет валидной сессии или она истекла
           if (existingSession != null && !existingSession.isValid) {
             final hoursSinceLogin = DateTime.now().difference(existingSession.loginTime).inHours;
             return Left(AuthFailure('Истекло время сессии (прошло $hoursSinceLoginч). Требуется повторная аутентификация через интернет.'));
@@ -92,10 +90,9 @@ class AuthenticationService {
   Future<Either<AuthFailure, UserSession>> _createBasicSessionAfterApiAuth(
     PhoneNumber phoneNumber,
     String password, {
-    bool rememberMe = false,
+    bool rememberMe = true,
   }) async {
     try {
-      // Создаем или получаем пользователя в auth модуле
       final userResult = await _getOrCreateAuthUser(phoneNumber, password);
 
       return userResult.fold(
@@ -124,7 +121,6 @@ class AuthenticationService {
     }
   }
 
-  /// Получает существующего пользователя или создает нового в auth модуле
   Future<Either<Failure, User>> _getOrCreateAuthUser(
     PhoneNumber phoneNumber,
     String password,
@@ -135,10 +131,10 @@ class AuthenticationService {
       (failure) async {
         final hashedPassword = PasswordService.hashPassword(password);
         final newUser = User.create(
-          externalId: 'auth_${phoneNumber.value}', // Генерируем externalId для auth модуля
+          externalId: 'auth_${phoneNumber.value}',
           phoneNumber: phoneNumber,
           hashedPassword: hashedPassword,
-          role: UserRole.user, // Используем существующую роль
+          role: UserRole.user,
         );
 
         return newUser.fold(
@@ -183,7 +179,6 @@ class AuthenticationService {
     }
   }
 
-  /// Валидация запроса аутентификации
   Either<AuthFailure, void> validateAuthenticationRequest(
     PhoneNumber phoneNumber,
     String password,
@@ -200,8 +195,6 @@ class AuthenticationService {
     return const Right(null);
   }
 
-  /// Фоновая проверка и продление сессии
-  /// Вызывается периодически для поддержания актуальности сессии
   Future<Either<Failure, void>> refreshSessionIfNeeded() async {
     try {
       final sessionResult = await sessionRepository.getCurrentSession();
@@ -215,16 +208,14 @@ class AuthenticationService {
 
           final hoursSinceLogin = DateTime.now().difference(existingSession.loginTime).inHours;
           
-          // Если сессия старше 12 часов, пытаемся ее освежить
+          // Если сессия старше 12 часов, пытаемся ее обновить
           if (hoursSinceLogin > 12) {
             
-            // Пытаемся получить свежие данные пользователя
             final userInfoResult = await authApiService.getUserInfo();
             
             return userInfoResult.fold(
               (failure) {
-                // Не удалось освежить - оставляем старую сессию
-                _logger.warning('AuthenticationService: Не удалось освежить сессию: ${failure.message}');
+                _logger.warning('AuthenticationService: Не удалось обновить сессию: ${failure.message}');
                 return const Right(null);
               },
               (userData) async {
@@ -270,7 +261,6 @@ class AuthenticationService {
     }
   }
 
-  /// Метод logoutUser для совместимости с LogoutUseCase
   Future<Either<AuthFailure, void>> logoutUser() async {
     return logout();
   }

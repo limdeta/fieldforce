@@ -12,7 +12,7 @@ class LoginUseCase {
   Future<Either<AuthFailure, UserSession>> call({
     required String phoneString,
     required String password,
-    bool rememberMe = false,
+    bool rememberMe = true,
   }) async {
 
     final phoneResult = PhoneNumber.create(phoneString);
