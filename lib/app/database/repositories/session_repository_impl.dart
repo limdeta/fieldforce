@@ -3,6 +3,7 @@ import 'dart:io';
 // import 'package:flutter_secure_storage/flutter_secure_storage.dart'; // Временно отключено для Windows сборки
 import 'package:device_info_plus/device_info_plus.dart';
 import 'package:fieldforce/shared/failures.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../../features/authentication/domain/entities/user_session.dart';
 import '../../../features/authentication/domain/entities/user.dart';
@@ -11,42 +12,21 @@ import '../../../features/authentication/domain/value_objects/phone_number.dart'
 import '../../../shared/either.dart';
 
 
-/// Временная заглушка для FlutterSecureStorage
-class _MockSecureStorage {
-  static final Map<String, String> _storage = {};
-  
-  const _MockSecureStorage();
-  
-  Future<String?> read({required String key}) async {
-    return _storage[key];
-  }
-  
-  Future<void> write({required String key, required String value}) async {
-    _storage[key] = value;
-  }
-  
-  Future<void> delete({required String key}) async {
-    _storage.remove(key);
-  }
-  
-  Future<void> deleteAll() async {
-    _storage.clear();
-  }
-}
-
 /// Реализация репозитория сессий с использованием зашифрованного хранилища
 class SessionRepositoryImpl implements SessionRepository {
   static const String _sessionKey = 'user_session';
-  final _MockSecureStorage _secureStorage;
 
-  const SessionRepositoryImpl({
-    _MockSecureStorage? secureStorage,
-  }) : _secureStorage = secureStorage ?? const _MockSecureStorage();
+  const SessionRepositoryImpl();
+
+  Future<SharedPreferences> _getPreferences() async {
+    return await SharedPreferences.getInstance();
+  }
 
   @override
   Future<Either<AuthFailure, UserSession?>> getCurrentSession() async {
     try {
-      final sessionJson = await _secureStorage.read(key: _sessionKey);
+      final prefs = await _getPreferences();
+      final sessionJson = prefs.getString(_sessionKey);
       if (sessionJson == null) {
         return const Right(null);
       }
@@ -77,7 +57,11 @@ class SessionRepositoryImpl implements SessionRepository {
       final sessionWithDevice = session.copyWith(deviceId: deviceId);
       
       final sessionJson = jsonEncode(_sessionToJson(sessionWithDevice));
-      await _secureStorage.write(key: _sessionKey, value: sessionJson);
+      final prefs = await _getPreferences();
+      final isSaved = await prefs.setString(_sessionKey, sessionJson);
+      if (!isSaved) {
+        return const Left(AuthFailure('Failed to persist session locally'));
+      }
       
       return const Right(null);
     } catch (e) {
@@ -88,7 +72,8 @@ class SessionRepositoryImpl implements SessionRepository {
   @override
   Future<Either<AuthFailure, void>> clearSession() async {
     try {
-      await _secureStorage.delete(key: _sessionKey);
+      final prefs = await _getPreferences();
+      await prefs.remove(_sessionKey);
       return const Right(null);
     } catch (e) {
       return Left(AuthFailure('Failed to clear session: ${e.toString()}'));
