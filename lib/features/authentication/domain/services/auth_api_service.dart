@@ -86,7 +86,7 @@ class AuthApiService implements IAuthApiService {
   /// Использует сохраненную сессионную куку
   @override
   Future<Either<Failure, Map<String, dynamic>>> getUserInfo() async {
-    if (!SessionManager.instance.hasActiveSession()) {
+    if (!await SessionManager.instance.hasActiveSession()) {
       return Left(AuthFailure('Нет активной сессии. Необходимо выполнить вход.'));
     }
 
@@ -96,12 +96,15 @@ class AuthApiService implements IAuthApiService {
       // Используем новый URL для получения данных пользователя
       final url = AppConfig.userInfoApiUrl;
 
+      // Получаем сессионные заголовки (восстанавливаются автоматически если нужно)
+      final sessionHeaders = await SessionManager.instance.getSessionHeaders();
+
       final response = await client.get(
         Uri.parse(url),
         headers: {
           'Content-Type': 'application/json',
           'User-Agent': 'FieldForce-Mobile/1.0',
-          ...SessionManager.instance.getSessionHeaders(), // Добавляем сессионную куку
+          ...sessionHeaders, // Добавляем сессионную куку
         },
       );
 

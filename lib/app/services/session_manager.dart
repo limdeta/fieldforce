@@ -56,24 +56,39 @@ class SessionManager {
     }
   }
 
-  Map<String, String> getSessionHeaders() {
+  Future<Map<String, String>> getSessionHeaders() async {
+    // Важно: восстанавливаем куку если она еще не загружена
+    if (_sessionCookie == null) {
+      _logger.info('SessionManager: Кука не загружена, восстанавливаем из SharedPreferences...');
+      await _restoreSessionCookie();
+    }
+
     final headers = <String, String>{};
 
     if (_sessionCookie != null) {
       headers['Cookie'] = _sessionCookie!;
-      _logger.fine('SessionManager: Отправляем заголовок Cookie');
+      _logger.info('SessionManager: Возвращаем сессионные заголовки с кукой');
+    } else {
+      _logger.warning('SessionManager: ⚠️ Сессионная кука отсутствует! Возвращаем пустые заголовки');
     }
 
     return headers;
   }
 
   String? getSessionCookie() {
-  _logger.fine('SessionManager: Запрошена сессионная кука: ${_sessionCookie != null ? 'есть' : 'нет'}');
+    _logger.fine('SessionManager: Запрошена сессионная кука: ${_sessionCookie != null ? 'есть' : 'нет'}');
     return _sessionCookie;
   }
 
-  bool hasActiveSession() {
-    return _sessionCookie != null && _sessionCookie!.isNotEmpty;
+  Future<bool> hasActiveSession() async {
+    // Восстанавливаем куку если она еще не загружена
+    if (_sessionCookie == null) {
+      await _restoreSessionCookie();
+    }
+    
+    final hasSession = _sessionCookie != null && _sessionCookie!.isNotEmpty;
+    _logger.fine('SessionManager: hasActiveSession = $hasSession');
+    return hasSession;
   }
 
   Future<void> clearSession() async {
@@ -103,9 +118,9 @@ class SessionManager {
     final prefs = await SharedPreferences.getInstance();
     _sessionCookie = prefs.getString(_sessionCookieKey);
     if (_sessionCookie != null) {
-      _logger.fine('SessionManager: Сессионная кука восстановлена');
+      _logger.info('SessionManager: Сессионная кука восстановлена из SharedPreferences');
     } else {
-      _logger.fine('SessionManager: Сессионная кука не найдена в хранилище');
+      _logger.warning('SessionManager: Сессионная кука не найдена в хранилище');
     }
   }
 }

@@ -416,15 +416,15 @@ Future<void> setupTestServiceLocator() async {
 
   // Sync services for product synchronization
   // Удалены устаревшие SyncIsolateManager и SyncProgressManager
-  // ЧЗХ ТУТ ПРОИСХОДИТ ВООБЩЕ?
-  // New isolate-based sync manager for tests
+  
+  // New isolate-based sync manager for dev/test
   getIt.registerLazySingleton(
     () => IsolateSyncManager(
       productRepository: getIt<ProductRepository>(),
       stockItemRepository: getIt<StockItemRepository>(),
       categoryRepository: getIt<CategoryRepository>(),
-      productsApiUrl: 'test://products',
-      categoriesApiUrl: 'test//categories',
+      productsApiUrl: AppConfig.productsApiUrl,
+      categoriesApiUrl: AppConfig.categoriesApiUrl,
       sessionManager: getIt<SessionManager>(),
     ),
   );

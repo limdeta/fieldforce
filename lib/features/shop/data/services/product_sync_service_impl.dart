@@ -39,7 +39,7 @@ class ProductSyncServiceImpl {
     }
 
     try {
-      if (!_sessionManager.hasActiveSession()) {
+      if (!await _sessionManager.hasActiveSession()) {
         throw StateError('Сессия недействительна, требуется повторная аутентификация');
       }
 
@@ -64,7 +64,7 @@ class ProductSyncServiceImpl {
 
     try {
       // Проверяем сессию
-      if (!_sessionManager.hasActiveSession()) {
+      if (!await _sessionManager.hasActiveSession()) {
         throw StateError('Сессия недействительна, требуется повторная аутентификация');
       }
 

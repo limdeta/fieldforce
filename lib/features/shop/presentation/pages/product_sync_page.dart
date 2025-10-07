@@ -48,6 +48,30 @@ class _ProductSyncPageState extends State<ProductSyncPage> {
           _lastResult = result;
           _isLoading = false;
         });
+        
+        // Показываем результат через SnackBar
+        if (result.hasErrors) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('❌ Ошибка синхронизации:\n${result.errors.first}'),
+              backgroundColor: Colors.red,
+              duration: const Duration(seconds: 10),
+              action: SnackBarAction(
+                label: 'Подробнее',
+                textColor: Colors.white,
+                onPressed: () {},
+              ),
+            ),
+          );
+        } else {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('✅ Синхронизация успешна: ${result.successCount} элементов'),
+              backgroundColor: Colors.green,
+              duration: const Duration(seconds: 3),
+            ),
+          );
+        }
       }
     });
   }

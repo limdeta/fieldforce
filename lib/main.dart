@@ -12,6 +12,9 @@ import 'package:fieldforce/app/presentation/pages/login_page.dart';
 import 'package:fieldforce/app/presentation/widgets/dev_data_loading_overlay.dart';
 import 'package:fieldforce/features/navigation/tracking/domain/services/gps_data_manager.dart';
 import 'package:logging/logging.dart';
+import 'package:path_provider/path_provider.dart';
+import 'package:path/path.dart' as p;
+import 'dart:io';
 import 'app/config/app_config.dart';
 import 'app/di/service_locator.dart' as prod_di;
 import 'app/fixtures/dev_fixture_orchestrator.dart';
@@ -25,24 +28,38 @@ import 'features/shop/presentation/pages/product_catalog_page.dart';
 import 'features/shop/presentation/pages/product_categories_page.dart';
 import 'features/shop/presentation/pages/promotions_page.dart';
 
+/// Удаляет старую базу данных в dev режиме для чистого старта
+Future<void> _cleanDatabaseInDevMode() async {
+  try {
+    final dbFolder = await getApplicationDocumentsDirectory();
+    final dbFile = File(p.join(dbFolder.path, AppConfig.databaseName));
+    
+    if (await dbFile.exists()) {
+      await dbFile.delete();
+      debugPrint('🗑️ Старая база данных удалена: ${dbFile.path}');
+    } else {
+      debugPrint('✅ База данных не существует, создастся новая');
+    }
+  } catch (e) {
+    debugPrint('⚠️ Ошибка при удалении базы данных: $e');
+  }
+}
+
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   hierarchicalLoggingEnabled = true;
-  Logger('IsolateSyncManager').level = Level.SEVERE;
-  Logger('ApiProductSyncService').level = Level.SEVERE;
-  // Logger('TrackManager').level = Level.INFO;
-  // Logger('LocationTrackingService').level = Level.INFO;
-  // Logger('TrackingBloc').level = Level.INFO;
-  // Logger('UserTracksBloc').level = Level.INFO;
-  // Logger('UserTrackRepository').level = Level.INFO;
-  // Logger('GpsDataManager').level = Level.FINE;
-
+  
   Logger.root.level = Level.SEVERE;
   Logger.root.onRecord.listen((record) {
     debugPrint('${record.level.name}: ${record.time}: ${record.message}');
   });
 
   AppConfig.configureFromArgs();
+
+  // В dev режиме удаляем старую базу данных для чистого старта
+  if (AppConfig.isDev) {
+    await _cleanDatabaseInDevMode();
+  }
 
   if (AppConfig.isProd) {
     await prod_di.setupServiceLocator();

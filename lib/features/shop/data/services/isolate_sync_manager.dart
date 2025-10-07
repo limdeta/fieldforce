@@ -101,9 +101,7 @@ class IsolateSyncManager {
       subscription = _receivePortInMain.listen((message) {
         try {
           if (message is SendPort) {
-            // Получили SendPort от worker изолята
             _sendPortToWorker = message;
-            _logger.info('✅ Получен SendPort от worker изолята');
             return;
           }
           
@@ -111,13 +109,15 @@ class IsolateSyncManager {
             final syncMessage = SyncMessage.fromJson(message);
             
             if (syncMessage.type == SyncResponses.initialized) {
-              _logger.info('✅ Worker изолят инициализирован');
-              completer.complete();
+              if (!completer.isCompleted) {
+                completer.complete();
+              }
               return;
             }
             
-            // Обрабатываем другие сообщения
             _handleWorkerMessage(syncMessage);
+          } else {
+            _logger.warning('⚠️ Получено не Map сообщение: $message');
           }
         } catch (e, stackTrace) {
           _logger.severe('Ошибка обработки сообщения от worker изолята', e, stackTrace);
@@ -157,13 +157,16 @@ class IsolateSyncManager {
       
       _logger.info('🛍️ Запуск синхронизации продуктов через изолят');
       
+      // Получаем сессионные заголовки (восстанавливаются автоматически если нужно)
+      final sessionHeaders = await _sessionManager.getSessionHeaders();
+      
       // Отправляем команду worker изоляту
       final command = SyncMessage(
         type: SyncCommands.startProductSync,
         data: {
           'config': _syncConfigToJson(config),
           'apiUrl': _productsApiUrl,
-          'sessionHeaders': _sessionManager.getSessionHeaders(),
+          'sessionHeaders': sessionHeaders,
         },
       );
   // Отправляем команду в worker (session headers передаются при необходимости)
@@ -226,18 +229,29 @@ class IsolateSyncManager {
       
       _logger.info('📂 Запуск синхронизации категорий через изолят');
       
+      // Получаем сессионные заголовки (восстанавливаются автоматически если нужно)
+      final sessionHeaders = await _sessionManager.getSessionHeaders();
+      
       final command = SyncMessage(
         type: SyncCommands.startCategorySync,
         data: {
           'config': _syncConfigToJson(config),
           'apiUrl': _categoriesApiUrl,
-          'sessionHeaders': _sessionManager.getSessionHeaders(),
+          'sessionHeaders': sessionHeaders,
         },
       );
       
   _logger.info('Отправляем команду в worker: ${command.type}');
       
-      _sendPortToWorker!.send(command.toJson());
+      // Проверяем что SendPort существует
+      if (_sendPortToWorker == null) {
+        throw StateError('SendPort к worker изоляту = null!');
+      }
+      
+      final messageJson = command.toJson();
+      _logger.info('📤 Отправляем JSON: $messageJson');
+      _sendPortToWorker!.send(messageJson);
+      _logger.info('✅ Сообщение отправлено в worker');
       
       final resultCompleter = Completer<SyncResult>();
       late StreamSubscription subscription;
@@ -356,8 +370,6 @@ class IsolateSyncManager {
 
   /// Обрабатывает сообщения от worker изолята
   void _handleWorkerMessage(SyncMessage message) {
-    _logger.fine('📨 Получено сообщение от worker изолята: ${message.type}');
-    
     switch (message.type) {
       case SyncResponses.progress:
         final progress = _syncProgressFromJson(message.data);
@@ -374,8 +386,11 @@ class IsolateSyncManager {
         break;
         
       case SyncResponses.error:
+        _logger.severe('❌ Ошибка синхронизации: ${message.data['error']}');
         final result = _syncResultFromError(message.data);
         _resultController.add(result);
+        _isRunning = false;
+        _currentSyncType = null;
         break;
         
       case 'save_products':
@@ -397,7 +412,7 @@ class IsolateSyncManager {
         break;
         
       case SyncResponses.heartbeat:
-        _logger.fine('💓 Heartbeat от worker изолята');
+        // Heartbeat - worker alive
         break;
         
       case SyncResponses.paused:

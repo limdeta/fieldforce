@@ -64,6 +64,24 @@ class AppDatabase extends _$AppDatabase {
       // Включаем foreign key constraints
       await customStatement('PRAGMA foreign_keys = ON');
     },
+    onUpgrade: (Migrator m, int from, int to) async {
+      // Здесь будут миграции при обновлении схемы
+      _dbLogger.info('Миграция БД с версии $from на $to');
+      
+      // Пока просто пересоздаем все таблицы (для dev режима)
+      // В продакшене нужно будет написать реальные миграции
+      await m.createAll();
+    },
+    beforeOpen: (details) async {
+      // Включаем foreign key constraints для всех соединений
+      await customStatement('PRAGMA foreign_keys = ON');
+      
+      if (details.hadUpgrade) {
+        _dbLogger.info('БД была обновлена с версии ${details.versionBefore} на ${details.versionNow}');
+      } else if (details.wasCreated) {
+        _dbLogger.info('БД создана с версией ${details.versionNow}');
+      }
+    },
   );
 
   // Методы для работы с торговыми точками

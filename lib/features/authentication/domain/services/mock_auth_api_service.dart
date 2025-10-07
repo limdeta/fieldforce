@@ -2,6 +2,8 @@ import 'package:fieldforce/features/authentication/domain/value_objects/phone_nu
 import 'package:fieldforce/shared/either.dart';
 import 'package:fieldforce/shared/failures.dart';
 import 'package:fieldforce/features/authentication/domain/services/i_auth_api_service.dart';
+import 'package:fieldforce/app/services/session_manager.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 /// Mock сервис для аутентификации
 /// Используется только для тестирования и разработки
@@ -21,9 +23,35 @@ class MockAuthApiService implements IAuthApiService {
       // Mock логика аутентификации
       final result = _mockAuthenticateLogic(phoneNumber, password);
 
+      // Если аутентификация успешна, сохраняем фейковую куку в SessionManager
+      if (result.isAuthenticated) {
+        await _saveMockSessionCookie();
+      }
+
       return Right(result);
     } catch (e) {
       return Left(NetworkFailure('Ошибка mock аутентификации: $e'));
+    }
+  }
+
+  /// Сохраняет фейковую сессионную куку для имитации реального поведения
+  Future<void> _saveMockSessionCookie() async {
+    try {
+      // Генерируем фейковый PHPSESSID
+      final mockSessionId = 'MOCK_${DateTime.now().millisecondsSinceEpoch}';
+      final mockCookie = 'PHPSESSID=$mockSessionId';
+      
+      // Сохраняем в SessionManager напрямую через SharedPreferences
+      // (так как у нас нет реального HTTP response)
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setString('php_session_cookie', mockCookie);
+      
+      // Обновляем внутреннее состояние SessionManager
+      // Вызываем getSessionClient чтобы он подхватил новую куку
+      await SessionManager.instance.getSessionClient();
+    } catch (e) {
+      // Игнорируем ошибки сохранения куки в mock режиме
+      print('⚠️ MockAuthApiService: Ошибка сохранения mock куки: $e');
     }
   }
 
@@ -32,8 +60,10 @@ class MockAuthApiService implements IAuthApiService {
     final phoneValue = phoneNumber.value;
 
     // Список "валидных" учетных данных для тестирования
+    // Соответствует dev фикстурам (Саддам Хусейн)
     const validCredentials = [
-      {'phone': '+79991112233', 'password': 'password123'},
+      {'phone': '+7-999-111-2233', 'password': 'password123'}, // Саддам из фикстур
+      {'phone': '+79991112233', 'password': 'password123'},    // Вариант без дефисов
       {'phone': '+79991113344', 'password': 'admin123'},
       {'phone': '+79991114455', 'password': 'manager123'},
     ];
@@ -44,7 +74,7 @@ class MockAuthApiService implements IAuthApiService {
     );
 
     if (isValid) {
-      return AuthApiResult.success();
+      return AuthApiResult.success(isActive: true);
     }
 
     // Имитируем различные типы ошибок
@@ -67,18 +97,19 @@ class MockAuthApiService implements IAuthApiService {
       await Future.delayed(const Duration(milliseconds: 300));
 
       // Mock данные пользователя в формате реального API
+      // Возвращаем данные Саддама из dev фикстур
       return Right({
         'id': 123,
-        'firstName': 'Иван',
-        'fatherName': 'Иванович', // Используем fatherName как в реальном API
-        'lastName': 'Иванов',
-        'phoneNumber': '+79991112233',
-        'email': 'ivan.ivanov@company.com',
+        'firstName': 'Саддам',
+        'fatherName': 'Хусейнович', // Добавляем отчество
+        'lastName': 'Хусейн',
+        'phoneNumber': '+7-999-111-2233',
+        'email': 'salesrep@fieldforce.dev',
         'roles': ['ROLE_USER', 'ROLE_SALES'], // Массив ролей как в реальном API
         'contractors': [], // Пустой массив contractors
         'vendorId': null,
         'outlet': null, // null для простоты
-        'disabled': false,
+        'isActive': true, // Аккаунт активен
         'createdAt': '2024-01-15T10:30:00Z',
       });
     } catch (e) {

@@ -19,6 +19,11 @@ class AppConfig {
   static bool get isProd => _environment == Environment.prod;
   static bool get isTest => _environment == Environment.test;
 
+  // Dev API host - используем localhost после adb reverse
+  static String get _devApiHost {
+    return 'localhost:8000';
+  }
+
   // API Configuration
   static String get apiBaseUrl {
     switch (_environment) {
@@ -61,9 +66,8 @@ class AppConfig {
   static String get productsApiUrl {
     switch (_environment) {
       case Environment.dev:
-        return 'https://localhost:8000/v1_api/products';
+        return 'http://$_devApiHost/v1_api/products';
       case Environment.prod:
-        // return 'https://localhost:8000/v1_api/products';
         return 'https://api.instock-dv.ru/v1_api/products';
       case Environment.test:
         return 'https://test-api.fieldforce.com/v1_api/products';
@@ -74,11 +78,11 @@ class AppConfig {
   static String get categoriesApiUrl {
     switch (_environment) {
       case Environment.dev:
-        return 'https://localhost:8000/v1_api/categories'; 
+        return 'http://$_devApiHost/v1_api/categories';
       case Environment.prod:
         return 'https://api.instock-dv.ru/v1_api/categories';
       case Environment.test:
-        return ''; // Test API
+        return '';
     }
   }
 

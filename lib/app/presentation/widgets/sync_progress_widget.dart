@@ -15,6 +15,11 @@ class SyncProgressWidget extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // Защита от некорректных значений
+    final safePercentage = progress.percentage.isNaN || progress.percentage.isInfinite 
+        ? 0.0 
+        : progress.percentage.clamp(0.0, 1.0);
+    
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -30,10 +35,10 @@ class SyncProgressWidget extends StatelessWidget {
 
         // Прогресс-бар
         LinearProgressIndicator(
-          value: progress.percentage,
+          value: safePercentage,
           backgroundColor: Colors.grey[300],
           valueColor: AlwaysStoppedAnimation<Color>(
-            _getProgressColor(),
+            _getProgressColor(safePercentage),
           ),
         ),
         const SizedBox(height: 4),
@@ -43,7 +48,7 @@ class SyncProgressWidget extends StatelessWidget {
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
             Text(
-              '${(progress.percentage * 100).toStringAsFixed(1)}%',
+              '${(safePercentage * 100).toStringAsFixed(1)}%',
               style: const TextStyle(
                 fontSize: 12,
                 color: Colors.grey,
@@ -76,14 +81,14 @@ class SyncProgressWidget extends StatelessWidget {
     );
   }
 
-  Color _getProgressColor() {
+  Color _getProgressColor(double percentage) {
     if (!isActive) {
       return Colors.grey;
     }
 
-    if (progress.percentage < 0.3) {
+    if (percentage < 0.3) {
       return Colors.red;
-    } else if (progress.percentage < 0.7) {
+    } else if (percentage < 0.7) {
       return Colors.orange;
     } else {
       return Colors.green;

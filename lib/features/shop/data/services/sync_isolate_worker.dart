@@ -13,34 +13,24 @@ import '../../domain/entities/category.dart' as cat;
 
 
 /// Точка входа для worker изолята синхронизации
-/// 
-/// Этот изолят выполняет тяжелые операции синхронизации в фоне,
-/// не блокируя главный UI поток. Он получает команды от главного изолята
-/// и отправляет обратно прогресс и результаты. 
 void syncWorkerEntryPoint(SendPort sendPortToMain) async {
-  developer.log('Sync Worker: запущен', name: 'SyncWorker');
-
   final receivePortInWorker = ReceivePort();
   
   sendPortToMain.send(receivePortInWorker.sendPort);
   
-  // Отправляем сигнал об успешной инициализации
   sendPortToMain.send(SyncMessage(
     type: SyncResponses.initialized,
     data: {'timestamp': DateTime.now().millisecondsSinceEpoch},
   ).toJson());
 
-  // Создаем экземпляр worker'а для обработки команд
   final worker = SyncWorker(sendPortToMain);
   
-  // Слушаем команды от главного изолята
   await for (final message in receivePortInWorker) {
     try {
       if (message is Map<String, dynamic>) {
         final syncMessage = SyncMessage.fromJson(message);
         await worker.handleCommand(syncMessage);
         
-        // Если получили команду завершения, выходим из цикла
         if (syncMessage.type == SyncCommands.shutdown) {
           break;
         }
@@ -64,7 +54,6 @@ void syncWorkerEntryPoint(SendPort sendPortToMain) async {
     }
   }
 
-  developer.log('👋 Sync Worker: Изолят завершает работу', name: 'SyncWorker');
   receivePortInWorker.close();
 }
 
@@ -316,8 +305,13 @@ class SyncWorker {
       throw Exception('URL API продуктов не настроен');
     }
 
-    final ioClient = HttpClient();
+    // Создаём максимально permissive HTTP client для dev
+    final context = SecurityContext.defaultContext;
+    final ioClient = HttpClient(context: context);
+    
+    // Принимаем самоподписанные сертификаты в dev режиме
     ioClient.badCertificateCallback = (X509Certificate cert, String host, int port) => true;
+    ioClient.connectionTimeout = const Duration(seconds: 10);
     final client = IOClient(ioClient);
 
     try {
@@ -350,13 +344,40 @@ class SyncWorker {
         });
       }
 
-      final response = await client.get(uri, headers: headers);
+      final response = await client.get(uri, headers: headers).timeout(
+        const Duration(seconds: 15),
+        onTimeout: () {
+          throw TimeoutException('Сервер не отвечает более 15 секунд. Проверьте:\n'
+            '• Запущен ли сервер?\n'
+            '• Доступен ли он по адресу $uri?\n'
+            '• На Android эмуляторе используйте 10.0.2.2 вместо localhost');
+        },
+      );
 
       if (response.statusCode != 200) {
         throw Exception('HTTP ${response.statusCode}: ${response.reasonPhrase}');
       }
 
       return response.body;
+    } on SocketException catch (e) {
+      // Connection refused, host not found, etc
+      throw Exception('Не удалось подключиться к серверу:\n'
+        '${e.message}\n\n'
+        'Возможные причины:\n'
+        '• Сервер не запущен\n'
+        '• Неверный адрес (на Android эмуляторе используйте 10.0.2.2)\n'
+        '• Firewall блокирует соединение');
+    } on TimeoutException catch (e) {
+      throw Exception('Превышено время ожидания: ${e.message}');
+    } on HandshakeException catch (e) {
+      // SSL certificate problems
+      throw Exception('Ошибка SSL сертификата:\n'
+        '${e.message}\n\n'
+        'Убедитесь что сервер использует правильный сертификат');
+    } on HttpException catch (e) {
+      throw Exception('HTTP ошибка: ${e.message}');
+    } catch (e) {
+      throw Exception('Неожиданная ошибка при запросе: $e');
     } finally {
       client.close();
     }
@@ -372,8 +393,13 @@ class SyncWorker {
       throw Exception('URL API категорий не настроен');
     }
 
-    final ioClient = HttpClient();
+    // Создаём максимально permissive HTTP client для dev
+    final context = SecurityContext.defaultContext;
+    final ioClient = HttpClient(context: context);
+    
+    // Принимаем самоподписанные сертификаты в dev режиме
     ioClient.badCertificateCallback = (X509Certificate cert, String host, int port) => true;
+    ioClient.connectionTimeout = const Duration(seconds: 10);
     final client = IOClient(ioClient);
 
     try {
@@ -394,7 +420,15 @@ class SyncWorker {
       developer.log('🌐 Categories: Отправка запроса к $uri', name: 'SyncWorker');
       developer.log('🔒 Categories: Заголовки запроса: ${headers.keys}', name: 'SyncWorker');
       
-      final response = await client.get(uri, headers: headers);
+      final response = await client.get(uri, headers: headers).timeout(
+        const Duration(seconds: 15),
+        onTimeout: () {
+          throw TimeoutException('Сервер не отвечает более 15 секунд. Проверьте:\n'
+            '• Запущен ли сервер?\n'
+            '• Доступен ли он по адресу $uri?\n'
+            '• На Android эмуляторе используйте 10.0.2.2 вместо localhost');
+        },
+      );
       
       developer.log('📊 Categories: HTTP ${response.statusCode} - ${response.reasonPhrase}', name: 'SyncWorker');
       
@@ -403,6 +437,25 @@ class SyncWorker {
       }
 
       return response.body;
+    } on SocketException catch (e) {
+      // Connection refused, host not found, etc
+      throw Exception('Не удалось подключиться к серверу:\n'
+        '${e.message}\n\n'
+        'Возможные причины:\n'
+        '• Сервер не запущен\n'
+        '• Неверный адрес (на Android эмуляторе используйте 10.0.2.2)\n'
+        '• Firewall блокирует соединение');
+    } on TimeoutException catch (e) {
+      throw Exception('Превышено время ожидания: ${e.message}');
+    } on HandshakeException catch (e) {
+      // SSL certificate problems
+      throw Exception('Ошибка SSL сертификата:\n'
+        '${e.message}\n\n'
+        'Убедитесь что сервер использует правильный сертификат');
+    } on HttpException catch (e) {
+      throw Exception('HTTP ошибка: ${e.message}');
+    } catch (e) {
+      throw Exception('Неожиданная ошибка при запросе: $e');
     } finally {
       client.close();
     }
@@ -460,11 +513,12 @@ class SyncWorker {
 
   /// Отправляет сообщение о прогрессе
   void _sendProgress(String syncType, int current, int total, String status) {
-    _sendPortToMain.send(createProgressMessage(
+    final message = createProgressMessage(
       syncType: syncType,
       current: current,
       total: total,
       status: status,
-    ).toJson());
+    );
+    _sendPortToMain.send(message.toJson());
   }
 }
