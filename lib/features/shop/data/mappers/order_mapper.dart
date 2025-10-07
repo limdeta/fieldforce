@@ -30,6 +30,7 @@ class OrderMapper {
       approvedDeliveryDay: Value(order.approvedDeliveryDay),
       approvedAssemblyDay: Value(order.approvedAssemblyDay),
       withRealization: Value(order.withRealization),
+      failureReason: Value(order.failureReason),
       createdAt: order.createdAt,
       updatedAt: order.updatedAt,
     );
@@ -63,6 +64,7 @@ class OrderMapper {
       approvedDeliveryDay: orderEntity.approvedDeliveryDay,
       approvedAssemblyDay: orderEntity.approvedAssemblyDay,
       withRealization: orderEntity.withRealization,
+      failureReason: orderEntity.failureReason,
       createdAt: orderEntity.createdAt,
       updatedAt: orderEntity.updatedAt,
     );

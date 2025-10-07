@@ -1,3 +1,6 @@
+import 'dart:async';
+
+import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:fieldforce/app/di/route_di.dart';
 import 'package:fieldforce/app/domain/usecases/app_user_login_usecase.dart';
 import 'package:fieldforce/app/domain/usecases/app_user_logout_usecase.dart';
@@ -20,6 +23,8 @@ import 'package:fieldforce/app/database/repositories/user_track_repository_drift
 import 'package:fieldforce/app/services/simple_update_service.dart';
 import 'package:fieldforce/app/services/post_authentication_service.dart';
 import 'package:fieldforce/app/services/session_manager.dart';
+import 'package:fieldforce/app/jobs/job_queue_repository.dart';
+import 'package:fieldforce/app/jobs/job_queue_service.dart';
 import 'package:fieldforce/features/authentication/domain/repositories/user_repository.dart';
 import 'package:fieldforce/features/authentication/domain/repositories/session_repository.dart';
 import 'package:fieldforce/features/authentication/domain/services/authentication_service.dart';
@@ -73,6 +78,7 @@ import 'package:fieldforce/features/shop/domain/usecases/clear_cart_usecase.dart
 import 'package:fieldforce/features/shop/domain/usecases/submit_order_usecase.dart';
 import 'package:fieldforce/features/shop/domain/usecases/get_orders_usecase.dart';
 import 'package:fieldforce/features/shop/domain/usecases/get_order_by_id_usecase.dart';
+import 'package:fieldforce/features/shop/domain/usecases/retry_order_submission_usecase.dart';
 import 'package:fieldforce/features/shop/presentation/bloc/cart_bloc.dart';
 import 'package:fieldforce/features/shop/presentation/bloc/orders_bloc.dart';
 import 'package:fieldforce/features/shop/data/fixtures/order_fixture_service.dart';
@@ -80,10 +86,17 @@ import 'package:fieldforce/features/shop/domain/repositories/stock_item_reposito
 import 'package:fieldforce/app/database/repositories/stock_item_repository_drift.dart';
 import 'package:fieldforce/features/shop/data/services/product_sync_service_impl.dart';
 import 'package:fieldforce/features/shop/data/services/isolate_sync_manager.dart';
+import 'package:fieldforce/features/shop/data/repositories/order_job_repository_impl.dart';
+import 'package:fieldforce/features/shop/data/services/mock_order_api_service.dart';
+import 'package:fieldforce/features/shop/domain/jobs/order_submission_job.dart';
+import 'package:fieldforce/features/shop/domain/services/order_api_service.dart';
+import 'package:fieldforce/features/shop/domain/services/order_submission_queue_service.dart';
+import 'package:fieldforce/features/shop/domain/services/order_submission_service.dart';
+import 'package:fieldforce/features/shop/domain/services/order_submission_queue_trigger.dart';
 
 final getIt = GetIt.instance;
 
-Future<void> setupTestServiceLocator() async {
+Future<void> setupTestServiceLocator({bool startBackgroundWorkers = true}) async {
   AppConfig.configureFromArgs();
   AppConfig.printConfig();
 
@@ -97,7 +110,9 @@ Future<void> setupTestServiceLocator() async {
     },
   );
 
-  getIt.registerSingleton<AppDatabase>(AppDatabase.withFile(AppConfig.databaseName));
+  getIt.registerLazySingleton<AppDatabase>(
+    () => AppDatabase.withFile(AppConfig.databaseName),
+  );
   getIt.registerLazySingleton<WorkDayRepository>(
     () => WorkDayRepository(getIt<AppDatabase>()),
   );
@@ -141,6 +156,10 @@ Future<void> setupTestServiceLocator() async {
     () => DriftProductRepository(),
   );
 
+  getIt.registerLazySingleton<Connectivity>(
+    () => Connectivity(),
+  );
+
   // Order repositories and use cases
   getIt.registerLazySingleton<OrderRepository>(
     () => OrderRepositoryDrift(getIt<AppDatabase>(), getIt<ProductRepository>()),
@@ -148,6 +167,40 @@ Future<void> setupTestServiceLocator() async {
 
   getIt.registerLazySingleton<StockItemRepository>(
     () => DriftStockItemRepository(),
+  );
+
+  getIt.registerLazySingleton<JobQueueRepository<OrderSubmissionJob>>(
+    () => OrderJobRepositoryImpl(getIt<AppDatabase>()),
+  );
+
+  getIt.registerLazySingleton<OrderApiService>(
+    () => MockOrderApiService(),
+  );
+
+  getIt.registerLazySingleton<OrderSubmissionService>(
+    () => OrderSubmissionService(apiService: getIt<OrderApiService>()),
+  );
+
+  getIt.registerLazySingleton<JobQueueService<OrderSubmissionJob>>(
+    () => OrderSubmissionQueueService(
+      repository: getIt<JobQueueRepository<OrderSubmissionJob>>(),
+      orderRepository: getIt<OrderRepository>(),
+      submissionService: getIt<OrderSubmissionService>(),
+    ),
+  );
+
+  getIt.registerLazySingleton<RetryOrderSubmissionUseCase>(
+    () => RetryOrderSubmissionUseCase(
+      orderRepository: getIt<OrderRepository>(),
+      queueService: getIt<JobQueueService<OrderSubmissionJob>>(),
+    ),
+  );
+
+  getIt.registerLazySingleton<OrderSubmissionQueueTrigger>(
+    () => ConnectivityOrderSubmissionQueueTrigger(
+      connectivity: getIt<Connectivity>(),
+      queueService: getIt<JobQueueService<OrderSubmissionJob>>(),
+    ),
   );
 
   getIt.registerLazySingleton<CreateOrderUseCase>(
@@ -191,7 +244,10 @@ Future<void> setupTestServiceLocator() async {
   );
 
   getIt.registerLazySingleton<SubmitOrderUseCase>(
-    () => SubmitOrderUseCase(getIt<OrderRepository>()),
+    () => SubmitOrderUseCase(
+      orderRepository: getIt<OrderRepository>(),
+      queueService: getIt<JobQueueService<OrderSubmissionJob>>(),
+    ),
   );
 
   // Orders Use Cases
@@ -220,6 +276,7 @@ Future<void> setupTestServiceLocator() async {
     () => OrdersBloc(
       getOrdersUseCase: getIt<GetOrdersUseCase>(),
       getOrderByIdUseCase: getIt<GetOrderByIdUseCase>(),
+      retryOrderSubmissionUseCase: getIt<RetryOrderSubmissionUseCase>(),
     ),
   );
 
@@ -364,6 +421,7 @@ Future<void> setupTestServiceLocator() async {
   getIt.registerLazySingleton<OrderFixtureService>(
     () => OrderFixtureService(
       orderRepository: getIt<OrderRepository>(),
+      stockItemRepository: getIt<StockItemRepository>(),
     ),
   );
 
@@ -436,4 +494,9 @@ Future<void> setupTestServiceLocator() async {
       isolateManager: getIt<IsolateSyncManager>(),
     ),
   );
+
+  if (startBackgroundWorkers) {
+    unawaited(getIt<OrderSubmissionQueueTrigger>().start());
+    unawaited(getIt<JobQueueService<OrderSubmissionJob>>().triggerProcessing());
+  }
 }

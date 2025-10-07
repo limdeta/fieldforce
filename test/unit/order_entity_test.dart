@@ -15,12 +15,14 @@ void main() {
 
     setUp(() {
       testEmployee = Employee(
+        id: 1,
         lastName: 'Тестовый',
         firstName: 'Пользователь',
         role: EmployeeRole.sales,
       );
 
       testOutlet = TradingPoint(
+        id: 1,
         externalId: 'TEST_001',
         name: 'Тестовая точка',
       );
@@ -88,14 +90,14 @@ void main() {
       expect(order.state, OrderState.pending);
       expect(order.canEdit, isFalse);
 
-      // Завершаем заказ
-      order = order.updateState(OrderState.completed);
-      expect(order.state, OrderState.completed);
-      expect(order.state.isCompleted, isTrue);
+      // Подтверждаем заказ
+      order = order.updateState(OrderState.confirmed);
+      expect(order.state, OrderState.confirmed);
+      expect(order.state.isConfirmed, isTrue);
     });
 
     test('должен запрещать некорректные переходы состояний', () {
-      expect(() => draftOrder.updateState(OrderState.completed),
+      expect(() => draftOrder.updateState(OrderState.confirmed),
           throwsA(isA<StateError>()));
     });
 
@@ -141,17 +143,17 @@ void main() {
   group('OrderState Tests', () {
     test('должен корректно проверять переходы состояний', () {
       expect(OrderState.draft.canTransitionTo(OrderState.pending), isTrue);
-      expect(OrderState.draft.canTransitionTo(OrderState.completed), isFalse);
+      expect(OrderState.draft.canTransitionTo(OrderState.confirmed), isFalse);
 
-      expect(OrderState.pending.canTransitionTo(OrderState.completed), isTrue);
-      expect(OrderState.pending.canTransitionTo(OrderState.failed), isTrue);
+      expect(OrderState.pending.canTransitionTo(OrderState.confirmed), isTrue);
+      expect(OrderState.pending.canTransitionTo(OrderState.error), isTrue);
       expect(OrderState.pending.canTransitionTo(OrderState.draft), isFalse);
 
-      expect(OrderState.completed.canTransitionTo(OrderState.draft), isFalse);
-      expect(OrderState.completed.canTransitionTo(OrderState.pending), isFalse);
+      expect(OrderState.confirmed.canTransitionTo(OrderState.draft), isFalse);
+      expect(OrderState.confirmed.canTransitionTo(OrderState.pending), isFalse);
 
-      expect(OrderState.failed.canTransitionTo(OrderState.pending), isTrue);
-      expect(OrderState.failed.canTransitionTo(OrderState.draft), isTrue);
+      expect(OrderState.error.canTransitionTo(OrderState.pending), isTrue);
+      expect(OrderState.error.canTransitionTo(OrderState.draft), isTrue);
     });
   });
 

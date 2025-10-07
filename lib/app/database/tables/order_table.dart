@@ -29,6 +29,7 @@ class Orders extends Table {
   DateTimeColumn get approvedDeliveryDay => dateTime().nullable()();
   DateTimeColumn get approvedAssemblyDay => dateTime().nullable()();
   BoolColumn get withRealization => boolean().withDefault(const Constant(true))();
+  TextColumn get failureReason => text().nullable()();
   
   // Метки времени
   DateTimeColumn get createdAt => dateTime()();

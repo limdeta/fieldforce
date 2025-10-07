@@ -19,12 +19,14 @@ class OrdersLoading extends OrdersState {
 }
 
 class OrdersLoaded extends OrdersState {
+  final int employeeId;
   final List<Order> orders;
   final OrdersFilter currentFilter;
   final int totalCount;
-  final Map<String, int> statusCounts; // Количество по статусам
+  final Map<OrderState, int> statusCounts; // Количество по статусам
 
   const OrdersLoaded({
+    required this.employeeId,
     required this.orders,
     required this.currentFilter,
     required this.totalCount,
@@ -32,15 +34,17 @@ class OrdersLoaded extends OrdersState {
   });
 
   @override
-  List<Object?> get props => [orders, currentFilter, totalCount, statusCounts];
+  List<Object?> get props => [employeeId, orders, currentFilter, totalCount, statusCounts];
 
   OrdersLoaded copyWith({
+    int? employeeId,
     List<Order>? orders,
     OrdersFilter? currentFilter,
     int? totalCount,
-    Map<String, int>? statusCounts,
+    Map<OrderState, int>? statusCounts,
   }) {
     return OrdersLoaded(
+      employeeId: employeeId ?? this.employeeId,
       orders: orders ?? this.orders,
       currentFilter: currentFilter ?? this.currentFilter,
       totalCount: totalCount ?? this.totalCount,
@@ -81,12 +85,49 @@ class OrdersError extends OrdersState {
 }
 
 class OrdersEmpty extends OrdersState {
+  final int employeeId;
   final OrdersFilter currentFilter;
 
   const OrdersEmpty({
+    required this.employeeId,
     required this.currentFilter,
   });
 
   @override
-  List<Object?> get props => [currentFilter];
+  List<Object?> get props => [employeeId, currentFilter];
+}
+
+abstract class OrdersActionState extends OrdersState {
+  const OrdersActionState();
+}
+
+class OrderRetryInProgress extends OrdersActionState {
+  final int orderId;
+
+  const OrderRetryInProgress({required this.orderId});
+
+  @override
+  List<Object?> get props => [orderId];
+}
+
+class OrderRetrySuccess extends OrdersActionState {
+  final int orderId;
+
+  const OrderRetrySuccess({required this.orderId});
+
+  @override
+  List<Object?> get props => [orderId];
+}
+
+class OrderRetryFailure extends OrdersActionState {
+  final int orderId;
+  final String message;
+
+  const OrderRetryFailure({
+    required this.orderId,
+    required this.message,
+  });
+
+  @override
+  List<Object?> get props => [orderId, message];
 }
