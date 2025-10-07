@@ -33,5 +33,5 @@ Future<void> ensureLoggedInAsDevUser({String phoneContains = '7-999-111-2233'}) 
   if (appSessionResult.isLeft()) {
     throw StateError('Failed to create AppSession: ${appSessionResult.fold((l) => l, (r) => '')}');
   }
-  final appSession = appSessionResult.fold((l) => null, (r) => r);
+  appSessionResult.fold((l) => null, (r) => r);
 }

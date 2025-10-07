@@ -213,12 +213,19 @@ class ProductParsingService {
     try {
       // logger.info('Конвертация StockItemApi: warehouseId=${apiStock.warehouseId}, price=${apiStock.price}, stock=${apiStock.stock}');
       
+      final vendorId = (apiStock.vendorId ?? '').trim();
+      final resolvedVendorId = vendorId.isNotEmpty ? vendorId : 'UNKNOWN_VENDOR';
+
+      if (vendorId.isEmpty) {
+        logger.warning('StockItemApi для продукта $productCode не содержит vendorId, используем UNKNOWN_VENDOR');
+      }
+
       final stockItem = StockItem(
         id: 0, // Автоинкремент в БД
         productCode: productCode,
         warehouseId: apiStock.warehouseId,
         warehouseName: apiStock.warehouseName,
-        warehouseVendorId: 'MAIN_VENDOR', // TODO: Определить из конфигурации
+        warehouseVendorId: resolvedVendorId,
         isPickUpPoint: false, // TODO: Определить по типу склада
         stock: apiStock.stock,
         multiplicity: 1, // По умолчанию

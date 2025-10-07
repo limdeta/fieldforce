@@ -345,6 +345,7 @@ class CharacteristicApi extends Equatable {
 class StockItemApi extends Equatable {
   final int warehouseId;
   final String warehouseName;
+  final String? vendorId;
   final double price;
   final double? availablePrice;
   final double? offerPrice;
@@ -354,6 +355,7 @@ class StockItemApi extends Equatable {
   const StockItemApi({
     required this.warehouseId,
     required this.warehouseName,
+    this.vendorId,
     required this.price,
     this.availablePrice,
     this.offerPrice,
@@ -372,9 +374,15 @@ class StockItemApi extends Equatable {
       return 0;
     }
 
+    final warehouseJson = json['warehouse'] as Map<String, dynamic>?;
+    final vendorIdRaw = warehouseJson != null
+        ? warehouseJson['vendorId']
+        : json['warehouseVendorId'];
+
     return StockItemApi(
       warehouseId: json['warehouse']?['id'] as int? ?? json['warehouseId'] as int? ?? 0,
       warehouseName: json['warehouse']?['name'] as String? ?? json['warehouseName'] as String? ?? 'Неизвестный склад',
+      vendorId: vendorIdRaw != null ? vendorIdRaw.toString() : null,
       price: (json['price'] as num?)?.toDouble() ?? (json['defaultPrice'] as num?)?.toDouble() ?? 0.0,
       availablePrice: (json['availablePrice'] as num?)?.toDouble(),
       offerPrice: (json['offerPrice'] as num?)?.toDouble(),
@@ -387,6 +395,7 @@ class StockItemApi extends Equatable {
   List<Object?> get props => [
         warehouseId,
         warehouseName,
+    vendorId,
         price,
         availablePrice,
         offerPrice,

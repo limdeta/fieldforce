@@ -6,6 +6,7 @@ import 'package:fieldforce/features/shop/domain/entities/category.dart';
 import 'package:fieldforce/features/shop/domain/entities/product_with_stock.dart';
 import 'package:fieldforce/features/shop/domain/entities/stock_item.dart';
 import 'package:fieldforce/features/shop/domain/repositories/product_repository.dart';
+import 'package:fieldforce/features/shop/domain/repositories/stock_item_repository.dart';
 import 'package:fieldforce/features/shop/presentation/bloc/cart_bloc.dart';
 import 'package:fieldforce/features/shop/presentation/widgets/navigation_fab_widget.dart';
 import 'package:fieldforce/features/shop/presentation/pages/product_detail_page.dart';
@@ -27,6 +28,7 @@ class CategoryProductsPage extends StatefulWidget {
 class _CategoryProductsPageState extends State<CategoryProductsPage> {
   static final Logger _logger = Logger('CategoryProductsPage');
   final ProductRepository _productRepository = GetIt.instance<ProductRepository>();
+  final StockItemRepository _stockItemRepository = GetIt.instance<StockItemRepository>();
 
   List<ProductWithStock> _products = [];
   bool _isLoading = true;
@@ -35,6 +37,10 @@ class _CategoryProductsPageState extends State<CategoryProductsPage> {
   bool _hasMore = true;
   int _currentOffset = 0;
   final int _limit = 20;
+
+  String? _vendorId;
+  bool _vendorResolved = false;
+  bool _vendorResolutionFailed = false;
   
   // Отслеживаем выбранные StockItem для каждого продукта
   final Map<int, StockItem> _selectedStockItems = {};
@@ -90,12 +96,21 @@ class _CategoryProductsPageState extends State<CategoryProductsPage> {
 
   Future<void> _loadProductsInternal({required bool reset}) async {
     _logger.info('🔄 _loadProductsInternal: categoryId=${widget.category.id}, name="${widget.category.name}", reset=$reset, offset=$_currentOffset, limit=$_limit');
+
+    final vendorId = await _resolveVendorId();
+    if (_vendorResolutionFailed) {
+      setState(() {
+        _isLoading = false;
+        _error = 'Не удалось определить склад для отображения остатков';
+      });
+      return;
+    }
     
     // Используем ProductWithStock для отображения остатков
     // В соответствии с архитектурой StockItem-centered
     final result = await _productRepository.getProductsWithStockByCategoryPaginated(
       widget.category.id,
-      'MAIN_VENDOR', // Исправлено: используем тот же vendorId, что в фикстурах
+      vendorId: vendorId,
       offset: _currentOffset,
       limit: _limit,
     );
@@ -130,6 +145,53 @@ class _CategoryProductsPageState extends State<CategoryProductsPage> {
       
       _logger.fine('Загружено ${newProducts.length} продуктов для категории "${widget.category.name}" (всего: ${_products.length})');
     });
+  }
+
+  Future<String?> _resolveVendorId() async {
+    if (_vendorResolved) {
+      return _vendorId;
+    }
+
+    try {
+      final stockResult = await _stockItemRepository.getAvailableStockItems();
+
+      if (stockResult.isLeft()) {
+        final failure = stockResult.fold((failure) => failure, (_) => null);
+        _logger.warning('⚠️ _resolveVendorId: не удалось получить остатки: ${failure?.message}');
+        _vendorResolved = true;
+        _vendorId = null;
+        return _vendorId;
+      }
+
+      final stockItems = stockResult.getOrElse(() => []);
+      if (stockItems.isEmpty) {
+        _logger.warning('⚠️ _resolveVendorId: не найдено остатков > 0, используем все склады');
+        _vendorResolved = true;
+        _vendorId = null;
+        return _vendorId;
+      }
+
+      final vendorIds = stockItems.map((item) => item.warehouseVendorId).where((id) => id.isNotEmpty).toSet();
+
+      if (vendorIds.isEmpty) {
+        _logger.warning('⚠️ _resolveVendorId: складские записи без vendorId');
+        _vendorResolved = true;
+        _vendorId = null;
+        return _vendorId;
+      }
+
+      if (vendorIds.length > 1) {
+        _logger.info('ℹ️ _resolveVendorId: обнаружено несколько vendorId ($vendorIds), используем первый');
+      }
+
+      _vendorId = vendorIds.first;
+      _vendorResolved = true;
+      return _vendorId;
+    } catch (error, stackTrace) {
+      _logger.severe('Ошибка определения vendorId для остатков', error, stackTrace);
+      _vendorResolutionFailed = true;
+      return null;
+    }
   }
 
   void _onProductTap(ProductWithStock productWithStock) {

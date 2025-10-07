@@ -462,7 +462,7 @@ class TestProductRepository implements ProductRepository {
   }
 
   @override
-  Future<Either<Failure, List<ProductWithStock>>> getProductsWithStockByCategoryPaginated(int categoryId, String vendorId, {int offset = 0, int limit = 20}) {
+  Future<Either<Failure, List<ProductWithStock>>> getProductsWithStockByCategoryPaginated(int categoryId, {String? vendorId, int offset = 0, int limit = 20}) {
     throw UnimplementedError();
   }
 
