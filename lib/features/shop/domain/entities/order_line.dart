@@ -64,6 +64,26 @@ class OrderLine extends Equatable {
     return quantity * stockItem.defaultPrice;
   }
 
+  Map<String, dynamic> toApiPayload() {
+    return {
+      'id': id,
+      'orderId': orderId,
+      'productCode': productCode,
+      'quantity': quantity,
+      'pricePerUnit': pricePerUnit,
+      'totalCost': totalCost,
+      'totalBaseCost': totalBaseCost,
+      'saving': saving,
+      'warehouse': {
+        'id': warehouseId,
+        'name': warehouseName,
+        'vendorId': stockItem.warehouseVendorId,
+        'isPickUpPoint': stockItem.isPickUpPoint,
+      },
+      'stockItemId': stockItem.id,
+    };
+  }
+
   OrderLine updateQuantity(int newQuantity) {
     if (newQuantity <= 0) {
       throw ArgumentError('Quantity must be positive');

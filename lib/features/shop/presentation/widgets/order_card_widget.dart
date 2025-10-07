@@ -282,13 +282,13 @@ class OrderStatusChip extends StatelessWidget {
           const Color(0xFFDBEAFE), // blue-100
           'отправляется'
         );
-      case OrderState.completed:
+      case OrderState.confirmed:
         return (
           const Color(0xFF166534), // green-800
           const Color(0xFFDCFCE7), // green-100
-          'завершен'
+          'подтверждён'
         );
-      case OrderState.failed:
+      case OrderState.error:
         return (
           const Color(0xFFB91C1C), // red-700
           const Color(0xFFFECACA), // red-100

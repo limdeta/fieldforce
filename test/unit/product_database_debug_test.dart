@@ -13,7 +13,7 @@ void main() {
     late AppDatabase database;
 
     setUp(() {
-      database = AppDatabase.forTesting(DatabaseConnection.fromExecutor(NativeDatabase.memory()));
+      database = AppDatabase.forTesting(DatabaseConnection(NativeDatabase.memory()));
     });
 
     tearDown(() async {

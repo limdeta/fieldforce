@@ -41,6 +41,15 @@ class GetOrderByIdEvent extends OrdersEvent {
   List<Object?> get props => [orderId];
 }
 
+class RetryOrderSubmissionEvent extends OrdersEvent {
+  final int orderId;
+
+  const RetryOrderSubmissionEvent(this.orderId);
+
+  @override
+  List<Object?> get props => [orderId];
+}
+
 class RefreshOrdersEvent extends OrdersEvent {
   final int employeeId;
 
@@ -71,17 +80,21 @@ class OrdersFilter {
 
   OrdersFilter copyWith({
     List<OrderState>? states,
+    bool clearStates = false,
     DateTime? dateFrom,
+    bool clearDateFrom = false,
     DateTime? dateTo,
+    bool clearDateTo = false,
     String? searchQuery,
+    bool clearSearch = false,
     OrderSortType? sortType,
     bool? ascending,
   }) {
     return OrdersFilter(
-      states: states ?? this.states,
-      dateFrom: dateFrom ?? this.dateFrom,
-      dateTo: dateTo ?? this.dateTo,
-      searchQuery: searchQuery ?? this.searchQuery,
+      states: clearStates ? null : (states ?? this.states),
+      dateFrom: clearDateFrom ? null : (dateFrom ?? this.dateFrom),
+      dateTo: clearDateTo ? null : (dateTo ?? this.dateTo),
+      searchQuery: clearSearch ? null : (searchQuery ?? this.searchQuery),
       sortType: sortType ?? this.sortType,
       ascending: ascending ?? this.ascending,
     );

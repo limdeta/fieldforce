@@ -6,18 +6,21 @@ import 'package:fieldforce/features/shop/domain/entities/payment_kind.dart';
 import 'package:fieldforce/features/shop/domain/entities/trading_point.dart';
 import 'package:fieldforce/features/shop/domain/repositories/order_repository.dart';
 import 'package:fieldforce/features/shop/domain/repositories/stock_item_repository.dart';
-
-import 'package:flutter/foundation.dart';
-import 'package:get_it/get_it.dart';
+import 'package:logging/logging.dart';
 
 /// Сервис для создания фикстурных заказов в dev режиме
 /// Использует уже созданные продукты, не создает новые
 class OrderFixtureService {
+  static final Logger _logger = Logger('OrderFixtureService');
+
   final OrderRepository _orderRepository;
+  final StockItemRepository _stockItemRepository;
 
   OrderFixtureService({
     required OrderRepository orderRepository,
-  }) : _orderRepository = orderRepository;
+    required StockItemRepository stockItemRepository,
+  })  : _orderRepository = orderRepository,
+        _stockItemRepository = stockItemRepository;
 
   /// Создает несколько тестовых заказов для демонстрации
   /// Принимает employee и outlet от оркестратора
@@ -52,15 +55,15 @@ class OrderFixtureService {
       orders.add(pendingOrder);
     }
 
-    // 3. Завершенный заказ
+    // 3. Подтверждённый заказ
     if (tradingPoints.length > 2) {
-      final completedOrder = await _createOrder(
+      final confirmedOrder = await _createOrder(
         employee: employee,
         tradingPoint: tradingPoints[2],
-        state: OrderState.completed,
+        state: OrderState.confirmed,
         withItems: true,
       );
-      orders.add(completedOrder);
+      orders.add(confirmedOrder);
     }
 
     return orders;
@@ -74,10 +77,21 @@ class OrderFixtureService {
   }) async {
     final now = DateTime.now();
     
+    final linePlaceholderId = -1;
+    final List<OrderLine> lines = withItems
+        ? await _buildFixtureLines(orderId: linePlaceholderId)
+        : <OrderLine>[];
+
+    if (state != OrderState.draft && lines.isEmpty) {
+      throw StateError(
+        'Не удалось создать фикстурный заказ в состоянии $state с товарами: отсутствуют доступные остатки',
+      );
+    }
+
     final order = Order(
       creator: employee,
       outlet: tradingPoint,
-      lines: [], // Пустой список сначала
+      lines: lines,
       state: state,
       paymentKind: state == OrderState.draft 
           ? const PaymentKind.cash() // дефолтное значение для draft
@@ -86,58 +100,73 @@ class OrderFixtureService {
       updatedAt: now,
     );
 
-    // Сохраняем заказ чтобы получить ID
     final savedOrder = await _orderRepository.saveOrder(order);
-    
-    if (withItems && savedOrder.id != null) {
-      await _addTestItemsToOrder(savedOrder.id!);
-      return await _orderRepository.getOrderById(savedOrder.id!) ?? savedOrder;
-    }
-
     return savedOrder;
   }
 
-  /// Добавляет тестовые товары в заказ
-  Future<void> _addTestItemsToOrder(int orderId) async {
-      final stockItemRepository = GetIt.instance<StockItemRepository>();
-      
-      final stockItems1Result = await stockItemRepository.getStockItemsByProductCode(1001);
-      final stockItems2Result = await stockItemRepository.getStockItemsByProductCode(1002);
+  Future<List<OrderLine>> _buildFixtureLines({required int orderId}) async {
+    final productRequests = <int, int>{1001: 2, 1002: 1};
+    final lines = <OrderLine>[];
 
-      final stockItem1 = stockItems1Result.fold(
-        (failure) {
-          return null;
-        },
-        (stockItems) => stockItems.isNotEmpty ? stockItems.first : null,
-      );
+    for (final entry in productRequests.entries) {
+      final productCode = entry.key;
+      final quantity = entry.value;
 
-      final stockItem2 = stockItems2Result.fold(
-        (failure) {
-          return null;
-        },
-        (stockItems) => stockItems.isNotEmpty ? stockItems.first : null,
-      );
-
-      // Добавляем только те товары, для которых найдены реальные StockItem'ы
-      if (stockItem1 != null) {
-        final orderLine1 = OrderLine.create(
-          orderId: orderId,
-          stockItem: stockItem1,
-          quantity: 2,
+      final stockItemsResult =
+          await _stockItemRepository.getStockItemsByProductCode(productCode);
+      final stockItem = stockItemsResult.fold((failure) {
+        _logger.warning(
+          'Не удалось получить остатки для продукта $productCode: ${failure.message}',
         );
-        await _orderRepository.addOrderLine(orderLine1);
+        return null;
+      }, (stockItems) {
+        if (stockItems.isEmpty) {
+          return null;
+        }
+        // выбираем первый склад с наличием > 0, иначе первый доступный
+        final prioritized = stockItems.firstWhere(
+          (item) => item.stock > 0,
+          orElse: () => stockItems.first,
+        );
+        return prioritized;
+      });
+
+      if (stockItem == null) {
+        continue;
       }
 
-      if (stockItem2 != null) {
-        final orderLine2 = OrderLine.create(
+      lines.add(
+        OrderLine.create(
           orderId: orderId,
-          stockItem: stockItem2,
-          quantity: 1,
-        );
-        await _orderRepository.addOrderLine(orderLine2);
-      }
+          stockItem: stockItem,
+          quantity: quantity,
+          pricePerUnit: stockItem.availablePrice ?? stockItem.defaultPrice,
+        ),
+      );
+    }
+
+    if (lines.isEmpty) {
+      final fallbackResult = await _stockItemRepository.getAvailableStockItems();
+      fallbackResult.fold(
+        (failure) => _logger.severe(
+          'Не удалось получить доступные остатки для фикстурных заказов: ${failure.message}',
+        ),
+        (stockItems) {
+          if (stockItems.isNotEmpty) {
+            final stockItem = stockItems.first;
+            lines.add(
+              OrderLine.create(
+                orderId: orderId,
+                stockItem: stockItem,
+                quantity: 1,
+                pricePerUnit: stockItem.availablePrice ?? stockItem.defaultPrice,
+              ),
+            );
+          }
+        },
+      );
+    }
+
+    return lines;
   }
-
-
-
 }

@@ -26,10 +26,10 @@ abstract class ProductRepository {
 
   /// Получить продукты по категории с информацией об остатках
   Future<Either<Failure, List<ProductWithStock>>> getProductsWithStockByCategoryPaginated(
-    int categoryId, 
-    String vendorId, {
-    int offset = 0, 
-    int limit = 20
+    int categoryId, {
+    String? vendorId,
+    int offset = 0,
+    int limit = 20,
   });
 
   /// Получить продукты по типу с пагинацией

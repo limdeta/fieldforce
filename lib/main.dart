@@ -26,6 +26,7 @@ import 'app/presentation/pages/profile_page.dart';
 import 'app/presentation/pages/data_page.dart';
 import 'features/shop/presentation/pages/product_catalog_page.dart';
 import 'features/shop/presentation/pages/product_categories_page.dart';
+import 'features/shop/presentation/pages/orders_page.dart';
 import 'features/shop/presentation/pages/promotions_page.dart';
 
 /// Удаляет старую базу данных в dev режиме для чистого старта
@@ -110,6 +111,7 @@ class FieldforceApp extends StatelessWidget {
             '/products/categories': (context) => const ProductCategoriesPage(),
             '/products/promotions': (context) => const PromotionsPage(),
             '/cart': (context) => const CartPage(),
+            '/orders': (context) => const OrdersPage(),
             '/data-sync': (context) => const DataPage(),
           },
           ),

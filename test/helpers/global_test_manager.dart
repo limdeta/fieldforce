@@ -1,5 +1,6 @@
 import 'dart:io';
 
+import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:get_it/get_it.dart';
@@ -7,6 +8,9 @@ import 'package:fieldforce/app/di/test_service_locator.dart';
 import 'package:fieldforce/app/database/app_database.dart';
 import 'package:fieldforce/app/config/app_config.dart';
 import 'package:path/path.dart' as p;
+
+const MethodChannel pathProviderChannel = MethodChannel('plugins.flutter.io/path_provider');
+const MethodChannel connectivityChannel = MethodChannel('dev.fluttercommunity.plus/connectivity');
 
 class GlobalTestManager {
   static GlobalTestManager? _instance;
@@ -29,11 +33,11 @@ class GlobalTestManager {
   Future<void> initializeGlobal() async {
     if (_isInitialized) return;
     // Ensure Flutter bindings are initialized for MethodChannel mocking
-    TestWidgetsFlutterBinding.ensureInitialized();
+    final binding = TestWidgetsFlutterBinding.ensureInitialized();
+    final binaryMessenger = binding.defaultBinaryMessenger;
 
     // Mock path_provider for tests so AppDatabase can resolve a file-backed DB
-    const MethodChannel _kPathProvider = MethodChannel('plugins.flutter.io/path_provider');
-    _kPathProvider.setMockMethodCallHandler((MethodCall methodCall) async {
+    binaryMessenger.setMockMethodCallHandler(pathProviderChannel, (MethodCall methodCall) async {
       if (methodCall.method == 'getApplicationDocumentsDirectory') {
         // Return a String path (not a Map) so the path_provider platform interface can
         // construct a Directory from it. Use the current working directory so the
@@ -43,15 +47,25 @@ class GlobalTestManager {
       return null;
     });
 
-    await setupTestServiceLocator();
+    binaryMessenger.setMockMethodCallHandler(connectivityChannel, (MethodCall methodCall) async {
+      if (methodCall.method == 'check') {
+        return <String>[ConnectivityResult.wifi.name];
+      }
+      return null;
+    });
+
+    await setupTestServiceLocator(startBackgroundWorkers: false);
     _isInitialized = true;
   }
   
   Future<void> disposeGlobal() async {
     if (!_isInitialized) return;
-    // Remove the mocked handler for path_provider
-    const MethodChannel _kPathProvider = MethodChannel('plugins.flutter.io/path_provider');
-    _kPathProvider.setMockMethodCallHandler(null);
+  final binding = TestWidgetsFlutterBinding.ensureInitialized();
+  final binaryMessenger = binding.defaultBinaryMessenger;
+
+  // Remove the mocked handler for path_provider
+  binaryMessenger.setMockMethodCallHandler(pathProviderChannel, null);
+  binaryMessenger.setMockMethodCallHandler(connectivityChannel, null);
 
     _isInitialized = false;
   }
@@ -74,7 +88,7 @@ class GlobalTestManager {
 
     // Reset GetIt and recreate test registrations.
     await GetIt.instance.reset();
-    await setupTestServiceLocator();
+    await setupTestServiceLocator(startBackgroundWorkers: false);
   }
   
   bool get isInitialized => _isInitialized;

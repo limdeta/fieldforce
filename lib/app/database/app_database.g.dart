@@ -6430,6 +6430,12 @@ class $OrdersTable extends Orders with TableInfo<$OrdersTable, OrderEntity> {
       defaultConstraints: GeneratedColumn.constraintIsAlways(
           'CHECK ("with_realization" IN (0, 1))'),
       defaultValue: const Constant(true));
+  static const VerificationMeta _failureReasonMeta =
+      const VerificationMeta('failureReason');
+  @override
+  late final GeneratedColumn<String> failureReason = GeneratedColumn<String>(
+      'failure_reason', aliasedName, true,
+      type: DriftSqlType.string, requiredDuringInsert: false);
   static const VerificationMeta _createdAtMeta =
       const VerificationMeta('createdAt');
   @override
@@ -6459,6 +6465,7 @@ class $OrdersTable extends Orders with TableInfo<$OrdersTable, OrderEntity> {
         approvedDeliveryDay,
         approvedAssemblyDay,
         withRealization,
+        failureReason,
         createdAt,
         updatedAt
       ];
@@ -6553,6 +6560,12 @@ class $OrdersTable extends Orders with TableInfo<$OrdersTable, OrderEntity> {
           withRealization.isAcceptableOrUnknown(
               data['with_realization']!, _withRealizationMeta));
     }
+    if (data.containsKey('failure_reason')) {
+      context.handle(
+          _failureReasonMeta,
+          failureReason.isAcceptableOrUnknown(
+              data['failure_reason']!, _failureReasonMeta));
+    }
     if (data.containsKey('created_at')) {
       context.handle(_createdAtMeta,
           createdAt.isAcceptableOrUnknown(data['created_at']!, _createdAtMeta));
@@ -6606,6 +6619,8 @@ class $OrdersTable extends Orders with TableInfo<$OrdersTable, OrderEntity> {
           data['${effectivePrefix}approved_assembly_day']),
       withRealization: attachedDatabase.typeMapping
           .read(DriftSqlType.bool, data['${effectivePrefix}with_realization'])!,
+      failureReason: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}failure_reason']),
       createdAt: attachedDatabase.typeMapping
           .read(DriftSqlType.dateTime, data['${effectivePrefix}created_at'])!,
       updatedAt: attachedDatabase.typeMapping
@@ -6635,6 +6650,7 @@ class OrderEntity extends DataClass implements Insertable<OrderEntity> {
   final DateTime? approvedDeliveryDay;
   final DateTime? approvedAssemblyDay;
   final bool withRealization;
+  final String? failureReason;
   final DateTime createdAt;
   final DateTime updatedAt;
   const OrderEntity(
@@ -6653,6 +6669,7 @@ class OrderEntity extends DataClass implements Insertable<OrderEntity> {
       this.approvedDeliveryDay,
       this.approvedAssemblyDay,
       required this.withRealization,
+      this.failureReason,
       required this.createdAt,
       required this.updatedAt});
   @override
@@ -6685,6 +6702,9 @@ class OrderEntity extends DataClass implements Insertable<OrderEntity> {
       map['approved_assembly_day'] = Variable<DateTime>(approvedAssemblyDay);
     }
     map['with_realization'] = Variable<bool>(withRealization);
+    if (!nullToAbsent || failureReason != null) {
+      map['failure_reason'] = Variable<String>(failureReason);
+    }
     map['created_at'] = Variable<DateTime>(createdAt);
     map['updated_at'] = Variable<DateTime>(updatedAt);
     return map;
@@ -6717,6 +6737,9 @@ class OrderEntity extends DataClass implements Insertable<OrderEntity> {
           ? const Value.absent()
           : Value(approvedAssemblyDay),
       withRealization: Value(withRealization),
+      failureReason: failureReason == null && nullToAbsent
+          ? const Value.absent()
+          : Value(failureReason),
       createdAt: Value(createdAt),
       updatedAt: Value(updatedAt),
     );
@@ -6743,6 +6766,7 @@ class OrderEntity extends DataClass implements Insertable<OrderEntity> {
       approvedAssemblyDay:
           serializer.fromJson<DateTime?>(json['approvedAssemblyDay']),
       withRealization: serializer.fromJson<bool>(json['withRealization']),
+      failureReason: serializer.fromJson<String?>(json['failureReason']),
       createdAt: serializer.fromJson<DateTime>(json['createdAt']),
       updatedAt: serializer.fromJson<DateTime>(json['updatedAt']),
     );
@@ -6766,6 +6790,7 @@ class OrderEntity extends DataClass implements Insertable<OrderEntity> {
       'approvedDeliveryDay': serializer.toJson<DateTime?>(approvedDeliveryDay),
       'approvedAssemblyDay': serializer.toJson<DateTime?>(approvedAssemblyDay),
       'withRealization': serializer.toJson<bool>(withRealization),
+      'failureReason': serializer.toJson<String?>(failureReason),
       'createdAt': serializer.toJson<DateTime>(createdAt),
       'updatedAt': serializer.toJson<DateTime>(updatedAt),
     };
@@ -6787,6 +6812,7 @@ class OrderEntity extends DataClass implements Insertable<OrderEntity> {
           Value<DateTime?> approvedDeliveryDay = const Value.absent(),
           Value<DateTime?> approvedAssemblyDay = const Value.absent(),
           bool? withRealization,
+          Value<String?> failureReason = const Value.absent(),
           DateTime? createdAt,
           DateTime? updatedAt}) =>
       OrderEntity(
@@ -6810,6 +6836,8 @@ class OrderEntity extends DataClass implements Insertable<OrderEntity> {
             ? approvedAssemblyDay.value
             : this.approvedAssemblyDay,
         withRealization: withRealization ?? this.withRealization,
+        failureReason:
+            failureReason.present ? failureReason.value : this.failureReason,
         createdAt: createdAt ?? this.createdAt,
         updatedAt: updatedAt ?? this.updatedAt,
       );
@@ -6831,6 +6859,7 @@ class OrderEntity extends DataClass implements Insertable<OrderEntity> {
           ..write('approvedDeliveryDay: $approvedDeliveryDay, ')
           ..write('approvedAssemblyDay: $approvedAssemblyDay, ')
           ..write('withRealization: $withRealization, ')
+          ..write('failureReason: $failureReason, ')
           ..write('createdAt: $createdAt, ')
           ..write('updatedAt: $updatedAt')
           ..write(')'))
@@ -6854,6 +6883,7 @@ class OrderEntity extends DataClass implements Insertable<OrderEntity> {
       approvedDeliveryDay,
       approvedAssemblyDay,
       withRealization,
+      failureReason,
       createdAt,
       updatedAt);
   @override
@@ -6875,6 +6905,7 @@ class OrderEntity extends DataClass implements Insertable<OrderEntity> {
           other.approvedDeliveryDay == this.approvedDeliveryDay &&
           other.approvedAssemblyDay == this.approvedAssemblyDay &&
           other.withRealization == this.withRealization &&
+          other.failureReason == this.failureReason &&
           other.createdAt == this.createdAt &&
           other.updatedAt == this.updatedAt);
 }
@@ -6895,6 +6926,7 @@ class OrdersCompanion extends UpdateCompanion<OrderEntity> {
   final Value<DateTime?> approvedDeliveryDay;
   final Value<DateTime?> approvedAssemblyDay;
   final Value<bool> withRealization;
+  final Value<String?> failureReason;
   final Value<DateTime> createdAt;
   final Value<DateTime> updatedAt;
   const OrdersCompanion({
@@ -6913,6 +6945,7 @@ class OrdersCompanion extends UpdateCompanion<OrderEntity> {
     this.approvedDeliveryDay = const Value.absent(),
     this.approvedAssemblyDay = const Value.absent(),
     this.withRealization = const Value.absent(),
+    this.failureReason = const Value.absent(),
     this.createdAt = const Value.absent(),
     this.updatedAt = const Value.absent(),
   });
@@ -6932,6 +6965,7 @@ class OrdersCompanion extends UpdateCompanion<OrderEntity> {
     this.approvedDeliveryDay = const Value.absent(),
     this.approvedAssemblyDay = const Value.absent(),
     this.withRealization = const Value.absent(),
+    this.failureReason = const Value.absent(),
     required DateTime createdAt,
     required DateTime updatedAt,
   })  : creatorId = Value(creatorId),
@@ -6955,6 +6989,7 @@ class OrdersCompanion extends UpdateCompanion<OrderEntity> {
     Expression<DateTime>? approvedDeliveryDay,
     Expression<DateTime>? approvedAssemblyDay,
     Expression<bool>? withRealization,
+    Expression<String>? failureReason,
     Expression<DateTime>? createdAt,
     Expression<DateTime>? updatedAt,
   }) {
@@ -6976,6 +7011,7 @@ class OrdersCompanion extends UpdateCompanion<OrderEntity> {
       if (approvedAssemblyDay != null)
         'approved_assembly_day': approvedAssemblyDay,
       if (withRealization != null) 'with_realization': withRealization,
+      if (failureReason != null) 'failure_reason': failureReason,
       if (createdAt != null) 'created_at': createdAt,
       if (updatedAt != null) 'updated_at': updatedAt,
     });
@@ -6997,6 +7033,7 @@ class OrdersCompanion extends UpdateCompanion<OrderEntity> {
       Value<DateTime?>? approvedDeliveryDay,
       Value<DateTime?>? approvedAssemblyDay,
       Value<bool>? withRealization,
+      Value<String?>? failureReason,
       Value<DateTime>? createdAt,
       Value<DateTime>? updatedAt}) {
     return OrdersCompanion(
@@ -7015,6 +7052,7 @@ class OrdersCompanion extends UpdateCompanion<OrderEntity> {
       approvedDeliveryDay: approvedDeliveryDay ?? this.approvedDeliveryDay,
       approvedAssemblyDay: approvedAssemblyDay ?? this.approvedAssemblyDay,
       withRealization: withRealization ?? this.withRealization,
+      failureReason: failureReason ?? this.failureReason,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
     );
@@ -7070,6 +7108,9 @@ class OrdersCompanion extends UpdateCompanion<OrderEntity> {
     if (withRealization.present) {
       map['with_realization'] = Variable<bool>(withRealization.value);
     }
+    if (failureReason.present) {
+      map['failure_reason'] = Variable<String>(failureReason.value);
+    }
     if (createdAt.present) {
       map['created_at'] = Variable<DateTime>(createdAt.value);
     }
@@ -7097,6 +7138,7 @@ class OrdersCompanion extends UpdateCompanion<OrderEntity> {
           ..write('approvedDeliveryDay: $approvedDeliveryDay, ')
           ..write('approvedAssemblyDay: $approvedAssemblyDay, ')
           ..write('withRealization: $withRealization, ')
+          ..write('failureReason: $failureReason, ')
           ..write('createdAt: $createdAt, ')
           ..write('updatedAt: $updatedAt')
           ..write(')'))
@@ -8274,6 +8316,512 @@ class StockItemsCompanion extends UpdateCompanion<StockItemData> {
   }
 }
 
+class $OrderJobsTable extends OrderJobs
+    with TableInfo<$OrderJobsTable, OrderJobEntity> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $OrderJobsTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _idMeta = const VerificationMeta('id');
+  @override
+  late final GeneratedColumn<String> id = GeneratedColumn<String>(
+      'id', aliasedName, false,
+      type: DriftSqlType.string, requiredDuringInsert: true);
+  static const VerificationMeta _orderIdMeta =
+      const VerificationMeta('orderId');
+  @override
+  late final GeneratedColumn<int> orderId = GeneratedColumn<int>(
+      'order_id', aliasedName, false,
+      type: DriftSqlType.int,
+      requiredDuringInsert: true,
+      defaultConstraints: GeneratedColumn.constraintIsAlways(
+          'REFERENCES orders (id) ON DELETE CASCADE'));
+  static const VerificationMeta _jobTypeMeta =
+      const VerificationMeta('jobType');
+  @override
+  late final GeneratedColumn<String> jobType = GeneratedColumn<String>(
+      'job_type', aliasedName, false,
+      additionalChecks:
+          GeneratedColumn.checkTextLength(minTextLength: 1, maxTextLength: 64),
+      type: DriftSqlType.string,
+      requiredDuringInsert: true);
+  static const VerificationMeta _payloadJsonMeta =
+      const VerificationMeta('payloadJson');
+  @override
+  late final GeneratedColumn<String> payloadJson = GeneratedColumn<String>(
+      'payload_json', aliasedName, false,
+      type: DriftSqlType.string, requiredDuringInsert: true);
+  static const VerificationMeta _statusMeta = const VerificationMeta('status');
+  @override
+  late final GeneratedColumn<String> status = GeneratedColumn<String>(
+      'status', aliasedName, false,
+      additionalChecks:
+          GeneratedColumn.checkTextLength(minTextLength: 1, maxTextLength: 32),
+      type: DriftSqlType.string,
+      requiredDuringInsert: true);
+  static const VerificationMeta _attemptsMeta =
+      const VerificationMeta('attempts');
+  @override
+  late final GeneratedColumn<int> attempts = GeneratedColumn<int>(
+      'attempts', aliasedName, false,
+      type: DriftSqlType.int,
+      requiredDuringInsert: false,
+      defaultValue: const Constant(0));
+  static const VerificationMeta _nextRunAtMeta =
+      const VerificationMeta('nextRunAt');
+  @override
+  late final GeneratedColumn<DateTime> nextRunAt = GeneratedColumn<DateTime>(
+      'next_run_at', aliasedName, true,
+      type: DriftSqlType.dateTime, requiredDuringInsert: false);
+  static const VerificationMeta _failureReasonMeta =
+      const VerificationMeta('failureReason');
+  @override
+  late final GeneratedColumn<String> failureReason = GeneratedColumn<String>(
+      'failure_reason', aliasedName, true,
+      type: DriftSqlType.string, requiredDuringInsert: false);
+  static const VerificationMeta _createdAtMeta =
+      const VerificationMeta('createdAt');
+  @override
+  late final GeneratedColumn<DateTime> createdAt = GeneratedColumn<DateTime>(
+      'created_at', aliasedName, false,
+      type: DriftSqlType.dateTime, requiredDuringInsert: true);
+  static const VerificationMeta _updatedAtMeta =
+      const VerificationMeta('updatedAt');
+  @override
+  late final GeneratedColumn<DateTime> updatedAt = GeneratedColumn<DateTime>(
+      'updated_at', aliasedName, false,
+      type: DriftSqlType.dateTime, requiredDuringInsert: true);
+  @override
+  List<GeneratedColumn> get $columns => [
+        id,
+        orderId,
+        jobType,
+        payloadJson,
+        status,
+        attempts,
+        nextRunAt,
+        failureReason,
+        createdAt,
+        updatedAt
+      ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'order_jobs';
+  @override
+  VerificationContext validateIntegrity(Insertable<OrderJobEntity> instance,
+      {bool isInserting = false}) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('id')) {
+      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
+    } else if (isInserting) {
+      context.missing(_idMeta);
+    }
+    if (data.containsKey('order_id')) {
+      context.handle(_orderIdMeta,
+          orderId.isAcceptableOrUnknown(data['order_id']!, _orderIdMeta));
+    } else if (isInserting) {
+      context.missing(_orderIdMeta);
+    }
+    if (data.containsKey('job_type')) {
+      context.handle(_jobTypeMeta,
+          jobType.isAcceptableOrUnknown(data['job_type']!, _jobTypeMeta));
+    } else if (isInserting) {
+      context.missing(_jobTypeMeta);
+    }
+    if (data.containsKey('payload_json')) {
+      context.handle(
+          _payloadJsonMeta,
+          payloadJson.isAcceptableOrUnknown(
+              data['payload_json']!, _payloadJsonMeta));
+    } else if (isInserting) {
+      context.missing(_payloadJsonMeta);
+    }
+    if (data.containsKey('status')) {
+      context.handle(_statusMeta,
+          status.isAcceptableOrUnknown(data['status']!, _statusMeta));
+    } else if (isInserting) {
+      context.missing(_statusMeta);
+    }
+    if (data.containsKey('attempts')) {
+      context.handle(_attemptsMeta,
+          attempts.isAcceptableOrUnknown(data['attempts']!, _attemptsMeta));
+    }
+    if (data.containsKey('next_run_at')) {
+      context.handle(
+          _nextRunAtMeta,
+          nextRunAt.isAcceptableOrUnknown(
+              data['next_run_at']!, _nextRunAtMeta));
+    }
+    if (data.containsKey('failure_reason')) {
+      context.handle(
+          _failureReasonMeta,
+          failureReason.isAcceptableOrUnknown(
+              data['failure_reason']!, _failureReasonMeta));
+    }
+    if (data.containsKey('created_at')) {
+      context.handle(_createdAtMeta,
+          createdAt.isAcceptableOrUnknown(data['created_at']!, _createdAtMeta));
+    } else if (isInserting) {
+      context.missing(_createdAtMeta);
+    }
+    if (data.containsKey('updated_at')) {
+      context.handle(_updatedAtMeta,
+          updatedAt.isAcceptableOrUnknown(data['updated_at']!, _updatedAtMeta));
+    } else if (isInserting) {
+      context.missing(_updatedAtMeta);
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {id};
+  @override
+  OrderJobEntity map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return OrderJobEntity(
+      id: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}id'])!,
+      orderId: attachedDatabase.typeMapping
+          .read(DriftSqlType.int, data['${effectivePrefix}order_id'])!,
+      jobType: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}job_type'])!,
+      payloadJson: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}payload_json'])!,
+      status: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}status'])!,
+      attempts: attachedDatabase.typeMapping
+          .read(DriftSqlType.int, data['${effectivePrefix}attempts'])!,
+      nextRunAt: attachedDatabase.typeMapping
+          .read(DriftSqlType.dateTime, data['${effectivePrefix}next_run_at']),
+      failureReason: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}failure_reason']),
+      createdAt: attachedDatabase.typeMapping
+          .read(DriftSqlType.dateTime, data['${effectivePrefix}created_at'])!,
+      updatedAt: attachedDatabase.typeMapping
+          .read(DriftSqlType.dateTime, data['${effectivePrefix}updated_at'])!,
+    );
+  }
+
+  @override
+  $OrderJobsTable createAlias(String alias) {
+    return $OrderJobsTable(attachedDatabase, alias);
+  }
+}
+
+class OrderJobEntity extends DataClass implements Insertable<OrderJobEntity> {
+  final String id;
+  final int orderId;
+  final String jobType;
+  final String payloadJson;
+  final String status;
+  final int attempts;
+  final DateTime? nextRunAt;
+  final String? failureReason;
+  final DateTime createdAt;
+  final DateTime updatedAt;
+  const OrderJobEntity(
+      {required this.id,
+      required this.orderId,
+      required this.jobType,
+      required this.payloadJson,
+      required this.status,
+      required this.attempts,
+      this.nextRunAt,
+      this.failureReason,
+      required this.createdAt,
+      required this.updatedAt});
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['id'] = Variable<String>(id);
+    map['order_id'] = Variable<int>(orderId);
+    map['job_type'] = Variable<String>(jobType);
+    map['payload_json'] = Variable<String>(payloadJson);
+    map['status'] = Variable<String>(status);
+    map['attempts'] = Variable<int>(attempts);
+    if (!nullToAbsent || nextRunAt != null) {
+      map['next_run_at'] = Variable<DateTime>(nextRunAt);
+    }
+    if (!nullToAbsent || failureReason != null) {
+      map['failure_reason'] = Variable<String>(failureReason);
+    }
+    map['created_at'] = Variable<DateTime>(createdAt);
+    map['updated_at'] = Variable<DateTime>(updatedAt);
+    return map;
+  }
+
+  OrderJobsCompanion toCompanion(bool nullToAbsent) {
+    return OrderJobsCompanion(
+      id: Value(id),
+      orderId: Value(orderId),
+      jobType: Value(jobType),
+      payloadJson: Value(payloadJson),
+      status: Value(status),
+      attempts: Value(attempts),
+      nextRunAt: nextRunAt == null && nullToAbsent
+          ? const Value.absent()
+          : Value(nextRunAt),
+      failureReason: failureReason == null && nullToAbsent
+          ? const Value.absent()
+          : Value(failureReason),
+      createdAt: Value(createdAt),
+      updatedAt: Value(updatedAt),
+    );
+  }
+
+  factory OrderJobEntity.fromJson(Map<String, dynamic> json,
+      {ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return OrderJobEntity(
+      id: serializer.fromJson<String>(json['id']),
+      orderId: serializer.fromJson<int>(json['orderId']),
+      jobType: serializer.fromJson<String>(json['jobType']),
+      payloadJson: serializer.fromJson<String>(json['payloadJson']),
+      status: serializer.fromJson<String>(json['status']),
+      attempts: serializer.fromJson<int>(json['attempts']),
+      nextRunAt: serializer.fromJson<DateTime?>(json['nextRunAt']),
+      failureReason: serializer.fromJson<String?>(json['failureReason']),
+      createdAt: serializer.fromJson<DateTime>(json['createdAt']),
+      updatedAt: serializer.fromJson<DateTime>(json['updatedAt']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'id': serializer.toJson<String>(id),
+      'orderId': serializer.toJson<int>(orderId),
+      'jobType': serializer.toJson<String>(jobType),
+      'payloadJson': serializer.toJson<String>(payloadJson),
+      'status': serializer.toJson<String>(status),
+      'attempts': serializer.toJson<int>(attempts),
+      'nextRunAt': serializer.toJson<DateTime?>(nextRunAt),
+      'failureReason': serializer.toJson<String?>(failureReason),
+      'createdAt': serializer.toJson<DateTime>(createdAt),
+      'updatedAt': serializer.toJson<DateTime>(updatedAt),
+    };
+  }
+
+  OrderJobEntity copyWith(
+          {String? id,
+          int? orderId,
+          String? jobType,
+          String? payloadJson,
+          String? status,
+          int? attempts,
+          Value<DateTime?> nextRunAt = const Value.absent(),
+          Value<String?> failureReason = const Value.absent(),
+          DateTime? createdAt,
+          DateTime? updatedAt}) =>
+      OrderJobEntity(
+        id: id ?? this.id,
+        orderId: orderId ?? this.orderId,
+        jobType: jobType ?? this.jobType,
+        payloadJson: payloadJson ?? this.payloadJson,
+        status: status ?? this.status,
+        attempts: attempts ?? this.attempts,
+        nextRunAt: nextRunAt.present ? nextRunAt.value : this.nextRunAt,
+        failureReason:
+            failureReason.present ? failureReason.value : this.failureReason,
+        createdAt: createdAt ?? this.createdAt,
+        updatedAt: updatedAt ?? this.updatedAt,
+      );
+  @override
+  String toString() {
+    return (StringBuffer('OrderJobEntity(')
+          ..write('id: $id, ')
+          ..write('orderId: $orderId, ')
+          ..write('jobType: $jobType, ')
+          ..write('payloadJson: $payloadJson, ')
+          ..write('status: $status, ')
+          ..write('attempts: $attempts, ')
+          ..write('nextRunAt: $nextRunAt, ')
+          ..write('failureReason: $failureReason, ')
+          ..write('createdAt: $createdAt, ')
+          ..write('updatedAt: $updatedAt')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(id, orderId, jobType, payloadJson, status,
+      attempts, nextRunAt, failureReason, createdAt, updatedAt);
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is OrderJobEntity &&
+          other.id == this.id &&
+          other.orderId == this.orderId &&
+          other.jobType == this.jobType &&
+          other.payloadJson == this.payloadJson &&
+          other.status == this.status &&
+          other.attempts == this.attempts &&
+          other.nextRunAt == this.nextRunAt &&
+          other.failureReason == this.failureReason &&
+          other.createdAt == this.createdAt &&
+          other.updatedAt == this.updatedAt);
+}
+
+class OrderJobsCompanion extends UpdateCompanion<OrderJobEntity> {
+  final Value<String> id;
+  final Value<int> orderId;
+  final Value<String> jobType;
+  final Value<String> payloadJson;
+  final Value<String> status;
+  final Value<int> attempts;
+  final Value<DateTime?> nextRunAt;
+  final Value<String?> failureReason;
+  final Value<DateTime> createdAt;
+  final Value<DateTime> updatedAt;
+  final Value<int> rowid;
+  const OrderJobsCompanion({
+    this.id = const Value.absent(),
+    this.orderId = const Value.absent(),
+    this.jobType = const Value.absent(),
+    this.payloadJson = const Value.absent(),
+    this.status = const Value.absent(),
+    this.attempts = const Value.absent(),
+    this.nextRunAt = const Value.absent(),
+    this.failureReason = const Value.absent(),
+    this.createdAt = const Value.absent(),
+    this.updatedAt = const Value.absent(),
+    this.rowid = const Value.absent(),
+  });
+  OrderJobsCompanion.insert({
+    required String id,
+    required int orderId,
+    required String jobType,
+    required String payloadJson,
+    required String status,
+    this.attempts = const Value.absent(),
+    this.nextRunAt = const Value.absent(),
+    this.failureReason = const Value.absent(),
+    required DateTime createdAt,
+    required DateTime updatedAt,
+    this.rowid = const Value.absent(),
+  })  : id = Value(id),
+        orderId = Value(orderId),
+        jobType = Value(jobType),
+        payloadJson = Value(payloadJson),
+        status = Value(status),
+        createdAt = Value(createdAt),
+        updatedAt = Value(updatedAt);
+  static Insertable<OrderJobEntity> custom({
+    Expression<String>? id,
+    Expression<int>? orderId,
+    Expression<String>? jobType,
+    Expression<String>? payloadJson,
+    Expression<String>? status,
+    Expression<int>? attempts,
+    Expression<DateTime>? nextRunAt,
+    Expression<String>? failureReason,
+    Expression<DateTime>? createdAt,
+    Expression<DateTime>? updatedAt,
+    Expression<int>? rowid,
+  }) {
+    return RawValuesInsertable({
+      if (id != null) 'id': id,
+      if (orderId != null) 'order_id': orderId,
+      if (jobType != null) 'job_type': jobType,
+      if (payloadJson != null) 'payload_json': payloadJson,
+      if (status != null) 'status': status,
+      if (attempts != null) 'attempts': attempts,
+      if (nextRunAt != null) 'next_run_at': nextRunAt,
+      if (failureReason != null) 'failure_reason': failureReason,
+      if (createdAt != null) 'created_at': createdAt,
+      if (updatedAt != null) 'updated_at': updatedAt,
+      if (rowid != null) 'rowid': rowid,
+    });
+  }
+
+  OrderJobsCompanion copyWith(
+      {Value<String>? id,
+      Value<int>? orderId,
+      Value<String>? jobType,
+      Value<String>? payloadJson,
+      Value<String>? status,
+      Value<int>? attempts,
+      Value<DateTime?>? nextRunAt,
+      Value<String?>? failureReason,
+      Value<DateTime>? createdAt,
+      Value<DateTime>? updatedAt,
+      Value<int>? rowid}) {
+    return OrderJobsCompanion(
+      id: id ?? this.id,
+      orderId: orderId ?? this.orderId,
+      jobType: jobType ?? this.jobType,
+      payloadJson: payloadJson ?? this.payloadJson,
+      status: status ?? this.status,
+      attempts: attempts ?? this.attempts,
+      nextRunAt: nextRunAt ?? this.nextRunAt,
+      failureReason: failureReason ?? this.failureReason,
+      createdAt: createdAt ?? this.createdAt,
+      updatedAt: updatedAt ?? this.updatedAt,
+      rowid: rowid ?? this.rowid,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (id.present) {
+      map['id'] = Variable<String>(id.value);
+    }
+    if (orderId.present) {
+      map['order_id'] = Variable<int>(orderId.value);
+    }
+    if (jobType.present) {
+      map['job_type'] = Variable<String>(jobType.value);
+    }
+    if (payloadJson.present) {
+      map['payload_json'] = Variable<String>(payloadJson.value);
+    }
+    if (status.present) {
+      map['status'] = Variable<String>(status.value);
+    }
+    if (attempts.present) {
+      map['attempts'] = Variable<int>(attempts.value);
+    }
+    if (nextRunAt.present) {
+      map['next_run_at'] = Variable<DateTime>(nextRunAt.value);
+    }
+    if (failureReason.present) {
+      map['failure_reason'] = Variable<String>(failureReason.value);
+    }
+    if (createdAt.present) {
+      map['created_at'] = Variable<DateTime>(createdAt.value);
+    }
+    if (updatedAt.present) {
+      map['updated_at'] = Variable<DateTime>(updatedAt.value);
+    }
+    if (rowid.present) {
+      map['rowid'] = Variable<int>(rowid.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('OrderJobsCompanion(')
+          ..write('id: $id, ')
+          ..write('orderId: $orderId, ')
+          ..write('jobType: $jobType, ')
+          ..write('payloadJson: $payloadJson, ')
+          ..write('status: $status, ')
+          ..write('attempts: $attempts, ')
+          ..write('nextRunAt: $nextRunAt, ')
+          ..write('failureReason: $failureReason, ')
+          ..write('createdAt: $createdAt, ')
+          ..write('updatedAt: $updatedAt, ')
+          ..write('rowid: $rowid')
+          ..write(')'))
+        .toString();
+  }
+}
+
 abstract class _$AppDatabase extends GeneratedDatabase {
   _$AppDatabase(QueryExecutor e) : super(e);
   late final $UsersTable users = $UsersTable(this);
@@ -8296,6 +8844,7 @@ abstract class _$AppDatabase extends GeneratedDatabase {
   late final $OrdersTable orders = $OrdersTable(this);
   late final $OrderLinesTable orderLines = $OrderLinesTable(this);
   late final $StockItemsTable stockItems = $StockItemsTable(this);
+  late final $OrderJobsTable orderJobs = $OrderJobsTable(this);
   @override
   Iterable<TableInfo<Table, Object?>> get allTables =>
       allSchemaEntities.whereType<TableInfo<Table, Object?>>();
@@ -8316,7 +8865,8 @@ abstract class _$AppDatabase extends GeneratedDatabase {
         products,
         orders,
         orderLines,
-        stockItems
+        stockItems,
+        orderJobs
       ];
   @override
   StreamQueryUpdateRules get streamUpdateRules => const StreamQueryUpdateRules(
@@ -8333,6 +8883,13 @@ abstract class _$AppDatabase extends GeneratedDatabase {
                 limitUpdateKind: UpdateKind.delete),
             result: [
               TableUpdate('order_lines', kind: UpdateKind.delete),
+            ],
+          ),
+          WritePropagation(
+            on: TableUpdateQuery.onTableName('orders',
+                limitUpdateKind: UpdateKind.delete),
+            result: [
+              TableUpdate('order_jobs', kind: UpdateKind.delete),
             ],
           ),
         ],

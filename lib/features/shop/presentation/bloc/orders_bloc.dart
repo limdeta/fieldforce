@@ -3,6 +3,7 @@
 import 'dart:async';
 import 'package:equatable/equatable.dart';
 import 'package:fieldforce/features/shop/domain/usecases/get_order_by_id_usecase.dart';
+import 'package:fieldforce/features/shop/domain/usecases/retry_order_submission_usecase.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:logging/logging.dart';
@@ -22,23 +23,31 @@ class OrdersBloc extends Bloc<OrdersEvent, OrdersState> {
 
   final domain.GetOrdersUseCase _getOrdersUseCase;
   final GetOrderByIdUseCase _getOrderByIdUseCase;
+  final RetryOrderSubmissionUseCase _retryOrderSubmissionUseCase;
+  int? _currentEmployeeId;
+  List<Order> _cachedOrders = const [];
+  OrdersFilter _cachedFilter = const OrdersFilter();
 
   OrdersBloc({
     required domain.GetOrdersUseCase getOrdersUseCase,
     required GetOrderByIdUseCase getOrderByIdUseCase,
+    required RetryOrderSubmissionUseCase retryOrderSubmissionUseCase,
   })  : _getOrdersUseCase = getOrdersUseCase,
         _getOrderByIdUseCase = getOrderByIdUseCase,
+        _retryOrderSubmissionUseCase = retryOrderSubmissionUseCase,
         super(const OrdersInitial()) {
     on<LoadOrdersEvent>(_onLoadOrders);
     on<UpdateOrdersFilterEvent>(_onUpdateOrdersFilter);
     on<GetOrderByIdEvent>(_onGetOrderById);
     on<RefreshOrdersEvent>(_onRefreshOrders);
+    on<RetryOrderSubmissionEvent>(_onRetryOrderSubmission);
   }
 
   /// Загрузить список заказов
   Future<void> _onLoadOrders(LoadOrdersEvent event, Emitter<OrdersState> emit) async {
     try {
       emit(const OrdersLoading());
+      _currentEmployeeId = event.employeeId;
       _logger.info('Загружаем заказы для сотрудника ${event.employeeId}');
 
       final result = await _getOrdersUseCase(domain.GetOrdersParams(
@@ -53,23 +62,22 @@ class OrdersBloc extends Bloc<OrdersEvent, OrdersState> {
         },
         (orders) {
           _logger.info('Загружено заказов: ${orders.length}');
-          
-          if (orders.isEmpty) {
+
+          _cachedFilter = event.filter ?? const OrdersFilter();
+          _cacheOrders(orders);
+
+          if (_cachedOrders.isEmpty) {
             emit(OrdersEmpty(
-              currentFilter: event.filter ?? const OrdersFilter(),
+              employeeId: event.employeeId,
+              currentFilter: _cachedFilter,
             ));
           } else {
-            // Подсчитываем статистику по статусам
-            final statusCounts = <String, int>{};
-            for (final order in orders) {
-              final status = order.state.toString();
-              statusCounts[status] = (statusCounts[status] ?? 0) + 1;
-            }
-
+            final statusCounts = _calculateStatusCounts(_cachedOrders);
             emit(OrdersLoaded(
-              orders: orders,
-              currentFilter: event.filter ?? const OrdersFilter(),
-              totalCount: orders.length,
+              employeeId: event.employeeId,
+              orders: _cloneCachedOrders(),
+              currentFilter: _cachedFilter,
+              totalCount: _cachedOrders.length,
               statusCounts: statusCounts,
             ));
           }
@@ -83,22 +91,15 @@ class OrdersBloc extends Bloc<OrdersEvent, OrdersState> {
 
   /// Обновить фильтр заказов
   Future<void> _onUpdateOrdersFilter(UpdateOrdersFilterEvent event, Emitter<OrdersState> emit) async {
-    if (state is OrdersLoaded) {
-      final currentState = state as OrdersLoaded;
-      
-      // Перезагружаем с новым фильтром
-      // Получаем employeeId из текущего состояния (можно добавить в состояние)
-      // Пока используем заглушку
-      _logger.info('Обновляем фильтр заказов: ${event.filter}');
-      
-      // TODO: Нужно сохранить employeeId в состоянии для перезагрузки
-      emit(OrdersLoaded(
-        orders: currentState.orders,
-        currentFilter: event.filter,
-        totalCount: currentState.totalCount,
-        statusCounts: currentState.statusCounts,
-      ));
+    final employeeId = _currentEmployeeId;
+    if (employeeId == null) {
+      _logger.warning('Попытка обновить фильтр заказов без загруженного сотрудника');
+      return;
     }
+
+    _logger.info('Обновляем фильтр заказов: ${event.filter}');
+    emit(const OrdersLoading());
+    add(LoadOrdersEvent(employeeId: employeeId, filter: event.filter));
   }
 
   /// Получить заказ по ID
@@ -127,17 +128,86 @@ class OrdersBloc extends Bloc<OrdersEvent, OrdersState> {
     }
   }
 
-  Future<void> _onRefreshOrders(RefreshOrdersEvent event, Emitter<OrdersState> emit) async {
-    if (state is OrdersLoaded) {
-      final currentState = state as OrdersLoaded;
-      
-      add(LoadOrdersEvent(
-        employeeId: event.employeeId,
-        filter: currentState.currentFilter,
-      ));
-    } else {
-      add(LoadOrdersEvent(employeeId: event.employeeId));
+  Future<void> _onRetryOrderSubmission(
+    RetryOrderSubmissionEvent event,
+    Emitter<OrdersState> emit,
+  ) async {
+    if (event.orderId <= 0) {
+      _logger.warning('Попытка повторной отправки заказа с некорректным ID: ${event.orderId}');
+      emit(OrderRetryFailure(orderId: event.orderId, message: 'Некорректный идентификатор заказа'));
+      return;
     }
+
+    final baseState = state;
+    emit(OrderRetryInProgress(orderId: event.orderId));
+
+    final result = await _retryOrderSubmissionUseCase(
+      RetryOrderSubmissionParams(orderId: event.orderId),
+    );
+
+    await result.fold(
+      (failure) async {
+        _logger.warning('Повторная отправка заказа ${event.orderId} завершилась ошибкой: ${failure.message}');
+        emit(OrderRetryFailure(orderId: event.orderId, message: failure.message));
+      },
+      (updatedOrder) async {
+        _logger.info('Заказ ${event.orderId} повторно отправлен, новое состояние: ${updatedOrder.state}');
+        _updateCachedOrder(updatedOrder);
+
+        if (baseState is OrdersLoaded) {
+          final statusCounts = _calculateStatusCounts(_cachedOrders);
+          emit(OrdersLoaded(
+            employeeId: baseState.employeeId,
+            orders: _cloneCachedOrders(),
+            currentFilter: baseState.currentFilter,
+            totalCount: _cachedOrders.length,
+            statusCounts: statusCounts,
+          ));
+        } else if (baseState is OrderDetailLoaded) {
+          emit(OrderDetailLoaded(updatedOrder));
+        }
+
+        emit(OrderRetrySuccess(orderId: event.orderId));
+      },
+    );
+  }
+
+  Future<void> _onRefreshOrders(RefreshOrdersEvent event, Emitter<OrdersState> emit) async {
+    final employeeId = event.employeeId;
+    final filter = state is OrdersLoaded
+        ? (state as OrdersLoaded).currentFilter
+        : state is OrdersEmpty
+            ? (state as OrdersEmpty).currentFilter
+            : null;
+
+    add(LoadOrdersEvent(
+      employeeId: employeeId,
+      filter: filter,
+    ));
+  }
+
+  List<Order> _cloneCachedOrders() => List<Order>.from(_cachedOrders);
+
+  void _cacheOrders(List<Order> orders) {
+    _cachedOrders = List<Order>.from(orders);
+  }
+
+  void _updateCachedOrder(Order updatedOrder) {
+    final index = _cachedOrders.indexWhere((order) => order.id == updatedOrder.id);
+    if (index == -1) {
+      return;
+    }
+    final updated = List<Order>.from(_cachedOrders);
+    updated[index] = updatedOrder;
+    _cachedOrders = updated;
+  }
+
+  Map<OrderState, int> _calculateStatusCounts(List<Order> orders) {
+    final counts = <OrderState, int>{};
+    for (final order in orders) {
+      counts[order.state] = (counts[order.state] ?? 0) + 1;
+    }
+    return counts;
   }
 
   /// Преобразует presentation фильтр в domain фильтр

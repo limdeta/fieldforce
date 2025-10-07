@@ -85,10 +85,11 @@ class GetOrdersUseCase {
 
     // Фильтр по датам
     if (filter.dateFrom != null) {
-      filtered = filtered.where((order) => order.createdAt.isAfter(filter.dateFrom!)).toList();
+      filtered = filtered.where((order) => !order.createdAt.isBefore(filter.dateFrom!)).toList();
     }
     if (filter.dateTo != null) {
-      filtered = filtered.where((order) => order.createdAt.isBefore(filter.dateTo!.add(const Duration(days: 1)))).toList();
+      final inclusiveEnd = DateTime(filter.dateTo!.year, filter.dateTo!.month, filter.dateTo!.day, 23, 59, 59, 999);
+      filtered = filtered.where((order) => !order.createdAt.isAfter(inclusiveEnd)).toList();
     }
 
     // Поиск по тексту (номер заказа или комментарий)
@@ -115,12 +116,10 @@ class GetOrdersUseCase {
           result = a.updatedAt.compareTo(b.updatedAt);
           break;
         case OrderSortType.byTotalAmount:
-          // TODO: Нужно будет добавить вычисление общей суммы заказа
-          result = 0; // Заглушка
+          result = a.totalCost.compareTo(b.totalCost);
           break;
         case OrderSortType.byOutletName:
-          // TODO: Нужно будет добавить название торговой точки
-          result = 0; // Заглушка
+          result = a.outlet.name.toLowerCase().compareTo(b.outlet.name.toLowerCase());
           break;
       }
       

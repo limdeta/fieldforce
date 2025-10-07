@@ -15,7 +15,7 @@ void main() {
       );
 
       expect(result.isRight(), true);
-      final user = result.getOrElse(() => throw Exception());
+      result.getOrElse(() => throw Exception());
     });
 
     test('should verify password correctly', () {

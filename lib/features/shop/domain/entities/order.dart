@@ -7,6 +7,7 @@ import 'employee.dart';
 
 /// Заказ - основная сущность для управления корзиной и заказами
 class Order extends Equatable {
+  static const Object _noUpdate = Object();
   final int? id;
   final Employee creator;
   final TradingPoint outlet;
@@ -19,6 +20,7 @@ class Order extends Equatable {
   final DateTime? approvedDeliveryDay;
   final DateTime? approvedAssemblyDay;
   final bool withRealization;
+  final String? failureReason;
   final DateTime createdAt;
   final DateTime updatedAt;
 
@@ -35,6 +37,7 @@ class Order extends Equatable {
     this.approvedDeliveryDay,
     this.approvedAssemblyDay,
     this.withRealization = true,
+    this.failureReason,
     required this.createdAt,
     required this.updatedAt,
   });
@@ -53,6 +56,7 @@ class Order extends Equatable {
       paymentKind: const PaymentKind.empty(),
       isPickup: true,
       withRealization: true,
+      failureReason: null,
       createdAt: now,
       updatedAt: now,
     );
@@ -78,6 +82,12 @@ class Order extends Equatable {
 
   /// Проверяет, что заказ можно отправить
   bool get canSubmit => state.canSubmit && lines.isNotEmpty && paymentKind.isValid();
+
+  /// Находится ли заказ в состоянии ошибки
+  bool get hasError => state == OrderState.error;
+
+  /// Подтверждён ли заказ внешней системой
+  bool get isConfirmed => state.isConfirmed;
 
   /// Проверяет, что заказ пустой
   bool get isEmpty => lines.isEmpty;
@@ -171,13 +181,14 @@ class Order extends Equatable {
   }
 
   /// Обновляет состояние заказа
-  Order updateState(OrderState newState) {
+  Order updateState(OrderState newState, {String? failureReason}) {
     if (!state.canTransitionTo(newState)) {
       throw StateError('Cannot transition from $state to $newState');
     }
     
     return copyWith(
       state: newState,
+      failureReason: newState == OrderState.error ? failureReason : null,
       updatedAt: DateTime.now(),
     );
   }
@@ -191,27 +202,27 @@ class Order extends Equatable {
     return updateState(OrderState.pending);
   }
 
-  /// Помечает заказ как выполненный
-  Order complete() {
+  /// Помечает заказ как подтверждённый
+  Order confirm() {
     if (state != OrderState.pending) {
-      throw StateError('Can only complete pending orders');
+      throw StateError('Can only confirm pending orders');
     }
 
-    return updateState(OrderState.completed);
+    return updateState(OrderState.confirmed);
   }
 
-  /// Помечает заказ как неудачный
-  Order markAsFailed() {
+  /// Переводит заказ в состояние ошибки (требуется ручная проверка)
+  Order markAsError({String? reason}) {
     if (state != OrderState.pending) {
-      throw StateError('Can only mark pending orders as failed');
+      throw StateError('Can only mark pending orders as error');
     }
 
-    return updateState(OrderState.failed);
+    return updateState(OrderState.error, failureReason: reason);
   }
 
   /// Возвращает заказ в черновик
   Order returnToDraft() {
-    if (!state.canEdit && state != OrderState.failed) {
+    if (!state.canEdit && state != OrderState.error) {
       throw StateError('Cannot return to draft from state: $state');
     }
 
@@ -295,6 +306,51 @@ class Order extends Equatable {
     return isPickup ? approvedAssemblyDay : approvedDeliveryDay;
   }
 
+  /// Представление заказа в формате JSON для отправки во внешнее API
+  Map<String, dynamic> toApiPayload() {
+    return {
+      'id': id,
+      'state': state.value,
+      'creator': {
+        'id': creator.id,
+        'fullName': creator.fullName,
+        'role': creator.role.name,
+      },
+      'outlet': {
+        'id': outlet.id,
+        'externalId': outlet.externalId,
+        'name': outlet.name,
+        'inn': outlet.inn,
+      },
+      'comment': comment,
+      'name': name,
+      'isPickup': isPickup,
+      'approvedDeliveryDay': approvedDeliveryDay?.toIso8601String(),
+      'approvedAssemblyDay': approvedAssemblyDay?.toIso8601String(),
+      'withRealization': withRealization,
+      'paymentKind': {
+        'type': paymentKind.type,
+        'details': paymentKind.details,
+        'isCashPayment': paymentKind.isCashPayment,
+        'isCardPayment': paymentKind.isCardPayment,
+        'isOnCredit': paymentKind.isOnCredit,
+      },
+      'totals': {
+        'cost': totalCost,
+        'baseCost': totalBaseCost,
+        'saving': totalSaving,
+        'quantity': totalQuantity,
+        'itemCount': itemCount,
+      },
+      'lines': lines.map((line) => line.toApiPayload()).toList(),
+      'failureReason': failureReason,
+      'timestamps': {
+        'createdAt': createdAt.toIso8601String(),
+        'updatedAt': updatedAt.toIso8601String(),
+      },
+    };
+  }
+
   Order copyWith({
     int? id,
     Employee? creator,
@@ -308,6 +364,7 @@ class Order extends Equatable {
     DateTime? approvedDeliveryDay,
     DateTime? approvedAssemblyDay,
     bool? withRealization,
+    Object? failureReason = _noUpdate,
     DateTime? createdAt,
     DateTime? updatedAt,
   }) {
@@ -324,6 +381,7 @@ class Order extends Equatable {
       approvedDeliveryDay: approvedDeliveryDay ?? this.approvedDeliveryDay,
       approvedAssemblyDay: approvedAssemblyDay ?? this.approvedAssemblyDay,
       withRealization: withRealization ?? this.withRealization,
+      failureReason: identical(failureReason, _noUpdate) ? this.failureReason : failureReason as String?,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
     );
@@ -343,12 +401,13 @@ class Order extends Equatable {
         approvedDeliveryDay,
         approvedAssemblyDay,
         withRealization,
+        failureReason,
         createdAt,
         updatedAt,
       ];
 
   @override
   String toString() {
-    return 'Order(id: $id, state: $state, itemCount: $itemCount, totalCost: $totalCost)';
+    return 'Order(id: $id, state: $state, itemCount: $itemCount, totalCost: $totalCost, failureReason: $failureReason)';
   }
 }

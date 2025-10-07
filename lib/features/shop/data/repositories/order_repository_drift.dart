@@ -9,6 +9,7 @@ import '../../domain/entities/order_line.dart';
 import '../../domain/entities/employee.dart';
 import '../../domain/entities/trading_point.dart';
 import '../../domain/entities/stock_item.dart';
+import '../../domain/entities/order_state.dart';
 import '../mappers/order_mapper.dart';
 
 class OrderRepositoryDrift implements OrderRepository {
@@ -55,6 +56,15 @@ class OrderRepositoryDrift implements OrderRepository {
   @override
   Future<Order> saveOrder(Order order) async {
     _logger.info('Saving order: ${order.id}');
+
+    if (order.state != OrderState.draft && order.lines.isEmpty) {
+      _logger.severe(
+        'Попытка сохранить заказ ${order.id ?? '<new>'} в состоянии ${order.state} без позиций',
+      );
+      throw StateError(
+        'Нельзя сохранить заказ в состоянии ${order.state} без товаров. Добавьте хотя бы одну позицию.',
+      );
+    }
     
     return await _database.transaction(() async {
       OrderEntity savedOrderEntity;
@@ -205,20 +215,14 @@ class OrderRepositoryDrift implements OrderRepository {
 
   /// Сохраняет строки заказ
   Future<void> _saveOrderLines(int orderId, List<OrderLine> lines) async {
-    
+    await (_database.delete(_database.orderLines)
+          ..where((line) => line.orderId.equals(orderId)))
+        .go();
+
     if (lines.isEmpty) {
       return;
     }
-    
-    try {
-      // Удаляем существующие строки (только если заказ уже существует)
-      await (_database.delete(_database.orderLines)
-        ..where((line) => line.orderId.equals(orderId))).go();
-    } catch (e) {
-      _logger.warning('Error deleting existing order lines (this is normal for new orders): $e');
-    }
-    
-    // Вставляем новые строки
+
     for (final line in lines) {
       final lineCompanion = OrderLineMapper.toDatabase(line, orderId);
       await _database.into(_database.orderLines).insert(lineCompanion);
