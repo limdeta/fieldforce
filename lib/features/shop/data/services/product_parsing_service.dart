@@ -69,10 +69,17 @@ class ProductParsingService {
     if (response.products.isNotEmpty) {
       final productsWithoutStock = response.products.where((p) => p.stockItems.isEmpty).toList();
       if (productsWithoutStock.isNotEmpty) {
-        final warning = 'Предупреждение: ${productsWithoutStock.length}/${response.products.length} продуктов без stockItems. '
+        final warning =
+            'Предупреждение: ${productsWithoutStock.length}/${response.products.length} продуктов без stockItems. '
             'Примеры: ${productsWithoutStock.take(3).map((p) => '${p.code}:${p.title}').join(', ')}.';
         logger.warning(warning);
-        // Не бросаем исключение — это не критично для процесса импорта. Продолжаем парсить доступные данные.
+
+        if (productsWithoutStock.length >= response.products.length * 0.5) {
+          logger.severe(
+            '🔴 Большая часть продуктов (${productsWithoutStock.length} из ${response.products.length}) пришла без stockItems. '
+            'Скорее всего, не передана валидная сессия или API вернул публичный payload.',
+          );
+        }
       }
     }
     
@@ -88,8 +95,11 @@ class ProductParsingService {
     
     // Если API не возвращает stockItems — логируем предупреждение и возвращаем пустой список stockItems.
     if (apiItem.stockItems.isEmpty) {
-      final warning = 'Предупреждение: API не вернул stockItems для продукта ${apiItem.code}: ${apiItem.title}.';
-      logger.warning(warning);
+      logger.severe(
+        '🔴 Получен продукт без stockItems: code=${apiItem.code}, title=${apiItem.title}. '
+        'Это признак отсутствующей сессии или некорректного payload. '
+        'Синхронизация продолжится, но запись остатков будет пропущена.',
+      );
       // Сформируем объект Product из доступных полей, но вернём пустой список stockItems — далее процесс сохранения сможет пропустить их.
       try {
         final productJson = _convertApiItemToProductJson(apiItem, rawJson);

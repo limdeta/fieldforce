@@ -313,8 +313,8 @@ class DriftProductRepository implements ProductRepository {
       }
 
     final availableProducts = sortedProducts
-          .where((product) => (stockByProduct[product.code]?.isNotEmpty ?? false))
-          .toList();
+      .where((product) => (stockByProduct[product.code]?.isNotEmpty ?? false))
+      .toList();
 
       if (availableProducts.isEmpty) {
         _logger.info('✅ Все продукты без доступных остатков для категории $categoryId, возвращаем пустой список');

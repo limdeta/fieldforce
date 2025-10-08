@@ -3,6 +3,7 @@
 import 'dart:async';
 import 'dart:isolate';
 import 'package:logging/logging.dart';
+import 'package:meta/meta.dart';
 
 import 'sync_messages.dart';
 import 'sync_isolate_worker.dart';
@@ -469,6 +470,13 @@ class IsolateSyncManager {
 
           final result = parsingService.convertApiItemToProduct(apiItem, itemMap);
 
+          if (result.stockItems.isEmpty) {
+            _logger.severe(
+              '🔴 Продукт code=${result.product.code} (${result.product.title}) получен без stockItems — пропускаем сохранение.',
+            );
+            continue;
+          }
+
           products.add(result.product);
           allStockItems.addAll(result.stockItems);
 
@@ -507,6 +515,9 @@ class IsolateSyncManager {
       _logger.severe('Stack trace: $stackTrace');
     }
   }
+
+  @visibleForTesting
+  Future<void> debugHandleSaveProducts(Map<String, dynamic> data) => _handleSaveProducts(data);
 
   /// Обрабатывает сохранение категорий
   Future<void> _handleSaveCategories(Map<String, dynamic> data) async {
