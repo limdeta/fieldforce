@@ -59,6 +59,11 @@ import 'package:fieldforce/app/database/repositories/category_repository_drift.d
 import 'package:fieldforce/features/shop/domain/repositories/product_repository.dart';
 import 'package:fieldforce/features/shop/data/services/product_sync_service_impl.dart';
 import 'package:fieldforce/features/shop/data/services/product_parsing_service.dart';
+import 'package:fieldforce/features/shop/data/sync/services/regional_sync_service.dart';
+import 'package:fieldforce/features/shop/data/sync/services/stock_sync_service.dart';
+import 'package:fieldforce/features/shop/data/sync/services/outlet_pricing_sync_service.dart';
+import 'package:fieldforce/features/shop/data/sync/services/protobuf_sync_coordinator.dart';
+import 'package:fieldforce/features/shop/data/sync/repositories/protobuf_sync_repository.dart';
 import 'package:fieldforce/features/shop/domain/services/order_submission_queue_trigger.dart';
 import 'package:fieldforce/app/database/repositories/product_repository_drift.dart';
 import 'package:fieldforce/features/shop/domain/repositories/order_repository.dart';
@@ -196,6 +201,40 @@ Future<void> setupServiceLocator() async {
     () => ConnectivityOrderSubmissionQueueTrigger(
       connectivity: getIt<Connectivity>(),
       queueService: getIt<JobQueueService<OrderSubmissionJob>>(),
+    ),
+  );
+
+  // Protobuf Sync Services
+  getIt.registerLazySingleton<ProtobufSyncRepository>(
+    () => ProtobufSyncRepository(getIt<AppDatabase>()),
+  );
+
+  getIt.registerLazySingleton<RegionalSyncService>(
+    () => RegionalSyncService(
+      baseUrl: AppConfig.apiBaseUrl,
+    ),
+  );
+
+  getIt.registerLazySingleton<StockSyncService>(
+    () => StockSyncService(
+      baseUrl: AppConfig.apiBaseUrl,
+    ),
+  );
+
+  getIt.registerLazySingleton<OutletPricingSyncService>(
+    () => OutletPricingSyncService(
+      baseUrl: AppConfig.apiBaseUrl,
+    ),
+  );
+
+  getIt.registerLazySingleton<ProtobufSyncCoordinator>(
+    () => ProtobufSyncCoordinator(
+      regionalSyncService: getIt<RegionalSyncService>(),
+      stockSyncService: getIt<StockSyncService>(),
+      outletPricingSyncService: getIt<OutletPricingSyncService>(),
+      syncRepository: getIt<ProtobufSyncRepository>(),
+      productRepository: getIt<ProductRepository>(),
+      stockItemRepository: getIt<StockItemRepository>(),
     ),
   );
 

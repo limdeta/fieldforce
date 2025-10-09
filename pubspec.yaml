@@ -47,7 +47,7 @@ dependencies:
   path: ^1.8.3
   
   # 🆕 Protocol Buffers support
-  protobuf: ^3.1.0
+  protobuf: ^5.0.0
   
   # Image caching
   cached_network_image: ^3.3.1
