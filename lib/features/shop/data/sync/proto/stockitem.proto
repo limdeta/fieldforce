@@ -1,0 +1,120 @@
+syntax = "proto3";
+
+package mobile_sync;
+
+option php_namespace = "Vstk\\MobileSync\\Proto";
+option php_metadata_namespace = "Vstk\\MobileSync\\Proto\\GPBMetadata";
+
+// ===== ВАЖНО: Все типы определены ДО их использования =====
+
+// Детали акции
+message PromotionDetails {
+    float discount_percent = 1;
+    int32 discount_amount = 2;
+    int32 buy_quantity = 3;
+    int32 get_quantity = 4;
+    repeated int32 bundle_products = 5;
+    int32 bundle_price = 6;
+    int32 min_quantity = 7;
+    int32 max_quantity = 8;
+    int32 min_amount = 9;
+}
+
+// Активные акции для торговой точки
+message ActivePromotion {
+    int32 promotion_id = 1;
+    string promotion_type = 2;
+    string title = 3;
+    string description = 4;
+    int64 valid_from = 5;
+    int64 valid_to = 6;
+    repeated int32 applicable_products = 7;
+    PromotionDetails details = 8;
+}
+
+// Условия акции
+message PromoCondition {
+    int32 id = 1;
+    int32 types_count = 2;
+    int32 quantity_by_types = 3;
+    int32 limit_quantity = 4;
+    int32 limit_quantity_for_document = 5;
+    int32 limit_quantity_for_each_goods = 6;
+    int32 limit_quantity_for_trade_point = 7;
+    int32 total_quantity = 8;
+    string type = 9;
+}
+
+// Склад
+message Warehouse {
+    int32 id = 1;
+    string name = 2;
+    string vendor_id = 3;
+    bool is_pick_up_point = 4;
+    string region_fias_id = 5;
+}
+
+// Акция (полная структура для legacy StockItem)
+message Promotion {
+    int32 id = 1;
+    string vendor_id = 2;
+    string vendor_name = 3;
+    string title = 4;
+    string description = 5;
+    string caption = 6;
+    string background_color = 7;
+    string url = 8;
+    string banner = 9;
+    string banner_full = 10;
+    string wobbler = 11;
+    string start = 12;
+    string finish = 13;
+    string shipment_start = 14;
+    string shipment_finish = 15;
+    string promotion_conditions_description = 16;
+    PromoCondition promo_condition = 17;
+    repeated string promotion_limits = 18;
+    bool is_portal_promo = 19;
+    string type = 20;
+}
+
+// ===== ОСНОВНЫЕ СООБЩЕНИЯ =====
+
+// Остатки товара с ценами и акциями (legacy)
+message StockItem {
+    int32 id = 1;
+    int32 product_code = 2;
+    Warehouse warehouse = 3;
+    string public_stock = 4;
+    int32 multiplicity = 5;
+    int32 default_price = 6;
+    int32 offer_price = 7;
+    int32 available_price = 8;
+    float discount_value = 9;
+    Promotion promotion = 10;
+}
+
+// Региональные остатки (БЕЗ индивидуальных цен торговых точек)
+message RegionalStockItem {
+    int32 id = 1;
+    int32 product_code = 2;
+    Warehouse warehouse = 3;
+    string public_stock = 4;
+    int32 multiplicity = 5;
+    int32 regional_base_price = 6;
+}
+
+// Цены для конкретной торговой точки (дифференциальные данные)
+message OutletStockPricing {
+    int32 stock_item_id = 1;
+    int32 product_code = 2;
+    int32 warehouse_id = 3;
+    string outlet_vendor_id = 4;
+    int32 final_price = 5;
+    int32 price_difference = 6;
+    float price_difference_percent = 7;
+    string price_type = 8;
+    float discount_value = 9;
+    bool has_promotion = 10;
+    ActivePromotion promotion = 11;
+}

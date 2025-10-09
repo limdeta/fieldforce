@@ -36,6 +36,17 @@ class AppConfig {
     }
   }
 
+    static String get tradingPointsApiUrl {
+    switch (_environment) {
+      case Environment.dev:
+        return 'http://$_devApiHost/v1_api/trading-points';
+      case Environment.prod:
+        return 'https://api.instock-dv.ru/v1_api/trading-points';
+      case Environment.test:
+        return '';
+    }
+  }
+
   // Authentication API Configuration
   static String get authApiUrl {
     switch (_environment) {
@@ -86,16 +97,33 @@ class AppConfig {
     }
   }
 
-  // Trading points API Configuration
-  static String get tradingPointsApiUrl {
+    // ===== 🆕 PROTOBUF SYNC API CONFIGURATION =====
+  
+  // Mobile Sync Base URL (protobuf)
+  static String get mobileSyncApiUrl {
     switch (_environment) {
       case Environment.dev:
-        return 'http://$_devApiHost/v1_api/trading-points';
+        return 'http://$_devApiHost/v1_api/mobile-sync';
       case Environment.prod:
-        return 'https://api.instock-dv.ru/v1_api/trading-points';
+        return 'https://api.instock-dv.ru/v1_api/mobile-sync';
       case Environment.test:
-        return '';
+        return 'http://localhost:8000/v1_api/mobile-sync';
     }
+  }
+
+  // Regional Sync (утром, 1 раз в день)
+  static String regionalSyncUrl(String regionFiasId) {
+    return '$mobileSyncApiUrl/regional/$regionFiasId';
+  }
+
+  // Regional Stock Sync (каждый час)
+  static String regionalStockUrl(String regionFiasId) {
+    return '$mobileSyncApiUrl/regional-stock/$regionFiasId';
+  }
+
+  // Outlet Pricing Sync (каждый час)
+  static String outletPricingUrl(String outletVendorId) {
+    return '$mobileSyncApiUrl/outlet-prices/$outletVendorId';
   }
 
   // Use mock authentication in dev/test modes
