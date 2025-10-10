@@ -252,11 +252,12 @@ const RegionalStockItem$json = {
       '6': '.mobile_sync.Warehouse',
       '10': 'warehouse'
     },
-    {'1': 'public_stock', '3': 4, '4': 1, '5': 9, '10': 'publicStock'},
-    {'1': 'multiplicity', '3': 5, '4': 1, '5': 5, '10': 'multiplicity'},
+    {'1': 'stock', '3': 4, '4': 1, '5': 5, '10': 'stock'},
+    {'1': 'public_stock', '3': 5, '4': 1, '5': 9, '10': 'publicStock'},
+    {'1': 'multiplicity', '3': 6, '4': 1, '5': 5, '10': 'multiplicity'},
     {
       '1': 'regional_base_price',
-      '3': 6,
+      '3': 7,
       '4': 1,
       '5': 5,
       '10': 'regionalBasePrice'
@@ -268,9 +269,9 @@ const RegionalStockItem$json = {
 final $typed_data.Uint8List regionalStockItemDescriptor = $convert.base64Decode(
     'ChFSZWdpb25hbFN0b2NrSXRlbRIOCgJpZBgBIAEoBVICaWQSIQoMcHJvZHVjdF9jb2RlGAIgAS'
     'gFUgtwcm9kdWN0Q29kZRI0Cgl3YXJlaG91c2UYAyABKAsyFi5tb2JpbGVfc3luYy5XYXJlaG91'
-    'c2VSCXdhcmVob3VzZRIhCgxwdWJsaWNfc3RvY2sYBCABKAlSC3B1YmxpY1N0b2NrEiIKDG11bH'
-    'RpcGxpY2l0eRgFIAEoBVIMbXVsdGlwbGljaXR5Ei4KE3JlZ2lvbmFsX2Jhc2VfcHJpY2UYBiAB'
-    'KAVSEXJlZ2lvbmFsQmFzZVByaWNl');
+    'c2VSCXdhcmVob3VzZRIUCgVzdG9jaxgEIAEoBVIFc3RvY2sSIQoMcHVibGljX3N0b2NrGAUgAS'
+    'gJUgtwdWJsaWNTdG9jaxIiCgxtdWx0aXBsaWNpdHkYBiABKAVSDG11bHRpcGxpY2l0eRIuChNy'
+    'ZWdpb25hbF9iYXNlX3ByaWNlGAcgASgFUhFyZWdpb25hbEJhc2VQcmljZQ==');
 
 @$core.Deprecated('Use outletStockPricingDescriptor instead')
 const OutletStockPricing$json = {

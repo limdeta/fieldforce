@@ -82,7 +82,9 @@ import 'package:fieldforce/features/shop/domain/usecases/get_orders_usecase.dart
 import 'package:fieldforce/features/shop/domain/usecases/get_order_by_id_usecase.dart';
 import 'package:fieldforce/features/shop/presentation/bloc/cart_bloc.dart';
 import 'package:fieldforce/features/shop/presentation/bloc/orders_bloc.dart';
+import 'package:fieldforce/features/shop/presentation/bloc/protobuf_sync_bloc.dart';
 import 'package:fieldforce/features/shop/domain/usecases/update_order_state_usecase.dart';
+import 'package:fieldforce/features/shop/domain/usecases/perform_protobuf_sync_usecase.dart';
 import 'package:fieldforce/features/shop/domain/repositories/stock_item_repository.dart';
 import 'package:fieldforce/app/database/repositories/stock_item_repository_drift.dart';
 import 'package:fieldforce/features/shop/data/services/isolate_sync_manager.dart';
@@ -305,6 +307,10 @@ Future<void> setupServiceLocator() async {
     () => GetOrderByIdUseCase(getIt<OrderRepository>()),
   );
 
+  getIt.registerLazySingleton<PerformProtobufSyncUseCase>(
+    () => PerformProtobufSyncUseCase(getIt<ProtobufSyncCoordinator>()),
+  );
+
   // BLoCs
   getIt.registerLazySingleton<CartBloc>(
     () => CartBloc(
@@ -323,6 +329,12 @@ Future<void> setupServiceLocator() async {
       getOrdersUseCase: getIt<GetOrdersUseCase>(),
       getOrderByIdUseCase: getIt<GetOrderByIdUseCase>(),
       retryOrderSubmissionUseCase: getIt<RetryOrderSubmissionUseCase>(),
+    ),
+  );
+
+  getIt.registerFactory<ProtobufSyncBloc>(
+    () => ProtobufSyncBloc(
+      performProtobufSyncUseCase: getIt<PerformProtobufSyncUseCase>(),
     ),
   );
 

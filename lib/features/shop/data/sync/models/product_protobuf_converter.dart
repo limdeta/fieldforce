@@ -1,18 +1,32 @@
 import '../generated/product.pb.dart' as pb;
 import '../../../domain/entities/product.dart';
+import 'package:logging/logging.dart';
 
 /// Конвертор для преобразования protobuf Product в domain Product
 class ProductProtobufConverter {
+  static final Logger _logger = Logger('ProductProtobufConverter');
   
   /// Конвертирует protobuf Product в domain Product
   /// Структуры уже совпадают, поэтому преобразование простое
   static Product fromProtobuf(pb.Product pbProduct) {
+    // 🔍 ДИАГНОСТИКА КОНВЕРТАЦИИ ПРОБЛЕМНЫХ ПРОДУКТОВ
+    if (pbProduct.code == 187621 || pbProduct.bcode == 114626 || pbProduct.code == 170094) {
+      _logger.info('🔍 КОНВЕРТАЦИЯ ПРОДУКТА:');
+      _logger.info('   pbProduct.code: ${pbProduct.code}');
+      _logger.info('   pbProduct.bcode: ${pbProduct.bcode}');
+      _logger.info('   pbProduct.hasCatalogId(): ${pbProduct.hasCatalogId()}');
+      _logger.info('   pbProduct.catalogId: ${pbProduct.catalogId}');
+      _logger.info('   pbProduct.title: ${pbProduct.title}');
+    }
+    
+    final catalogId = pbProduct.hasCatalogId() ? pbProduct.catalogId : 0;
+    
     return Product(
       title: pbProduct.title,
       barcodes: pbProduct.barcodes.isNotEmpty ? pbProduct.barcodes : [],
       code: pbProduct.code,
       bcode: pbProduct.bcode,
-      catalogId: pbProduct.priceListCategoryId,
+      catalogId: catalogId, // Используем новое поле catalog_id
       novelty: pbProduct.novelty,
       popular: pbProduct.popular,
       isMarked: pbProduct.isMarked,

@@ -8,6 +8,21 @@ class StockItemProtobufConverter {
   static StockItem fromProtobuf(pb.RegionalStockItem pbStockItem) {
     final now = DateTime.now();
     
+    // Диагностика для первых элементов
+    if (pbStockItem.productCode == 187621) {
+      print('🔍 ДИАГНОСТИКА StockItem для продукта ${pbStockItem.productCode}:');
+      print('   publicStock: "${pbStockItem.publicStock}"');
+      print('   multiplicity: ${pbStockItem.multiplicity}');
+      print('   regionalBasePrice: ${pbStockItem.regionalBasePrice}');
+      print('   stock (new field): ${pbStockItem.stock}');
+      print('   hasStock: ${pbStockItem.hasStock()}');
+    }
+    
+    // Дополнительная диагностика для всех элементов
+    if (pbStockItem.stock > 0) {
+      print('✅ НАЙДЕН элемент с stock > 0: productCode=${pbStockItem.productCode}, stock=${pbStockItem.stock}, publicStock="${pbStockItem.publicStock}"');
+    }
+    
     return StockItem(
       id: pbStockItem.id,
       productCode: pbStockItem.productCode,
@@ -15,7 +30,7 @@ class StockItemProtobufConverter {
       warehouseName: pbStockItem.hasWarehouse() ? pbStockItem.warehouse.name : 'Неизвестный склад',
       warehouseVendorId: pbStockItem.hasWarehouse() ? pbStockItem.warehouse.vendorId : '',
       isPickUpPoint: pbStockItem.hasWarehouse() ? pbStockItem.warehouse.isPickUpPoint : false,
-      stock: _parseStockFromPublicStock(pbStockItem.publicStock),
+      stock: pbStockItem.stock, // Используем новое числовое поле stock
       multiplicity: pbStockItem.multiplicity > 0 ? pbStockItem.multiplicity : null,
       publicStock: pbStockItem.publicStock,
       defaultPrice: pbStockItem.regionalBasePrice,
@@ -34,27 +49,5 @@ class StockItemProtobufConverter {
     return pbStockItems.map(fromProtobuf).toList();
   }
 
-  /// Парсит строку остатков в числовое значение
-  /// 
-  /// publicStock может содержать:
-  /// - "available" -> большое количество (9999)
-  /// - "limited" -> ограниченное количество (5)
-  /// - число в строке -> точное количество
-  /// - пустая строка -> 0
-  static int _parseStockFromPublicStock(String publicStock) {
-    if (publicStock.isEmpty) {
-      return 0;
-    }
-    
-    switch (publicStock.toLowerCase()) {
-      case 'available':
-        return 9999; // Показываем как "много в наличии"
-      case 'limited':
-        return 5; // Показываем как "ограниченное количество"
-      default:
-        // Пытаемся распарсить как число
-        final parsed = int.tryParse(publicStock);
-        return parsed ?? 0;
-    }
-  }
+
 }

@@ -1,23 +1,28 @@
+// lib/features/shop/data/sync/services/protobuf_sync_coordinator.dart
+
 import 'package:logging/logging.dart';
 
+import '../models/product_protobuf_converter.dart';
+import '../models/stock_item_protobuf_converter.dart';
+import '../repositories/protobuf_sync_repository.dart';
+import 'package:fieldforce/features/shop/domain/repositories/product_repository.dart';
+import 'package:fieldforce/features/shop/domain/repositories/stock_item_repository.dart';
 import 'regional_sync_service.dart';
 import 'stock_sync_service.dart';
 import 'outlet_pricing_sync_service.dart';
-import '../repositories/protobuf_sync_repository.dart';
-import '../models/product_protobuf_converter.dart';
-import '../models/stock_item_protobuf_converter.dart';
-import '../../../domain/repositories/product_repository.dart';
-import '../../../domain/repositories/stock_item_repository.dart';
 
-/// Координатор всех protobuf синхронизаций
-/// Управляет последовательностью и приоритетами синхронизации данных
+/// Координатор для управления protobuf синхронизацией
+/// 
+/// Упрощенная версия:
+/// 1. getRegionalProducts() - загрузка продуктов региона
+/// 2. getRegionalStock() - загрузка остатков региона  
+/// 3. getOutletPrices() - загрузка цен для конкретных точек
 class ProtobufSyncCoordinator {
   static final Logger _logger = Logger('ProtobufSyncCoordinator');
   
   final RegionalSyncService _regionalSyncService;
   final StockSyncService _stockSyncService;
   final OutletPricingSyncService _outletPricingSyncService;
-  final ProtobufSyncRepository _syncRepository;
   final ProductRepository _productRepository;
   final StockItemRepository _stockItemRepository;
   
@@ -31,214 +36,230 @@ class ProtobufSyncCoordinator {
   }) : _regionalSyncService = regionalSyncService,
        _stockSyncService = stockSyncService,
        _outletPricingSyncService = outletPricingSyncService,
-       _syncRepository = syncRepository,
        _productRepository = productRepository,
        _stockItemRepository = stockItemRepository;
 
-  /// Выполняет полную синхронизацию региона
-  /// 
-  /// Последовательность:
-  /// 1. Региональный кэш (продукты, базовые данные) - ежедневно
-  /// 2. Остатки на складах - ежечасно  
-  /// 3. Дифференциальные цены точек - ежечасно
-  /// 
-  /// [regionFiasId] - FIAS код региона
-  /// [outletIds] - список торговых точек для синхронизации цен
-  /// [forceFullSync] - принудительная полная синхронизация
-  Future<SyncResult> performFullRegionalSync(
-    String regionFiasId,
-    List<int> outletIds, {
-    bool forceFullSync = false,
+  /// Простая синхронизация всех данных для региона
+  Future<Map<String, dynamic>> performFullSync(
+    String regionFiasId, {
+    List<String>? outletVendorIds,
+    Function(String stage, double progress)? onProgress,
   }) async {
-    _logger.info('🔄 Начинается полная синхронизация региона $regionFiasId');
-    final startTime = DateTime.now();
+    _logger.info('🔄 Начинаем protobuf синхронизацию для региона: $regionFiasId');
     
-    final result = SyncResult();
+    final result = <String, dynamic>{
+      'success': false,
+      'products_synced': 0,
+      'stock_synced': 0,
+      'prices_synced': 0,
+      'errors': <String>[],
+    };
     
     try {
-      // 1. Синхронизация регионального кэша (продукты)
-      _logger.info('📦 Этап 1: Синхронизация продуктов...');
-      final lastRegionalSync = await _syncRepository.getLastRegionalSync(regionFiasId);
-      final regionalResponse = forceFullSync 
-        ? await _regionalSyncService.getRegionalProducts(regionFiasId)
-        : await _regionalSyncService.getRegionalProductsDelta(regionFiasId, lastRegionalSync ?? DateTime.now().subtract(const Duration(days: 1)));
+      // 1. Загружаем продукты региона
+      _logger.info('📦 Загрузка продуктов региона...');
+      onProgress?.call('Загрузка продуктов', 0.2);
       
-      // Конвертируем protobuf продукты в domain сущности и сохраняем
+      final regionalResponse = await _regionalSyncService.getRegionalProducts(regionFiasId);
       final products = ProductProtobufConverter.fromProtobufList(regionalResponse.products);
+      
       final saveResult = await _productRepository.saveProducts(products);
-      saveResult.fold(
-        (failure) => _logger.warning('⚠️ Ошибка сохранения продуктов: ${failure.message}'),
-        (_) => _logger.info('✅ Сохранено ${products.length} продуктов'),
-      );
-      result.productsCount = products.length;
-      
-      // Сохраняем время синхронизации
-      await _syncRepository.saveLastRegionalSync(regionFiasId, DateTime.now(), result.productsCount);
-      
-      // 2. Синхронизация остатков на складах
-      _logger.info('📊 Этап 2: Синхронизация остатков...');
-      final lastStockUpdate = forceFullSync ? null : await _syncRepository.getLastStockSync(regionFiasId);
-      
-      // Получаем данные остатков через StockSyncService
-      final stockCount = await _syncStockItems(regionFiasId, lastStockUpdate);
-      result.stockItemsCount = stockCount;
-      
-      // Сохраняем время синхронизации остатков
-      await _syncRepository.saveLastStockSync(regionFiasId, DateTime.now(), result.stockItemsCount);
-      
-      // 3. Синхронизация дифференциальных цен точек
-      _logger.info('💰 Этап 3: Синхронизация цен точек...');
-      final pricingResults = await _outletPricingSyncService.batchSyncOutletPricing(
-        outletIds,
-        null, // Все товары
-      );
-      result.outletPricingCount = pricingResults.values.fold(0, (a, b) => a + b);
-      
-      final duration = DateTime.now().difference(startTime);
-      result.duration = duration;
-      result.success = true;
-      
-      _logger.info('✅ Полная синхронизация завершена за ${duration.inSeconds} сек');
-      _logger.info('📈 Результаты: ${result.productsCount} товаров, ${result.stockItemsCount} остатков, ${result.outletPricingCount} цен');
-      
-    } catch (e, stackTrace) {
-      result.success = false;
-      result.error = e.toString();
-      
-      _logger.severe('❌ Ошибка полной синхронизации: $e', e, stackTrace);
-      rethrow;
-    }
-    
-    return result;
-  }
+      if (saveResult.isLeft()) {
+        final failure = saveResult.fold((f) => f, (r) => null)!;
+        _logger.warning('⚠️ Ошибка сохранения: ${failure.message}');
+        result['errors'].add(failure.message);
+        result['success'] = false;
+        return result;
+      } else {
+        result['products_synced'] = products.length;
+        _logger.info('✅ Сохранено ${products.length} продуктов');
+      }
 
-  /// Выполняет быструю инкрементальную синхронизацию
-  /// 
-  /// Используется для частых обновлений (каждые 15-30 минут):
-  /// - Только изменившиеся остатки
-  /// - Только изменившиеся цены для активных точек
-  /// 
-  /// [regionFiasId] - FIAS код региона
-  /// [activeOutletIds] - список активных торговых точек
-  Future<SyncResult> performIncrementalSync(
-    String regionFiasId,
-    List<int> activeOutletIds,
-  ) async {
-    _logger.info('⚡ Инкрементальная синхронизация региона $regionFiasId');
-    final startTime = DateTime.now();
-    
-    final result = SyncResult();
-    
-    try {
-      // Получаем время последних обновлений
-      final lastStockUpdate = await _syncRepository.getLastStockSync(regionFiasId);
+      // 2. Загружаем остатки
+      _logger.info('📦 Загрузка остатков...');
+      onProgress?.call('Загрузка остатков', 0.5);
       
-      // Параллельная синхронизация остатков и цен
-      final futures = <Future>[];
-      
-      // Остатки товаров
-      futures.add(
-        _stockSyncService.syncRegionalStock(
-          regionFiasId,
-          lastUpdate: lastStockUpdate,
-        ).then((count) => result.stockItemsCount = count),
-      );
-      
-      // Цены для активных точек
-      if (activeOutletIds.isNotEmpty) {
-        futures.add(
-          _outletPricingSyncService.batchSyncOutletPricing(
-            activeOutletIds,
-            null, // Все товары, но только изменившиеся цены
-          ).then((pricingResults) {
-            result.outletPricingCount = pricingResults.values.fold(0, (a, b) => a + b);
-          }),
+      final stockResponse = await _stockSyncService.getRegionalStock(regionFiasId);
+      _logger.info('✅ Загружены остатки для ${stockResponse.stockItems.length} товаров');
+
+      // Конвертируем protobuf в domain entities и сохраняем в БД
+      if (stockResponse.stockItems.isNotEmpty) {
+        _logger.info('💾 Сохранение остатков в базу данных...');
+        onProgress?.call('Сохранение остатков', 0.6);
+        
+        final stockItems = StockItemProtobufConverter.fromProtobufList(stockResponse.stockItems);
+        
+        // Диагностика конвертированных данных
+        _logger.info('🔍 ДИАГНОСТИКА после конвертации:');
+        _logger.info('  Всего элементов: ${stockItems.length}');
+        
+        final itemsWithStock = stockItems.where((item) => item.stock > 0).toList();
+        _logger.info('  Элементов с stock > 0: ${itemsWithStock.length}');
+        
+        if (stockItems.isNotEmpty) {
+          final firstItem = stockItems.first;
+          _logger.info('  Первый элемент: productCode=${firstItem.productCode}, stock=${firstItem.stock}, publicStock="${firstItem.publicStock}"');
+        }
+        
+        if (itemsWithStock.isNotEmpty) {
+          final firstWithStock = itemsWithStock.first;
+          _logger.info('  Первый с stock > 0: productCode=${firstWithStock.productCode}, stock=${firstWithStock.stock}, publicStock="${firstWithStock.publicStock}"');
+        }
+        
+        // Диагностика: проверим сколько продуктов есть в БД
+        final existingProductsResult = await _productRepository.getAllProducts();
+        existingProductsResult.fold(
+          (failure) => _logger.warning('⚠️ Не удалось получить список продуктов для диагностики'),
+          (existingProducts) {
+            final existingProductCodes = existingProducts.map((p) => p.code).toSet();
+            final incomingProductCodes = stockItems.map((s) => s.productCode).toSet();
+            final matchingCodes = existingProductCodes.intersection(incomingProductCodes);
+            
+            _logger.info('🔍 Продуктов в БД: ${existingProducts.length}');
+            _logger.info('🔍 Уникальных кодов продуктов в остатках: ${incomingProductCodes.length}');
+            _logger.info('🔍 Совпадающих кодов: ${matchingCodes.length}');
+            
+            if (matchingCodes.isEmpty) {
+              _logger.severe('❌ КРИТИЧНО: Ни одного кода продукта из остатков не найдено в БД!');
+              _logger.info('📋 Примеры кодов в БД: ${existingProductCodes.take(10).join(", ")}');
+              _logger.info('📋 Примеры кодов в остатках: ${incomingProductCodes.take(10).join(", ")}');
+            }
+          },
+        );
+        
+        final saveResult = await _stockItemRepository.saveStockItems(stockItems);
+        
+        saveResult.fold(
+          (failure) {
+            _logger.severe('❌ Ошибка сохранения остатков: ${failure.message}');
+            throw Exception('Ошибка сохранения остатков: ${failure.message}');
+          },
+          (_) {
+            _logger.info('✅ Сохранено ${stockItems.length} остатков в базу данных');
+            
+            // Дополнительная информация для отладки
+            if (stockItems.isNotEmpty) {
+              final firstItem = stockItems.first;
+              _logger.info('📊 Пример сохраненного StockItem: продукт=${firstItem.productCode}, склад=${firstItem.warehouseId}, остаток=${firstItem.stock}, цена=${firstItem.defaultPrice}');
+            }
+            
+            result['stock_synced'] = stockItems.length;
+          },
         );
       }
+
+      // 3. Загружаем цены торговых точек (если указаны)
+      if (outletVendorIds != null && outletVendorIds.isNotEmpty) {
+        _logger.info('💰 Загрузка цен торговых точек...');
+        
+        int totalPrices = 0;
+        for (int i = 0; i < outletVendorIds.length; i++) {
+          final vendorId = outletVendorIds[i];
+          onProgress?.call('Загрузка цен точки ${i + 1}/${outletVendorIds.length}', 0.7 + 0.2 * (i / outletVendorIds.length));
+          
+          try {
+            final priceResponse = await _outletPricingSyncService.getOutletPrices(vendorId);
+            totalPrices += priceResponse.products.length;
+          } catch (e) {
+            _logger.warning('⚠️ Ошибка загрузки цен для $vendorId: $e');
+            result['errors'].add('Ошибка цен для $vendorId: $e');
+          }
+        }
+        
+        result['prices_synced'] = totalPrices;
+        _logger.info('✅ Загружены цены для $totalPrices товаров');
+      }
+
+      // Сохраняем время синхронизации
+      // await _syncRepository.updateLastSync(regionFiasId, DateTime.now());
       
-      await Future.wait(futures);
+      result['success'] = true;
+      onProgress?.call('Завершено', 1.0);
       
-      final duration = DateTime.now().difference(startTime);
-      result.duration = duration;
-      result.success = true;
-      
-      _logger.info('✅ Инкрементальная синхронизация завершена за ${duration.inMilliseconds} мс');
+      _logger.info('✅ Синхронизация завершена успешно');
+      return result;
       
     } catch (e, stackTrace) {
-      result.success = false;
-      result.error = e.toString();
-      
-      _logger.severe('❌ Ошибка инкрементальной синхронизации: $e', e, stackTrace);
+      _logger.severe('❌ Ошибка синхронизации: $e', e, stackTrace);
+      result['success'] = false;
+      result['errors'].add('Критическая ошибка: $e');
       rethrow;
     }
+  }
+
+  /// Быстрая синхронизация только продуктов
+  Future<Map<String, dynamic>> syncProductsOnly(String regionFiasId) async {
+    _logger.info('📦 Быстрая синхронизация продуктов для $regionFiasId');
     
-    return result;
-  }
-
-  /// Устанавливает сессионную куку для всех сервисов
-  void setSessionCookie(String cookie) {
-    _regionalSyncService.setSessionCookie(cookie);
-    _stockSyncService.setSessionCookie(cookie);
-    _outletPricingSyncService.setSessionCookie(cookie);
-    _logger.info('🔐 Сессионная кука установлена для всех sync сервисов');
-  }
-
-  /// Очищает сессию для всех сервисов
-  void clearSession() {
-    _regionalSyncService.clearSession();
-    _stockSyncService.clearSession();
-    _outletPricingSyncService.clearSession();
-    _logger.info('🚪 Сессия очищена для всех sync сервисов');
-  }
-
-  /// Синхронизирует остатки товаров с сохранением в базу
-  /// 
-  /// [regionFiasId] - FIAS код региона
-  /// [lastUpdate] - время последнего обновления (null для полной синхронизации)
-  /// 
-  /// Возвращает количество обработанных записей остатков
-  Future<int> _syncStockItems(String regionFiasId, DateTime? lastUpdate) async {
+    final result = <String, dynamic>{
+      'success': false,
+      'products_synced': 0,
+      'errors': <String>[],
+    };
+    
     try {
-      // Пока что используем существующий метод stockSyncService
-      // В будущем можно создать метод, возвращающий protobuf данные
-      final stockCount = await _stockSyncService.syncRegionalStock(
-        regionFiasId,
-        lastUpdate: lastUpdate,
+      final response = await _regionalSyncService.getRegionalProducts(regionFiasId);
+      final products = ProductProtobufConverter.fromProtobufList(response.products);
+      
+      final saveResult = await _productRepository.saveProducts(products);
+      if (saveResult.isLeft()) {
+        final failure = saveResult.fold((f) => f, (r) => null)!;
+        _logger.warning('⚠️ Ошибка: ${failure.message}');
+        result['success'] = false;
+        result['errors'].add(failure.message);
+      } else {
+        result['products_synced'] = products.length;
+        result['success'] = true;
+        _logger.info('✅ Быстро синхронизировано ${products.length} продуктов');
+      }
+      
+      return result;
+      
+    } catch (e, stackTrace) {
+      _logger.severe('❌ Ошибка быстрой синхронизации: $e', e, stackTrace);
+      result['success'] = false;
+      result['errors'].add('Критическая ошибка: $e');
+      rethrow;
+    }
+  }
+
+  /// Получить статистику синхронизированных данных
+  Future<Map<String, dynamic>> getSyncStats() async {
+    try {
+      final stats = <String, dynamic>{};
+      
+      // Проверяем количество продуктов
+      final productResult = await _productRepository.getAllProducts();
+      productResult.fold(
+        (failure) => stats['products'] = 'Ошибка: ${failure.message}',
+        (products) => stats['products'] = products.length,
       );
       
-      // TODO: Когда StockSyncService будет возвращать protobuf данные:
-      // final stockResponse = await _stockSyncService.getRegionalStockData(regionFiasId, lastUpdate);
-      // final stockItems = StockItemProtobufConverter.fromProtobufList(stockResponse.stockItems);
-      // final saveResult = await _stockItemRepository.saveStockItems(stockItems);
-      // saveResult.fold(
-      //   (failure) => _logger.warning('⚠️ Ошибка сохранения остатков: ${failure.message}'),
-      //   (_) => _logger.info('✅ Сохранено ${stockItems.length} остатков'),
-      // );
+      // Проверяем количество stock items
+      final stockResult = await _stockItemRepository.getAvailableStockItems();
+      stockResult.fold(
+        (failure) => stats['stock_items'] = 'Ошибка: ${failure.message}',
+        (stockItems) {
+          stats['stock_items'] = stockItems.length;
+          stats['stock_items_with_stock'] = stockItems.where((item) => item.stock > 0).length;
+          
+          if (stockItems.isNotEmpty) {
+            final sampleItem = stockItems.first;
+            stats['sample_stock_item'] = {
+              'product_code': sampleItem.productCode,
+              'warehouse_id': sampleItem.warehouseId,
+              'warehouse_name': sampleItem.warehouseName,
+              'stock': sampleItem.stock,
+              'price': sampleItem.defaultPrice,
+            };
+          }
+        },
+      );
       
-      return stockCount;
-      
-    } catch (e, stackTrace) {
-      _logger.severe('❌ Ошибка синхронизации остатков для региона $regionFiasId: $e', e, stackTrace);
-      rethrow;
+      return stats;
+    } catch (e) {
+      _logger.severe('❌ Ошибка получения статистики: $e');
+      return {'error': e.toString()};
     }
-  }
-}
-
-/// Результат выполнения синхронизации
-class SyncResult {
-  bool success = false;
-  int productsCount = 0;
-  int stockItemsCount = 0;
-  int outletPricingCount = 0;
-  Duration? duration;
-  String? error;
-
-  @override
-  String toString() {
-    if (!success) {
-      return 'SyncResult(failed: $error)';
-    }
-    
-    return 'SyncResult(products: $productsCount, stock: $stockItemsCount, prices: $outletPricingCount, duration: ${duration?.inSeconds}s)';
   }
 }

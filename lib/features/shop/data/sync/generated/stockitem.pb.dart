@@ -1023,6 +1023,7 @@ class RegionalStockItem extends $pb.GeneratedMessage {
     $core.int? id,
     $core.int? productCode,
     Warehouse? warehouse,
+    $core.int? stock,
     $core.String? publicStock,
     $core.int? multiplicity,
     $core.int? regionalBasePrice,
@@ -1031,6 +1032,7 @@ class RegionalStockItem extends $pb.GeneratedMessage {
     if (id != null) result.id = id;
     if (productCode != null) result.productCode = productCode;
     if (warehouse != null) result.warehouse = warehouse;
+    if (stock != null) result.stock = stock;
     if (publicStock != null) result.publicStock = publicStock;
     if (multiplicity != null) result.multiplicity = multiplicity;
     if (regionalBasePrice != null) result.regionalBasePrice = regionalBasePrice;
@@ -1054,9 +1056,10 @@ class RegionalStockItem extends $pb.GeneratedMessage {
     ..aI(2, _omitFieldNames ? '' : 'productCode')
     ..aOM<Warehouse>(3, _omitFieldNames ? '' : 'warehouse',
         subBuilder: Warehouse.create)
-    ..aOS(4, _omitFieldNames ? '' : 'publicStock')
-    ..aI(5, _omitFieldNames ? '' : 'multiplicity')
-    ..aI(6, _omitFieldNames ? '' : 'regionalBasePrice')
+    ..aI(4, _omitFieldNames ? '' : 'stock')
+    ..aOS(5, _omitFieldNames ? '' : 'publicStock')
+    ..aI(6, _omitFieldNames ? '' : 'multiplicity')
+    ..aI(7, _omitFieldNames ? '' : 'regionalBasePrice')
     ..hasRequiredFields = false;
 
   @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
@@ -1110,31 +1113,40 @@ class RegionalStockItem extends $pb.GeneratedMessage {
   Warehouse ensureWarehouse() => $_ensure(2);
 
   @$pb.TagNumber(4)
-  $core.String get publicStock => $_getSZ(3);
+  $core.int get stock => $_getIZ(3);
   @$pb.TagNumber(4)
-  set publicStock($core.String value) => $_setString(3, value);
+  set stock($core.int value) => $_setSignedInt32(3, value);
   @$pb.TagNumber(4)
-  $core.bool hasPublicStock() => $_has(3);
+  $core.bool hasStock() => $_has(3);
   @$pb.TagNumber(4)
-  void clearPublicStock() => $_clearField(4);
+  void clearStock() => $_clearField(4);
 
   @$pb.TagNumber(5)
-  $core.int get multiplicity => $_getIZ(4);
+  $core.String get publicStock => $_getSZ(4);
   @$pb.TagNumber(5)
-  set multiplicity($core.int value) => $_setSignedInt32(4, value);
+  set publicStock($core.String value) => $_setString(4, value);
   @$pb.TagNumber(5)
-  $core.bool hasMultiplicity() => $_has(4);
+  $core.bool hasPublicStock() => $_has(4);
   @$pb.TagNumber(5)
-  void clearMultiplicity() => $_clearField(5);
+  void clearPublicStock() => $_clearField(5);
 
   @$pb.TagNumber(6)
-  $core.int get regionalBasePrice => $_getIZ(5);
+  $core.int get multiplicity => $_getIZ(5);
   @$pb.TagNumber(6)
-  set regionalBasePrice($core.int value) => $_setSignedInt32(5, value);
+  set multiplicity($core.int value) => $_setSignedInt32(5, value);
   @$pb.TagNumber(6)
-  $core.bool hasRegionalBasePrice() => $_has(5);
+  $core.bool hasMultiplicity() => $_has(5);
   @$pb.TagNumber(6)
-  void clearRegionalBasePrice() => $_clearField(6);
+  void clearMultiplicity() => $_clearField(6);
+
+  @$pb.TagNumber(7)
+  $core.int get regionalBasePrice => $_getIZ(6);
+  @$pb.TagNumber(7)
+  set regionalBasePrice($core.int value) => $_setSignedInt32(6, value);
+  @$pb.TagNumber(7)
+  $core.bool hasRegionalBasePrice() => $_has(6);
+  @$pb.TagNumber(7)
+  void clearRegionalBasePrice() => $_clearField(7);
 }
 
 /// Цены для конкретной торговой точки (дифференциальные данные)

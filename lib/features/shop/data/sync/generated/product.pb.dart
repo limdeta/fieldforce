@@ -45,6 +45,7 @@ class Product extends $pb.GeneratedMessage {
     $core.Iterable<StringCharacteristic>? stringCharacteristics,
     $core.Iterable<BoolCharacteristic>? boolCharacteristics,
     $core.bool? canBuy,
+    $core.int? catalogId,
   }) {
     final result = create();
     if (code != null) result.code = code;
@@ -78,6 +79,7 @@ class Product extends $pb.GeneratedMessage {
     if (boolCharacteristics != null)
       result.boolCharacteristics.addAll(boolCharacteristics);
     if (canBuy != null) result.canBuy = canBuy;
+    if (catalogId != null) result.catalogId = catalogId;
     return result;
   }
 
@@ -133,6 +135,7 @@ class Product extends $pb.GeneratedMessage {
     ..pPM<BoolCharacteristic>(25, _omitFieldNames ? '' : 'boolCharacteristics',
         subBuilder: BoolCharacteristic.create)
     ..aOB(26, _omitFieldNames ? '' : 'canBuy')
+    ..aI(27, _omitFieldNames ? '' : 'catalogId')
     ..hasRequiredFields = false;
 
   @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
@@ -371,6 +374,15 @@ class Product extends $pb.GeneratedMessage {
   $core.bool hasCanBuy() => $_has(25);
   @$pb.TagNumber(26)
   void clearCanBuy() => $_clearField(26);
+
+  @$pb.TagNumber(27)
+  $core.int get catalogId => $_getIZ(26);
+  @$pb.TagNumber(27)
+  set catalogId($core.int value) => $_setSignedInt32(26, value);
+  @$pb.TagNumber(27)
+  $core.bool hasCatalogId() => $_has(26);
+  @$pb.TagNumber(27)
+  void clearCatalogId() => $_clearField(27);
 }
 
 class Brand extends $pb.GeneratedMessage {

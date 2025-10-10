@@ -28,9 +28,9 @@ class AppConfig {
   static String get apiBaseUrl {
     switch (_environment) {
       case Environment.dev:
-        return 'https://dev-api.fieldforce.com';
+        return 'https://localhost:8000/v1_api';
       case Environment.prod:
-        return 'https://api.instock-dv.ru/v1_api/';
+        return 'https://api.instock-dv.ru/v1_api';
       case Environment.test:
         return 'https://test-api.fieldforce.com';
     }
@@ -98,6 +98,14 @@ class AppConfig {
   }
 
     // ===== 🆕 PROTOBUF SYNC API CONFIGURATION =====
+  
+  // FIAS коды регионов (совпадают с бэкендом)
+  static const String vladivostokFiasId = '43909681-d6e1-432d-b61f-ddac393cb5da'; // Владивосток
+  static const String magadanFiasId = '9c05e812-8679-4710-b8cb-5e8bd43cdf48';     // Магадан
+  static const String kamchatkaFiasId = 'd02f30fc-83bf-4c0f-ac2b-5729a866a207';   // Камчатка
+  
+  // Дефолтный регион для разработки
+  static String get defaultRegionFiasId => vladivostokFiasId;
   
   // Mobile Sync Base URL (protobuf)
   static String get mobileSyncApiUrl {

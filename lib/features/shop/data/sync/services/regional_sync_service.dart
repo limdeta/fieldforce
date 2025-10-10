@@ -2,9 +2,9 @@
 
 import 'dart:io';
 import 'dart:typed_data';
+import 'package:http/http.dart' show Response;
 import 'package:http/io_client.dart';
 import 'package:logging/logging.dart';
-import 'package:fixnum/fixnum.dart';
 
 import '../generated/sync.pb.dart';
 import '../generated/product.pb.dart';
@@ -35,102 +35,58 @@ class RegionalSyncService {
   Future<RegionalCacheResponse> getRegionalProducts(String regionFiasId) async {
     _logger.info('🌍 Начинаем загрузку продуктов региона: $regionFiasId');
     
-    final url = '$_baseUrl/v1_api/mobile-sync/regional/$regionFiasId';
+    final url = '$_baseUrl/mobile-sync/regional/$regionFiasId';
     final startTime = DateTime.now();
     
     try {
       final response = await _makeProtobufRequest(url);
-      final regionalData = RegionalCacheResponse.fromBuffer(response);
       
-      final duration = DateTime.now().difference(startTime);
-      _logger.info(
-        '✅ Региональные продукты загружены: ${regionalData.products.length} товаров '
-        'за ${duration.inSeconds}с (размер: ${_formatBytes(response.length)})'
-      );
+      _logger.info('📊 Пытаемся парсить protobuf данные размером ${response.length} байт');
       
-      _logSyncStats(regionalData);
-      
-      return regionalData;
+      try {
+        final regionalData = RegionalCacheResponse.fromBuffer(response);
+        
+        // 🔍 ДИАГНОСТИКА PROTOBUF ДАННЫХ
+        _logger.info('📦 Protobuf данные успешно распакованы');
+        _logger.info('📊 Количество продуктов: ${regionalData.products.length}');
+        
+        if (regionalData.products.isNotEmpty) {
+          final firstProduct = regionalData.products.first;
+          _logger.info('🔍 ПЕРВЫЙ ПРОДУКТ:');
+          _logger.info('   code: ${firstProduct.code}');
+          _logger.info('   bcode: ${firstProduct.bcode}');
+          _logger.info('   hasCatalogId: ${firstProduct.hasCatalogId()}');
+          _logger.info('   catalogId: ${firstProduct.catalogId}');
+          _logger.info('   title: ${firstProduct.title}');
+          _logger.info('   priceListCategoryId: ${firstProduct.priceListCategoryId}');
+        }
+        
+        final duration = DateTime.now().difference(startTime);
+        _logger.info(
+          '✅ Региональные продукты загружены: ${regionalData.products.length} товаров '
+          'за ${duration.inSeconds}с (размер: ${_formatBytes(response.length)})'
+        );
+        
+        _logSyncStats(regionalData);
+        
+        return regionalData;
+      } catch (protobufError) {
+        _logger.severe('❌ Ошибка парсинга protobuf: $protobufError');
+        _logger.info('🔍 Возможно, сервер вернул не protobuf данные');
+        
+        // Попробуем интерпретировать как текст для диагностики
+        try {
+          final textData = String.fromCharCodes(response.take(500)); // первые 500 символов
+          _logger.info('📝 Данные как текст (первые 500 символов): $textData');
+        } catch (_) {
+          _logger.info('📝 Данные не являются текстом');
+        }
+        
+        rethrow;
+      }
       
     } catch (e, st) {
       _logger.severe('❌ Ошибка загрузки региональных продуктов для $regionFiasId', e, st);
-      rethrow;
-    }
-  }
-
-  /// 🔄 Постраничная загрузка для больших регионов
-  /// 
-  /// Используется если регион содержит >10,000 товаров
-  Future<List<Product>> getRegionalProductsPaginated(
-    String regionFiasId, {
-    int pageSize = 1000,
-    Function(int current, int total)? onProgress,
-  }) async {
-    _logger.info('📄 Постраничная загрузка продуктов региона: $regionFiasId');
-    
-    final allProducts = <Product>[];
-    int offset = 0;
-    bool hasMore = true;
-    
-    while (hasMore) {
-      try {
-        final request = RegionalCacheRequest()
-          ..regionFiasId = regionFiasId
-          ..limit = pageSize
-          ..offset = offset
-          ..lastSyncTimestamp = Int64(0); // Полная синхронизация
-        
-        final url = '$_baseUrl/v1_api/mobile-sync/regional/$regionFiasId';
-        final response = await _makeProtobufRequest(url, requestData: request.writeToBuffer());
-        final pageData = RegionalCacheResponse.fromBuffer(response);
-        
-        allProducts.addAll(pageData.products);
-        hasMore = pageData.hasMore;
-        offset += pageSize;
-        
-        onProgress?.call(allProducts.length, pageData.stats.productsCount);
-        
-        _logger.fine('📄 Загружена страница: +${pageData.products.length} товаров '
-                    '(всего: ${allProducts.length})');
-        
-      } catch (e) {
-        _logger.warning('⚠️ Ошибка загрузки страницы $offset: $e');
-        break;
-      }
-    }
-    
-    _logger.info('✅ Постраничная загрузка завершена: ${allProducts.length} товаров');
-    return allProducts;
-  }
-
-  /// 🔍 Инкрементальная синхронизация (только измененные продукты)
-  /// 
-  /// Используется для обновления продуктов без полной перезагрузки
-  Future<RegionalCacheResponse> getRegionalProductsDelta(
-    String regionFiasId, 
-    DateTime lastSyncTime,
-  ) async {
-    _logger.info('🔄 Инкрементальная синхронизация продуктов с ${lastSyncTime.toIso8601String()}');
-    
-    final request = RegionalCacheRequest()
-      ..regionFiasId = regionFiasId
-      ..lastSyncTimestamp = Int64(lastSyncTime.millisecondsSinceEpoch)
-      ..forceRefresh = false;
-    
-    final url = '$_baseUrl/v1_api/mobile-sync/regional/$regionFiasId';
-    
-    try {
-      final response = await _makeProtobufRequest(url, requestData: request.writeToBuffer());
-      final deltaData = RegionalCacheResponse.fromBuffer(response);
-      
-      _logger.info(
-        '✅ Получены изменения: ${deltaData.products.length} обновленных товаров'
-      );
-      
-      return deltaData;
-      
-    } catch (e, st) {
-      _logger.severe('❌ Ошибка инкрементальной синхронизации для $regionFiasId', e, st);
       rethrow;
     }
   }
@@ -162,30 +118,65 @@ class RegionalSyncService {
       
       _logger.fine('📤 Отправка protobuf запроса к $uri');
       
-      final response = requestData != null
-          ? await client.post(uri, headers: headers, body: requestData)
-          : await client.get(uri, headers: headers);
-      
-      if (response.statusCode != 200) {
-        throw Exception('HTTP ${response.statusCode}: ${response.reasonPhrase}');
+      // Проверяем тип запроса
+      if (requestData != null) {
+        _logger.info('📤 POST запрос с данными (${requestData.length} байт)');
+        final response = await client.post(uri, headers: headers, body: requestData);
+        
+        if (response.statusCode != 200) {
+          throw Exception('HTTP ${response.statusCode}: ${response.reasonPhrase}');
+        }
+        return _processResponse(response);
+        
+      } else {
+        _logger.info('🌐 GET запрос (без данных)');
+        final response = await client.get(uri, headers: headers);
+        
+        if (response.statusCode != 200) {
+          throw Exception('HTTP ${response.statusCode}: ${response.reasonPhrase}');
+        }
+        return _processResponse(response);
       }
-      
-      // Обрабатываем gzip сжатие
-      var responseBytes = response.bodyBytes;
-      final contentEncoding = response.headers['content-encoding'];
-      
-      if (contentEncoding == 'gzip') {
-        responseBytes = Uint8List.fromList(gzip.decode(responseBytes));
-        _logger.fine('📦 Данные распакованы из gzip');
-      }
-      
-      _logger.fine('📥 Получен protobuf ответ: ${_formatBytes(responseBytes.length)}');
-      
-      return responseBytes;
       
     } finally {
       client.close();
     }
+  }
+
+  /// 🔧 Обработка HTTP ответа с gzip и protobuf
+  Uint8List _processResponse(Response response) {
+    // Диагностическая информация
+    _logger.info('🔍 ДИАГНОСТИКА ОТВЕТА:');
+    _logger.info('   Status Code: ${response.statusCode}');
+    _logger.info('   Content-Length: ${response.headers['content-length'] ?? 'не указан'}');
+    _logger.info('   Content-Type: ${response.headers['content-type'] ?? 'не указан'}');
+    _logger.info('   Content-Encoding: ${response.headers['content-encoding'] ?? 'нет'}');
+    _logger.info('   Размер тела: ${response.bodyBytes.length} байт');
+    
+    // Показываем первые байты для диагностики
+    if (response.bodyBytes.isNotEmpty) {
+      final firstBytes = response.bodyBytes.take(20).map((b) => b.toRadixString(16).padLeft(2, '0')).join(' ');
+      _logger.info('   Первые байты: $firstBytes');
+    }
+    
+    // Обрабатываем gzip сжатие
+    var responseBytes = response.bodyBytes;
+    final contentEncoding = response.headers['content-encoding'];
+    
+    if (contentEncoding == 'gzip') {
+      try {
+        responseBytes = Uint8List.fromList(gzip.decode(responseBytes));
+        _logger.info('✅ Данные успешно распакованы из gzip: ${responseBytes.length} байт');
+      } catch (e) {
+        _logger.warning('⚠️ Ошибка распаковки gzip, используем сырые данные: $e');
+        // Если gzip не работает, используем сырые данные
+        responseBytes = response.bodyBytes;
+      }
+    }
+    
+    _logger.fine('📥 Финальный размер данных: ${_formatBytes(responseBytes.length)}');
+    
+    return responseBytes;
   }
 
   /// Конвертирует protobuf Product в ProductInfo

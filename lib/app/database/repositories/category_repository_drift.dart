@@ -339,7 +339,7 @@ class DriftCategoryRepository implements CategoryRepository {
     _logger.info('Получено ${allProducts.length} продуктов для расчета count');
 
     // Рассчитываем count для каждой категории с учетом иерархии
-    final categoryCounts = _calculateCategoryCounts(allCategories, allProducts);
+    final categoryCounts = await _calculateCategoryCounts(allCategories, allProducts);
 
     // Обновляем count в объектах категорий (для немедленного отображения в UI)
     _updateCategoriesCount(allCategories, categoryCounts);
@@ -382,17 +382,34 @@ class DriftCategoryRepository implements CategoryRepository {
   }
 
   /// Рассчитывает количество продуктов для каждой категории с учетом иерархии
-  Map<int, int> _calculateCategoryCounts(List<tree_category.Category> categories, List<product_entity.Product> products) {
+  Future<Map<int, int>> _calculateCategoryCounts(List<tree_category.Category> categories, List<product_entity.Product> products) async {
     final counts = <int, int>{};
 
     final allCategories = _flattenCategories(categories);
 
+    // Получаем продукты с остатками
+    final productsWithStock = await _getProductsWithStock(products);
+    _logger.info('📊 Расчет count: ${productsWithStock.length} продуктов с остатками из ${products.length} всего');
+
     for (final category in allCategories) {
-      final categoryProducts = _findProductsInCategoryAndDescendants(products, category);
+      final categoryProducts = _findProductsInCategoryAndDescendants(productsWithStock, category);
       counts[category.id] = categoryProducts.length;
     }
 
     return counts;
+  }
+
+  /// Получает только продукты, у которых есть остатки
+  Future<List<product_entity.Product>> _getProductsWithStock(List<product_entity.Product> products) async {
+    // Получаем все коды продуктов с остатками
+    final stockResult = await (_database.select(_database.stockItems)
+      ..where((tbl) => tbl.stock.isBiggerThanValue(0))
+    ).get();
+    
+    final productCodesWithStock = stockResult.map((s) => s.productCode).toSet();
+    
+    // Фильтруем продукты
+    return products.where((p) => productCodesWithStock.contains(p.code)).toList();
   }
 
   List<product_entity.Product> _findProductsInCategoryAndDescendants(List<product_entity.Product> products, tree_category.Category category) {

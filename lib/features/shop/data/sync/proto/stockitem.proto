@@ -99,9 +99,10 @@ message RegionalStockItem {
     int32 id = 1;
     int32 product_code = 2;
     Warehouse warehouse = 3;
-    string public_stock = 4;
-    int32 multiplicity = 5;
-    int32 regional_base_price = 6;
+    int32 stock = 4;                    // Числовой остаток на складе
+    string public_stock = 5;            // Форматированный остаток ("1666 шт.")
+    int32 multiplicity = 6;             // Кратность отгрузки
+    int32 regional_base_price = 7;      // Базовая цена региона
 }
 
 // Цены для конкретной торговой точки (дифференциальные данные)

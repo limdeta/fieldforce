@@ -28,6 +28,7 @@ import 'features/shop/presentation/pages/product_catalog_page.dart';
 import 'features/shop/presentation/pages/product_categories_page.dart';
 import 'features/shop/presentation/pages/orders_page.dart';
 import 'features/shop/presentation/pages/promotions_page.dart';
+import 'features/shop/presentation/pages/protobuf_sync_page.dart';
 
 /// Удаляет старую базу данных в dev режиме для чистого старта
 Future<void> _cleanDatabaseInDevMode() async {
@@ -50,7 +51,7 @@ void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   hierarchicalLoggingEnabled = true;
   
-  Logger.root.level = Level.SEVERE;
+  Logger.root.level = Level.INFO; // Временно включаем детальные логи для диагностики protobuf
   Logger.root.onRecord.listen((record) {
     debugPrint('${record.level.name}: ${record.time}: ${record.message}');
   });
@@ -113,6 +114,7 @@ class FieldforceApp extends StatelessWidget {
             '/cart': (context) => const CartPage(),
             '/orders': (context) => const OrdersPage(),
             '/data-sync': (context) => const DataPage(),
+            '/protobuf-sync': (context) => const ProtobufSyncPage(),
           },
           ),
         ),

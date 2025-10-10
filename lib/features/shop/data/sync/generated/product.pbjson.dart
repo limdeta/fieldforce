@@ -134,6 +134,7 @@ const Product$json = {
       '10': 'boolCharacteristics'
     },
     {'1': 'can_buy', '3': 26, '4': 1, '5': 8, '10': 'canBuy'},
+    {'1': 'catalog_id', '3': 27, '4': 1, '5': 5, '10': 'catalogId'},
   ],
 };
 
@@ -160,7 +161,8 @@ final $typed_data.Uint8List productDescriptor = $convert.base64Decode(
     'c3RyaW5nX2NoYXJhY3RlcmlzdGljcxgYIAMoCzIhLm1vYmlsZV9zeW5jLlN0cmluZ0NoYXJhY3'
     'RlcmlzdGljUhVzdHJpbmdDaGFyYWN0ZXJpc3RpY3MSUgoUYm9vbF9jaGFyYWN0ZXJpc3RpY3MY'
     'GSADKAsyHy5tb2JpbGVfc3luYy5Cb29sQ2hhcmFjdGVyaXN0aWNSE2Jvb2xDaGFyYWN0ZXJpc3'
-    'RpY3MSFwoHY2FuX2J1eRgaIAEoCFIGY2FuQnV5');
+    'RpY3MSFwoHY2FuX2J1eRgaIAEoCFIGY2FuQnV5Eh0KCmNhdGFsb2dfaWQYGyABKAVSCWNhdGFs'
+    'b2dJZA==');
 
 @$core.Deprecated('Use brandDescriptor instead')
 const Brand$json = {

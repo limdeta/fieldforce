@@ -219,7 +219,7 @@ class DriftProductRepository implements ProductRepository {
     int limit = 20,
   }) async {
     try {
-      _logger.info('getProductsWithStockByCategoryPaginated: categoryId=$categoryId, vendorId=${vendorId ?? 'ALL'}, offset=$offset, limit=$limit');
+      _logger.info('🚀 getProductsWithStockByCategoryPaginated: categoryId=$categoryId, vendorId=${vendorId ?? 'ALL'}, offset=$offset, limit=$limit');
       
       // Получаем иерархию категорий как в обычном методе
       final categoryRepository = GetIt.instance<CategoryRepository>();
@@ -237,11 +237,15 @@ class DriftProductRepository implements ProductRepository {
       relevantCategoryIds.addAll(ancestors.map((c) => c.id));
 
       _logger.info('Relevant category IDs: $relevantCategoryIds');
-
+      _logger.info('  - Descendants: ${descendants.map((c) => '${c.id}:${c.name}').join(', ')}');
+      _logger.info('  - Ancestors: ${ancestors.map((c) => '${c.id}:${c.name}').join(', ')}');
+      
       final directMatches = await (_database.select(_database.products)
         ..where((tbl) => tbl.categoryId.equals(categoryId))
       ).get();
 
+      _logger.info('🔍 Прямые совпадения по categoryId=$categoryId: ${directMatches.length} продуктов');
+      
       final allProductEntities = await (_database.select(_database.products)).get();
       
       _logger.info('🔍 Всего продуктов в БД: ${allProductEntities.length}');
@@ -267,6 +271,7 @@ class DriftProductRepository implements ProductRepository {
           
           if (productCategoryIds.intersection(relevantCategoryIds).isNotEmpty) {
             matchingProductsMap[productEntity.code] = productEntity;
+            _logger.fine('🔍 Продукт ${productEntity.code} найден через categoriesInstock: ${productCategoryIds.intersection(relevantCategoryIds)}');
           }
         } catch (e) {
           _logger.warning('Ошибка парсинга categoriesInstock для продукта ${productEntity.code}: $e');
@@ -313,18 +318,21 @@ class DriftProductRepository implements ProductRepository {
       }
 
     final availableProducts = sortedProducts
-      .where((product) => (stockByProduct[product.code]?.isNotEmpty ?? false))
-      .toList();
+        .where((product) => (stockByProduct[product.code]?.isNotEmpty ?? false))
+        .toList();
+
+      _logger.info('🔍 После фильтрации по остаткам: ${availableProducts.length} из ${sortedProducts.length} продуктов');
 
       if (availableProducts.isEmpty) {
-        _logger.info('✅ Все продукты без доступных остатков для категории $categoryId, возвращаем пустой список');
+        _logger.info('✅ Возвращаем 0 ProductWithStock для категории $categoryId (нет продуктов с остатками)');
         return Right([]);
       }
 
       final paginatedAvailableProducts = availableProducts.skip(offset).take(limit).toList();
+      _logger.info('🔍 После пагинации: ${paginatedAvailableProducts.length} продуктов (offset=$offset, limit=$limit)');
 
       if (paginatedAvailableProducts.isEmpty) {
-        _logger.info('✅ Пагинация вернула 0 продуктов с остатками (offset=$offset)');
+        _logger.info('✅ Возвращаем 0 ProductWithStock для категории $categoryId (пагинация)');
         return Right([]);
       }
 

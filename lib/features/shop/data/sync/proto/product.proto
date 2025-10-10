@@ -45,6 +45,7 @@ message Product {
     
     // Для мобильной синхронизации
     bool can_buy = 26;               // рассчитывается на бэкенде
+    int32 catalog_id = 27;           // catalogId (0 если нет связи)
 }
 
 message Brand {

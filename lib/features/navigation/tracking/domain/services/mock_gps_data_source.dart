@@ -202,10 +202,10 @@ class MockGpsDataSource implements GpsDataSource {
         final currentPoint = _routePoints[_currentPointIndex];
         final position = _createPositionFromPoint(currentPoint);
 
-        if (!_positionController.isClosed) {
-          _positionController.add(position);
-          debugPrint('📍 $_tag: Эмитируем позицию ${_currentPointIndex + 1}/${_routePoints.length}: ${position.latitude}, ${position.longitude}');
-        }
+        // if (!_positionController.isClosed) {
+        //   _positionController.add(position);
+        //   debugPrint('📍 $_tag: Эмитируем позицию ${_currentPointIndex + 1}/${_routePoints.length}: ${position.latitude}, ${position.longitude}');
+        // }
 
         _currentPointIndex++;
       } catch (e, st) {

@@ -80,8 +80,15 @@ import 'package:fieldforce/features/shop/domain/usecases/submit_order_usecase.da
 import 'package:fieldforce/features/shop/domain/usecases/get_orders_usecase.dart';
 import 'package:fieldforce/features/shop/domain/usecases/get_order_by_id_usecase.dart';
 import 'package:fieldforce/features/shop/domain/usecases/retry_order_submission_usecase.dart';
+import 'package:fieldforce/features/shop/domain/usecases/perform_protobuf_sync_usecase.dart';
+import 'package:fieldforce/features/shop/data/sync/services/protobuf_sync_coordinator.dart';
+import 'package:fieldforce/features/shop/data/sync/services/regional_sync_service.dart';
+import 'package:fieldforce/features/shop/data/sync/services/stock_sync_service.dart';
+import 'package:fieldforce/features/shop/data/sync/services/outlet_pricing_sync_service.dart';
+import 'package:fieldforce/features/shop/data/sync/repositories/protobuf_sync_repository.dart';
 import 'package:fieldforce/features/shop/presentation/bloc/cart_bloc.dart';
 import 'package:fieldforce/features/shop/presentation/bloc/orders_bloc.dart';
+import 'package:fieldforce/features/shop/presentation/bloc/protobuf_sync_bloc.dart';
 import 'package:fieldforce/features/shop/data/fixtures/order_fixture_service.dart';
 import 'package:fieldforce/features/shop/domain/repositories/stock_item_repository.dart';
 import 'package:fieldforce/app/database/repositories/stock_item_repository_drift.dart';
@@ -168,6 +175,40 @@ Future<void> setupTestServiceLocator({bool startBackgroundWorkers = true}) async
 
   getIt.registerLazySingleton<StockItemRepository>(
     () => DriftStockItemRepository(),
+  );
+
+  // Protobuf sync services
+  getIt.registerLazySingleton<RegionalSyncService>(
+    () => RegionalSyncService(
+      baseUrl: AppConfig.apiBaseUrl,
+    ),
+  );
+
+  getIt.registerLazySingleton<StockSyncService>(
+    () => StockSyncService(
+      baseUrl: AppConfig.apiBaseUrl,
+    ),
+  );
+
+  getIt.registerLazySingleton<OutletPricingSyncService>(
+    () => OutletPricingSyncService(
+      baseUrl: AppConfig.apiBaseUrl,
+    ),
+  );
+
+  getIt.registerLazySingleton<ProtobufSyncRepository>(
+    () => ProtobufSyncRepository(getIt<AppDatabase>()),
+  );
+
+  getIt.registerLazySingleton<ProtobufSyncCoordinator>(
+    () => ProtobufSyncCoordinator(
+      regionalSyncService: getIt<RegionalSyncService>(),
+      stockSyncService: getIt<StockSyncService>(),
+      outletPricingSyncService: getIt<OutletPricingSyncService>(),
+      syncRepository: getIt<ProtobufSyncRepository>(),
+      productRepository: getIt<ProductRepository>(),
+      stockItemRepository: getIt<StockItemRepository>(),
+    ),
   );
 
   getIt.registerLazySingleton<JobQueueRepository<OrderSubmissionJob>>(
@@ -260,6 +301,10 @@ Future<void> setupTestServiceLocator({bool startBackgroundWorkers = true}) async
     () => GetOrderByIdUseCase(getIt<OrderRepository>()),
   );
 
+  getIt.registerLazySingleton<PerformProtobufSyncUseCase>(
+    () => PerformProtobufSyncUseCase(getIt<ProtobufSyncCoordinator>()),
+  );
+
   // BLoCs
   getIt.registerLazySingleton<CartBloc>(
     () => CartBloc(
@@ -278,6 +323,12 @@ Future<void> setupTestServiceLocator({bool startBackgroundWorkers = true}) async
       getOrdersUseCase: getIt<GetOrdersUseCase>(),
       getOrderByIdUseCase: getIt<GetOrderByIdUseCase>(),
       retryOrderSubmissionUseCase: getIt<RetryOrderSubmissionUseCase>(),
+    ),
+  );
+
+  getIt.registerFactory<ProtobufSyncBloc>(
+    () => ProtobufSyncBloc(
+      performProtobufSyncUseCase: getIt<PerformProtobufSyncUseCase>(),
     ),
   );
 

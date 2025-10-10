@@ -75,22 +75,22 @@ class ProductMapper {
       try {
         final defaultImageJson = jsonDecode(data.defaultImageJson!) as Map<String, dynamic>;
         final imageData = ImageData.fromJson(defaultImageJson);
-        _logger.info('ProductMapper: Загружен defaultImage URI: ${imageData.uri}, WebP: ${imageData.webp}, оптимальный URL: ${imageData.getOptimalUrl()}');
+        _logger.fine('ProductMapper: Загружен defaultImage URI: ${imageData.uri}, WebP: ${imageData.webp}, оптимальный URL: ${imageData.getOptimalUrl()}');
         return imageData;
       } catch (e) {
         _logger.warning('ProductMapper: Ошибка парсинга defaultImageJson: $e');
       }
     } else {
-      _logger.warning('ProductMapper: defaultImageJson пуст или null для продукта ${data.catalogId}');
+      _logger.fine('ProductMapper: defaultImageJson пуст или null для продукта ${data.catalogId}');
     }
     
     final images = _parseImagesFromData(data);
     if (images.isNotEmpty) {
-      _logger.info('ProductMapper: Использован fallback на первое изображение: ${images.first.uri}, WebP: ${images.first.webp}, оптимальный URL: ${images.first.getOptimalUrl()}');
+      _logger.fine('ProductMapper: Использован fallback на первое изображение: ${images.first.uri}, WebP: ${images.first.webp}, оптимальный URL: ${images.first.getOptimalUrl()}');
       return images.first;
     }
     
-    _logger.warning('ProductMapper: Не найдено ни одного изображения для продукта ${data.catalogId}');
+    _logger.fine('ProductMapper: Не найдено ни одного изображения для продукта ${data.catalogId}');
     return null;
   }
   

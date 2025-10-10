@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:get_it/get_it.dart';
 import 'package:logging/logging.dart';
+import 'package:fieldforce/app/config/app_config.dart';
 import 'package:fieldforce/features/shop/domain/entities/category.dart';
 import 'package:fieldforce/features/shop/domain/entities/product_with_stock.dart';
 import 'package:fieldforce/features/shop/domain/entities/stock_item.dart';
@@ -98,6 +99,8 @@ class _CategoryProductsPageState extends State<CategoryProductsPage> {
     _logger.info('🔄 _loadProductsInternal: categoryId=${widget.category.id}, name="${widget.category.name}", reset=$reset, offset=$_currentOffset, limit=$_limit');
 
     final vendorId = await _resolveVendorId();
+    _logger.info('🔄 _loadProductsInternal: resolved vendorId = $vendorId');
+    
     if (_vendorResolutionFailed) {
       setState(() {
         _isLoading = false;
@@ -152,6 +155,14 @@ class _CategoryProductsPageState extends State<CategoryProductsPage> {
       return _vendorId;
     }
 
+    // В dev режиме не фильтруем по складу, чтобы видеть все товары
+    if (AppConfig.isDev) {
+      _logger.info('🔍 _resolveVendorId: DEV режим - не фильтруем по складу');
+      _vendorResolved = true;
+      _vendorId = null;
+      return _vendorId;
+    }
+
     try {
       final stockResult = await _stockItemRepository.getAvailableStockItems();
 
@@ -164,6 +175,8 @@ class _CategoryProductsPageState extends State<CategoryProductsPage> {
       }
 
       final stockItems = stockResult.getOrElse(() => []);
+      _logger.info('🔍 _resolveVendorId: найдено ${stockItems.length} остатков в базе');
+      
       if (stockItems.isEmpty) {
         _logger.warning('⚠️ _resolveVendorId: не найдено остатков > 0, используем все склады');
         _vendorResolved = true;
@@ -172,6 +185,7 @@ class _CategoryProductsPageState extends State<CategoryProductsPage> {
       }
 
       final vendorIds = stockItems.map((item) => item.warehouseVendorId).where((id) => id.isNotEmpty).toSet();
+      _logger.info('🔍 _resolveVendorId: уникальные vendorIds: $vendorIds');
 
       if (vendorIds.isEmpty) {
         _logger.warning('⚠️ _resolveVendorId: складские записи без vendorId');
@@ -186,6 +200,7 @@ class _CategoryProductsPageState extends State<CategoryProductsPage> {
 
       _vendorId = vendorIds.first;
       _vendorResolved = true;
+      _logger.info('✅ _resolveVendorId: выбран vendorId = $_vendorId');
       return _vendorId;
     } catch (error, stackTrace) {
       _logger.severe('Ошибка определения vendorId для остатков', error, stackTrace);

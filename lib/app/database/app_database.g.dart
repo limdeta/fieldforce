@@ -5327,9 +5327,7 @@ class $ProductsTable extends Products
   @override
   late final GeneratedColumn<int> catalogId = GeneratedColumn<int>(
       'catalog_id', aliasedName, false,
-      type: DriftSqlType.int,
-      requiredDuringInsert: true,
-      defaultConstraints: GeneratedColumn.constraintIsAlways('UNIQUE'));
+      type: DriftSqlType.int, requiredDuringInsert: true);
   static const VerificationMeta _codeMeta = const VerificationMeta('code');
   @override
   late final GeneratedColumn<int> code = GeneratedColumn<int>(

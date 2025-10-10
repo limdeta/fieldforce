@@ -90,13 +90,37 @@ class DriftStockItemRepository implements StockItemRepository {
   @override
   Future<Either<Failure, void>> saveStockItems(List<StockItem> stockItems) async {
     try {
+      // Диагностика входных данных
+      _logger.info('💾 Начинаем сохранение ${stockItems.length} остатков товаров');
+      
+      final itemsWithStock = stockItems.where((item) => item.stock > 0).toList();
+      _logger.info('💾 Среди них элементов с stock > 0: ${itemsWithStock.length}');
+      
+      if (stockItems.isNotEmpty) {
+        final firstItem = stockItems.first;
+        _logger.info('💾 Первый элемент: productCode=${firstItem.productCode}, stock=${firstItem.stock}, warehouseId=${firstItem.warehouseId}');
+      }
+      
+      if (itemsWithStock.isNotEmpty) {
+        final firstWithStock = itemsWithStock.first;
+        _logger.info('💾 Первый с stock > 0: productCode=${firstWithStock.productCode}, stock=${firstWithStock.stock}, warehouseId=${firstWithStock.warehouseId}');
+      }
+      
+      int savedCount = 0;
+      int skippedCount = 0;
+      
       await _database.transaction(() async {
         for (final stockItem in stockItems) {
-          await _saveStockItem(stockItem);
+          final wasSaved = await _saveStockItem(stockItem);
+          if (wasSaved) {
+            savedCount++;
+          } else {
+            skippedCount++;
+          }
         }
       });
       
-      _logger.info('Сохранено ${stockItems.length} остатков товаров');
+      _logger.info('💾 Сохранено ${savedCount} остатков товаров, пропущено ${skippedCount} (нет продуктов)');
       return const Right(null);
     } catch (e, st) {
       _logger.severe('Ошибка сохранения остатков', e, st);
@@ -104,7 +128,7 @@ class DriftStockItemRepository implements StockItemRepository {
     }
   }
 
-  Future<void> _saveStockItem(StockItem stockItem) async {
+  Future<bool> _saveStockItem(StockItem stockItem) async {
     // 🔍 Проверяем существует ли продукт с таким кодом
     final productExists = await (_database.select(_database.products)
       ..where((tbl) => tbl.code.equals(stockItem.productCode))
@@ -112,7 +136,7 @@ class DriftStockItemRepository implements StockItemRepository {
     
     if (productExists == null) {
       _logger.warning('⚠️ Попытка сохранить StockItem для несуществующего продукта с кодом ${stockItem.productCode}');
-      return; // Пропускаем сохранение StockItem если продукт не существует
+      return false; // Продукт не найден
     }
     
     // Проверяем существует ли уже StockItem с такой комбинацией productCode + warehouseId
@@ -139,6 +163,8 @@ class DriftStockItemRepository implements StockItemRepository {
       await _database.into(_database.stockItems).insert(companion);
       _logger.fine('Создан новый StockItem для продукта ${stockItem.productCode}, склад ${stockItem.warehouseId}');
     }
+    
+    return true; // Успешно сохранено
   }
 
   @override
