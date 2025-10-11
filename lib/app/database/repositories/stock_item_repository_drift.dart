@@ -1,25 +1,63 @@
 // lib/app/database/repositories/stock_item_repository_drift.dart
 
+import 'package:fieldforce/app/database/app_database.dart';
+import 'package:fieldforce/app/database/mappers/stock_item_mapper.dart';
+import 'package:fieldforce/app/services/warehouse_filter_service.dart';
 import 'package:fieldforce/features/shop/domain/entities/stock_item.dart';
 import 'package:fieldforce/features/shop/domain/repositories/stock_item_repository.dart';
-import 'package:fieldforce/app/database/mappers/stock_item_mapper.dart';
-import 'package:get_it/get_it.dart';
-import 'package:drift/drift.dart';
 import 'package:fieldforce/shared/either.dart';
 import 'package:fieldforce/shared/failures.dart';
-import 'package:fieldforce/app/database/app_database.dart';
+import 'package:get_it/get_it.dart';
+import 'package:drift/drift.dart';
 import 'package:logging/logging.dart';
 
 class DriftStockItemRepository implements StockItemRepository {
   static final Logger _logger = Logger('DriftStockItemRepository');
   final AppDatabase _database = GetIt.instance<AppDatabase>();
+  final WarehouseFilterService _warehouseFilterService = GetIt.instance<WarehouseFilterService>();
+
+  Future<List<int>?> _resolveAllowedWarehouseIds(String logContext) async {
+    final filterResult = await _warehouseFilterService.resolveForCurrentSession(bypassInDev: false);
+
+    if (filterResult.devBypass) {
+      _logger.fine('$logContext: dev режим — фильтрация складов отключена');
+      return null;
+    }
+
+    if (filterResult.failure != null) {
+      _logger.warning(
+        '$logContext: ошибка получения фильтра складов: ${filterResult.failure!.message}. Продолжаем без фильтрации.',
+      );
+      return null;
+    }
+
+    if (!filterResult.hasWarehouses) {
+      _logger.warning(
+        '$logContext: для региона ${filterResult.regionCode} не найдено складов. Возвращаем пустой результат.',
+      );
+      return <int>[];
+    }
+
+    return filterResult.warehouseIds;
+  }
 
   @override
   Future<Either<Failure, List<StockItem>>> getStockItemsByProductCode(int productCode) async {
     try {
-      final entities = await (_database.select(_database.stockItems)
-        ..where((tbl) => tbl.productCode.equals(productCode))
-      ).get();
+      final allowedWarehouseIds = await _resolveAllowedWarehouseIds('getStockItemsByProductCode');
+
+      if (allowedWarehouseIds != null && allowedWarehouseIds.isEmpty) {
+        return const Right([]);
+      }
+
+      final query = _database.select(_database.stockItems)
+        ..where((tbl) => tbl.productCode.equals(productCode));
+
+      if (allowedWarehouseIds != null) {
+        query.where((tbl) => tbl.warehouseId.isIn(allowedWarehouseIds));
+      }
+
+      final entities = await query.get();
 
       final stockItems = StockItemMapper.fromDataList(entities);
       return Right(stockItems);
@@ -32,9 +70,20 @@ class DriftStockItemRepository implements StockItemRepository {
   @override
   Future<Either<Failure, List<StockItem>>> getStockItemsByVendorId(String vendorId) async {
     try {
-      final entities = await (_database.select(_database.stockItems)
-        ..where((tbl) => tbl.warehouseVendorId.equals(vendorId))
-      ).get();
+      final allowedWarehouseIds = await _resolveAllowedWarehouseIds('getStockItemsByVendorId');
+
+      if (allowedWarehouseIds != null && allowedWarehouseIds.isEmpty) {
+        return const Right([]);
+      }
+
+      final query = _database.select(_database.stockItems)
+        ..where((tbl) => tbl.warehouseVendorId.equals(vendorId));
+
+      if (allowedWarehouseIds != null) {
+        query.where((tbl) => tbl.warehouseId.isIn(allowedWarehouseIds));
+      }
+
+      final entities = await query.get();
 
       final stockItems = StockItemMapper.fromDataList(entities);
       return Right(stockItems);
@@ -50,6 +99,12 @@ class DriftStockItemRepository implements StockItemRepository {
     int? warehouseId,
   }) async {
     try {
+      final allowedWarehouseIds = await _resolveAllowedWarehouseIds('getAvailableStockItems');
+
+      if (allowedWarehouseIds != null && allowedWarehouseIds.isEmpty) {
+        return const Right([]);
+      }
+
       final query = _database.select(_database.stockItems)
         ..where((tbl) => tbl.stock.isBiggerThanValue(0));
       
@@ -59,6 +114,10 @@ class DriftStockItemRepository implements StockItemRepository {
       
       if (warehouseId != null) {
         query.where((tbl) => tbl.warehouseId.equals(warehouseId));
+      }
+
+      if (allowedWarehouseIds != null) {
+        query.where((tbl) => tbl.warehouseId.isIn(allowedWarehouseIds));
       }
 
       final entities = await query.get();
@@ -90,13 +149,37 @@ class DriftStockItemRepository implements StockItemRepository {
   @override
   Future<Either<Failure, void>> saveStockItems(List<StockItem> stockItems) async {
     try {
+      // Диагностика входных данных
+      _logger.info('💾 Начинаем сохранение ${stockItems.length} остатков товаров');
+      
+      final itemsWithStock = stockItems.where((item) => item.stock > 0).toList();
+      _logger.info('💾 Среди них элементов с stock > 0: ${itemsWithStock.length}');
+      
+      if (stockItems.isNotEmpty) {
+        final firstItem = stockItems.first;
+        _logger.info('💾 Первый элемент: productCode=${firstItem.productCode}, stock=${firstItem.stock}, warehouseId=${firstItem.warehouseId}');
+      }
+      
+      if (itemsWithStock.isNotEmpty) {
+        final firstWithStock = itemsWithStock.first;
+        _logger.info('💾 Первый с stock > 0: productCode=${firstWithStock.productCode}, stock=${firstWithStock.stock}, warehouseId=${firstWithStock.warehouseId}');
+      }
+      
+      int savedCount = 0;
+      int skippedCount = 0;
+      
       await _database.transaction(() async {
         for (final stockItem in stockItems) {
-          await _saveStockItem(stockItem);
+          final wasSaved = await _saveStockItem(stockItem);
+          if (wasSaved) {
+            savedCount++;
+          } else {
+            skippedCount++;
+          }
         }
       });
       
-      _logger.info('Сохранено ${stockItems.length} остатков товаров');
+  _logger.info('💾 Сохранено $savedCount остатков товаров, пропущено $skippedCount (нет продуктов)');
       return const Right(null);
     } catch (e, st) {
       _logger.severe('Ошибка сохранения остатков', e, st);
@@ -104,7 +187,7 @@ class DriftStockItemRepository implements StockItemRepository {
     }
   }
 
-  Future<void> _saveStockItem(StockItem stockItem) async {
+  Future<bool> _saveStockItem(StockItem stockItem) async {
     // 🔍 Проверяем существует ли продукт с таким кодом
     final productExists = await (_database.select(_database.products)
       ..where((tbl) => tbl.code.equals(stockItem.productCode))
@@ -112,7 +195,7 @@ class DriftStockItemRepository implements StockItemRepository {
     
     if (productExists == null) {
       _logger.warning('⚠️ Попытка сохранить StockItem для несуществующего продукта с кодом ${stockItem.productCode}');
-      return; // Пропускаем сохранение StockItem если продукт не существует
+      return false; // Продукт не найден
     }
     
     // Проверяем существует ли уже StockItem с такой комбинацией productCode + warehouseId
@@ -139,6 +222,8 @@ class DriftStockItemRepository implements StockItemRepository {
       await _database.into(_database.stockItems).insert(companion);
       _logger.fine('Создан новый StockItem для продукта ${stockItem.productCode}, склад ${stockItem.warehouseId}');
     }
+    
+    return true; // Успешно сохранено
   }
 
   @override

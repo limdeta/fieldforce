@@ -5,7 +5,7 @@ import 'package:fieldforce/features/shop/domain/entities/product_with_stock.dart
 import 'package:fieldforce/features/shop/domain/entities/order_line.dart';
 import 'package:fieldforce/features/shop/domain/entities/product.dart';
 import 'package:fieldforce/features/shop/presentation/widgets/cart_control_widget.dart';
-import 'package:fieldforce/shared/services/image_cache_service.dart';
+import 'package:fieldforce/shared/widgets/cached_network_image_widget.dart';
 
 /// Варианты отображения карточки продукта
 enum ProductCardVariant {
@@ -304,29 +304,12 @@ class ProductCardWidget extends StatelessWidget {
                   child: product.defaultImage != null
                       ? ClipRRect(
                           borderRadius: BorderRadius.circular(4),
-                          child: ImageCacheService.getCachedThumbnail(
+                          child: CachedNetworkImageWidget.product(
                             imageUrl: product.defaultImage!.getOptimalUrl(),
+                            webpUrl: null, // WebP можно добавить в будущем
                             width: 80,
                             height: 80,
                             fit: BoxFit.cover,
-                            placeholder: Container(
-                              color: Colors.grey.shade300,
-                              child: const Center(
-                                child: SizedBox(
-                                  width: 20,
-                                  height: 20,
-                                  child: CircularProgressIndicator(strokeWidth: 2),
-                                ),
-                              ),
-                            ),
-                            errorWidget: Container(
-                              color: Colors.grey.shade300,
-                              child: const Icon(
-                                Icons.broken_image,
-                                color: Colors.grey,
-                                size: 32,
-                              ),
-                            ),
                           ),
                         )
                       : const Icon(
@@ -491,34 +474,12 @@ class ProductCardWidget extends StatelessWidget {
       child: ClipRRect(
         borderRadius: BorderRadius.circular(7), // Немного меньше чем у контейнера для отступа
         child: imageData != null 
-          ? ImageCacheService.getCachedThumbnail(
+          ? CachedNetworkImageWidget.product(
               imageUrl: imageData.getOptimalUrl(),
+              webpUrl: null, // WebP можно добавить в будущем
               width: 56,
               height: 56,
               fit: BoxFit.cover,
-              placeholder: Container(
-                width: 56,
-                height: 56,
-                child: Center(
-                  child: SizedBox(
-                    width: 20,
-                    height: 20,
-                    child: CircularProgressIndicator(
-                      strokeWidth: 2,
-                      valueColor: AlwaysStoppedAnimation<Color>(Colors.grey.shade400),
-                    ),
-                  ),
-                ),
-              ),
-              errorWidget: Container(
-                width: 56,
-                height: 56,
-                child: Icon(
-                  Icons.broken_image,
-                  color: Colors.grey.shade600,
-                  size: 24,
-                ),
-              ),
             )
           : Icon(
               Icons.inventory_2,

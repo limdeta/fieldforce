@@ -14,4 +14,8 @@ abstract class CategoryRepository {
   Future<Either<Failure, List<Category>>> getAllAncestors(int categoryId);
   Future<Either<Failure, void>> updateCategoryCounts();
   Future<Either<Failure, void>> updateCategoryCountsWithCategories(List<Category> categories);
+  Future<Either<Failure, void>> updateCategoryCountsForRegion(
+    List<Category> categories,
+    String regionCode,
+  );
 }

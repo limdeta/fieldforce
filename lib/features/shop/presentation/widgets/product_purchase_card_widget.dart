@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:fieldforce/features/shop/presentation/widgets/stock_item_selector_widget.dart';
 import 'package:fieldforce/features/shop/domain/entities/stock_item.dart';
-import 'package:fieldforce/shared/services/image_cache_service.dart';
+import 'package:fieldforce/shared/widgets/cached_network_image_widget.dart';
 
 /// Компонент карточки покупки товара для каталога / списка
 /// Структура:
@@ -63,29 +63,12 @@ class ProductPurchaseCard extends StatelessWidget {
                           customBorder: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6)),
                           child: ClipRRect(
                             borderRadius: BorderRadius.circular(6),
-                            child: ImageCacheService.getCachedThumbnail(
+                            child: CachedNetworkImageWidget.lazyProduct(
                               imageUrl: imageUrl!,
+                              webpUrl: null, // WebP можно добавить в будущем
                               width: 48,
                               height: 48,
                               fit: BoxFit.cover,
-                              placeholder: Container(
-                                width: 48,
-                                height: 48,
-                                color: Colors.grey.shade200,
-                                child: const Center(
-                                  child: SizedBox(
-                                    width: 16,
-                                    height: 16,
-                                    child: CircularProgressIndicator(strokeWidth: 2),
-                                  ),
-                                ),
-                              ),
-                              errorWidget: Container(
-                                width: 48,
-                                height: 48,
-                                color: Colors.grey.shade200,
-                                child: const Icon(Icons.broken_image, size: 20, color: Colors.grey),
-                              ),
                             ),
                           ),
                         ),

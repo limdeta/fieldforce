@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:get_it/get_it.dart';
 import 'package:logging/logging.dart';
-import 'package:fieldforce/features/shop/domain/repositories/category_repository.dart';
+import 'package:fieldforce/app/services/category_tree_cache_service.dart';
 import 'package:fieldforce/features/shop/domain/entities/category.dart';
 import 'package:fieldforce/features/shop/presentation/widgets/navigation_fab_widget.dart';
 import 'category_products_page.dart';
@@ -16,7 +16,7 @@ class ProductCatalogPage extends StatefulWidget {
 class _ProductCatalogPageState extends State<ProductCatalogPage>
     with TickerProviderStateMixin {
   static final Logger _logger = Logger('ProductCatalogPage');
-  final CategoryRepository _categoryRepository = GetIt.instance<CategoryRepository>();
+  final CategoryTreeCacheService _categoryTreeCacheService = GetIt.instance<CategoryTreeCacheService>();
 
   List<Category> _categories = [];
   List<Category> _filteredCategories = [];
@@ -41,7 +41,7 @@ class _ProductCatalogPageState extends State<ProductCatalogPage>
     _fadeAnimation = Tween<double>(begin: 0.0, end: 1.0).animate(
       CurvedAnimation(parent: _animationController, curve: Curves.easeInOut),
     );
-    _loadCategories();
+  _loadCategories();
   }
 
   @override
@@ -51,13 +51,15 @@ class _ProductCatalogPageState extends State<ProductCatalogPage>
     super.dispose();
   }
 
-  Future<void> _loadCategories() async {
+  Future<void> _loadCategories({bool forceRefresh = false}) async {
     setState(() {
       _isLoading = true;
       _error = null;
     });
 
-    final result = await _categoryRepository.getAllCategories();
+    final result = await _categoryTreeCacheService.getTreeForCurrentRegion(
+      forceRefresh: forceRefresh,
+    );
 
     if (result.isLeft()) {
       setState(() {
@@ -68,15 +70,6 @@ class _ProductCatalogPageState extends State<ProductCatalogPage>
     }
 
     final categories = result.getOrElse(() => []);
-
-    // Обновляем количество продуктов в категориях
-    final updateResult = await _categoryRepository.updateCategoryCountsWithCategories(categories);
-    if (updateResult.isLeft()) {
-      _logger.warning('Не удалось обновить количество продуктов в категориях');
-    } else {
-      _logger.info('updateCategoryCounts выполнен успешно');
-      // Категории уже обновлены в памяти, используем их напрямую
-    }
 
     setState(() {
       _isLoading = false;
@@ -318,7 +311,7 @@ class _ProductCatalogPageState extends State<ProductCatalogPage>
     return FadeTransition(
       opacity: _fadeAnimation,
       child: RefreshIndicator(
-        onRefresh: _loadCategories,
+        onRefresh: () => _loadCategories(forceRefresh: true),
         color: const Color.fromARGB(255, 97, 118, 134),
         child: CustomScrollView(
           slivers: [

@@ -28,11 +28,22 @@ class AppConfig {
   static String get apiBaseUrl {
     switch (_environment) {
       case Environment.dev:
-        return 'https://dev-api.fieldforce.com';
+        return 'https://localhost:8000/v1_api';
       case Environment.prod:
-        return 'https://api.instock-dv.ru/v1_api/';
+        return 'https://api.instock-dv.ru/v1_api';
       case Environment.test:
         return 'https://test-api.fieldforce.com';
+    }
+  }
+
+    static String get tradingPointsApiUrl {
+    switch (_environment) {
+      case Environment.dev:
+        return 'http://$_devApiHost/v1_api/trading-points';
+      case Environment.prod:
+        return 'https://api.instock-dv.ru/v1_api/trading-points';
+      case Environment.test:
+        return '';
     }
   }
 
@@ -86,16 +97,41 @@ class AppConfig {
     }
   }
 
-  // Trading points API Configuration
-  static String get tradingPointsApiUrl {
+    // ===== 🆕 PROTOBUF SYNC API CONFIGURATION =====
+  
+  // Коды регионов для protobuf синхронизации (совпадают с backend торговых точек)
+  static const String regionCodeP3V = 'P3V'; // Владивосток
+  static const String regionCodeM3V = 'M3V'; // Магадан
+  static const String regionCodeK3V = 'K3V'; // Камчатка
+
+  // Дефолтный регион для разработки
+  static String get defaultRegionCode => regionCodeP3V;
+  
+  // Mobile Sync Base URL (protobuf)
+  static String get mobileSyncApiUrl {
     switch (_environment) {
       case Environment.dev:
-        return 'http://$_devApiHost/v1_api/trading-points';
+        return 'http://$_devApiHost/v1_api/mobile-sync';
       case Environment.prod:
-        return 'https://api.instock-dv.ru/v1_api/trading-points';
+        return 'https://api.instock-dv.ru/v1_api/mobile-sync';
       case Environment.test:
-        return '';
+        return 'http://localhost:8000/v1_api/mobile-sync';
     }
+  }
+
+  // Regional Sync (утром, 1 раз в день)
+  static String regionalSyncUrl(String regionCode) {
+    return '$mobileSyncApiUrl/regional/$regionCode';
+  }
+
+  // Regional Stock Sync (каждый час)
+  static String regionalStockUrl(String regionCode) {
+    return '$mobileSyncApiUrl/regional-stock/$regionCode';
+  }
+
+  // Outlet Pricing Sync (каждый час)
+  static String outletPricingUrl(String outletVendorId) {
+    return '$mobileSyncApiUrl/outlet-prices/$outletVendorId';
   }
 
   // Use mock authentication in dev/test modes

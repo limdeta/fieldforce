@@ -1,0 +1,118 @@
+syntax = "proto3";
+
+package mobile_sync;
+
+import "product.proto";
+import "stockitem.proto";
+
+option php_namespace = "Vstk\\MobileSync\\Proto";
+option php_metadata_namespace = "Vstk\\MobileSync\\Proto\\GPBMetadata";
+
+// Запросы и ответы для синхронизации
+
+// Запрос базового кеша региона
+message RegionalCacheRequest {
+    string region_fias_id = 1;
+    int64 last_sync_timestamp = 2;
+    int32 limit = 3;                  // пагинация
+    int32 offset = 4;                 // пагинация
+    bool force_refresh = 5;           // принудительное обновление
+}
+
+// Ответ с базовыми данными региона (ТОЛЬКО продукты, БЕЗ остатков и цен)
+message RegionalCacheResponse {
+    repeated Product products = 1;
+    int64 sync_timestamp = 2;
+    CacheStats stats = 3;
+    bool has_more = 4;                // есть ли еще данные
+    string cache_version = 5;         // версия кеша
+    string cache_type = 6;            // "regional_products_only"
+}
+
+// Запрос индивидуальных данных торговой точки
+message OutletSpecificRequest {
+    string outlet_vendor_id = 1;
+    int64 last_sync_timestamp = 2;
+    repeated int32 product_codes = 3; // опционально для частичной синхронизации
+    bool include_promotions = 4;      // включать ли детали акций
+}
+
+// Ответ с индивидуальными данными точки (дифференциальный подход)
+message OutletSpecificCacheResponse {
+    OutletInfo outlet_info = 1;
+    repeated OutletStockPricing outlet_pricing = 2;  // цены для stockItem'ов этой точки
+    repeated ActivePromotion active_promotions = 3;  // ActivePromotion теперь в stockitem.proto
+    int64 sync_timestamp = 4;
+    string cache_type = 5;            // "outlet_specific_pricing"
+    CacheStats stats = 6;
+}
+
+// Информация о торговой точке
+message OutletInfo {
+    int32 id = 1;
+    string vendor_id = 2;
+    string title = 3;
+    string region_fias_id = 4;
+    int32 regional_unit_id = 5;
+}
+
+// Индивидуальные цены для торговой точки (legacy - для обратной совместимости)
+message OutletPricing {
+    int32 product_code = 1;
+    int32 outlet_price = 2;           // цена с учетом индивидуальной скидки
+    int32 regional_base_price = 3;    // базовая цена региона для сравнения
+    int32 discount_amount = 4;        // размер скидки в копейках
+    float discount_percent = 5;       // размер скидки в процентах
+    bool has_individual_discount = 6; // есть ли индивидуальная скидка
+}
+
+// Статистика кеша
+message CacheStats {
+    string region_fias_id = 1;
+    int32 products_count = 2;
+    int32 stock_items_count = 3;
+    int64 cache_size_bytes = 4;
+    float generation_time_seconds = 5;
+    int64 last_updated = 6;
+}
+
+// Ответ с остатками на складах в регионе (ТОЛЬКО остатки + базовые цены)
+message RegionalStockResponse {
+    // RegionInfo region_info = 1;  // ЗАКОММЕНТИРОВАНО: телефону не нужна подробная информация о регионах
+    repeated RegionalStockItem stock_items = 2;  // используем новый тип!
+    int64 sync_timestamp = 3;
+    string cache_type = 4;            // "regional_stock_base_prices"
+    CacheStats stats = 5;
+}
+
+// Информация о регионе - ЗАКОММЕНТИРОВАНО: не используется
+// message RegionInfo {
+//     int32 id = 1;
+//     string fias_id = 2;
+//     string vendor_id = 3;
+//     string title = 4;
+// }
+
+// Запрос синхронизации складов
+message WarehouseSyncRequest {
+    string region_vendor_id = 1;     // опционально - склады конкретного региона
+    int64 last_sync_timestamp = 2;
+    int32 limit = 3;                 // пагинация
+    int32 offset = 4;                // пагинация
+    bool force_refresh = 5;          // принудительное обновление
+}
+
+// Ответ с данными складов
+message WarehouseSyncResponse {
+    repeated WarehouseInfo warehouses = 1;
+    int64 sync_timestamp = 2;
+    CacheStats stats = 3;
+}
+
+// Информация о складе
+message WarehouseInfo {
+    int32 id = 1;
+    string name = 2;
+    string vendor_id = 3;
+    string region = 4;               // просто строка с кодом региона типа "K3V"
+}

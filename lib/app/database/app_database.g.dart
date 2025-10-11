@@ -5327,9 +5327,7 @@ class $ProductsTable extends Products
   @override
   late final GeneratedColumn<int> catalogId = GeneratedColumn<int>(
       'catalog_id', aliasedName, false,
-      type: DriftSqlType.int,
-      requiredDuringInsert: true,
-      defaultConstraints: GeneratedColumn.constraintIsAlways('UNIQUE'));
+      type: DriftSqlType.int, requiredDuringInsert: true);
   static const VerificationMeta _codeMeta = const VerificationMeta('code');
   @override
   late final GeneratedColumn<int> code = GeneratedColumn<int>(
@@ -8856,6 +8854,366 @@ class OrderJobsCompanion extends UpdateCompanion<OrderJobEntity> {
   }
 }
 
+class $WarehousesTable extends Warehouses
+    with TableInfo<$WarehousesTable, WarehouseData> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $WarehousesTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _idMeta = const VerificationMeta('id');
+  @override
+  late final GeneratedColumn<int> id = GeneratedColumn<int>(
+      'id', aliasedName, false,
+      type: DriftSqlType.int, requiredDuringInsert: false);
+  static const VerificationMeta _nameMeta = const VerificationMeta('name');
+  @override
+  late final GeneratedColumn<String> name = GeneratedColumn<String>(
+      'name', aliasedName, false,
+      type: DriftSqlType.string, requiredDuringInsert: true);
+  static const VerificationMeta _vendorIdMeta =
+      const VerificationMeta('vendorId');
+  @override
+  late final GeneratedColumn<String> vendorId = GeneratedColumn<String>(
+      'vendor_id', aliasedName, false,
+      type: DriftSqlType.string, requiredDuringInsert: true);
+  static const VerificationMeta _regionCodeMeta =
+      const VerificationMeta('regionCode');
+  @override
+  late final GeneratedColumn<String> regionCode = GeneratedColumn<String>(
+      'region_code', aliasedName, false,
+      type: DriftSqlType.string, requiredDuringInsert: true);
+  static const VerificationMeta _isPickUpPointMeta =
+      const VerificationMeta('isPickUpPoint');
+  @override
+  late final GeneratedColumn<bool> isPickUpPoint = GeneratedColumn<bool>(
+      'is_pick_up_point', aliasedName, false,
+      type: DriftSqlType.bool,
+      requiredDuringInsert: false,
+      defaultConstraints: GeneratedColumn.constraintIsAlways(
+          'CHECK ("is_pick_up_point" IN (0, 1))'),
+      defaultValue: const Constant(false));
+  static const VerificationMeta _createdAtMeta =
+      const VerificationMeta('createdAt');
+  @override
+  late final GeneratedColumn<DateTime> createdAt = GeneratedColumn<DateTime>(
+      'created_at', aliasedName, false,
+      type: DriftSqlType.dateTime,
+      requiredDuringInsert: false,
+      defaultValue: currentDateAndTime);
+  static const VerificationMeta _updatedAtMeta =
+      const VerificationMeta('updatedAt');
+  @override
+  late final GeneratedColumn<DateTime> updatedAt = GeneratedColumn<DateTime>(
+      'updated_at', aliasedName, false,
+      type: DriftSqlType.dateTime,
+      requiredDuringInsert: false,
+      defaultValue: currentDateAndTime);
+  @override
+  List<GeneratedColumn> get $columns =>
+      [id, name, vendorId, regionCode, isPickUpPoint, createdAt, updatedAt];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'warehouses';
+  @override
+  VerificationContext validateIntegrity(Insertable<WarehouseData> instance,
+      {bool isInserting = false}) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('id')) {
+      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
+    }
+    if (data.containsKey('name')) {
+      context.handle(
+          _nameMeta, name.isAcceptableOrUnknown(data['name']!, _nameMeta));
+    } else if (isInserting) {
+      context.missing(_nameMeta);
+    }
+    if (data.containsKey('vendor_id')) {
+      context.handle(_vendorIdMeta,
+          vendorId.isAcceptableOrUnknown(data['vendor_id']!, _vendorIdMeta));
+    } else if (isInserting) {
+      context.missing(_vendorIdMeta);
+    }
+    if (data.containsKey('region_code')) {
+      context.handle(
+          _regionCodeMeta,
+          regionCode.isAcceptableOrUnknown(
+              data['region_code']!, _regionCodeMeta));
+    } else if (isInserting) {
+      context.missing(_regionCodeMeta);
+    }
+    if (data.containsKey('is_pick_up_point')) {
+      context.handle(
+          _isPickUpPointMeta,
+          isPickUpPoint.isAcceptableOrUnknown(
+              data['is_pick_up_point']!, _isPickUpPointMeta));
+    }
+    if (data.containsKey('created_at')) {
+      context.handle(_createdAtMeta,
+          createdAt.isAcceptableOrUnknown(data['created_at']!, _createdAtMeta));
+    }
+    if (data.containsKey('updated_at')) {
+      context.handle(_updatedAtMeta,
+          updatedAt.isAcceptableOrUnknown(data['updated_at']!, _updatedAtMeta));
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {id};
+  @override
+  WarehouseData map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return WarehouseData(
+      id: attachedDatabase.typeMapping
+          .read(DriftSqlType.int, data['${effectivePrefix}id'])!,
+      name: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}name'])!,
+      vendorId: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}vendor_id'])!,
+      regionCode: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}region_code'])!,
+      isPickUpPoint: attachedDatabase.typeMapping
+          .read(DriftSqlType.bool, data['${effectivePrefix}is_pick_up_point'])!,
+      createdAt: attachedDatabase.typeMapping
+          .read(DriftSqlType.dateTime, data['${effectivePrefix}created_at'])!,
+      updatedAt: attachedDatabase.typeMapping
+          .read(DriftSqlType.dateTime, data['${effectivePrefix}updated_at'])!,
+    );
+  }
+
+  @override
+  $WarehousesTable createAlias(String alias) {
+    return $WarehousesTable(attachedDatabase, alias);
+  }
+}
+
+class WarehouseData extends DataClass implements Insertable<WarehouseData> {
+  final int id;
+  final String name;
+  final String vendorId;
+  final String regionCode;
+  final bool isPickUpPoint;
+  final DateTime createdAt;
+  final DateTime updatedAt;
+  const WarehouseData(
+      {required this.id,
+      required this.name,
+      required this.vendorId,
+      required this.regionCode,
+      required this.isPickUpPoint,
+      required this.createdAt,
+      required this.updatedAt});
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['id'] = Variable<int>(id);
+    map['name'] = Variable<String>(name);
+    map['vendor_id'] = Variable<String>(vendorId);
+    map['region_code'] = Variable<String>(regionCode);
+    map['is_pick_up_point'] = Variable<bool>(isPickUpPoint);
+    map['created_at'] = Variable<DateTime>(createdAt);
+    map['updated_at'] = Variable<DateTime>(updatedAt);
+    return map;
+  }
+
+  WarehousesCompanion toCompanion(bool nullToAbsent) {
+    return WarehousesCompanion(
+      id: Value(id),
+      name: Value(name),
+      vendorId: Value(vendorId),
+      regionCode: Value(regionCode),
+      isPickUpPoint: Value(isPickUpPoint),
+      createdAt: Value(createdAt),
+      updatedAt: Value(updatedAt),
+    );
+  }
+
+  factory WarehouseData.fromJson(Map<String, dynamic> json,
+      {ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return WarehouseData(
+      id: serializer.fromJson<int>(json['id']),
+      name: serializer.fromJson<String>(json['name']),
+      vendorId: serializer.fromJson<String>(json['vendorId']),
+      regionCode: serializer.fromJson<String>(json['regionCode']),
+      isPickUpPoint: serializer.fromJson<bool>(json['isPickUpPoint']),
+      createdAt: serializer.fromJson<DateTime>(json['createdAt']),
+      updatedAt: serializer.fromJson<DateTime>(json['updatedAt']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'id': serializer.toJson<int>(id),
+      'name': serializer.toJson<String>(name),
+      'vendorId': serializer.toJson<String>(vendorId),
+      'regionCode': serializer.toJson<String>(regionCode),
+      'isPickUpPoint': serializer.toJson<bool>(isPickUpPoint),
+      'createdAt': serializer.toJson<DateTime>(createdAt),
+      'updatedAt': serializer.toJson<DateTime>(updatedAt),
+    };
+  }
+
+  WarehouseData copyWith(
+          {int? id,
+          String? name,
+          String? vendorId,
+          String? regionCode,
+          bool? isPickUpPoint,
+          DateTime? createdAt,
+          DateTime? updatedAt}) =>
+      WarehouseData(
+        id: id ?? this.id,
+        name: name ?? this.name,
+        vendorId: vendorId ?? this.vendorId,
+        regionCode: regionCode ?? this.regionCode,
+        isPickUpPoint: isPickUpPoint ?? this.isPickUpPoint,
+        createdAt: createdAt ?? this.createdAt,
+        updatedAt: updatedAt ?? this.updatedAt,
+      );
+  @override
+  String toString() {
+    return (StringBuffer('WarehouseData(')
+          ..write('id: $id, ')
+          ..write('name: $name, ')
+          ..write('vendorId: $vendorId, ')
+          ..write('regionCode: $regionCode, ')
+          ..write('isPickUpPoint: $isPickUpPoint, ')
+          ..write('createdAt: $createdAt, ')
+          ..write('updatedAt: $updatedAt')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(
+      id, name, vendorId, regionCode, isPickUpPoint, createdAt, updatedAt);
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is WarehouseData &&
+          other.id == this.id &&
+          other.name == this.name &&
+          other.vendorId == this.vendorId &&
+          other.regionCode == this.regionCode &&
+          other.isPickUpPoint == this.isPickUpPoint &&
+          other.createdAt == this.createdAt &&
+          other.updatedAt == this.updatedAt);
+}
+
+class WarehousesCompanion extends UpdateCompanion<WarehouseData> {
+  final Value<int> id;
+  final Value<String> name;
+  final Value<String> vendorId;
+  final Value<String> regionCode;
+  final Value<bool> isPickUpPoint;
+  final Value<DateTime> createdAt;
+  final Value<DateTime> updatedAt;
+  const WarehousesCompanion({
+    this.id = const Value.absent(),
+    this.name = const Value.absent(),
+    this.vendorId = const Value.absent(),
+    this.regionCode = const Value.absent(),
+    this.isPickUpPoint = const Value.absent(),
+    this.createdAt = const Value.absent(),
+    this.updatedAt = const Value.absent(),
+  });
+  WarehousesCompanion.insert({
+    this.id = const Value.absent(),
+    required String name,
+    required String vendorId,
+    required String regionCode,
+    this.isPickUpPoint = const Value.absent(),
+    this.createdAt = const Value.absent(),
+    this.updatedAt = const Value.absent(),
+  })  : name = Value(name),
+        vendorId = Value(vendorId),
+        regionCode = Value(regionCode);
+  static Insertable<WarehouseData> custom({
+    Expression<int>? id,
+    Expression<String>? name,
+    Expression<String>? vendorId,
+    Expression<String>? regionCode,
+    Expression<bool>? isPickUpPoint,
+    Expression<DateTime>? createdAt,
+    Expression<DateTime>? updatedAt,
+  }) {
+    return RawValuesInsertable({
+      if (id != null) 'id': id,
+      if (name != null) 'name': name,
+      if (vendorId != null) 'vendor_id': vendorId,
+      if (regionCode != null) 'region_code': regionCode,
+      if (isPickUpPoint != null) 'is_pick_up_point': isPickUpPoint,
+      if (createdAt != null) 'created_at': createdAt,
+      if (updatedAt != null) 'updated_at': updatedAt,
+    });
+  }
+
+  WarehousesCompanion copyWith(
+      {Value<int>? id,
+      Value<String>? name,
+      Value<String>? vendorId,
+      Value<String>? regionCode,
+      Value<bool>? isPickUpPoint,
+      Value<DateTime>? createdAt,
+      Value<DateTime>? updatedAt}) {
+    return WarehousesCompanion(
+      id: id ?? this.id,
+      name: name ?? this.name,
+      vendorId: vendorId ?? this.vendorId,
+      regionCode: regionCode ?? this.regionCode,
+      isPickUpPoint: isPickUpPoint ?? this.isPickUpPoint,
+      createdAt: createdAt ?? this.createdAt,
+      updatedAt: updatedAt ?? this.updatedAt,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (id.present) {
+      map['id'] = Variable<int>(id.value);
+    }
+    if (name.present) {
+      map['name'] = Variable<String>(name.value);
+    }
+    if (vendorId.present) {
+      map['vendor_id'] = Variable<String>(vendorId.value);
+    }
+    if (regionCode.present) {
+      map['region_code'] = Variable<String>(regionCode.value);
+    }
+    if (isPickUpPoint.present) {
+      map['is_pick_up_point'] = Variable<bool>(isPickUpPoint.value);
+    }
+    if (createdAt.present) {
+      map['created_at'] = Variable<DateTime>(createdAt.value);
+    }
+    if (updatedAt.present) {
+      map['updated_at'] = Variable<DateTime>(updatedAt.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('WarehousesCompanion(')
+          ..write('id: $id, ')
+          ..write('name: $name, ')
+          ..write('vendorId: $vendorId, ')
+          ..write('regionCode: $regionCode, ')
+          ..write('isPickUpPoint: $isPickUpPoint, ')
+          ..write('createdAt: $createdAt, ')
+          ..write('updatedAt: $updatedAt')
+          ..write(')'))
+        .toString();
+  }
+}
+
 abstract class _$AppDatabase extends GeneratedDatabase {
   _$AppDatabase(QueryExecutor e) : super(e);
   late final $UsersTable users = $UsersTable(this);
@@ -8879,6 +9237,7 @@ abstract class _$AppDatabase extends GeneratedDatabase {
   late final $OrderLinesTable orderLines = $OrderLinesTable(this);
   late final $StockItemsTable stockItems = $StockItemsTable(this);
   late final $OrderJobsTable orderJobs = $OrderJobsTable(this);
+  late final $WarehousesTable warehouses = $WarehousesTable(this);
   @override
   Iterable<TableInfo<Table, Object?>> get allTables =>
       allSchemaEntities.whereType<TableInfo<Table, Object?>>();
@@ -8900,7 +9259,8 @@ abstract class _$AppDatabase extends GeneratedDatabase {
         orders,
         orderLines,
         stockItems,
-        orderJobs
+        orderJobs,
+        warehouses
       ];
   @override
   StreamQueryUpdateRules get streamUpdateRules => const StreamQueryUpdateRules(

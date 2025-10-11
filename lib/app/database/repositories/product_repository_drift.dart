@@ -1,20 +1,22 @@
 // lib/app/database/repositories/product_repository_drift.dart
 
 import 'dart:convert';
+import 'package:fieldforce/app/database/app_database.dart';
+import 'package:fieldforce/app/database/mappers/product_mapper.dart';
+import 'package:fieldforce/app/services/warehouse_filter_service.dart';
 import 'package:fieldforce/features/shop/domain/entities/product.dart';
 import 'package:fieldforce/features/shop/domain/entities/product_with_stock.dart';
 import 'package:fieldforce/features/shop/domain/repositories/category_repository.dart';
 import 'package:fieldforce/features/shop/domain/repositories/product_repository.dart';
-import 'package:fieldforce/app/database/mappers/product_mapper.dart';
-import 'package:get_it/get_it.dart';
-import 'package:drift/drift.dart';
 import 'package:fieldforce/shared/either.dart';
 import 'package:fieldforce/shared/failures.dart';
-import 'package:fieldforce/app/database/app_database.dart';
+import 'package:get_it/get_it.dart';
+import 'package:drift/drift.dart';
 import 'package:logging/logging.dart';
 
 class DriftProductRepository implements ProductRepository {
   final AppDatabase _database = GetIt.instance<AppDatabase>();
+  final WarehouseFilterService _warehouseFilterService = GetIt.instance<WarehouseFilterService>();
   
   static final Logger _logger = Logger('DriftProductRepository');
 
@@ -219,7 +221,7 @@ class DriftProductRepository implements ProductRepository {
     int limit = 20,
   }) async {
     try {
-      _logger.info('getProductsWithStockByCategoryPaginated: categoryId=$categoryId, vendorId=${vendorId ?? 'ALL'}, offset=$offset, limit=$limit');
+      _logger.info('🚀 getProductsWithStockByCategoryPaginated: categoryId=$categoryId, vendorId=${vendorId ?? 'ALL'}, offset=$offset, limit=$limit');
       
       // Получаем иерархию категорий как в обычном методе
       final categoryRepository = GetIt.instance<CategoryRepository>();
@@ -237,11 +239,15 @@ class DriftProductRepository implements ProductRepository {
       relevantCategoryIds.addAll(ancestors.map((c) => c.id));
 
       _logger.info('Relevant category IDs: $relevantCategoryIds');
-
+      _logger.info('  - Descendants: ${descendants.map((c) => '${c.id}:${c.name}').join(', ')}');
+      _logger.info('  - Ancestors: ${ancestors.map((c) => '${c.id}:${c.name}').join(', ')}');
+      
       final directMatches = await (_database.select(_database.products)
         ..where((tbl) => tbl.categoryId.equals(categoryId))
       ).get();
 
+      _logger.info('🔍 Прямые совпадения по categoryId=$categoryId: ${directMatches.length} продуктов');
+      
       final allProductEntities = await (_database.select(_database.products)).get();
       
       _logger.info('🔍 Всего продуктов в БД: ${allProductEntities.length}');
@@ -267,6 +273,7 @@ class DriftProductRepository implements ProductRepository {
           
           if (productCategoryIds.intersection(relevantCategoryIds).isNotEmpty) {
             matchingProductsMap[productEntity.code] = productEntity;
+            _logger.fine('🔍 Продукт ${productEntity.code} найден через categoriesInstock: ${productCategoryIds.intersection(relevantCategoryIds)}');
           }
         } catch (e) {
           _logger.warning('Ошибка парсинга categoriesInstock для продукта ${productEntity.code}: $e');
@@ -274,7 +281,7 @@ class DriftProductRepository implements ProductRepository {
       }
 
       final matchingProducts = matchingProductsMap.values.toList();
-      _logger.info('🔍 Продукты в категориях ${relevantCategoryIds}: ${matchingProducts.length} найдено');
+  _logger.info('🔍 Продукты в категориях $relevantCategoryIds: ${matchingProducts.length} найдено');
 
       if (matchingProducts.isNotEmpty) {
         final sampleProducts = matchingProducts.take(3).map((p) => 'code=${p.code}, title=${p.title}').join('; ');
@@ -296,12 +303,36 @@ class DriftProductRepository implements ProductRepository {
 
       final productCodes = sortedProducts.map((p) => p.code).toList();
 
+  final filterResult = await _warehouseFilterService.resolveForCurrentSession(bypassInDev: false);
+      List<int>? allowedWarehouseIds;
+
+      if (filterResult.devBypass) {
+        _logger.fine('getProductsWithStockByCategoryPaginated: dev режим — пропускаем фильтрацию складов');
+      } else if (filterResult.failure != null) {
+        _logger.warning(
+          'getProductsWithStockByCategoryPaginated: ошибка фильтра складов: ${filterResult.failure!.message}. Продолжаем без фильтрации.',
+        );
+      } else if (!filterResult.hasWarehouses) {
+        _logger.warning(
+          'getProductsWithStockByCategoryPaginated: для региона ${filterResult.regionCode} не найдено складов. Возвращаем пустой список.',
+        );
+        return Right([]);
+      } else {
+        final warehouses = filterResult.warehouseIds;
+        allowedWarehouseIds = warehouses;
+        _logger.fine('Применяем фильтр по складам (${warehouses.length}) для региона ${filterResult.regionCode}');
+      }
+
       final stockQuery = _database.select(_database.stockItems)
         ..where((tbl) => tbl.productCode.isIn(productCodes))
         ..where((tbl) => tbl.stock.isBiggerThanValue(0));
 
       if (vendorId != null) {
         stockQuery.where((tbl) => tbl.warehouseVendorId.equals(vendorId));
+      }
+
+      if (allowedWarehouseIds != null) {
+        stockQuery.where((tbl) => tbl.warehouseId.isIn(allowedWarehouseIds!));
       }
 
       final stockEntities = await stockQuery.get();
@@ -313,18 +344,21 @@ class DriftProductRepository implements ProductRepository {
       }
 
     final availableProducts = sortedProducts
-      .where((product) => (stockByProduct[product.code]?.isNotEmpty ?? false))
-      .toList();
+        .where((product) => (stockByProduct[product.code]?.isNotEmpty ?? false))
+        .toList();
+
+      _logger.info('🔍 После фильтрации по остаткам: ${availableProducts.length} из ${sortedProducts.length} продуктов');
 
       if (availableProducts.isEmpty) {
-        _logger.info('✅ Все продукты без доступных остатков для категории $categoryId, возвращаем пустой список');
+        _logger.info('✅ Возвращаем 0 ProductWithStock для категории $categoryId (нет продуктов с остатками)');
         return Right([]);
       }
 
       final paginatedAvailableProducts = availableProducts.skip(offset).take(limit).toList();
+      _logger.info('🔍 После пагинации: ${paginatedAvailableProducts.length} продуктов (offset=$offset, limit=$limit)');
 
       if (paginatedAvailableProducts.isEmpty) {
-        _logger.info('✅ Пагинация вернула 0 продуктов с остатками (offset=$offset)');
+        _logger.info('✅ Возвращаем 0 ProductWithStock для категории $categoryId (пагинация)');
         return Right([]);
       }
 

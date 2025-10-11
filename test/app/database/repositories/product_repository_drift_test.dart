@@ -78,6 +78,14 @@ class _FakeCategoryRepository implements CategoryRepository {
   Future<Either<Failure, void>> updateCategoryCountsWithCategories(List<domain.Category> categories) async {
     return const Right(null);
   }
+
+  @override
+  Future<Either<Failure, void>> updateCategoryCountsForRegion(
+    List<domain.Category> categories,
+    String regionCode,
+  ) async {
+    return const Right(null);
+  }
 }
 
 void main() {

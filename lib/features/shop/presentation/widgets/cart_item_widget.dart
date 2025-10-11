@@ -3,7 +3,7 @@
 import 'package:flutter/material.dart';
 import 'package:fieldforce/features/shop/domain/entities/order_line.dart';
 import 'package:fieldforce/features/shop/presentation/widgets/stock_item_cart_control_widget.dart';
-import 'package:fieldforce/shared/services/image_cache_service.dart';
+import 'package:fieldforce/shared/widgets/cached_network_image_widget.dart';
 
 /// Виджет элемента корзины
 class CartItemWidget extends StatelessWidget {
@@ -46,8 +46,9 @@ class CartItemWidget extends StatelessWidget {
                 child: orderLine.product?.defaultImage != null
                     ? ClipRRect(
                         borderRadius: BorderRadius.circular(4),
-                        child: ImageCacheService.getCachedThumbnail(
+                        child: CachedNetworkImageWidget.product(
                           imageUrl: orderLine.product!.defaultImage!.getOptimalUrl(),
+                          webpUrl: null, // WebP можно добавить в будущем
                           width: 60,
                           height: 60,
                         ),

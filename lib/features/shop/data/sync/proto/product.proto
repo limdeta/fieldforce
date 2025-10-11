@@ -1,0 +1,113 @@
+syntax = "proto3";
+
+package mobile_sync;
+
+option php_namespace = "Vstk\\MobileSync\\Proto";
+option php_metadata_namespace = "Vstk\\MobileSync\\Proto\\GPBMetadata";
+
+// Основное сообщение продукта
+message Product {
+    int32 code = 1;                    // внутренний код
+    int32 bcode = 2;                   // catalogId/productId 
+    string title = 3;                  // название
+    string vendor_code = 4;            // артикул
+    repeated string barcodes = 5;      // штрихкоды
+    bool is_marked = 6;               // маркированный товар
+    bool novelty = 7;                 // новинка
+    bool popular = 8;                 // популярный
+    int32 amount_in_package = 9;      // количество в упаковке
+    
+    // Бренд и производитель
+    Brand brand = 10;
+    Manufacturer manufacturer = 11;
+    
+    // Изображения
+    ProductImage default_image = 12;
+    repeated ProductImage images = 13;
+    ProductImage color_image = 14;    // может быть null
+    
+    // Описания
+    string description = 15;
+    string how_to_use = 16;
+    string ingredients = 17;
+    
+    // Категории и классификация
+    Category category = 18;           // основная категория
+    repeated Category categories_instock = 19;
+    ProductType type = 20;
+    Series series = 21;              // может быть null
+    int32 price_list_category_id = 22;
+    
+    // Характеристики
+    repeated NumericCharacteristic numeric_characteristics = 23;
+    repeated StringCharacteristic string_characteristics = 24;
+    repeated BoolCharacteristic bool_characteristics = 25;
+    
+    // Для мобильной синхронизации
+    bool can_buy = 26;               // рассчитывается на бэкенде
+    int32 catalog_id = 27;           // catalogId (0 если нет связи)
+}
+
+message Brand {
+    int32 id = 1;
+    string name = 2;
+    string adapted_name = 3;         // локализованное название
+    int32 search_priority = 4;       // приоритет в поиске
+}
+
+message Manufacturer {
+    int32 id = 1;
+    string name = 2;
+}
+
+message ProductImage {
+    int32 id = 1;                    // может быть null
+    string uri = 2;
+    string webp = 3;                 // webp версия
+    int32 width = 4;
+    int32 height = 5;
+}
+
+message Category {
+    int32 id = 1;
+    string name = 2;
+    bool is_publish = 3;             // только для основной категории
+    string description = 4;          // только для основной категории
+    string query = 5;                // только для основной категории
+}
+
+message ProductType {
+    int32 id = 1;
+    string name = 2;
+}
+
+message Series {
+    int32 id = 1;
+    string name = 2;
+}
+
+message NumericCharacteristic {
+    int32 attribute_id = 1;
+    string attribute_name = 2;
+    int32 id = 3;
+    string type = 4;                 // "numeric"
+    string adapt_value = 5;          // отформатированное значение
+    float value = 6;                 // числовое значение
+}
+
+message StringCharacteristic {
+    int32 attribute_id = 1;
+    string attribute_name = 2;
+    int32 id = 3;
+    string type = 4;                 // "string"
+    string adapt_value = 5;          // отображаемое значение
+    int32 value = 6;                 // внутренний ID значения
+}
+
+message BoolCharacteristic {
+    int32 attribute_id = 1;
+    string attribute_name = 2;
+    int32 id = 3;
+    string type = 4;                 // "bool"
+    bool value = 5;
+}

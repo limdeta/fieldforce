@@ -6,7 +6,7 @@ import 'package:drift/drift.dart';
 @DataClassName('ProductData')
 class Products extends Table {
   IntColumn get id => integer().autoIncrement()();
-  IntColumn get catalogId => integer().unique()(); // ID из бекенда
+  IntColumn get catalogId => integer()(); // ID из бекенда (убрали unique - может быть 0 у многих продуктов)
   IntColumn get code => integer().unique()(); // Код продукта - основной идентификатор
   IntColumn get bcode => integer()();
   TextColumn get title => text()();
@@ -30,8 +30,9 @@ class Products extends Table {
   // Индексы для быстрого поиска
   @override
   List<String> get customConstraints => [
-    'UNIQUE(catalog_id)',
-    'UNIQUE(code)', // Добавляем уникальность для code
+    // catalog_id может быть 0 для многих продуктов (нет каталожного ID)
+    // поэтому убираем UNIQUE constraint 
+    'UNIQUE(code)', // code остается уникальным
   ];
 
   // Индексы создаются автоматически для внешних ключей
