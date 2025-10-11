@@ -15,6 +15,9 @@ class ProtobufSyncResult {
   
   /// Количество синхронизированных остатков
   final int stockItemsCount;
+
+  /// Количество синхронизированных складов
+  final int warehousesCount;
   
   /// Количество синхронизированных цен
   final int outletPricingCount;
@@ -32,30 +35,31 @@ class ProtobufSyncResult {
   final DateTime endTime;
   
   /// Регион, для которого выполнялась синхронизация
-  final String regionFiasId;
+  final String regionCode;
   
-  /// Список торговых точек
-  final List<int> outletIds;
+  /// Список торговых точек (vendorId)
+  final List<String> outletVendorIds;
 
   const ProtobufSyncResult({
     required this.success,
     required this.duration,
     required this.productsCount,
     required this.stockItemsCount,
+    required this.warehousesCount,
     required this.outletPricingCount,
     required this.errors,
     required this.detailedErrors,
     required this.startTime,
     required this.endTime,
-    required this.regionFiasId,
-    required this.outletIds,
+    required this.regionCode,
+  required this.outletVendorIds,
   });
 
   /// Проверяет, есть ли ошибки
   bool get hasErrors => errors.isNotEmpty || detailedErrors.isNotEmpty;
 
   /// Возвращает общее количество синхронизированных элементов
-  int get totalItemsCount => productsCount + stockItemsCount + outletPricingCount;
+  int get totalItemsCount => productsCount + stockItemsCount + outletPricingCount + warehousesCount;
 
   /// Возвращает общее количество ошибок
   int get errorCount => errors.length + detailedErrors.length;
@@ -65,24 +69,26 @@ class ProtobufSyncResult {
     required Duration duration,
     required int productsCount,
     required int stockItemsCount,
+    required int warehousesCount,
     required int outletPricingCount,
     required DateTime startTime,
     required DateTime endTime,
-    required String regionFiasId,
-    required List<int> outletIds,
+    required String regionCode,
+    required List<String> outletVendorIds,
   }) {
     return ProtobufSyncResult(
       success: true,
       duration: duration,
       productsCount: productsCount,
       stockItemsCount: stockItemsCount,
+      warehousesCount: warehousesCount,
       outletPricingCount: outletPricingCount,
       errors: [],
       detailedErrors: [],
       startTime: startTime,
       endTime: endTime,
-      regionFiasId: regionFiasId,
-      outletIds: outletIds,
+      regionCode: regionCode,
+      outletVendorIds: outletVendorIds,
     );
   }
 
@@ -93,10 +99,11 @@ class ProtobufSyncResult {
     required List<ProtobufSyncError> detailedErrors,
     required DateTime startTime,
     required DateTime endTime,
-    required String regionFiasId,
-    required List<int> outletIds,
+    required String regionCode,
+    required List<String> outletVendorIds,
     int productsCount = 0,
     int stockItemsCount = 0,
+    int warehousesCount = 0,
     int outletPricingCount = 0,
   }) {
     return ProtobufSyncResult(
@@ -104,13 +111,14 @@ class ProtobufSyncResult {
       duration: duration,
       productsCount: productsCount,
       stockItemsCount: stockItemsCount,
+      warehousesCount: warehousesCount,
       outletPricingCount: outletPricingCount,
       errors: errors,
       detailedErrors: detailedErrors,
       startTime: startTime,
       endTime: endTime,
-      regionFiasId: regionFiasId,
-      outletIds: outletIds,
+      regionCode: regionCode,
+      outletVendorIds: outletVendorIds,
     );
   }
 
@@ -129,13 +137,14 @@ class ProtobufSyncResult {
     buffer.writeln('=== PROTOBUF SYNC LOG ===');
     buffer.writeln('Время: ${startTime.toIso8601String()} - ${endTime.toIso8601String()}');
     buffer.writeln('Длительность: ${_formatDuration(duration)}');
-    buffer.writeln('Регион: $regionFiasId');
-    buffer.writeln('Торговые точки: ${outletIds.join(", ")}');
+    buffer.writeln('Регион: $regionCode');
+  buffer.writeln('Торговые точки: ${outletVendorIds.join(", ")}');
     buffer.writeln('Результат: ${success ? "УСПЕХ" : "ОШИБКА"}');
     buffer.writeln('');
     buffer.writeln('=== СТАТИСТИКА ===');
     buffer.writeln('Продукты: $productsCount');
     buffer.writeln('Остатки: $stockItemsCount');
+  buffer.writeln('Склады: $warehousesCount');
     buffer.writeln('Цены: $outletPricingCount');
     buffer.writeln('Всего элементов: $totalItemsCount');
     

@@ -20,13 +20,13 @@ class StockSyncService {
 
   /// Получить остатки товаров для региона  
   /// 
-  /// [regionFiasId] - FIAS код региона
+  /// [regionCode] - строковый код региона (например, P3V, M3V, K3V)
   /// 
   /// Возвращает остатки товаров на складах в регионе
-  Future<RegionalStockResponse> getRegionalStock(String regionFiasId) async {
-    _logger.info('📦 Загрузка остатков для региона $regionFiasId');
+  Future<RegionalStockResponse> getRegionalStock(String regionCode) async {
+    _logger.info('📦 Загрузка остатков для региона $regionCode');
     
-    final url = '$_baseUrl/mobile-sync/regional-stock/$regionFiasId';
+    final url = '$_baseUrl/mobile-sync/regional-stock/$regionCode';
     Uint8List? responseBytes;
     
     try {
@@ -84,7 +84,7 @@ class StockSyncService {
         }
       }
       
-      _logger.severe('❌ Ошибка загрузки остатков: $e', e, stackTrace);
+  _logger.severe('❌ Ошибка загрузки остатков: $e', e, stackTrace);
       rethrow;
     }
   }

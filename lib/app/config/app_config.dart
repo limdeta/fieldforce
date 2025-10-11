@@ -99,13 +99,13 @@ class AppConfig {
 
     // ===== 🆕 PROTOBUF SYNC API CONFIGURATION =====
   
-  // FIAS коды регионов (совпадают с бэкендом)
-  static const String vladivostokFiasId = '43909681-d6e1-432d-b61f-ddac393cb5da'; // Владивосток
-  static const String magadanFiasId = '9c05e812-8679-4710-b8cb-5e8bd43cdf48';     // Магадан
-  static const String kamchatkaFiasId = 'd02f30fc-83bf-4c0f-ac2b-5729a866a207';   // Камчатка
-  
+  // Коды регионов для protobuf синхронизации (совпадают с backend торговых точек)
+  static const String regionCodeP3V = 'P3V'; // Владивосток
+  static const String regionCodeM3V = 'M3V'; // Магадан
+  static const String regionCodeK3V = 'K3V'; // Камчатка
+
   // Дефолтный регион для разработки
-  static String get defaultRegionFiasId => vladivostokFiasId;
+  static String get defaultRegionCode => regionCodeP3V;
   
   // Mobile Sync Base URL (protobuf)
   static String get mobileSyncApiUrl {
@@ -120,13 +120,13 @@ class AppConfig {
   }
 
   // Regional Sync (утром, 1 раз в день)
-  static String regionalSyncUrl(String regionFiasId) {
-    return '$mobileSyncApiUrl/regional/$regionFiasId';
+  static String regionalSyncUrl(String regionCode) {
+    return '$mobileSyncApiUrl/regional/$regionCode';
   }
 
   // Regional Stock Sync (каждый час)
-  static String regionalStockUrl(String regionFiasId) {
-    return '$mobileSyncApiUrl/regional-stock/$regionFiasId';
+  static String regionalStockUrl(String regionCode) {
+    return '$mobileSyncApiUrl/regional-stock/$regionCode';
   }
 
   // Outlet Pricing Sync (каждый час)

@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'package:fieldforce/app/services/warehouse_filter_service.dart';
 import 'package:fieldforce/features/shop/domain/repositories/category_repository.dart';
 import 'package:fieldforce/features/shop/domain/repositories/product_repository.dart';
 import 'package:get_it/get_it.dart';
@@ -12,6 +13,7 @@ import 'package:fieldforce/features/shop/domain/entities/product.dart' as produc
 
 class DriftCategoryRepository implements CategoryRepository {
   final AppDatabase _database = GetIt.instance<AppDatabase>();
+  final WarehouseFilterService _warehouseFilterService = GetIt.instance<WarehouseFilterService>();
   static final Logger _logger = Logger('DriftCategoryRepository');
 
   @override
@@ -324,7 +326,32 @@ class DriftCategoryRepository implements CategoryRepository {
     }
   }
 
-  Future<Either<Failure, void>> _updateCategoryCountsInternal(List<tree_category.Category> allCategories) async {
+  @override
+  Future<Either<Failure, void>> updateCategoryCountsForRegion(
+    List<tree_category.Category> categories,
+    String regionCode,
+  ) async {
+    try {
+      final normalizedRegion = regionCode.trim();
+      if (normalizedRegion.isEmpty) {
+        _logger.warning('Передан пустой regionCode в updateCategoryCountsForRegion — используем фильтр текущей сессии');
+        return await _updateCategoryCountsInternal(categories);
+      }
+
+      return await _updateCategoryCountsInternal(
+        categories,
+        regionCode: normalizedRegion.toUpperCase(),
+      );
+    } catch (e, st) {
+      _logger.severe('Ошибка обновления count', e, st);
+      return Left(DatabaseFailure('Ошибка обновления count категорий: $e'));
+    }
+  }
+
+  Future<Either<Failure, void>> _updateCategoryCountsInternal(
+    List<tree_category.Category> allCategories, {
+    String? regionCode,
+  }) async {
     final flatCategories = _flattenCategories(allCategories);
     _logger.info('Найдено ${flatCategories.length} уникальных категорий для обновления');
 
@@ -339,7 +366,13 @@ class DriftCategoryRepository implements CategoryRepository {
     _logger.info('Получено ${allProducts.length} продуктов для расчета count');
 
     // Рассчитываем count для каждой категории с учетом иерархии
-    final categoryCounts = await _calculateCategoryCounts(allCategories, allProducts);
+    final allowedWarehouseIds = await _resolveWarehouseIds(regionCode: regionCode);
+
+    final categoryCounts = await _calculateCategoryCounts(
+      allCategories,
+      allProducts,
+      allowedWarehouseIds: allowedWarehouseIds,
+    );
 
     // Обновляем count в объектах категорий (для немедленного отображения в UI)
     _updateCategoriesCount(allCategories, categoryCounts);
@@ -381,14 +414,62 @@ class DriftCategoryRepository implements CategoryRepository {
     }
   }
 
+  Future<List<int>?> _resolveWarehouseIds({String? regionCode}) async {
+    if (regionCode != null) {
+      final query = _database.select(_database.warehouses)
+        ..where((tbl) => tbl.regionCode.equals(regionCode));
+      final rows = await query.get();
+
+      if (rows.isEmpty) {
+        _logger.warning('Для региона $regionCode не найдено складов при расчете категорий');
+        return <int>[];
+      }
+
+      return rows.map((row) => row.id).toList();
+    }
+
+    final filterResult = await _warehouseFilterService.resolveForCurrentSession(bypassInDev: false);
+
+    if (filterResult.devBypass) {
+      _logger.fine('Dev режим — расчёт категорий выполняется без фильтрации складов');
+      return null;
+    }
+
+    if (filterResult.failure != null) {
+      _logger.warning(
+        'Ошибка получения фильтра складов: ${filterResult.failure!.message}. Расчёт категорий выполняется без фильтрации.',
+      );
+      return null;
+    }
+
+    if (!filterResult.hasWarehouses) {
+      _logger.warning('Фильтр складов вернул пустой список для региона ${filterResult.regionCode}. Категории получат count = 0.');
+      return <int>[];
+    }
+
+    return filterResult.warehouseIds;
+  }
+
   /// Рассчитывает количество продуктов для каждой категории с учетом иерархии
-  Future<Map<int, int>> _calculateCategoryCounts(List<tree_category.Category> categories, List<product_entity.Product> products) async {
+  Future<Map<int, int>> _calculateCategoryCounts(
+    List<tree_category.Category> categories,
+    List<product_entity.Product> products, {
+    List<int>? allowedWarehouseIds,
+  }) async {
     final counts = <int, int>{};
+
+    if (allowedWarehouseIds != null && allowedWarehouseIds.isEmpty) {
+      _logger.info('📊 Расчет count: список складов пуст — все категории получат count = 0');
+      return counts;
+    }
 
     final allCategories = _flattenCategories(categories);
 
     // Получаем продукты с остатками
-    final productsWithStock = await _getProductsWithStock(products);
+    final productsWithStock = await _getProductsWithStock(
+      products,
+      allowedWarehouseIds: allowedWarehouseIds,
+    );
     _logger.info('📊 Расчет count: ${productsWithStock.length} продуктов с остатками из ${products.length} всего');
 
     for (final category in allCategories) {
@@ -400,15 +481,24 @@ class DriftCategoryRepository implements CategoryRepository {
   }
 
   /// Получает только продукты, у которых есть остатки
-  Future<List<product_entity.Product>> _getProductsWithStock(List<product_entity.Product> products) async {
-    // Получаем все коды продуктов с остатками
-    final stockResult = await (_database.select(_database.stockItems)
-      ..where((tbl) => tbl.stock.isBiggerThanValue(0))
-    ).get();
-    
+  Future<List<product_entity.Product>> _getProductsWithStock(
+    List<product_entity.Product> products, {
+    List<int>? allowedWarehouseIds,
+  }) async {
+    final query = _database.select(_database.stockItems)
+      ..where((tbl) => tbl.stock.isBiggerThanValue(0));
+
+    if (allowedWarehouseIds != null) {
+      if (allowedWarehouseIds.isEmpty) {
+        return [];
+      }
+      query.where((tbl) => tbl.warehouseId.isIn(allowedWarehouseIds));
+    }
+
+    final stockResult = await query.get();
+
     final productCodesWithStock = stockResult.map((s) => s.productCode).toSet();
-    
-    // Фильтруем продукты
+
     return products.where((p) => productCodesWithStock.contains(p.code)).toList();
   }
 

@@ -9,6 +9,7 @@ import 'package:fieldforce/features/shop/data/fixtures/category_fixture_service.
 import 'package:fieldforce/features/shop/data/fixtures/product_fixture_service.dart';
 import 'package:fieldforce/features/shop/data/fixtures/order_fixture_service.dart';
 import 'package:fieldforce/features/shop/domain/entities/trading_point.dart';
+import 'package:fieldforce/app/services/category_tree_cache_service.dart';
 import 'package:fieldforce/features/shop/domain/repositories/category_repository.dart';
 import 'package:fieldforce/features/shop/domain/repositories/product_repository.dart';
 import 'package:fieldforce/features/shop/domain/repositories/trading_point_repository.dart';
@@ -140,8 +141,11 @@ class DevFixtureOrchestrator {
       }
 
       // Обновляем количество продуктов в категориях после загрузки всех данных
-      final categoryRepository = GetIt.instance<CategoryRepository>();
-      await categoryRepository.updateCategoryCounts();
+  final categoryRepository = GetIt.instance<CategoryRepository>();
+  await categoryRepository.updateCategoryCounts();
+
+  final categoryCacheService = GetIt.instance<CategoryTreeCacheService>();
+  await categoryCacheService.refreshCurrentRegion();
       
       // Автоматически выбираем первую доступную торговую точку
       await _selectFirstTradingPointForUser(user);

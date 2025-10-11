@@ -1,20 +1,22 @@
 // lib/app/database/repositories/product_repository_drift.dart
 
 import 'dart:convert';
+import 'package:fieldforce/app/database/app_database.dart';
+import 'package:fieldforce/app/database/mappers/product_mapper.dart';
+import 'package:fieldforce/app/services/warehouse_filter_service.dart';
 import 'package:fieldforce/features/shop/domain/entities/product.dart';
 import 'package:fieldforce/features/shop/domain/entities/product_with_stock.dart';
 import 'package:fieldforce/features/shop/domain/repositories/category_repository.dart';
 import 'package:fieldforce/features/shop/domain/repositories/product_repository.dart';
-import 'package:fieldforce/app/database/mappers/product_mapper.dart';
-import 'package:get_it/get_it.dart';
-import 'package:drift/drift.dart';
 import 'package:fieldforce/shared/either.dart';
 import 'package:fieldforce/shared/failures.dart';
-import 'package:fieldforce/app/database/app_database.dart';
+import 'package:get_it/get_it.dart';
+import 'package:drift/drift.dart';
 import 'package:logging/logging.dart';
 
 class DriftProductRepository implements ProductRepository {
   final AppDatabase _database = GetIt.instance<AppDatabase>();
+  final WarehouseFilterService _warehouseFilterService = GetIt.instance<WarehouseFilterService>();
   
   static final Logger _logger = Logger('DriftProductRepository');
 
@@ -279,7 +281,7 @@ class DriftProductRepository implements ProductRepository {
       }
 
       final matchingProducts = matchingProductsMap.values.toList();
-      _logger.info('🔍 Продукты в категориях ${relevantCategoryIds}: ${matchingProducts.length} найдено');
+  _logger.info('🔍 Продукты в категориях $relevantCategoryIds: ${matchingProducts.length} найдено');
 
       if (matchingProducts.isNotEmpty) {
         final sampleProducts = matchingProducts.take(3).map((p) => 'code=${p.code}, title=${p.title}').join('; ');
@@ -301,12 +303,36 @@ class DriftProductRepository implements ProductRepository {
 
       final productCodes = sortedProducts.map((p) => p.code).toList();
 
+  final filterResult = await _warehouseFilterService.resolveForCurrentSession(bypassInDev: false);
+      List<int>? allowedWarehouseIds;
+
+      if (filterResult.devBypass) {
+        _logger.fine('getProductsWithStockByCategoryPaginated: dev режим — пропускаем фильтрацию складов');
+      } else if (filterResult.failure != null) {
+        _logger.warning(
+          'getProductsWithStockByCategoryPaginated: ошибка фильтра складов: ${filterResult.failure!.message}. Продолжаем без фильтрации.',
+        );
+      } else if (!filterResult.hasWarehouses) {
+        _logger.warning(
+          'getProductsWithStockByCategoryPaginated: для региона ${filterResult.regionCode} не найдено складов. Возвращаем пустой список.',
+        );
+        return Right([]);
+      } else {
+        final warehouses = filterResult.warehouseIds;
+        allowedWarehouseIds = warehouses;
+        _logger.fine('Применяем фильтр по складам (${warehouses.length}) для региона ${filterResult.regionCode}');
+      }
+
       final stockQuery = _database.select(_database.stockItems)
         ..where((tbl) => tbl.productCode.isIn(productCodes))
         ..where((tbl) => tbl.stock.isBiggerThanValue(0));
 
       if (vendorId != null) {
         stockQuery.where((tbl) => tbl.warehouseVendorId.equals(vendorId));
+      }
+
+      if (allowedWarehouseIds != null) {
+        stockQuery.where((tbl) => tbl.warehouseId.isIn(allowedWarehouseIds!));
       }
 
       final stockEntities = await stockQuery.get();

@@ -49,6 +49,9 @@ class ProtobufSyncSuccess extends ProtobufSyncState {
   /// Количество синхронизированных продуктов
   int get syncedProductsCount => result.productsCount;
 
+  /// Количество синхронизированных складов
+  int get syncedWarehousesCount => result.warehousesCount;
+
   /// Количество синхронизированных позиций склада
   int get syncedStockItemsCount => result.stockItemsCount;
 
@@ -82,4 +85,33 @@ class ProtobufSyncFailure extends ProtobufSyncState {
 /// Синхронизация была отменена пользователем
 class ProtobufSyncCancelled extends ProtobufSyncState {
   const ProtobufSyncCancelled();
+}
+
+/// Синхронизация только складов в процессе
+class WarehouseSyncOnlyInProgress extends ProtobufSyncState {
+  const WarehouseSyncOnlyInProgress();
+}
+
+/// Синхронизация только складов завершена
+class WarehouseSyncOnlySuccess extends ProtobufSyncState {
+  final WarehouseSyncOnlyResult result;
+
+  const WarehouseSyncOnlySuccess(this.result);
+
+  @override
+  List<Object?> get props => [result];
+
+  int get syncedWarehouses => result.savedCount;
+  String get regionCode => result.regionCode;
+  int get syncTimestamp => result.syncTimestamp;
+}
+
+/// Ошибка синхронизации только складов
+class WarehouseSyncOnlyFailure extends ProtobufSyncState {
+  final String message;
+
+  const WarehouseSyncOnlyFailure(this.message);
+
+  @override
+  List<Object?> get props => [message];
 }

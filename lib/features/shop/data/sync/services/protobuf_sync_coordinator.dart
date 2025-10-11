@@ -1,15 +1,20 @@
 // lib/features/shop/data/sync/services/protobuf_sync_coordinator.dart
 
+import 'package:fieldforce/app/services/category_tree_cache_service.dart';
+import 'package:fieldforce/shared/failures.dart';
 import 'package:logging/logging.dart';
 
 import '../models/product_protobuf_converter.dart';
 import '../models/stock_item_protobuf_converter.dart';
+import '../models/warehouse_protobuf_converter.dart';
 import '../repositories/protobuf_sync_repository.dart';
 import 'package:fieldforce/features/shop/domain/repositories/product_repository.dart';
 import 'package:fieldforce/features/shop/domain/repositories/stock_item_repository.dart';
+import 'package:fieldforce/features/shop/domain/repositories/warehouse_repository.dart';
 import 'regional_sync_service.dart';
 import 'stock_sync_service.dart';
 import 'outlet_pricing_sync_service.dart';
+import 'warehouse_sync_service.dart';
 
 /// Координатор для управления protobuf синхронизацией
 /// 
@@ -23,44 +28,80 @@ class ProtobufSyncCoordinator {
   final RegionalSyncService _regionalSyncService;
   final StockSyncService _stockSyncService;
   final OutletPricingSyncService _outletPricingSyncService;
+  final WarehouseSyncService _warehouseSyncService;
   final ProductRepository _productRepository;
   final StockItemRepository _stockItemRepository;
+  final WarehouseRepository _warehouseRepository;
+  final CategoryTreeCacheService _categoryTreeCacheService;
   
   ProtobufSyncCoordinator({
     required RegionalSyncService regionalSyncService,
     required StockSyncService stockSyncService,
     required OutletPricingSyncService outletPricingSyncService,
+    required WarehouseSyncService warehouseSyncService,
     required ProtobufSyncRepository syncRepository,
     required ProductRepository productRepository,
     required StockItemRepository stockItemRepository,
-  }) : _regionalSyncService = regionalSyncService,
-       _stockSyncService = stockSyncService,
-       _outletPricingSyncService = outletPricingSyncService,
-       _productRepository = productRepository,
-       _stockItemRepository = stockItemRepository;
+    required WarehouseRepository warehouseRepository,
+  required CategoryTreeCacheService categoryTreeCacheService,
+  })  : _regionalSyncService = regionalSyncService,
+        _stockSyncService = stockSyncService,
+        _outletPricingSyncService = outletPricingSyncService,
+        _warehouseSyncService = warehouseSyncService,
+        _productRepository = productRepository,
+    _stockItemRepository = stockItemRepository,
+    _warehouseRepository = warehouseRepository,
+    _categoryTreeCacheService = categoryTreeCacheService;
 
   /// Простая синхронизация всех данных для региона
   Future<Map<String, dynamic>> performFullSync(
-    String regionFiasId, {
+    String regionCode, {
     List<String>? outletVendorIds,
     Function(String stage, double progress)? onProgress,
   }) async {
-    _logger.info('🔄 Начинаем protobuf синхронизацию для региона: $regionFiasId');
+    _logger.info('🔄 Начинаем protobuf синхронизацию для региона: $regionCode');
     
     final result = <String, dynamic>{
       'success': false,
       'products_synced': 0,
       'stock_synced': 0,
       'prices_synced': 0,
+      'warehouses_synced': 0,
       'errors': <String>[],
     };
     
     try {
+      // 0. Загружаем метаданные складов
+      _logger.info('🏭 Загрузка складов региона...');
+      onProgress?.call('Загрузка складов', 0.1);
+
+      final warehouseResponse = await _warehouseSyncService.fetchWarehouses(regionVendorId: regionCode);
+      final warehouses = WarehouseProtobufConverter.fromProtoList(warehouseResponse.warehouses);
+
+      final clearResult = await _warehouseRepository.clearWarehousesByRegion(regionCode);
+      if (clearResult.isLeft()) {
+        final failure = clearResult.fold((f) => f, (r) => null)!;
+        _logger.warning('⚠️ Ошибка очистки складов региона: ${failure.message}');
+        result['errors'].add(failure.message);
+      }
+
+      final saveWarehousesResult = await _warehouseRepository.saveWarehouses(warehouses);
+      saveWarehousesResult.fold(
+        (failure) {
+          _logger.severe('❌ Ошибка сохранения складов: ${failure.message}');
+          result['errors'].add(failure.message);
+        },
+        (_) {
+          result['warehouses_synced'] = warehouses.length;
+          _logger.info('🏭 Складов сохранено: ${warehouses.length}');
+        },
+      );
+
       // 1. Загружаем продукты региона
       _logger.info('📦 Загрузка продуктов региона...');
       onProgress?.call('Загрузка продуктов', 0.2);
       
-      final regionalResponse = await _regionalSyncService.getRegionalProducts(regionFiasId);
+  final regionalResponse = await _regionalSyncService.getRegionalProducts(regionCode);
       final products = ProductProtobufConverter.fromProtobufList(regionalResponse.products);
       
       final saveResult = await _productRepository.saveProducts(products);
@@ -79,7 +120,7 @@ class ProtobufSyncCoordinator {
       _logger.info('📦 Загрузка остатков...');
       onProgress?.call('Загрузка остатков', 0.5);
       
-      final stockResponse = await _stockSyncService.getRegionalStock(regionFiasId);
+  final stockResponse = await _stockSyncService.getRegionalStock(regionCode);
       _logger.info('✅ Загружены остатки для ${stockResponse.stockItems.length} товаров');
 
       // Конвертируем protobuf в domain entities и сохраняем в БД
@@ -128,24 +169,42 @@ class ProtobufSyncCoordinator {
         );
         
         final saveResult = await _stockItemRepository.saveStockItems(stockItems);
-        
-        saveResult.fold(
-          (failure) {
-            _logger.severe('❌ Ошибка сохранения остатков: ${failure.message}');
-            throw Exception('Ошибка сохранения остатков: ${failure.message}');
-          },
-          (_) {
-            _logger.info('✅ Сохранено ${stockItems.length} остатков в базу данных');
-            
-            // Дополнительная информация для отладки
-            if (stockItems.isNotEmpty) {
-              final firstItem = stockItems.first;
-              _logger.info('📊 Пример сохраненного StockItem: продукт=${firstItem.productCode}, склад=${firstItem.warehouseId}, остаток=${firstItem.stock}, цена=${firstItem.defaultPrice}');
-            }
-            
-            result['stock_synced'] = stockItems.length;
-          },
-        );
+
+        if (saveResult.isLeft()) {
+          Failure? failure;
+          saveResult.fold((f) {
+            failure = f;
+            return null;
+          }, (_) => null);
+
+          failure ??= GeneralFailure('Неизвестная ошибка сохранения остатков');
+          _logger.severe('❌ Ошибка сохранения остатков: ${failure!.message}');
+          throw Exception('Ошибка сохранения остатков: ${failure!.message}');
+        }
+
+        _logger.info('✅ Сохранено ${stockItems.length} остатков в базу данных');
+
+        // Дополнительная информация для отладки
+        if (stockItems.isNotEmpty) {
+          final firstItem = stockItems.first;
+          _logger.info('📊 Пример сохраненного StockItem: продукт=${firstItem.productCode}, склад=${firstItem.warehouseId}, остаток=${firstItem.stock}, цена=${firstItem.defaultPrice}');
+        }
+
+        result['stock_synced'] = stockItems.length;
+
+        final cacheResult = await _categoryTreeCacheService.refreshRegion(regionCode);
+        if (cacheResult.isLeft()) {
+          Failure? failure;
+          cacheResult.fold((f) {
+            failure = f;
+            return null;
+          }, (_) => null);
+
+          failure ??= GeneralFailure('Неизвестная ошибка обновления дерева категорий');
+          _logger.warning('⚠️ Не удалось обновить кэш дерева категорий для региона $regionCode: ${failure!.message}');
+        } else {
+          _logger.info('🌲 Дерево категорий пересчитано и закэшировано для региона $regionCode');
+        }
       }
 
       // 3. Загружаем цены торговых точек (если указаны)
@@ -171,7 +230,7 @@ class ProtobufSyncCoordinator {
       }
 
       // Сохраняем время синхронизации
-      // await _syncRepository.updateLastSync(regionFiasId, DateTime.now());
+  // await _syncRepository.updateLastSync(regionCode, DateTime.now());
       
       result['success'] = true;
       onProgress?.call('Завершено', 1.0);
@@ -188,8 +247,8 @@ class ProtobufSyncCoordinator {
   }
 
   /// Быстрая синхронизация только продуктов
-  Future<Map<String, dynamic>> syncProductsOnly(String regionFiasId) async {
-    _logger.info('📦 Быстрая синхронизация продуктов для $regionFiasId');
+  Future<Map<String, dynamic>> syncProductsOnly(String regionCode) async {
+    _logger.info('📦 Быстрая синхронизация продуктов для $regionCode');
     
     final result = <String, dynamic>{
       'success': false,
@@ -198,7 +257,7 @@ class ProtobufSyncCoordinator {
     };
     
     try {
-      final response = await _regionalSyncService.getRegionalProducts(regionFiasId);
+  final response = await _regionalSyncService.getRegionalProducts(regionCode);
       final products = ProductProtobufConverter.fromProtobufList(response.products);
       
       final saveResult = await _productRepository.saveProducts(products);
@@ -254,6 +313,12 @@ class ProtobufSyncCoordinator {
             };
           }
         },
+      );
+
+      final warehouseResult = await _warehouseRepository.getAllWarehouses();
+      warehouseResult.fold(
+        (failure) => stats['warehouses'] = 'Ошибка: ${failure.message}',
+        (warehouses) => stats['warehouses'] = warehouses.length,
       );
       
       return stats;

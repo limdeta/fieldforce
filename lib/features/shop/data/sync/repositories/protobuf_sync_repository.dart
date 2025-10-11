@@ -11,30 +11,30 @@ class ProtobufSyncRepository {
   ProtobufSyncRepository(this._database);
 
   /// Сохраняет время последней региональной синхронизации
-  Future<void> saveLastRegionalSync(String regionFiasId, DateTime syncTime, int productsCount) async {
+  Future<void> saveLastRegionalSync(String regionCode, DateTime syncTime, int productsCount) async {
     // TODO: Реализовать после создания таблицы sync_metadata
     _logger.info('💾 Сохранено время последней региональной синхронизации: $syncTime ($productsCount товаров)');
   }
 
   /// Получает время последней региональной синхронизации
-  Future<DateTime?> getLastRegionalSync(String regionFiasId) async {
+  Future<DateTime?> getLastRegionalSync(String regionCode) async {
     // TODO: Реализовать после создания таблицы sync_metadata
-    _logger.fine('📅 Запрос времени последней региональной синхронизации для $regionFiasId');
+  _logger.fine('📅 Запрос времени последней региональной синхронизации для $regionCode');
     
     // Заглушка - возвращаем время 1 день назад
     return DateTime.now().subtract(const Duration(days: 1));
   }
 
   /// Сохраняет время последней синхронизации остатков
-  Future<void> saveLastStockSync(String regionFiasId, DateTime syncTime, int stockItemsCount) async {
+  Future<void> saveLastStockSync(String regionCode, DateTime syncTime, int stockItemsCount) async {
     // TODO: Реализовать после создания таблицы sync_metadata
     _logger.info('📦 Сохранено время последней синхронизации остатков: $syncTime ($stockItemsCount записей)');
   }
 
   /// Получает время последней синхронизации остатков
-  Future<DateTime?> getLastStockSync(String regionFiasId) async {
+  Future<DateTime?> getLastStockSync(String regionCode) async {
     // TODO: Реализовать после создания таблицы sync_metadata
-    _logger.fine('📊 Запрос времени последней синхронизации остатков для $regionFiasId');
+  _logger.fine('📊 Запрос времени последней синхронизации остатков для $regionCode');
     
     // Заглушка - возвращаем время 1 час назад
     return DateTime.now().subtract(const Duration(hours: 1));
@@ -57,7 +57,7 @@ class ProtobufSyncRepository {
 
   /// Сохраняет статистику синхронизации
   Future<void> saveSyncStats({
-    required String regionFiasId,
+  required String regionCode,
     required String syncType, // 'regional', 'stock', 'pricing'
     required DateTime startTime,
     required DateTime endTime,
@@ -83,13 +83,13 @@ class ProtobufSyncRepository {
 
   /// Получает статистику синхронизации за период
   Future<List<SyncStats>> getSyncStats({
-    required String regionFiasId,
+  required String regionCode,
     String? syncType,
     DateTime? startDate,
     DateTime? endDate,
   }) async {
     // TODO: Реализовать запрос из таблицы sync_stats
-    _logger.fine('📊 Запрос статистики синхронизации для $regionFiasId');
+  _logger.fine('📊 Запрос статистики синхронизации для $regionCode');
     
     // Заглушка
     return [];
@@ -113,7 +113,7 @@ class ProtobufSyncRepository {
 
 /// Модель статистики синхронизации
 class SyncStats {
-  final String regionFiasId;
+  final String regionCode;
   final String syncType;
   final DateTime startTime;
   final DateTime endTime;
@@ -123,7 +123,7 @@ class SyncStats {
   final String? errorMessage;
 
   SyncStats({
-    required this.regionFiasId,
+  required this.regionCode,
     required this.syncType,
     required this.startTime,
     required this.endTime,

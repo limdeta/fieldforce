@@ -44,3 +44,17 @@ class _SyncCompletedEvent extends ProtobufSyncEvent {
 class ResetProtobufSyncEvent extends ProtobufSyncEvent {
   const ResetProtobufSyncEvent();
 }
+
+/// Синхронизировать только склады (для тестирования)
+class SyncWarehousesOnlyEvent extends ProtobufSyncEvent {
+  final int? lastSyncTimestamp;
+  final bool clearBeforeSave;
+
+  const SyncWarehousesOnlyEvent({
+    this.lastSyncTimestamp,
+    this.clearBeforeSave = true,
+  });
+
+  @override
+  List<Object?> get props => [lastSyncTimestamp, clearBeforeSave];
+}

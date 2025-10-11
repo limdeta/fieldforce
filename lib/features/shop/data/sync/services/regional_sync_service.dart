@@ -32,10 +32,11 @@ class RegionalSyncService {
   /// 
   /// Размер: ~15-25 МБ (сжато)
   /// Частота: 1 раз в день утром
-  Future<RegionalCacheResponse> getRegionalProducts(String regionFiasId) async {
-    _logger.info('🌍 Начинаем загрузку продуктов региона: $regionFiasId');
+  /// [regionCode] - строковый идентификатор региона (например, P3V, M3V, K3V)
+  Future<RegionalCacheResponse> getRegionalProducts(String regionCode) async {
+    _logger.info('🌍 Начинаем загрузку продуктов региона: $regionCode');
     
-    final url = '$_baseUrl/mobile-sync/regional/$regionFiasId';
+    final url = '$_baseUrl/mobile-sync/regional/$regionCode';
     final startTime = DateTime.now();
     
     try {
@@ -86,7 +87,7 @@ class RegionalSyncService {
       }
       
     } catch (e, st) {
-      _logger.severe('❌ Ошибка загрузки региональных продуктов для $regionFiasId', e, st);
+      _logger.severe('❌ Ошибка загрузки региональных продуктов для $regionCode', e, st);
       rethrow;
     }
   }

@@ -46,19 +46,19 @@ class PerformProtobufSyncUseCase {
 
   /// Выполняет полную региональную синхронизацию
   /// 
-  /// [regionFiasId] - FIAS код региона (например, для Владивостока)
-  /// [outletIds] - список торговых точек для синхронизации цен
+  /// [regionCode] - строковый код региона (например, P3V, M3V, K3V)
+  /// [outletVendorIds] - список торговых точек (vendorId) для синхронизации цен
   /// [forceFullSync] - принудительная полная синхронизация (игнорировать кэш)
   Future<Either<Failure, ProtobufSyncResult>> call({
-    required String regionFiasId,
-    required List<int> outletIds,
+    required String regionCode,
+    required List<String> outletVendorIds,
     bool forceFullSync = false,
   }) async {
     if (_isRunning) {
       return Left(ValidationFailure('Синхронизация уже выполняется'));
     }
 
-    _logger.info('🚀 Начинаем protobuf синхронизацию: регион=$regionFiasId, точки=$outletIds, полная=$forceFullSync');
+  _logger.info('🚀 Начинаем protobuf синхронизацию: регион=$regionCode, точки=$outletVendorIds, полная=$forceFullSync');
     
     _isRunning = true;
     _isCancelled = false;
@@ -74,8 +74,8 @@ class PerformProtobufSyncUseCase {
       
       // Выполняем синхронизацию
       final result = await _performSyncWithProgress(
-        regionFiasId,
-        outletIds,
+        regionCode,
+  outletVendorIds,
         forceFullSync,
       );
       
@@ -103,8 +103,9 @@ class PerformProtobufSyncUseCase {
         ],
         startTime: _startTime!,
         endTime: endTime,
-        regionFiasId: regionFiasId,
-        outletIds: outletIds,
+  regionCode: regionCode,
+  outletVendorIds: outletVendorIds,
+        warehousesCount: 0,
       );
       
       _resultController?.add(errorResult);
@@ -136,16 +137,17 @@ class PerformProtobufSyncUseCase {
 
   /// Выполняет синхронизацию с отслеживанием прогресса
   Future<ProtobufSyncResult> _performSyncWithProgress(
-    String regionFiasId,
-    List<int> outletIds,
+    String regionCode,
+    List<String> outletVendorIds,
     bool forceFullSync,
   ) async {
     final errors = <String>[];
     final detailedErrors = <ProtobufSyncError>[];
     
-    var productsCount = 0;
-    var stockItemsCount = 0;
-    var outletPricingCount = 0;
+  var productsCount = 0;
+  var stockItemsCount = 0;
+  var warehousesCount = 0;
+  var outletPricingCount = 0;
 
     try {
       // Этап 1: Подготовка
@@ -165,21 +167,22 @@ class PerformProtobufSyncUseCase {
       ));
 
       final syncResult = await _syncCoordinator.performFullSync(
-        regionFiasId,
-        outletVendorIds: outletIds.map((id) => id.toString()).toList(),
+        regionCode,
+        outletVendorIds: outletVendorIds,
       );
 
       if (syncResult['success'] as bool) {
         productsCount = syncResult['products_synced'] as int;
         stockItemsCount = syncResult['stock_synced'] as int;
+        warehousesCount = (syncResult['warehouses_synced'] as int?) ?? 0;
         outletPricingCount = syncResult['prices_synced'] as int;
         
         _emitProgress(_createProgress(
           ProtobufSyncStage.completed,
           1.0,
           'Синхронизация завершена успешно',
-          processedItems: productsCount + stockItemsCount + outletPricingCount,
-          totalItems: productsCount + stockItemsCount + outletPricingCount,
+          processedItems: productsCount + stockItemsCount + outletPricingCount + warehousesCount,
+          totalItems: productsCount + stockItemsCount + outletPricingCount + warehousesCount,
         ));
       } else {
         final errorList = syncResult['errors'] as List<String>;
@@ -203,11 +206,12 @@ class PerformProtobufSyncUseCase {
           duration: duration,
           productsCount: productsCount,
           stockItemsCount: stockItemsCount,
+          warehousesCount: warehousesCount,
           outletPricingCount: outletPricingCount,
           startTime: _startTime!,
           endTime: endTime,
-          regionFiasId: regionFiasId,
-          outletIds: outletIds,
+          regionCode: regionCode,
+          outletVendorIds: outletVendorIds,
         );
       } else {
         return ProtobufSyncResult.failure(
@@ -216,10 +220,11 @@ class PerformProtobufSyncUseCase {
           detailedErrors: detailedErrors,
           startTime: _startTime!,
           endTime: endTime,
-          regionFiasId: regionFiasId,
-          outletIds: outletIds,
+          regionCode: regionCode,
+          outletVendorIds: outletVendorIds,
           productsCount: productsCount,
           stockItemsCount: stockItemsCount,
+          warehousesCount: warehousesCount,
           outletPricingCount: outletPricingCount,
         );
       }
@@ -243,10 +248,11 @@ class PerformProtobufSyncUseCase {
         detailedErrors: detailedErrors,
         startTime: _startTime!,
         endTime: endTime,
-        regionFiasId: regionFiasId,
-        outletIds: outletIds,
+        regionCode: regionCode,
+        outletVendorIds: outletVendorIds,
         productsCount: productsCount,
         stockItemsCount: stockItemsCount,
+        warehousesCount: warehousesCount,
         outletPricingCount: outletPricingCount,
       );
     }

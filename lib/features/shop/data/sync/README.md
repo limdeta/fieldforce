@@ -8,7 +8,7 @@
 
 ### 1. Региональный уровень (ежедневно)
 - **RegionalSyncService** - синхронизация базовых данных продуктов для региона
-- Endpoint: `/v1_api/mobile-sync/regional/{regionFiasId}`
+- Endpoint: `/v1_api/mobile-sync/regional/{regionCode}` (например, `P3V`)
 - Частота: раз в день или при смене региона
 - Объем: полный каталог продуктов с базовыми ценами
 
@@ -16,7 +16,7 @@
 - **StockSyncService** - обновление остатков на складах
 - **OutletPricingSyncService** - дифференциальные цены для торговых точек
 - Endpoints: 
-  - `/v1_api/mobile-sync/regional-stock/{regionFiasId}`
+  - `/v1_api/mobile-sync/regional-stock/{regionCode}`
   - `/v1_api/mobile-sync/outlet-pricing/{outletId}`
 - Частота: каждые 15-60 минут
 - Объем: только изменения остатков и цен
@@ -82,7 +82,7 @@ coordinator.setSessionCookie('PHPSESSID=abc123...');
 
 // Выполняем полную синхронизацию
 final result = await coordinator.performFullRegionalSync(
-  'c2deb16a-0330-4f05-821f-1d09c93331e6', // FIAS код Краснодара
+  'P3V', // код региона торговых точек
   [123, 456, 789], // ID торговых точек
   forceFullSync: true,
 );
@@ -95,7 +95,7 @@ print('Синхронизировано: ${result}');
 ```dart
 // Быстрое обновление только изменений
 final result = await coordinator.performIncrementalSync(
-  'c2deb16a-0330-4f05-821f-1d09c93331e6',
+  'P3V',
   [123, 456], // Только активные точки
 );
 ```
@@ -104,7 +104,7 @@ final result = await coordinator.performIncrementalSync(
 
 ### Regional Cache
 ```
-POST /v1_api/mobile-sync/regional/{regionFiasId}
+POST /v1_api/mobile-sync/regional/{regionCode}
 Content-Type: application/x-protobuf
 Accept-Encoding: gzip
 
@@ -114,7 +114,7 @@ Response: RegionalCacheResponse (gzip-compressed)
 
 ### Regional Stock  
 ```
-POST /v1_api/mobile-sync/regional-stock/{regionFiasId}
+POST /v1_api/mobile-sync/regional-stock/{regionCode}
 Content-Type: application/x-protobuf
 
 Request: RegionalCacheRequest (с lastSyncTimestamp)

@@ -788,14 +788,12 @@ class CacheStats extends $pb.GeneratedMessage {
 /// Ответ с остатками на складах в регионе (ТОЛЬКО остатки + базовые цены)
 class RegionalStockResponse extends $pb.GeneratedMessage {
   factory RegionalStockResponse({
-    RegionInfo? regionInfo,
     $core.Iterable<$1.RegionalStockItem>? stockItems,
     $fixnum.Int64? syncTimestamp,
     $core.String? cacheType,
     CacheStats? stats,
   }) {
     final result = create();
-    if (regionInfo != null) result.regionInfo = regionInfo;
     if (stockItems != null) result.stockItems.addAll(stockItems);
     if (syncTimestamp != null) result.syncTimestamp = syncTimestamp;
     if (cacheType != null) result.cacheType = cacheType;
@@ -816,8 +814,6 @@ class RegionalStockResponse extends $pb.GeneratedMessage {
       _omitMessageNames ? '' : 'RegionalStockResponse',
       package: const $pb.PackageName(_omitMessageNames ? '' : 'mobile_sync'),
       createEmptyInstance: create)
-    ..aOM<RegionInfo>(1, _omitFieldNames ? '' : 'regionInfo',
-        subBuilder: RegionInfo.create)
     ..pPM<$1.RegionalStockItem>(2, _omitFieldNames ? '' : 'stockItems',
         subBuilder: $1.RegionalStockItem.create)
     ..aInt64(3, _omitFieldNames ? '' : 'syncTimestamp')
@@ -848,100 +844,280 @@ class RegionalStockResponse extends $pb.GeneratedMessage {
       $pb.GeneratedMessage.$_defaultFor<RegionalStockResponse>(create);
   static RegionalStockResponse? _defaultInstance;
 
-  @$pb.TagNumber(1)
-  RegionInfo get regionInfo => $_getN(0);
-  @$pb.TagNumber(1)
-  set regionInfo(RegionInfo value) => $_setField(1, value);
-  @$pb.TagNumber(1)
-  $core.bool hasRegionInfo() => $_has(0);
-  @$pb.TagNumber(1)
-  void clearRegionInfo() => $_clearField(1);
-  @$pb.TagNumber(1)
-  RegionInfo ensureRegionInfo() => $_ensure(0);
-
+  /// RegionInfo region_info = 1;  // ЗАКОММЕНТИРОВАНО: телефону не нужна подробная информация о регионах
   @$pb.TagNumber(2)
-  $pb.PbList<$1.RegionalStockItem> get stockItems => $_getList(1);
+  $pb.PbList<$1.RegionalStockItem> get stockItems => $_getList(0);
 
   @$pb.TagNumber(3)
-  $fixnum.Int64 get syncTimestamp => $_getI64(2);
+  $fixnum.Int64 get syncTimestamp => $_getI64(1);
   @$pb.TagNumber(3)
-  set syncTimestamp($fixnum.Int64 value) => $_setInt64(2, value);
+  set syncTimestamp($fixnum.Int64 value) => $_setInt64(1, value);
   @$pb.TagNumber(3)
-  $core.bool hasSyncTimestamp() => $_has(2);
+  $core.bool hasSyncTimestamp() => $_has(1);
   @$pb.TagNumber(3)
   void clearSyncTimestamp() => $_clearField(3);
 
   @$pb.TagNumber(4)
-  $core.String get cacheType => $_getSZ(3);
+  $core.String get cacheType => $_getSZ(2);
   @$pb.TagNumber(4)
-  set cacheType($core.String value) => $_setString(3, value);
+  set cacheType($core.String value) => $_setString(2, value);
   @$pb.TagNumber(4)
-  $core.bool hasCacheType() => $_has(3);
+  $core.bool hasCacheType() => $_has(2);
   @$pb.TagNumber(4)
   void clearCacheType() => $_clearField(4);
 
   @$pb.TagNumber(5)
-  CacheStats get stats => $_getN(4);
+  CacheStats get stats => $_getN(3);
   @$pb.TagNumber(5)
   set stats(CacheStats value) => $_setField(5, value);
   @$pb.TagNumber(5)
-  $core.bool hasStats() => $_has(4);
+  $core.bool hasStats() => $_has(3);
   @$pb.TagNumber(5)
   void clearStats() => $_clearField(5);
   @$pb.TagNumber(5)
-  CacheStats ensureStats() => $_ensure(4);
+  CacheStats ensureStats() => $_ensure(3);
 }
 
-/// Информация о регионе
-class RegionInfo extends $pb.GeneratedMessage {
-  factory RegionInfo({
-    $core.int? id,
-    $core.String? fiasId,
-    $core.String? title,
+/// Запрос синхронизации складов
+class WarehouseSyncRequest extends $pb.GeneratedMessage {
+  factory WarehouseSyncRequest({
+    $core.String? regionVendorId,
+    $fixnum.Int64? lastSyncTimestamp,
+    $core.int? limit,
+    $core.int? offset,
+    $core.bool? forceRefresh,
   }) {
     final result = create();
-    if (id != null) result.id = id;
-    if (fiasId != null) result.fiasId = fiasId;
-    if (title != null) result.title = title;
+    if (regionVendorId != null) result.regionVendorId = regionVendorId;
+    if (lastSyncTimestamp != null) result.lastSyncTimestamp = lastSyncTimestamp;
+    if (limit != null) result.limit = limit;
+    if (offset != null) result.offset = offset;
+    if (forceRefresh != null) result.forceRefresh = forceRefresh;
     return result;
   }
 
-  RegionInfo._();
+  WarehouseSyncRequest._();
 
-  factory RegionInfo.fromBuffer($core.List<$core.int> data,
+  factory WarehouseSyncRequest.fromBuffer($core.List<$core.int> data,
           [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
       create()..mergeFromBuffer(data, registry);
-  factory RegionInfo.fromJson($core.String json,
+  factory WarehouseSyncRequest.fromJson($core.String json,
           [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
       create()..mergeFromJson(json, registry);
 
   static final $pb.BuilderInfo _i = $pb.BuilderInfo(
-      _omitMessageNames ? '' : 'RegionInfo',
+      _omitMessageNames ? '' : 'WarehouseSyncRequest',
       package: const $pb.PackageName(_omitMessageNames ? '' : 'mobile_sync'),
       createEmptyInstance: create)
-    ..aI(1, _omitFieldNames ? '' : 'id')
-    ..aOS(2, _omitFieldNames ? '' : 'fiasId')
-    ..aOS(3, _omitFieldNames ? '' : 'title')
+    ..aOS(1, _omitFieldNames ? '' : 'regionVendorId')
+    ..aInt64(2, _omitFieldNames ? '' : 'lastSyncTimestamp')
+    ..aI(3, _omitFieldNames ? '' : 'limit')
+    ..aI(4, _omitFieldNames ? '' : 'offset')
+    ..aOB(5, _omitFieldNames ? '' : 'forceRefresh')
     ..hasRequiredFields = false;
 
   @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
-  RegionInfo clone() => deepCopy();
+  WarehouseSyncRequest clone() => deepCopy();
   @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
-  RegionInfo copyWith(void Function(RegionInfo) updates) =>
-      super.copyWith((message) => updates(message as RegionInfo)) as RegionInfo;
+  WarehouseSyncRequest copyWith(void Function(WarehouseSyncRequest) updates) =>
+      super.copyWith((message) => updates(message as WarehouseSyncRequest))
+          as WarehouseSyncRequest;
 
   @$core.override
   $pb.BuilderInfo get info_ => _i;
 
   @$core.pragma('dart2js:noInline')
-  static RegionInfo create() => RegionInfo._();
+  static WarehouseSyncRequest create() => WarehouseSyncRequest._();
   @$core.override
-  RegionInfo createEmptyInstance() => create();
-  static $pb.PbList<RegionInfo> createRepeated() => $pb.PbList<RegionInfo>();
+  WarehouseSyncRequest createEmptyInstance() => create();
+  static $pb.PbList<WarehouseSyncRequest> createRepeated() =>
+      $pb.PbList<WarehouseSyncRequest>();
   @$core.pragma('dart2js:noInline')
-  static RegionInfo getDefault() => _defaultInstance ??=
-      $pb.GeneratedMessage.$_defaultFor<RegionInfo>(create);
-  static RegionInfo? _defaultInstance;
+  static WarehouseSyncRequest getDefault() => _defaultInstance ??=
+      $pb.GeneratedMessage.$_defaultFor<WarehouseSyncRequest>(create);
+  static WarehouseSyncRequest? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  $core.String get regionVendorId => $_getSZ(0);
+  @$pb.TagNumber(1)
+  set regionVendorId($core.String value) => $_setString(0, value);
+  @$pb.TagNumber(1)
+  $core.bool hasRegionVendorId() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearRegionVendorId() => $_clearField(1);
+
+  @$pb.TagNumber(2)
+  $fixnum.Int64 get lastSyncTimestamp => $_getI64(1);
+  @$pb.TagNumber(2)
+  set lastSyncTimestamp($fixnum.Int64 value) => $_setInt64(1, value);
+  @$pb.TagNumber(2)
+  $core.bool hasLastSyncTimestamp() => $_has(1);
+  @$pb.TagNumber(2)
+  void clearLastSyncTimestamp() => $_clearField(2);
+
+  @$pb.TagNumber(3)
+  $core.int get limit => $_getIZ(2);
+  @$pb.TagNumber(3)
+  set limit($core.int value) => $_setSignedInt32(2, value);
+  @$pb.TagNumber(3)
+  $core.bool hasLimit() => $_has(2);
+  @$pb.TagNumber(3)
+  void clearLimit() => $_clearField(3);
+
+  @$pb.TagNumber(4)
+  $core.int get offset => $_getIZ(3);
+  @$pb.TagNumber(4)
+  set offset($core.int value) => $_setSignedInt32(3, value);
+  @$pb.TagNumber(4)
+  $core.bool hasOffset() => $_has(3);
+  @$pb.TagNumber(4)
+  void clearOffset() => $_clearField(4);
+
+  @$pb.TagNumber(5)
+  $core.bool get forceRefresh => $_getBF(4);
+  @$pb.TagNumber(5)
+  set forceRefresh($core.bool value) => $_setBool(4, value);
+  @$pb.TagNumber(5)
+  $core.bool hasForceRefresh() => $_has(4);
+  @$pb.TagNumber(5)
+  void clearForceRefresh() => $_clearField(5);
+}
+
+/// Ответ с данными складов
+class WarehouseSyncResponse extends $pb.GeneratedMessage {
+  factory WarehouseSyncResponse({
+    $core.Iterable<WarehouseInfo>? warehouses,
+    $fixnum.Int64? syncTimestamp,
+    CacheStats? stats,
+  }) {
+    final result = create();
+    if (warehouses != null) result.warehouses.addAll(warehouses);
+    if (syncTimestamp != null) result.syncTimestamp = syncTimestamp;
+    if (stats != null) result.stats = stats;
+    return result;
+  }
+
+  WarehouseSyncResponse._();
+
+  factory WarehouseSyncResponse.fromBuffer($core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      create()..mergeFromBuffer(data, registry);
+  factory WarehouseSyncResponse.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      create()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'WarehouseSyncResponse',
+      package: const $pb.PackageName(_omitMessageNames ? '' : 'mobile_sync'),
+      createEmptyInstance: create)
+    ..pPM<WarehouseInfo>(1, _omitFieldNames ? '' : 'warehouses',
+        subBuilder: WarehouseInfo.create)
+    ..aInt64(2, _omitFieldNames ? '' : 'syncTimestamp')
+    ..aOM<CacheStats>(3, _omitFieldNames ? '' : 'stats',
+        subBuilder: CacheStats.create)
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  WarehouseSyncResponse clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  WarehouseSyncResponse copyWith(
+          void Function(WarehouseSyncResponse) updates) =>
+      super.copyWith((message) => updates(message as WarehouseSyncResponse))
+          as WarehouseSyncResponse;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  static WarehouseSyncResponse create() => WarehouseSyncResponse._();
+  @$core.override
+  WarehouseSyncResponse createEmptyInstance() => create();
+  static $pb.PbList<WarehouseSyncResponse> createRepeated() =>
+      $pb.PbList<WarehouseSyncResponse>();
+  @$core.pragma('dart2js:noInline')
+  static WarehouseSyncResponse getDefault() => _defaultInstance ??=
+      $pb.GeneratedMessage.$_defaultFor<WarehouseSyncResponse>(create);
+  static WarehouseSyncResponse? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  $pb.PbList<WarehouseInfo> get warehouses => $_getList(0);
+
+  @$pb.TagNumber(2)
+  $fixnum.Int64 get syncTimestamp => $_getI64(1);
+  @$pb.TagNumber(2)
+  set syncTimestamp($fixnum.Int64 value) => $_setInt64(1, value);
+  @$pb.TagNumber(2)
+  $core.bool hasSyncTimestamp() => $_has(1);
+  @$pb.TagNumber(2)
+  void clearSyncTimestamp() => $_clearField(2);
+
+  @$pb.TagNumber(3)
+  CacheStats get stats => $_getN(2);
+  @$pb.TagNumber(3)
+  set stats(CacheStats value) => $_setField(3, value);
+  @$pb.TagNumber(3)
+  $core.bool hasStats() => $_has(2);
+  @$pb.TagNumber(3)
+  void clearStats() => $_clearField(3);
+  @$pb.TagNumber(3)
+  CacheStats ensureStats() => $_ensure(2);
+}
+
+/// Информация о складе
+class WarehouseInfo extends $pb.GeneratedMessage {
+  factory WarehouseInfo({
+    $core.int? id,
+    $core.String? name,
+    $core.String? vendorId,
+    $core.String? region,
+  }) {
+    final result = create();
+    if (id != null) result.id = id;
+    if (name != null) result.name = name;
+    if (vendorId != null) result.vendorId = vendorId;
+    if (region != null) result.region = region;
+    return result;
+  }
+
+  WarehouseInfo._();
+
+  factory WarehouseInfo.fromBuffer($core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      create()..mergeFromBuffer(data, registry);
+  factory WarehouseInfo.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      create()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'WarehouseInfo',
+      package: const $pb.PackageName(_omitMessageNames ? '' : 'mobile_sync'),
+      createEmptyInstance: create)
+    ..aI(1, _omitFieldNames ? '' : 'id')
+    ..aOS(2, _omitFieldNames ? '' : 'name')
+    ..aOS(3, _omitFieldNames ? '' : 'vendorId')
+    ..aOS(4, _omitFieldNames ? '' : 'region')
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  WarehouseInfo clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  WarehouseInfo copyWith(void Function(WarehouseInfo) updates) =>
+      super.copyWith((message) => updates(message as WarehouseInfo))
+          as WarehouseInfo;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  static WarehouseInfo create() => WarehouseInfo._();
+  @$core.override
+  WarehouseInfo createEmptyInstance() => create();
+  static $pb.PbList<WarehouseInfo> createRepeated() =>
+      $pb.PbList<WarehouseInfo>();
+  @$core.pragma('dart2js:noInline')
+  static WarehouseInfo getDefault() => _defaultInstance ??=
+      $pb.GeneratedMessage.$_defaultFor<WarehouseInfo>(create);
+  static WarehouseInfo? _defaultInstance;
 
   @$pb.TagNumber(1)
   $core.int get id => $_getIZ(0);
@@ -953,22 +1129,31 @@ class RegionInfo extends $pb.GeneratedMessage {
   void clearId() => $_clearField(1);
 
   @$pb.TagNumber(2)
-  $core.String get fiasId => $_getSZ(1);
+  $core.String get name => $_getSZ(1);
   @$pb.TagNumber(2)
-  set fiasId($core.String value) => $_setString(1, value);
+  set name($core.String value) => $_setString(1, value);
   @$pb.TagNumber(2)
-  $core.bool hasFiasId() => $_has(1);
+  $core.bool hasName() => $_has(1);
   @$pb.TagNumber(2)
-  void clearFiasId() => $_clearField(2);
+  void clearName() => $_clearField(2);
 
   @$pb.TagNumber(3)
-  $core.String get title => $_getSZ(2);
+  $core.String get vendorId => $_getSZ(2);
   @$pb.TagNumber(3)
-  set title($core.String value) => $_setString(2, value);
+  set vendorId($core.String value) => $_setString(2, value);
   @$pb.TagNumber(3)
-  $core.bool hasTitle() => $_has(2);
+  $core.bool hasVendorId() => $_has(2);
   @$pb.TagNumber(3)
-  void clearTitle() => $_clearField(3);
+  void clearVendorId() => $_clearField(3);
+
+  @$pb.TagNumber(4)
+  $core.String get region => $_getSZ(3);
+  @$pb.TagNumber(4)
+  set region($core.String value) => $_setString(3, value);
+  @$pb.TagNumber(4)
+  $core.bool hasRegion() => $_has(3);
+  @$pb.TagNumber(4)
+  void clearRegion() => $_clearField(4);
 }
 
 const $core.bool _omitFieldNames =

@@ -78,16 +78,41 @@ message CacheStats {
 
 // Ответ с остатками на складах в регионе (ТОЛЬКО остатки + базовые цены)
 message RegionalStockResponse {
-    RegionInfo region_info = 1;
+    // RegionInfo region_info = 1;  // ЗАКОММЕНТИРОВАНО: телефону не нужна подробная информация о регионах
     repeated RegionalStockItem stock_items = 2;  // используем новый тип!
     int64 sync_timestamp = 3;
     string cache_type = 4;            // "regional_stock_base_prices"
     CacheStats stats = 5;
 }
 
-// Информация о регионе
-message RegionInfo {
+// Информация о регионе - ЗАКОММЕНТИРОВАНО: не используется
+// message RegionInfo {
+//     int32 id = 1;
+//     string fias_id = 2;
+//     string vendor_id = 3;
+//     string title = 4;
+// }
+
+// Запрос синхронизации складов
+message WarehouseSyncRequest {
+    string region_vendor_id = 1;     // опционально - склады конкретного региона
+    int64 last_sync_timestamp = 2;
+    int32 limit = 3;                 // пагинация
+    int32 offset = 4;                // пагинация
+    bool force_refresh = 5;          // принудительное обновление
+}
+
+// Ответ с данными складов
+message WarehouseSyncResponse {
+    repeated WarehouseInfo warehouses = 1;
+    int64 sync_timestamp = 2;
+    CacheStats stats = 3;
+}
+
+// Информация о складе
+message WarehouseInfo {
     int32 id = 1;
-    string fias_id = 2;
-    string title = 3;
+    string name = 2;
+    string vendor_id = 3;
+    string region = 4;               // просто строка с кодом региона типа "K3V"
 }

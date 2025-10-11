@@ -39,10 +39,20 @@ class _ProtobufSyncView extends StatelessWidget {
             ScaffoldMessenger.of(context).showSnackBar(
               SnackBar(
                 content: Text(
-                  'Синхронизация завершена: ${state.syncedProductsCount} продуктов, ${state.syncedStockItemsCount} позиций склада',
+                  'Синхронизация завершена: продукты ${state.syncedProductsCount}, склады ${state.syncedWarehousesCount}, позиции ${state.syncedStockItemsCount}',
                 ),
                 backgroundColor: Colors.green,
                 duration: const Duration(seconds: 5),
+              ),
+            );
+          } else if (state is WarehouseSyncOnlySuccess) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text(
+                  'Склады синхронизированы: ${state.syncedWarehouses} (регион ${state.regionCode})',
+                ),
+                backgroundColor: Colors.green,
+                duration: const Duration(seconds: 4),
               ),
             );
           } else if (state is ProtobufSyncFailure) {
@@ -56,6 +66,14 @@ class _ProtobufSyncView extends StatelessWidget {
                   textColor: Colors.white,
                   onPressed: () => _showErrorDetails(context, state),
                 ),
+              ),
+            );
+          } else if (state is WarehouseSyncOnlyFailure) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text('Ошибка синхронизации складов: ${state.message}'),
+                backgroundColor: Colors.red,
+                duration: const Duration(seconds: 6),
               ),
             );
           } else if (state is ProtobufSyncCancelled) {
@@ -139,6 +157,12 @@ class _ProtobufSyncView extends StatelessWidget {
       return _buildFailureContent(context, state);
     } else if (state is ProtobufSyncCancelled) {
       return _buildCancelledContent();
+    } else if (state is WarehouseSyncOnlyInProgress) {
+      return _buildWarehouseOnlyProgress();
+    } else if (state is WarehouseSyncOnlySuccess) {
+      return _buildWarehouseOnlySuccess(state);
+    } else if (state is WarehouseSyncOnlyFailure) {
+      return _buildWarehouseOnlyFailure(state);
     }
 
     return const SizedBox.shrink();
@@ -277,6 +301,12 @@ class _ProtobufSyncView extends StatelessWidget {
             ),
             const SizedBox(height: 8),
             _buildResultStats(
+              'Склады',
+              state.syncedWarehousesCount,
+              Icons.apartment,
+            ),
+            const SizedBox(height: 8),
+            _buildResultStats(
               'Складские позиции',
               state.syncedStockItemsCount,
               Icons.warehouse,
@@ -401,6 +431,101 @@ class _ProtobufSyncView extends StatelessWidget {
     );
   }
 
+  Widget _buildWarehouseOnlyProgress() {
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(16.0),
+        child: Column(
+          children: const [
+            CircularProgressIndicator(),
+            SizedBox(height: 16),
+            Text(
+              'Синхронизация складов...',
+              style: TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+            SizedBox(height: 8),
+            Text(
+              'Запрашиваем данные со склада и сохраняем их локально',
+              textAlign: TextAlign.center,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildWarehouseOnlySuccess(WarehouseSyncOnlySuccess state) {
+    return Card(
+      color: Colors.green[50],
+      child: Padding(
+        padding: const EdgeInsets.all(16.0),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: const [
+                Icon(Icons.apartment, size: 32, color: Colors.green),
+                SizedBox(width: 12),
+                Text(
+                  'Склады синхронизированы',
+                  style: TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.green,
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 12),
+            _buildResultStats('Регион', state.regionCode, Icons.map),
+            const SizedBox(height: 8),
+            _buildResultStats('Всего складов', state.syncedWarehouses, Icons.warehouse),
+            if (state.syncTimestamp > 0) ...[
+              const SizedBox(height: 8),
+              _buildResultStats('Метка синхронизации', state.syncTimestamp, Icons.schedule),
+            ],
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildWarehouseOnlyFailure(WarehouseSyncOnlyFailure state) {
+    return Card(
+      color: Colors.red[50],
+      child: Padding(
+        padding: const EdgeInsets.all(16.0),
+        child: Column(
+          children: [
+            const Icon(
+              Icons.error_outline,
+              size: 48,
+              color: Colors.red,
+            ),
+            const SizedBox(height: 16),
+            const Text(
+              'Не удалось синхронизировать склады',
+              style: TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.bold,
+                color: Colors.red,
+              ),
+            ),
+            const SizedBox(height: 12),
+            Text(
+              state.message,
+              textAlign: TextAlign.center,
+              style: const TextStyle(fontSize: 14),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   Widget _buildActionButtons(BuildContext context, ProtobufSyncState state) {
     if (state is ProtobufSyncInProgress) {
       return ElevatedButton(
@@ -413,6 +538,16 @@ class _ProtobufSyncView extends StatelessWidget {
           padding: const EdgeInsets.symmetric(vertical: 16),
         ),
         child: const Text('Отменить синхронизацию'),
+      );
+    } else if (state is WarehouseSyncOnlyInProgress) {
+      return ElevatedButton(
+        onPressed: null,
+        style: ElevatedButton.styleFrom(
+          backgroundColor: AppColors.primary,
+          foregroundColor: Colors.white,
+          padding: const EdgeInsets.symmetric(vertical: 16),
+        ),
+        child: const Text('Синхронизация складов...'),
       );
     } else if (state is ProtobufSyncSuccess || 
                state is ProtobufSyncFailure || 
@@ -460,21 +595,73 @@ class _ProtobufSyncView extends StatelessWidget {
             ),
             child: const Text('Проверить данные в БД'),
           ),
+          const SizedBox(height: 12),
+          _buildWarehouseOnlyButton(context),
+        ],
+      );
+    } else if (state is WarehouseSyncOnlySuccess || state is WarehouseSyncOnlyFailure) {
+      return Column(
+        children: [
+          ElevatedButton(
+            onPressed: () {
+              context.read<ProtobufSyncBloc>().add(const ResetProtobufSyncEvent());
+            },
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppColors.primary,
+              foregroundColor: Colors.white,
+              padding: const EdgeInsets.symmetric(vertical: 16),
+            ),
+            child: const Text('Сбросить состояние'),
+          ),
+          const SizedBox(height: 12),
+          _buildWarehouseOnlyButton(context),
+          const SizedBox(height: 12),
+          ElevatedButton(
+            onPressed: () {
+              context.read<ProtobufSyncBloc>().add(const StartProtobufSyncEvent());
+            },
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.blueGrey,
+              foregroundColor: Colors.white,
+              padding: const EdgeInsets.symmetric(vertical: 16),
+            ),
+            child: const Text('Запустить полную синхронизацию'),
+          ),
         ],
       );
     } else {
-      return ElevatedButton(
-        onPressed: () {
-          context.read<ProtobufSyncBloc>().add(const StartProtobufSyncEvent());
-        },
-        style: ElevatedButton.styleFrom(
-          backgroundColor: AppColors.primary,
-          foregroundColor: Colors.white,
-          padding: const EdgeInsets.symmetric(vertical: 16),
-        ),
-        child: const Text('Начать синхронизацию'),
+      return Column(
+        children: [
+          ElevatedButton(
+            onPressed: () {
+              context.read<ProtobufSyncBloc>().add(const StartProtobufSyncEvent());
+            },
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppColors.primary,
+              foregroundColor: Colors.white,
+              padding: const EdgeInsets.symmetric(vertical: 16),
+            ),
+            child: const Text('Начать синхронизацию'),
+          ),
+          const SizedBox(height: 12),
+          _buildWarehouseOnlyButton(context),
+        ],
       );
     }
+  }
+
+  Widget _buildWarehouseOnlyButton(BuildContext context) {
+    return OutlinedButton.icon(
+      onPressed: () {
+        context.read<ProtobufSyncBloc>().add(const SyncWarehousesOnlyEvent());
+      },
+      icon: const Icon(Icons.apartment),
+      label: const Text('Синхронизировать только склады'),
+      style: OutlinedButton.styleFrom(
+        minimumSize: const Size.fromHeight(48),
+        side: const BorderSide(color: AppColors.primary),
+      ),
+    );
   }
 
   void _showErrorDetails(BuildContext context, ProtobufSyncFailure state) {
@@ -541,11 +728,11 @@ class _ProtobufSyncView extends StatelessWidget {
     final seconds = duration.inSeconds.remainder(60);
 
     if (hours > 0) {
-      return '${hours}ч ${minutes}м ${seconds}с';
+      return '$hoursч $minutesм $secondsс';
     } else if (minutes > 0) {
-      return '${minutes}м ${seconds}с';
+      return '$minutesм $secondsс';
     } else {
-      return '${seconds}с';
+      return '$secondsс';
     }
   }
 
@@ -584,6 +771,7 @@ class _ProtobufSyncView extends StatelessWidget {
                 _buildStatItem('Продукты в БД', stats['products']),
                 _buildStatItem('Остатки в БД', stats['stock_items']),
                 _buildStatItem('Остатки с товаром', stats['stock_items_with_stock']),
+                _buildStatItem('Склады в БД', stats['warehouses']),
                 if (stats['sample_stock_item'] != null) ...[
                   const SizedBox(height: 16),
                   const Text(

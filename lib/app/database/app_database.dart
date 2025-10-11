@@ -23,6 +23,7 @@ import 'tables/product_table.dart';
 import 'tables/order_table.dart';
 import 'tables/order_line_table.dart';
 import 'tables/stock_item_table.dart';
+import 'tables/warehouse_table.dart';
 import 'tables/order_job_table.dart';
 
 part 'app_database.g.dart';
@@ -48,6 +49,7 @@ final Logger _dbLogger = Logger('AppDatabase');
   OrderLines,
   StockItems,
   OrderJobs,
+  Warehouses,
 ])
 class AppDatabase extends _$AppDatabase {
   AppDatabase() : super(_openConnection('app_database.db'));
@@ -57,7 +59,7 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase.forTesting(DatabaseConnection super.connection);
 
   @override
-  int get schemaVersion => 4;
+  int get schemaVersion => 5;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -82,6 +84,10 @@ class AppDatabase extends _$AppDatabase {
           FROM trading_point_entities_old;
         ''');
         await customStatement('DROP TABLE trading_point_entities_old;');
+      }
+
+      if (from < 5) {
+        await m.createTable(warehouses);
       }
 
       await m.createAll();

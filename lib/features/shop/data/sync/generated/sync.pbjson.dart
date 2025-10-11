@@ -238,14 +238,6 @@ const RegionalStockResponse$json = {
   '1': 'RegionalStockResponse',
   '2': [
     {
-      '1': 'region_info',
-      '3': 1,
-      '4': 1,
-      '5': 11,
-      '6': '.mobile_sync.RegionInfo',
-      '10': 'regionInfo'
-    },
-    {
       '1': 'stock_items',
       '3': 2,
       '4': 3,
@@ -268,23 +260,79 @@ const RegionalStockResponse$json = {
 
 /// Descriptor for `RegionalStockResponse`. Decode as a `google.protobuf.DescriptorProto`.
 final $typed_data.Uint8List regionalStockResponseDescriptor = $convert.base64Decode(
-    'ChVSZWdpb25hbFN0b2NrUmVzcG9uc2USOAoLcmVnaW9uX2luZm8YASABKAsyFy5tb2JpbGVfc3'
-    'luYy5SZWdpb25JbmZvUgpyZWdpb25JbmZvEj8KC3N0b2NrX2l0ZW1zGAIgAygLMh4ubW9iaWxl'
-    'X3N5bmMuUmVnaW9uYWxTdG9ja0l0ZW1SCnN0b2NrSXRlbXMSJQoOc3luY190aW1lc3RhbXAYAy'
-    'ABKANSDXN5bmNUaW1lc3RhbXASHQoKY2FjaGVfdHlwZRgEIAEoCVIJY2FjaGVUeXBlEi0KBXN0'
-    'YXRzGAUgASgLMhcubW9iaWxlX3N5bmMuQ2FjaGVTdGF0c1IFc3RhdHM=');
+    'ChVSZWdpb25hbFN0b2NrUmVzcG9uc2USPwoLc3RvY2tfaXRlbXMYAiADKAsyHi5tb2JpbGVfc3'
+    'luYy5SZWdpb25hbFN0b2NrSXRlbVIKc3RvY2tJdGVtcxIlCg5zeW5jX3RpbWVzdGFtcBgDIAEo'
+    'A1INc3luY1RpbWVzdGFtcBIdCgpjYWNoZV90eXBlGAQgASgJUgljYWNoZVR5cGUSLQoFc3RhdH'
+    'MYBSABKAsyFy5tb2JpbGVfc3luYy5DYWNoZVN0YXRzUgVzdGF0cw==');
 
-@$core.Deprecated('Use regionInfoDescriptor instead')
-const RegionInfo$json = {
-  '1': 'RegionInfo',
+@$core.Deprecated('Use warehouseSyncRequestDescriptor instead')
+const WarehouseSyncRequest$json = {
+  '1': 'WarehouseSyncRequest',
   '2': [
-    {'1': 'id', '3': 1, '4': 1, '5': 5, '10': 'id'},
-    {'1': 'fias_id', '3': 2, '4': 1, '5': 9, '10': 'fiasId'},
-    {'1': 'title', '3': 3, '4': 1, '5': 9, '10': 'title'},
+    {'1': 'region_vendor_id', '3': 1, '4': 1, '5': 9, '10': 'regionVendorId'},
+    {
+      '1': 'last_sync_timestamp',
+      '3': 2,
+      '4': 1,
+      '5': 3,
+      '10': 'lastSyncTimestamp'
+    },
+    {'1': 'limit', '3': 3, '4': 1, '5': 5, '10': 'limit'},
+    {'1': 'offset', '3': 4, '4': 1, '5': 5, '10': 'offset'},
+    {'1': 'force_refresh', '3': 5, '4': 1, '5': 8, '10': 'forceRefresh'},
   ],
 };
 
-/// Descriptor for `RegionInfo`. Decode as a `google.protobuf.DescriptorProto`.
-final $typed_data.Uint8List regionInfoDescriptor = $convert.base64Decode(
-    'CgpSZWdpb25JbmZvEg4KAmlkGAEgASgFUgJpZBIXCgdmaWFzX2lkGAIgASgJUgZmaWFzSWQSFA'
-    'oFdGl0bGUYAyABKAlSBXRpdGxl');
+/// Descriptor for `WarehouseSyncRequest`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List warehouseSyncRequestDescriptor = $convert.base64Decode(
+    'ChRXYXJlaG91c2VTeW5jUmVxdWVzdBIoChByZWdpb25fdmVuZG9yX2lkGAEgASgJUg5yZWdpb2'
+    '5WZW5kb3JJZBIuChNsYXN0X3N5bmNfdGltZXN0YW1wGAIgASgDUhFsYXN0U3luY1RpbWVzdGFt'
+    'cBIUCgVsaW1pdBgDIAEoBVIFbGltaXQSFgoGb2Zmc2V0GAQgASgFUgZvZmZzZXQSIwoNZm9yY2'
+    'VfcmVmcmVzaBgFIAEoCFIMZm9yY2VSZWZyZXNo');
+
+@$core.Deprecated('Use warehouseSyncResponseDescriptor instead')
+const WarehouseSyncResponse$json = {
+  '1': 'WarehouseSyncResponse',
+  '2': [
+    {
+      '1': 'warehouses',
+      '3': 1,
+      '4': 3,
+      '5': 11,
+      '6': '.mobile_sync.WarehouseInfo',
+      '10': 'warehouses'
+    },
+    {'1': 'sync_timestamp', '3': 2, '4': 1, '5': 3, '10': 'syncTimestamp'},
+    {
+      '1': 'stats',
+      '3': 3,
+      '4': 1,
+      '5': 11,
+      '6': '.mobile_sync.CacheStats',
+      '10': 'stats'
+    },
+  ],
+};
+
+/// Descriptor for `WarehouseSyncResponse`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List warehouseSyncResponseDescriptor = $convert.base64Decode(
+    'ChVXYXJlaG91c2VTeW5jUmVzcG9uc2USOgoKd2FyZWhvdXNlcxgBIAMoCzIaLm1vYmlsZV9zeW'
+    '5jLldhcmVob3VzZUluZm9SCndhcmVob3VzZXMSJQoOc3luY190aW1lc3RhbXAYAiABKANSDXN5'
+    'bmNUaW1lc3RhbXASLQoFc3RhdHMYAyABKAsyFy5tb2JpbGVfc3luYy5DYWNoZVN0YXRzUgVzdG'
+    'F0cw==');
+
+@$core.Deprecated('Use warehouseInfoDescriptor instead')
+const WarehouseInfo$json = {
+  '1': 'WarehouseInfo',
+  '2': [
+    {'1': 'id', '3': 1, '4': 1, '5': 5, '10': 'id'},
+    {'1': 'name', '3': 2, '4': 1, '5': 9, '10': 'name'},
+    {'1': 'vendor_id', '3': 3, '4': 1, '5': 9, '10': 'vendorId'},
+    {'1': 'region', '3': 4, '4': 1, '5': 9, '10': 'region'},
+  ],
+};
+
+/// Descriptor for `WarehouseInfo`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List warehouseInfoDescriptor = $convert.base64Decode(
+    'Cg1XYXJlaG91c2VJbmZvEg4KAmlkGAEgASgFUgJpZBISCgRuYW1lGAIgASgJUgRuYW1lEhsKCX'
+    'ZlbmRvcl9pZBgDIAEoCVIIdmVuZG9ySWQSFgoGcmVnaW9uGAQgASgJUgZyZWdpb24=');

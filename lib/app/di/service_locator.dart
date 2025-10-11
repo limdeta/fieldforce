@@ -22,9 +22,11 @@ import 'package:fieldforce/app/database/repositories/employee_repository_drift.d
 import 'package:fieldforce/app/database/repositories/app_user_repository_drift.dart';
 import 'package:fieldforce/app/database/repositories/user_track_repository_drift.dart';
 import 'package:fieldforce/app/services/simple_update_service.dart';
+import 'package:fieldforce/app/services/category_tree_cache_service.dart';
 import 'package:fieldforce/app/services/post_authentication_service.dart';
 import 'package:fieldforce/app/services/session_manager.dart';
 import 'package:fieldforce/app/services/trading_point_sync_service.dart';
+import 'package:fieldforce/app/services/warehouse_filter_service.dart';
 import 'package:fieldforce/app/jobs/job_queue_repository.dart';
 import 'package:fieldforce/app/jobs/job_queue_service.dart';
 import 'package:fieldforce/features/authentication/domain/repositories/user_repository.dart';
@@ -43,6 +45,7 @@ import 'package:fieldforce/features/shop/domain/repositories/employee_repository
 import 'package:fieldforce/features/shop/domain/repositories/trading_point_repository.dart';
 import 'package:fieldforce/features/shop/domain/usecases/get_employee_trading_points_usecase.dart';
 import 'package:fieldforce/app/database/repositories/trading_point_repository_drift.dart';
+import 'package:fieldforce/app/database/repositories/warehouse_repository_drift.dart';
 import 'package:fieldforce/app/domain/repositories/app_user_repository.dart';
 import 'package:fieldforce/features/navigation/tracking/domain/repositories/user_track_repository.dart';
 import 'package:fieldforce/features/navigation/path_predictor/osrm_path_prediction_service.dart';
@@ -63,6 +66,7 @@ import 'package:fieldforce/features/shop/data/sync/services/regional_sync_servic
 import 'package:fieldforce/features/shop/data/sync/services/stock_sync_service.dart';
 import 'package:fieldforce/features/shop/data/sync/services/outlet_pricing_sync_service.dart';
 import 'package:fieldforce/features/shop/data/sync/services/protobuf_sync_coordinator.dart';
+import 'package:fieldforce/features/shop/data/sync/services/warehouse_sync_service.dart';
 import 'package:fieldforce/features/shop/data/sync/repositories/protobuf_sync_repository.dart';
 import 'package:fieldforce/features/shop/domain/services/order_submission_queue_trigger.dart';
 import 'package:fieldforce/app/database/repositories/product_repository_drift.dart';
@@ -75,6 +79,7 @@ import 'package:fieldforce/features/shop/domain/usecases/update_cart_item_usecas
 import 'package:fieldforce/features/shop/domain/usecases/update_cart_stock_item_usecase.dart';
 import 'package:fieldforce/features/shop/domain/usecases/remove_from_cart_usecase.dart';
 import 'package:fieldforce/features/shop/domain/usecases/update_cart_usecase.dart';
+import 'package:fieldforce/features/shop/domain/usecases/sync_warehouses_only_usecase.dart';
 import 'package:fieldforce/features/shop/domain/usecases/clear_cart_usecase.dart';
 import 'package:fieldforce/features/shop/domain/usecases/submit_order_usecase.dart';
 import 'package:fieldforce/features/shop/domain/usecases/retry_order_submission_usecase.dart';
@@ -87,6 +92,7 @@ import 'package:fieldforce/features/shop/domain/usecases/update_order_state_usec
 import 'package:fieldforce/features/shop/domain/usecases/perform_protobuf_sync_usecase.dart';
 import 'package:fieldforce/features/shop/domain/repositories/stock_item_repository.dart';
 import 'package:fieldforce/app/database/repositories/stock_item_repository_drift.dart';
+import 'package:fieldforce/features/shop/domain/repositories/warehouse_repository.dart';
 import 'package:fieldforce/features/shop/data/services/isolate_sync_manager.dart';
 import 'package:fieldforce/features/shop/data/repositories/order_job_repository_impl.dart';
 import 'package:fieldforce/features/shop/data/services/mock_order_api_service.dart';
@@ -172,6 +178,20 @@ Future<void> setupServiceLocator() async {
     () => DriftStockItemRepository(),
   );
 
+  getIt.registerLazySingleton<WarehouseRepository>(
+    () => DriftWarehouseRepository(),
+  );
+
+  getIt.registerLazySingleton<WarehouseFilterService>(
+    () => WarehouseFilterService(
+      warehouseRepository: getIt<WarehouseRepository>(),
+    ),
+  );
+
+  getIt.registerLazySingleton<CategoryTreeCacheService>(
+    () => CategoryTreeCacheService(),
+  );
+
   getIt.registerLazySingleton<JobQueueRepository<OrderSubmissionJob>>(
     () => OrderJobRepositoryImpl(getIt<AppDatabase>()),
   );
@@ -229,14 +249,23 @@ Future<void> setupServiceLocator() async {
     ),
   );
 
+  getIt.registerLazySingleton<WarehouseSyncService>(
+    () => WarehouseSyncService(
+      baseUrl: AppConfig.apiBaseUrl,
+    ),
+  );
+
   getIt.registerLazySingleton<ProtobufSyncCoordinator>(
     () => ProtobufSyncCoordinator(
       regionalSyncService: getIt<RegionalSyncService>(),
       stockSyncService: getIt<StockSyncService>(),
       outletPricingSyncService: getIt<OutletPricingSyncService>(),
+      warehouseSyncService: getIt<WarehouseSyncService>(),
       syncRepository: getIt<ProtobufSyncRepository>(),
       productRepository: getIt<ProductRepository>(),
       stockItemRepository: getIt<StockItemRepository>(),
+      warehouseRepository: getIt<WarehouseRepository>(),
+      categoryTreeCacheService: getIt<CategoryTreeCacheService>(),
     ),
   );
 
@@ -311,6 +340,13 @@ Future<void> setupServiceLocator() async {
     () => PerformProtobufSyncUseCase(getIt<ProtobufSyncCoordinator>()),
   );
 
+  getIt.registerLazySingleton<SyncWarehousesOnlyUseCase>(
+    () => SyncWarehousesOnlyUseCase(
+      warehouseSyncService: getIt<WarehouseSyncService>(),
+      warehouseRepository: getIt<WarehouseRepository>(),
+    ),
+  );
+
   // BLoCs
   getIt.registerLazySingleton<CartBloc>(
     () => CartBloc(
@@ -335,6 +371,7 @@ Future<void> setupServiceLocator() async {
   getIt.registerFactory<ProtobufSyncBloc>(
     () => ProtobufSyncBloc(
       performProtobufSyncUseCase: getIt<PerformProtobufSyncUseCase>(),
+      syncWarehousesOnlyUseCase: getIt<SyncWarehousesOnlyUseCase>(),
     ),
   );
 
