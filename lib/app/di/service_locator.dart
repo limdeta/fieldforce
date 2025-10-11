@@ -21,12 +21,14 @@ import 'package:fieldforce/app/database/repositories/session_repository_impl.dar
 import 'package:fieldforce/app/database/repositories/employee_repository_drift.dart';
 import 'package:fieldforce/app/database/repositories/app_user_repository_drift.dart';
 import 'package:fieldforce/app/database/repositories/user_track_repository_drift.dart';
+import 'package:fieldforce/app/database/repositories/sync_log_repository.dart';
 import 'package:fieldforce/app/services/simple_update_service.dart';
 import 'package:fieldforce/app/services/category_tree_cache_service.dart';
 import 'package:fieldforce/app/services/post_authentication_service.dart';
 import 'package:fieldforce/app/services/session_manager.dart';
 import 'package:fieldforce/app/services/trading_point_sync_service.dart';
 import 'package:fieldforce/app/services/warehouse_filter_service.dart';
+import 'package:fieldforce/app/presentation/bloc/data_sync/data_sync_bloc.dart';
 import 'package:fieldforce/app/jobs/job_queue_repository.dart';
 import 'package:fieldforce/app/jobs/job_queue_service.dart';
 import 'package:fieldforce/features/authentication/domain/repositories/user_repository.dart';
@@ -44,6 +46,11 @@ import 'package:fieldforce/features/navigation/tracking/presentation/bloc/user_t
 import 'package:fieldforce/features/shop/domain/repositories/employee_repository.dart';
 import 'package:fieldforce/features/shop/domain/repositories/trading_point_repository.dart';
 import 'package:fieldforce/features/shop/domain/usecases/get_employee_trading_points_usecase.dart';
+import 'package:fieldforce/features/shop/domain/usecases/sync_categories_usecase.dart';
+import 'package:fieldforce/features/shop/domain/usecases/sync_outlet_prices_usecase.dart';
+import 'package:fieldforce/features/shop/domain/usecases/sync_region_products_usecase.dart';
+import 'package:fieldforce/features/shop/domain/usecases/sync_region_stock_usecase.dart';
+import 'package:fieldforce/features/shop/domain/usecases/sync_trading_points_usecase.dart';
 import 'package:fieldforce/app/database/repositories/trading_point_repository_drift.dart';
 import 'package:fieldforce/app/database/repositories/warehouse_repository_drift.dart';
 import 'package:fieldforce/app/domain/repositories/app_user_repository.dart';
@@ -87,7 +94,6 @@ import 'package:fieldforce/features/shop/domain/usecases/get_orders_usecase.dart
 import 'package:fieldforce/features/shop/domain/usecases/get_order_by_id_usecase.dart';
 import 'package:fieldforce/features/shop/presentation/bloc/cart_bloc.dart';
 import 'package:fieldforce/features/shop/presentation/bloc/orders_bloc.dart';
-import 'package:fieldforce/features/shop/presentation/bloc/protobuf_sync_bloc.dart';
 import 'package:fieldforce/features/shop/domain/usecases/update_order_state_usecase.dart';
 import 'package:fieldforce/features/shop/domain/usecases/perform_protobuf_sync_usecase.dart';
 import 'package:fieldforce/features/shop/domain/repositories/stock_item_repository.dart';
@@ -347,6 +353,29 @@ Future<void> setupServiceLocator() async {
     ),
   );
 
+  getIt.registerLazySingleton(
+    () => SyncTradingPointsUseCase(getIt<TradingPointSyncService>()),
+  );
+
+  getIt.registerLazySingleton(
+    () => SyncCategoriesUseCase(
+      sessionManager: getIt<SessionManager>(),
+      categoryRepository: getIt<CategoryRepository>(),
+    ),
+  );
+
+  getIt.registerLazySingleton(
+    () => SyncRegionProductsUseCase(getIt<ProtobufSyncCoordinator>()),
+  );
+
+  getIt.registerLazySingleton(
+    () => SyncRegionStockUseCase(getIt<ProtobufSyncCoordinator>()),
+  );
+
+  getIt.registerLazySingleton(
+    () => SyncOutletPricesUseCase(getIt<ProtobufSyncCoordinator>()),
+  );
+
   // BLoCs
   getIt.registerLazySingleton<CartBloc>(
     () => CartBloc(
@@ -368,11 +397,16 @@ Future<void> setupServiceLocator() async {
     ),
   );
 
-  getIt.registerFactory<ProtobufSyncBloc>(
-    () => ProtobufSyncBloc(
-      performProtobufSyncUseCase: getIt<PerformProtobufSyncUseCase>(),
-      syncWarehousesOnlyUseCase: getIt<SyncWarehousesOnlyUseCase>(),
-    ),
+  getIt.registerLazySingleton<DataSyncBloc>(
+    () => DataSyncBloc(
+      syncTradingPointsUseCase: getIt<SyncTradingPointsUseCase>(),
+      syncCategoriesUseCase: getIt<SyncCategoriesUseCase>(),
+      syncRegionProductsUseCase: getIt<SyncRegionProductsUseCase>(),
+      syncRegionStockUseCase: getIt<SyncRegionStockUseCase>(),
+      syncOutletPricesUseCase: getIt<SyncOutletPricesUseCase>(),
+      syncLogRepository: getIt<SyncLogRepository>(),
+    )..add(const DataSyncInitialize()),
+    dispose: (bloc) => bloc.close(),
   );
 
   getIt.registerLazySingleton<AppUserRepository>(
@@ -448,6 +482,10 @@ Future<void> setupServiceLocator() async {
     ),
   );
 
+  getIt.registerLazySingleton<SyncLogRepository>(
+    () => SyncLogRepository(getIt<AppDatabase>()),
+  );
+
   // TrackManager как синглтон для управления GPS треками
   getIt.registerLazySingleton<TrackManager>(
     () => TrackManager(getIt<UserTrackRepository>()),
@@ -520,6 +558,7 @@ Future<void> setupServiceLocator() async {
       appUserRepository: getIt<AppUserRepository>(),
       tradingPointRepository: getIt<TradingPointRepository>(),
       authApiService: getIt<IAuthApiService>(),
+      tradingPointSyncService: getIt<TradingPointSyncService>(),
     ),
   );
 

@@ -9214,6 +9214,503 @@ class WarehousesCompanion extends UpdateCompanion<WarehouseData> {
   }
 }
 
+class $SyncLogsTable extends SyncLogs
+    with TableInfo<$SyncLogsTable, SyncLogRow> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $SyncLogsTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _idMeta = const VerificationMeta('id');
+  @override
+  late final GeneratedColumn<int> id = GeneratedColumn<int>(
+      'id', aliasedName, false,
+      hasAutoIncrement: true,
+      type: DriftSqlType.int,
+      requiredDuringInsert: false,
+      defaultConstraints:
+          GeneratedColumn.constraintIsAlways('PRIMARY KEY AUTOINCREMENT'));
+  static const VerificationMeta _taskMeta = const VerificationMeta('task');
+  @override
+  late final GeneratedColumn<String> task = GeneratedColumn<String>(
+      'task', aliasedName, false,
+      type: DriftSqlType.string, requiredDuringInsert: true);
+  static const VerificationMeta _eventTypeMeta =
+      const VerificationMeta('eventType');
+  @override
+  late final GeneratedColumn<String> eventType = GeneratedColumn<String>(
+      'event_type', aliasedName, false,
+      type: DriftSqlType.string,
+      requiredDuringInsert: false,
+      defaultValue: const Constant('info'));
+  static const VerificationMeta _statusMeta = const VerificationMeta('status');
+  @override
+  late final GeneratedColumn<String> status = GeneratedColumn<String>(
+      'status', aliasedName, true,
+      type: DriftSqlType.string, requiredDuringInsert: false);
+  static const VerificationMeta _messageMeta =
+      const VerificationMeta('message');
+  @override
+  late final GeneratedColumn<String> message = GeneratedColumn<String>(
+      'message', aliasedName, false,
+      type: DriftSqlType.string, requiredDuringInsert: true);
+  static const VerificationMeta _detailsJsonMeta =
+      const VerificationMeta('detailsJson');
+  @override
+  late final GeneratedColumn<String> detailsJson = GeneratedColumn<String>(
+      'details_json', aliasedName, true,
+      type: DriftSqlType.string, requiredDuringInsert: false);
+  static const VerificationMeta _regionCodeMeta =
+      const VerificationMeta('regionCode');
+  @override
+  late final GeneratedColumn<String> regionCode = GeneratedColumn<String>(
+      'region_code', aliasedName, true,
+      type: DriftSqlType.string, requiredDuringInsert: false);
+  static const VerificationMeta _tradingPointExternalIdMeta =
+      const VerificationMeta('tradingPointExternalId');
+  @override
+  late final GeneratedColumn<String> tradingPointExternalId =
+      GeneratedColumn<String>('trading_point_external_id', aliasedName, true,
+          type: DriftSqlType.string, requiredDuringInsert: false);
+  static const VerificationMeta _durationMsMeta =
+      const VerificationMeta('durationMs');
+  @override
+  late final GeneratedColumn<int> durationMs = GeneratedColumn<int>(
+      'duration_ms', aliasedName, true,
+      type: DriftSqlType.int, requiredDuringInsert: false);
+  static const VerificationMeta _createdAtMeta =
+      const VerificationMeta('createdAt');
+  @override
+  late final GeneratedColumn<DateTime> createdAt = GeneratedColumn<DateTime>(
+      'created_at', aliasedName, false,
+      type: DriftSqlType.dateTime,
+      requiredDuringInsert: false,
+      defaultValue: currentDateAndTime);
+  @override
+  List<GeneratedColumn> get $columns => [
+        id,
+        task,
+        eventType,
+        status,
+        message,
+        detailsJson,
+        regionCode,
+        tradingPointExternalId,
+        durationMs,
+        createdAt
+      ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'sync_logs';
+  @override
+  VerificationContext validateIntegrity(Insertable<SyncLogRow> instance,
+      {bool isInserting = false}) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('id')) {
+      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
+    }
+    if (data.containsKey('task')) {
+      context.handle(
+          _taskMeta, task.isAcceptableOrUnknown(data['task']!, _taskMeta));
+    } else if (isInserting) {
+      context.missing(_taskMeta);
+    }
+    if (data.containsKey('event_type')) {
+      context.handle(_eventTypeMeta,
+          eventType.isAcceptableOrUnknown(data['event_type']!, _eventTypeMeta));
+    }
+    if (data.containsKey('status')) {
+      context.handle(_statusMeta,
+          status.isAcceptableOrUnknown(data['status']!, _statusMeta));
+    }
+    if (data.containsKey('message')) {
+      context.handle(_messageMeta,
+          message.isAcceptableOrUnknown(data['message']!, _messageMeta));
+    } else if (isInserting) {
+      context.missing(_messageMeta);
+    }
+    if (data.containsKey('details_json')) {
+      context.handle(
+          _detailsJsonMeta,
+          detailsJson.isAcceptableOrUnknown(
+              data['details_json']!, _detailsJsonMeta));
+    }
+    if (data.containsKey('region_code')) {
+      context.handle(
+          _regionCodeMeta,
+          regionCode.isAcceptableOrUnknown(
+              data['region_code']!, _regionCodeMeta));
+    }
+    if (data.containsKey('trading_point_external_id')) {
+      context.handle(
+          _tradingPointExternalIdMeta,
+          tradingPointExternalId.isAcceptableOrUnknown(
+              data['trading_point_external_id']!, _tradingPointExternalIdMeta));
+    }
+    if (data.containsKey('duration_ms')) {
+      context.handle(
+          _durationMsMeta,
+          durationMs.isAcceptableOrUnknown(
+              data['duration_ms']!, _durationMsMeta));
+    }
+    if (data.containsKey('created_at')) {
+      context.handle(_createdAtMeta,
+          createdAt.isAcceptableOrUnknown(data['created_at']!, _createdAtMeta));
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {id};
+  @override
+  SyncLogRow map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return SyncLogRow(
+      id: attachedDatabase.typeMapping
+          .read(DriftSqlType.int, data['${effectivePrefix}id'])!,
+      task: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}task'])!,
+      eventType: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}event_type'])!,
+      status: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}status']),
+      message: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}message'])!,
+      detailsJson: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}details_json']),
+      regionCode: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}region_code']),
+      tradingPointExternalId: attachedDatabase.typeMapping.read(
+          DriftSqlType.string,
+          data['${effectivePrefix}trading_point_external_id']),
+      durationMs: attachedDatabase.typeMapping
+          .read(DriftSqlType.int, data['${effectivePrefix}duration_ms']),
+      createdAt: attachedDatabase.typeMapping
+          .read(DriftSqlType.dateTime, data['${effectivePrefix}created_at'])!,
+    );
+  }
+
+  @override
+  $SyncLogsTable createAlias(String alias) {
+    return $SyncLogsTable(attachedDatabase, alias);
+  }
+}
+
+class SyncLogRow extends DataClass implements Insertable<SyncLogRow> {
+  final int id;
+  final String task;
+  final String eventType;
+  final String? status;
+  final String message;
+  final String? detailsJson;
+  final String? regionCode;
+  final String? tradingPointExternalId;
+  final int? durationMs;
+  final DateTime createdAt;
+  const SyncLogRow(
+      {required this.id,
+      required this.task,
+      required this.eventType,
+      this.status,
+      required this.message,
+      this.detailsJson,
+      this.regionCode,
+      this.tradingPointExternalId,
+      this.durationMs,
+      required this.createdAt});
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['id'] = Variable<int>(id);
+    map['task'] = Variable<String>(task);
+    map['event_type'] = Variable<String>(eventType);
+    if (!nullToAbsent || status != null) {
+      map['status'] = Variable<String>(status);
+    }
+    map['message'] = Variable<String>(message);
+    if (!nullToAbsent || detailsJson != null) {
+      map['details_json'] = Variable<String>(detailsJson);
+    }
+    if (!nullToAbsent || regionCode != null) {
+      map['region_code'] = Variable<String>(regionCode);
+    }
+    if (!nullToAbsent || tradingPointExternalId != null) {
+      map['trading_point_external_id'] =
+          Variable<String>(tradingPointExternalId);
+    }
+    if (!nullToAbsent || durationMs != null) {
+      map['duration_ms'] = Variable<int>(durationMs);
+    }
+    map['created_at'] = Variable<DateTime>(createdAt);
+    return map;
+  }
+
+  SyncLogsCompanion toCompanion(bool nullToAbsent) {
+    return SyncLogsCompanion(
+      id: Value(id),
+      task: Value(task),
+      eventType: Value(eventType),
+      status:
+          status == null && nullToAbsent ? const Value.absent() : Value(status),
+      message: Value(message),
+      detailsJson: detailsJson == null && nullToAbsent
+          ? const Value.absent()
+          : Value(detailsJson),
+      regionCode: regionCode == null && nullToAbsent
+          ? const Value.absent()
+          : Value(regionCode),
+      tradingPointExternalId: tradingPointExternalId == null && nullToAbsent
+          ? const Value.absent()
+          : Value(tradingPointExternalId),
+      durationMs: durationMs == null && nullToAbsent
+          ? const Value.absent()
+          : Value(durationMs),
+      createdAt: Value(createdAt),
+    );
+  }
+
+  factory SyncLogRow.fromJson(Map<String, dynamic> json,
+      {ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return SyncLogRow(
+      id: serializer.fromJson<int>(json['id']),
+      task: serializer.fromJson<String>(json['task']),
+      eventType: serializer.fromJson<String>(json['eventType']),
+      status: serializer.fromJson<String?>(json['status']),
+      message: serializer.fromJson<String>(json['message']),
+      detailsJson: serializer.fromJson<String?>(json['detailsJson']),
+      regionCode: serializer.fromJson<String?>(json['regionCode']),
+      tradingPointExternalId:
+          serializer.fromJson<String?>(json['tradingPointExternalId']),
+      durationMs: serializer.fromJson<int?>(json['durationMs']),
+      createdAt: serializer.fromJson<DateTime>(json['createdAt']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'id': serializer.toJson<int>(id),
+      'task': serializer.toJson<String>(task),
+      'eventType': serializer.toJson<String>(eventType),
+      'status': serializer.toJson<String?>(status),
+      'message': serializer.toJson<String>(message),
+      'detailsJson': serializer.toJson<String?>(detailsJson),
+      'regionCode': serializer.toJson<String?>(regionCode),
+      'tradingPointExternalId':
+          serializer.toJson<String?>(tradingPointExternalId),
+      'durationMs': serializer.toJson<int?>(durationMs),
+      'createdAt': serializer.toJson<DateTime>(createdAt),
+    };
+  }
+
+  SyncLogRow copyWith(
+          {int? id,
+          String? task,
+          String? eventType,
+          Value<String?> status = const Value.absent(),
+          String? message,
+          Value<String?> detailsJson = const Value.absent(),
+          Value<String?> regionCode = const Value.absent(),
+          Value<String?> tradingPointExternalId = const Value.absent(),
+          Value<int?> durationMs = const Value.absent(),
+          DateTime? createdAt}) =>
+      SyncLogRow(
+        id: id ?? this.id,
+        task: task ?? this.task,
+        eventType: eventType ?? this.eventType,
+        status: status.present ? status.value : this.status,
+        message: message ?? this.message,
+        detailsJson: detailsJson.present ? detailsJson.value : this.detailsJson,
+        regionCode: regionCode.present ? regionCode.value : this.regionCode,
+        tradingPointExternalId: tradingPointExternalId.present
+            ? tradingPointExternalId.value
+            : this.tradingPointExternalId,
+        durationMs: durationMs.present ? durationMs.value : this.durationMs,
+        createdAt: createdAt ?? this.createdAt,
+      );
+  @override
+  String toString() {
+    return (StringBuffer('SyncLogRow(')
+          ..write('id: $id, ')
+          ..write('task: $task, ')
+          ..write('eventType: $eventType, ')
+          ..write('status: $status, ')
+          ..write('message: $message, ')
+          ..write('detailsJson: $detailsJson, ')
+          ..write('regionCode: $regionCode, ')
+          ..write('tradingPointExternalId: $tradingPointExternalId, ')
+          ..write('durationMs: $durationMs, ')
+          ..write('createdAt: $createdAt')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(id, task, eventType, status, message,
+      detailsJson, regionCode, tradingPointExternalId, durationMs, createdAt);
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is SyncLogRow &&
+          other.id == this.id &&
+          other.task == this.task &&
+          other.eventType == this.eventType &&
+          other.status == this.status &&
+          other.message == this.message &&
+          other.detailsJson == this.detailsJson &&
+          other.regionCode == this.regionCode &&
+          other.tradingPointExternalId == this.tradingPointExternalId &&
+          other.durationMs == this.durationMs &&
+          other.createdAt == this.createdAt);
+}
+
+class SyncLogsCompanion extends UpdateCompanion<SyncLogRow> {
+  final Value<int> id;
+  final Value<String> task;
+  final Value<String> eventType;
+  final Value<String?> status;
+  final Value<String> message;
+  final Value<String?> detailsJson;
+  final Value<String?> regionCode;
+  final Value<String?> tradingPointExternalId;
+  final Value<int?> durationMs;
+  final Value<DateTime> createdAt;
+  const SyncLogsCompanion({
+    this.id = const Value.absent(),
+    this.task = const Value.absent(),
+    this.eventType = const Value.absent(),
+    this.status = const Value.absent(),
+    this.message = const Value.absent(),
+    this.detailsJson = const Value.absent(),
+    this.regionCode = const Value.absent(),
+    this.tradingPointExternalId = const Value.absent(),
+    this.durationMs = const Value.absent(),
+    this.createdAt = const Value.absent(),
+  });
+  SyncLogsCompanion.insert({
+    this.id = const Value.absent(),
+    required String task,
+    this.eventType = const Value.absent(),
+    this.status = const Value.absent(),
+    required String message,
+    this.detailsJson = const Value.absent(),
+    this.regionCode = const Value.absent(),
+    this.tradingPointExternalId = const Value.absent(),
+    this.durationMs = const Value.absent(),
+    this.createdAt = const Value.absent(),
+  })  : task = Value(task),
+        message = Value(message);
+  static Insertable<SyncLogRow> custom({
+    Expression<int>? id,
+    Expression<String>? task,
+    Expression<String>? eventType,
+    Expression<String>? status,
+    Expression<String>? message,
+    Expression<String>? detailsJson,
+    Expression<String>? regionCode,
+    Expression<String>? tradingPointExternalId,
+    Expression<int>? durationMs,
+    Expression<DateTime>? createdAt,
+  }) {
+    return RawValuesInsertable({
+      if (id != null) 'id': id,
+      if (task != null) 'task': task,
+      if (eventType != null) 'event_type': eventType,
+      if (status != null) 'status': status,
+      if (message != null) 'message': message,
+      if (detailsJson != null) 'details_json': detailsJson,
+      if (regionCode != null) 'region_code': regionCode,
+      if (tradingPointExternalId != null)
+        'trading_point_external_id': tradingPointExternalId,
+      if (durationMs != null) 'duration_ms': durationMs,
+      if (createdAt != null) 'created_at': createdAt,
+    });
+  }
+
+  SyncLogsCompanion copyWith(
+      {Value<int>? id,
+      Value<String>? task,
+      Value<String>? eventType,
+      Value<String?>? status,
+      Value<String>? message,
+      Value<String?>? detailsJson,
+      Value<String?>? regionCode,
+      Value<String?>? tradingPointExternalId,
+      Value<int?>? durationMs,
+      Value<DateTime>? createdAt}) {
+    return SyncLogsCompanion(
+      id: id ?? this.id,
+      task: task ?? this.task,
+      eventType: eventType ?? this.eventType,
+      status: status ?? this.status,
+      message: message ?? this.message,
+      detailsJson: detailsJson ?? this.detailsJson,
+      regionCode: regionCode ?? this.regionCode,
+      tradingPointExternalId:
+          tradingPointExternalId ?? this.tradingPointExternalId,
+      durationMs: durationMs ?? this.durationMs,
+      createdAt: createdAt ?? this.createdAt,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (id.present) {
+      map['id'] = Variable<int>(id.value);
+    }
+    if (task.present) {
+      map['task'] = Variable<String>(task.value);
+    }
+    if (eventType.present) {
+      map['event_type'] = Variable<String>(eventType.value);
+    }
+    if (status.present) {
+      map['status'] = Variable<String>(status.value);
+    }
+    if (message.present) {
+      map['message'] = Variable<String>(message.value);
+    }
+    if (detailsJson.present) {
+      map['details_json'] = Variable<String>(detailsJson.value);
+    }
+    if (regionCode.present) {
+      map['region_code'] = Variable<String>(regionCode.value);
+    }
+    if (tradingPointExternalId.present) {
+      map['trading_point_external_id'] =
+          Variable<String>(tradingPointExternalId.value);
+    }
+    if (durationMs.present) {
+      map['duration_ms'] = Variable<int>(durationMs.value);
+    }
+    if (createdAt.present) {
+      map['created_at'] = Variable<DateTime>(createdAt.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('SyncLogsCompanion(')
+          ..write('id: $id, ')
+          ..write('task: $task, ')
+          ..write('eventType: $eventType, ')
+          ..write('status: $status, ')
+          ..write('message: $message, ')
+          ..write('detailsJson: $detailsJson, ')
+          ..write('regionCode: $regionCode, ')
+          ..write('tradingPointExternalId: $tradingPointExternalId, ')
+          ..write('durationMs: $durationMs, ')
+          ..write('createdAt: $createdAt')
+          ..write(')'))
+        .toString();
+  }
+}
+
 abstract class _$AppDatabase extends GeneratedDatabase {
   _$AppDatabase(QueryExecutor e) : super(e);
   late final $UsersTable users = $UsersTable(this);
@@ -9238,6 +9735,7 @@ abstract class _$AppDatabase extends GeneratedDatabase {
   late final $StockItemsTable stockItems = $StockItemsTable(this);
   late final $OrderJobsTable orderJobs = $OrderJobsTable(this);
   late final $WarehousesTable warehouses = $WarehousesTable(this);
+  late final $SyncLogsTable syncLogs = $SyncLogsTable(this);
   @override
   Iterable<TableInfo<Table, Object?>> get allTables =>
       allSchemaEntities.whereType<TableInfo<Table, Object?>>();
@@ -9260,7 +9758,8 @@ abstract class _$AppDatabase extends GeneratedDatabase {
         orderLines,
         stockItems,
         orderJobs,
-        warehouses
+        warehouses,
+        syncLogs
       ];
   @override
   StreamQueryUpdateRules get streamUpdateRules => const StreamQueryUpdateRules(

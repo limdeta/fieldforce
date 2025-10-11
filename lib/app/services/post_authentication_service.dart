@@ -1,4 +1,5 @@
 import 'package:fieldforce/app/domain/repositories/app_user_repository.dart';
+import 'package:fieldforce/app/services/trading_point_sync_service.dart';
 import 'package:fieldforce/features/shop/domain/repositories/employee_repository.dart';
 import 'package:fieldforce/features/shop/domain/repositories/trading_point_repository.dart';
 import 'package:fieldforce/features/shop/domain/entities/employee.dart';
@@ -17,12 +18,14 @@ class PostAuthenticationService {
   final AppUserRepository appUserRepository;
   final TradingPointRepository tradingPointRepository;
   final IAuthApiService authApiService;
+  final TradingPointSyncService tradingPointSyncService;
 
   const PostAuthenticationService({
     required this.employeeRepository,
     required this.appUserRepository,
     required this.tradingPointRepository,
     required this.authApiService,
+    required this.tradingPointSyncService,
   });
 
   /// Создает Employee и AppUser для аутентифицированного пользователя
@@ -97,11 +100,11 @@ class PostAuthenticationService {
   /// Получает актуальную информацию и обновляет Employee если необходимо
   Future<Either<Failure, void>> syncUserInfo(User authUser) async {
     try {
-      final userInfoResult = await authApiService.getUserInfo();
+          final userInfoResult = await authApiService.getUserInfo();
 
-      return userInfoResult.fold(
-        (failure) => Left(failure),
-        (userData) async {
+          return userInfoResult.fold(
+            (failure) => Left(failure),
+            (userData) async {
           // Проверяем, активен ли аккаунт
           final isActive = userData['isActive'] as bool? ?? true;
           if (!isActive) {
@@ -110,8 +113,21 @@ class PostAuthenticationService {
             // Например, пометить пользователя как неактивного в локальной БД
           }
           
+          // Синхронизируем торговые точки пользователя до выбора текущей точки
+          String? syncedExternalId;
+          final tradingPointSyncResult = await tradingPointSyncService.syncTradingPointsForUser(authUser);
+          tradingPointSyncResult.fold(
+            (failure) => _logger.warning('Ошибка синхронизации торговых точек: ${failure.message}'),
+            (summary) {
+              syncedExternalId = summary.selectedExternalId;
+              _logger.fine(
+                'Торговые точки актуализированы: сохранено ${summary.savedCount}, назначено ${summary.assignedCount}',
+              );
+            },
+          );
+
           // Экспериментальный парсинг outlet из данных пользователя
-          await _parseAndSelectOutlet(userData, authUser);
+          await _parseAndSelectOutlet(userData, authUser, syncedExternalId);
           
           final syncResult = await _syncEmployeeData(authUser, userData);
           return syncResult.fold(
@@ -229,16 +245,22 @@ class PostAuthenticationService {
 
   /// Экспериментальный метод для парсинга и автоматического выбора outlet
   /// Извлекает outlet из данных пользователя и устанавливает его как текущий
-  Future<void> _parseAndSelectOutlet(Map<String, dynamic> userData, User authUser) async {
+  Future<void> _parseAndSelectOutlet(
+    Map<String, dynamic> userData,
+    User authUser, [
+    String? syncedExternalId,
+  ]) async {
     try {
       // Экспериментальный парсинг outlet из userData
       final outletData = userData['outlet'];
-      if (outletData == null) {
-        _logger.info('🏪 Outlet не найден в данных пользователя - пропускаем авто-выбор');
+      if (outletData == null && syncedExternalId == null) {
+        _logger.info('🏪 Outlet не найден в данных пользователя и нет выбранной точки из синхронизации');
         return;
       }
 
-      _logger.info('🏪 Найден outlet в данных пользователя: $outletData');
+      if (outletData != null) {
+        _logger.info('🏪 Найден outlet в данных пользователя: $outletData');
+      }
 
       // Получаем текущего пользователя по userId и проверяем выбранную точку
       final currentUserResult = await appUserRepository.getAppUserByUserId(authUser.id!);
@@ -268,12 +290,14 @@ class PostAuthenticationService {
 
       if (outletData is Map<String, dynamic>) {
         outletId = outletData['id'] as int?;
-        outletExternalId = outletData['externalId'] as String?;
+        outletExternalId = outletData['externalId'] as String? ?? outletData['vendorId']?.toString();
       } else if (outletData is int) {
         outletId = outletData;
       } else if (outletData is String) {
         outletExternalId = outletData;
       }
+
+      outletExternalId ??= syncedExternalId;
 
       if (outletId == null && outletExternalId == null) {
         _logger.warning('🏪 Не удалось извлечь ID или externalId outlet из данных: $outletData');

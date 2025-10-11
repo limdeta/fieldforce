@@ -126,7 +126,7 @@ class StockSyncService {
     Uint8List? requestData,
   }) async {
     // Создаем HTTP клиент с поддержкой самоподписанных сертификатов
-    final ioClient = HttpClient();
+  final ioClient = HttpClient()..autoUncompress = false;
     ioClient.badCertificateCallback = (X509Certificate cert, String host, int port) => true;
     final client = IOClient(ioClient);
     
@@ -134,8 +134,8 @@ class StockSyncService {
       final uri = Uri.parse(url);
       
       final headers = <String, String>{
-        'Accept': 'application/x-protobuf',
-        'Accept-Encoding': 'gzip',
+  'Accept': 'application/x-protobuf',
+  'Accept-Encoding': 'gzip, deflate',
         'Content-Type': 'application/x-protobuf',
         'User-Agent': 'FieldForce/1.0 (Mobile)',
       };
@@ -166,7 +166,9 @@ class StockSyncService {
       
       // Обрабатываем gzip-сжатые данные
       var responseBytes = response.bodyBytes;
-      final isGzipCompressed = response.headers['content-encoding'] == 'gzip';
+  final String? contentEncodingHeader = response.headers['content-encoding'];
+  final String normalizedEncoding = contentEncodingHeader?.toLowerCase() ?? '';
+  final bool isGzipCompressed = normalizedEncoding == 'gzip';
       
       _logger.info('🔍 Content-Encoding: ${response.headers['content-encoding']}');
       _logger.info('🔍 Content-Type: ${response.headers['content-type']}');
@@ -195,7 +197,7 @@ class StockSyncService {
         }
       }
       
-      if (isGzipCompressed) {
+      if (normalizedEncoding == 'gzip') {
         // Проверяем действительно ли данные сжаты gzip
         if (responseBytes.length >= 2 && responseBytes[0] == 0x1f && responseBytes[1] == 0x8b) {
           try {
@@ -210,6 +212,23 @@ class StockSyncService {
         } else {
           _logger.fine('⚠️ Сервер указал content-encoding=gzip, но данные не сжаты. Используем как есть.');
           _logger.info('� Вероятно ошибка конфигурации веб-сервера - он указывает gzip когда данные не сжаты');
+        }
+      } else if (normalizedEncoding == 'deflate') {
+        try {
+          _logger.fine('📦 Распаковка deflate данных через ZLibCodec');
+          responseBytes = Uint8List.fromList(ZLibCodec().decode(responseBytes));
+          _logger.info('✅ Deflate данные успешно распакованы (${responseBytes.length} байт)');
+        } catch (e, st) {
+          _logger.warning('⚠️ Не удалось распаковать deflate стандартным ZLibCodec: $e');
+          try {
+            _logger.fine('📦 Повторная распаковка deflate в raw режиме');
+            responseBytes = Uint8List.fromList(ZLibCodec(raw: true).decode(responseBytes));
+            _logger.info('✅ Deflate данные распакованы в raw режиме (${responseBytes.length} байт)');
+          } catch (rawError) {
+            _logger.severe('❌ Ошибка распаковки deflate: $rawError', rawError, st);
+            _logger.info('🔍 Первые 50 байт сырых данных: ${responseBytes.take(50).map((b) => b.toRadixString(16).padLeft(2, '0')).join(' ')}');
+            rethrow;
+          }
         }
       }
       

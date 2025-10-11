@@ -1,3 +1,16 @@
+import 'package:flutter/widgets.dart';
+
+@Deprecated('Legacy protobuf sync screen has been removed. Use DataPage instead.')
+class ProtobufSyncPage extends StatelessWidget {
+  const ProtobufSyncPage({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    throw UnimplementedError('Legacy protobuf sync screen has been removed.');
+  }
+}
+
+/* Legacy implementation retained below for historical reference.
 // lib/features/shop/presentation/pages/protobuf_sync_page.dart
 
 import 'package:flutter/material.dart';
@@ -832,3 +845,4 @@ class _ProtobufSyncView extends StatelessWidget {
     );
   }
 }
+*/

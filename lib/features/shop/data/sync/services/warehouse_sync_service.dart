@@ -52,17 +52,22 @@ class WarehouseSyncService {
       url,
       queryParameters: queryParameters,
     );
-    final response = WarehouseSyncResponse.fromBuffer(responseBytes);
-
-    _logger.info('🏭 Получено складов: ${response.warehouses.length} (ts=${response.syncTimestamp})');
-    return response;
+    try {
+      final response = WarehouseSyncResponse.fromBuffer(responseBytes);
+      _logger.info('🏭 Получено складов: ${response.warehouses.length} (ts=${response.syncTimestamp})');
+      return response;
+    } catch (e, stackTrace) {
+      final previewBytes = responseBytes.take(40).map((b) => b.toRadixString(16).padLeft(2, '0')).join(' ');
+      _logger.severe('❌ Ошибка парсинга ответа складов: $e. Первые байты: $previewBytes', e, stackTrace);
+      rethrow;
+    }
   }
 
   Future<Uint8List> _makeProtobufRequest(
     String url, {
     Map<String, String>? queryParameters,
   }) async {
-    final ioClient = HttpClient();
+    final ioClient = HttpClient()..autoUncompress = false;
     ioClient.badCertificateCallback = (cert, host, port) => true;
     final client = IOClient(ioClient);
 
@@ -70,7 +75,7 @@ class WarehouseSyncService {
       final uri = Uri.parse(url).replace(queryParameters: queryParameters);
       final headers = <String, String>{
         'Accept': 'application/x-protobuf',
-        'Accept-Encoding': 'gzip',
+        'Accept-Encoding': 'gzip, deflate',
         'User-Agent': 'FieldForce-Mobile/1.0',
       };
 
@@ -82,13 +87,47 @@ class WarehouseSyncService {
       }
 
       final response = await client.get(uri, headers: headers);
-
       if (response.statusCode != 200) {
         throw HttpException('HTTP ${response.statusCode}: ${response.reasonPhrase}', uri: uri);
       }
 
-      _logger.info('🏭 Ответ склада: ${response.bodyBytes.length} байт, encoding=${response.headers['content-encoding']}');
-      return response.bodyBytes;
+      var responseBytes = response.bodyBytes;
+      final String? encodingHeader = response.headers['content-encoding'];
+      final normalizedEncoding = encodingHeader?.toLowerCase() ?? '';
+
+      _logger.info('🏭 Ответ склада: ${responseBytes.length} байт, encoding=$encodingHeader');
+      if (responseBytes.isNotEmpty) {
+        _logger.fine('🏭 Первые 16 байт (raw): ${responseBytes.take(16).map((b) => b.toRadixString(16).padLeft(2, '0')).join(' ')}');
+      }
+
+      try {
+        if (normalizedEncoding == 'gzip') {
+          if (responseBytes.length >= 2 && responseBytes[0] == 0x1f && responseBytes[1] == 0x8b) {
+            _logger.fine('🏭 Распаковка gzip ответа складов');
+            responseBytes = Uint8List.fromList(gzip.decode(responseBytes));
+            _logger.info('🏭 Gzip распакован: ${responseBytes.length} байт');
+          } else {
+            _logger.warning('⚠️ Заголовок gzip указан, но сигнатура не совпадает. Используем данные как есть.');
+          }
+        } else if (normalizedEncoding == 'deflate') {
+          _logger.fine('🏭 Распаковка deflate ответа складов');
+          try {
+            responseBytes = Uint8List.fromList(ZLibCodec().decode(responseBytes));
+          } catch (_) {
+            responseBytes = Uint8List.fromList(ZLibCodec(raw: true).decode(responseBytes));
+          }
+          _logger.info('🏭 Deflate распакован: ${responseBytes.length} байт');
+        }
+      } catch (decodeError, decodeStack) {
+        _logger.severe('❌ Не удалось распаковать ответ складов: $decodeError', decodeError, decodeStack);
+        rethrow;
+      }
+
+      if (responseBytes.isNotEmpty) {
+        _logger.fine('🏭 Первые 16 байт после распаковки: ${responseBytes.take(16).map((b) => b.toRadixString(16).padLeft(2, '0')).join(' ')}');
+      }
+
+      return responseBytes;
     } finally {
       client.close();
     }

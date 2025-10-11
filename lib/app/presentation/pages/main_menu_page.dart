@@ -79,11 +79,6 @@ class _MainMenuPageState extends State<MainMenuPage> {
       route: '/data-sync',
     ),
     MenuItem(
-      title: 'Протобуф синхронизация',
-      icon: Icons.sync_alt,
-      route: '/protobuf-sync',
-    ),
-    MenuItem(
       title: 'Профиль',
       icon: Icons.person,
       route: '/profile',
@@ -226,8 +221,6 @@ class _MainMenuPageState extends State<MainMenuPage> {
         Navigator.pushNamed(context, '/orders');
       } else if (item.route == '/data-sync') {
         Navigator.pushNamed(context, '/data-sync');
-      } else if (item.route == '/protobuf-sync') {
-        Navigator.pushNamed(context, '/protobuf-sync');
       } else if (item.route == '/check-updates') {
         _handleCheckUpdates();
       } else if (item.route == '/logout') {

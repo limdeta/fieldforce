@@ -95,7 +95,7 @@ class RegionalSyncService {
   /// Выполняет HTTP запрос с protobuf данными
   Future<Uint8List> _makeProtobufRequest(String url, {Uint8List? requestData}) async {
     // Создаем HTTP клиент с поддержкой самоподписанных сертификатов
-    final ioClient = HttpClient();
+  final ioClient = HttpClient()..autoUncompress = false;
     ioClient.badCertificateCallback = (X509Certificate cert, String host, int port) => true;
     final client = IOClient(ioClient);
     

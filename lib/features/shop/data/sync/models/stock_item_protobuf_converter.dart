@@ -8,21 +8,6 @@ class StockItemProtobufConverter {
   static StockItem fromProtobuf(pb.RegionalStockItem pbStockItem) {
     final now = DateTime.now();
     
-    // Диагностика для первых элементов
-    if (pbStockItem.productCode == 187621) {
-      print('🔍 ДИАГНОСТИКА StockItem для продукта ${pbStockItem.productCode}:');
-      print('   publicStock: "${pbStockItem.publicStock}"');
-      print('   multiplicity: ${pbStockItem.multiplicity}');
-      print('   regionalBasePrice: ${pbStockItem.regionalBasePrice}');
-      print('   stock (new field): ${pbStockItem.stock}');
-      print('   hasStock: ${pbStockItem.hasStock()}');
-    }
-    
-    // Дополнительная диагностика для всех элементов
-    if (pbStockItem.stock > 0) {
-      print('✅ НАЙДЕН элемент с stock > 0: productCode=${pbStockItem.productCode}, stock=${pbStockItem.stock}, publicStock="${pbStockItem.publicStock}"');
-    }
-    
     return StockItem(
       id: pbStockItem.id,
       productCode: pbStockItem.productCode,

@@ -20,6 +20,7 @@ import 'package:fieldforce/app/database/repositories/session_repository_impl.dar
 import 'package:fieldforce/app/database/repositories/employee_repository_drift.dart';
 import 'package:fieldforce/app/database/repositories/app_user_repository_drift.dart';
 import 'package:fieldforce/app/database/repositories/user_track_repository_drift.dart';
+import 'package:fieldforce/app/database/repositories/sync_log_repository.dart';
 import 'package:fieldforce/app/services/simple_update_service.dart';
 import 'package:fieldforce/app/services/category_tree_cache_service.dart';
 import 'package:fieldforce/app/services/post_authentication_service.dart';
@@ -40,6 +41,7 @@ import 'package:fieldforce/features/authentication/domain/usecases/get_current_s
 import 'package:fieldforce/features/authentication/presentation/bloc/bloc.dart';
 import 'package:fieldforce/features/navigation/tracking/presentation/bloc/tracking_bloc.dart';
 import 'package:fieldforce/features/navigation/tracking/presentation/bloc/user_tracks_bloc.dart';
+import 'package:fieldforce/app/presentation/bloc/data_sync/data_sync_bloc.dart';
 import 'package:fieldforce/features/shop/data/fixtures/product_fixture_service.dart';
 import 'package:fieldforce/app/database/repositories/trading_point_repository_drift.dart';
 import 'package:fieldforce/app/domain/repositories/app_user_repository.dart';
@@ -78,6 +80,11 @@ import 'package:fieldforce/features/shop/domain/usecases/update_cart_stock_item_
 import 'package:fieldforce/features/shop/domain/usecases/remove_from_cart_usecase.dart';
 import 'package:fieldforce/features/shop/domain/usecases/update_cart_usecase.dart';
 import 'package:fieldforce/features/shop/domain/usecases/clear_cart_usecase.dart';
+import 'package:fieldforce/features/shop/domain/usecases/sync_trading_points_usecase.dart';
+import 'package:fieldforce/features/shop/domain/usecases/sync_categories_usecase.dart';
+import 'package:fieldforce/features/shop/domain/usecases/sync_region_products_usecase.dart';
+import 'package:fieldforce/features/shop/domain/usecases/sync_region_stock_usecase.dart';
+import 'package:fieldforce/features/shop/domain/usecases/sync_outlet_prices_usecase.dart';
 import 'package:fieldforce/features/shop/domain/usecases/submit_order_usecase.dart';
 import 'package:fieldforce/features/shop/domain/usecases/sync_warehouses_only_usecase.dart';
 import 'package:fieldforce/features/shop/domain/usecases/get_orders_usecase.dart';
@@ -92,7 +99,6 @@ import 'package:fieldforce/features/shop/data/sync/services/warehouse_sync_servi
 import 'package:fieldforce/features/shop/data/sync/repositories/protobuf_sync_repository.dart';
 import 'package:fieldforce/features/shop/presentation/bloc/cart_bloc.dart';
 import 'package:fieldforce/features/shop/presentation/bloc/orders_bloc.dart';
-import 'package:fieldforce/features/shop/presentation/bloc/protobuf_sync_bloc.dart';
 import 'package:fieldforce/features/shop/data/fixtures/order_fixture_service.dart';
 import 'package:fieldforce/features/shop/domain/repositories/stock_item_repository.dart';
 import 'package:fieldforce/app/database/repositories/stock_item_repository_drift.dart';
@@ -341,6 +347,29 @@ Future<void> setupTestServiceLocator({bool startBackgroundWorkers = true}) async
     ),
   );
 
+  getIt.registerLazySingleton<SyncTradingPointsUseCase>(
+    () => SyncTradingPointsUseCase(getIt<TradingPointSyncService>()),
+  );
+
+  getIt.registerLazySingleton<SyncCategoriesUseCase>(
+    () => SyncCategoriesUseCase(
+      sessionManager: getIt<SessionManager>(),
+      categoryRepository: getIt<CategoryRepository>(),
+    ),
+  );
+
+  getIt.registerLazySingleton<SyncRegionProductsUseCase>(
+    () => SyncRegionProductsUseCase(getIt<ProtobufSyncCoordinator>()),
+  );
+
+  getIt.registerLazySingleton<SyncRegionStockUseCase>(
+    () => SyncRegionStockUseCase(getIt<ProtobufSyncCoordinator>()),
+  );
+
+  getIt.registerLazySingleton<SyncOutletPricesUseCase>(
+    () => SyncOutletPricesUseCase(getIt<ProtobufSyncCoordinator>()),
+  );
+
   // BLoCs
   getIt.registerLazySingleton<CartBloc>(
     () => CartBloc(
@@ -362,11 +391,16 @@ Future<void> setupTestServiceLocator({bool startBackgroundWorkers = true}) async
     ),
   );
 
-  getIt.registerFactory<ProtobufSyncBloc>(
-    () => ProtobufSyncBloc(
-      performProtobufSyncUseCase: getIt<PerformProtobufSyncUseCase>(),
-      syncWarehousesOnlyUseCase: getIt<SyncWarehousesOnlyUseCase>(),
-    ),
+  getIt.registerLazySingleton<DataSyncBloc>(
+    () => DataSyncBloc(
+      syncTradingPointsUseCase: getIt<SyncTradingPointsUseCase>(),
+      syncCategoriesUseCase: getIt<SyncCategoriesUseCase>(),
+      syncRegionProductsUseCase: getIt<SyncRegionProductsUseCase>(),
+      syncRegionStockUseCase: getIt<SyncRegionStockUseCase>(),
+      syncOutletPricesUseCase: getIt<SyncOutletPricesUseCase>(),
+      syncLogRepository: getIt<SyncLogRepository>(),
+    )..add(const DataSyncInitialize()),
+    dispose: (bloc) => bloc.close(),
   );
 
   getIt.registerLazySingleton<AppUserRepository>(
@@ -463,6 +497,10 @@ Future<void> setupTestServiceLocator({bool startBackgroundWorkers = true}) async
       getIt<AppDatabase>(),
       getIt<EmployeeRepositoryDrift>(),
     ),
+  );
+
+  getIt.registerLazySingleton<SyncLogRepository>(
+    () => SyncLogRepository(getIt<AppDatabase>()),
   );
 
   // TrackManager как синглтон для управления GPS треками
@@ -566,6 +604,7 @@ Future<void> setupTestServiceLocator({bool startBackgroundWorkers = true}) async
       appUserRepository: getIt<AppUserRepository>(),
       tradingPointRepository: getIt<TradingPointRepository>(),
       authApiService: getIt<IAuthApiService>(),
+      tradingPointSyncService: getIt<TradingPointSyncService>(),
     ),
   );
 

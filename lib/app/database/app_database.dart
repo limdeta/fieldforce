@@ -25,6 +25,7 @@ import 'tables/order_line_table.dart';
 import 'tables/stock_item_table.dart';
 import 'tables/warehouse_table.dart';
 import 'tables/order_job_table.dart';
+import 'tables/sync_log_table.dart';
 
 part 'app_database.g.dart';
 
@@ -50,6 +51,7 @@ final Logger _dbLogger = Logger('AppDatabase');
   StockItems,
   OrderJobs,
   Warehouses,
+  SyncLogs,
 ])
 class AppDatabase extends _$AppDatabase {
   AppDatabase() : super(_openConnection('app_database.db'));
@@ -59,7 +61,7 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase.forTesting(DatabaseConnection super.connection);
 
   @override
-  int get schemaVersion => 5;
+  int get schemaVersion => 6;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -90,11 +92,22 @@ class AppDatabase extends _$AppDatabase {
         await m.createTable(warehouses);
       }
 
+      if (from < 6) {
+        await m.createTable(syncLogs);
+      }
+
       await m.createAll();
     },
     beforeOpen: (details) async {
       // Включаем foreign key constraints для всех соединений
       await customStatement('PRAGMA foreign_keys = ON');
+
+      await customStatement(
+        'CREATE INDEX IF NOT EXISTS idx_sync_logs_created_at ON sync_logs(created_at DESC);',
+      );
+      await customStatement(
+        'CREATE INDEX IF NOT EXISTS idx_sync_logs_task_created_at ON sync_logs(task, created_at DESC);',
+      );
       
       if (details.hadUpgrade) {
         _dbLogger.info('БД была обновлена с версии ${details.versionBefore} на ${details.versionNow}');

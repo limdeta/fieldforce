@@ -65,6 +65,20 @@ class ProductFixtureService {
       regionCode: 'K3V',
       isPickUpPoint: true,
     ),
+    _FixtureWarehouse(
+      id: 201,
+      name: 'Магадан Центральный',
+      vendorId: 'M3V_MAIN',
+      regionCode: 'M3V',
+      isPickUpPoint: false,
+    ),
+    _FixtureWarehouse(
+      id: 202,
+      name: 'Магадан ПВЗ',
+      vendorId: 'M3V_PICKUP',
+      regionCode: 'M3V',
+      isPickUpPoint: true,
+    ),
   ];
 
   /// Загружает продукты в зависимости от типа фикстуры
@@ -347,6 +361,8 @@ class ProductFixtureService {
         ]);
     }
 
+    _ensureRegionalCoverage(product, stockItems, forceInStock: forceInStock);
+
     return stockItems;
   }
   
@@ -377,6 +393,57 @@ class ProductFixtureService {
       updatedAt: DateTime.now(),
     );
   }
+    void _ensureRegionalCoverage(
+      Product product,
+      List<StockItem> stockItems, {
+      required bool forceInStock,
+    }) {
+      if (stockItems.isEmpty) {
+        final fallbackWarehouse = _fixtureWarehouseByRegion('P3V');
+        stockItems.add(
+          _createStockItem(
+            product,
+            fallbackWarehouse,
+            forceInStock ? 15 : 8,
+            10000,
+          ),
+        );
+      }
+
+      var basePrice = stockItems.first.defaultPrice;
+      if (basePrice <= 0) {
+        basePrice = 10000;
+      }
+
+      for (final region in const ['P3V', 'K3V', 'M3V']) {
+        final warehouse = _fixtureWarehouseByRegion(region);
+        final hasRegion = stockItems.any((item) => item.warehouseId == warehouse.id);
+
+        if (!hasRegion) {
+          final stockValue = forceInStock ? 14 : 6;
+          stockItems.add(
+            _createStockItem(
+              product,
+              warehouse,
+              stockValue,
+              _regionalPrice(basePrice, region),
+            ),
+          );
+        }
+      }
+    }
+
+    int _regionalPrice(int basePrice, String regionCode) {
+      switch (regionCode) {
+        case 'K3V':
+          return basePrice + 400;
+        case 'M3V':
+          return basePrice + 250;
+        default:
+          return basePrice;
+      }
+    }
+
 
   Future<void> _ensureFixtureWarehouses() async {
     final warehouseRepository = GetIt.instance<WarehouseRepository>();
@@ -407,6 +474,29 @@ class ProductFixtureService {
       _logger.warning('⚠️ Фикстурный склад с id=$id не найден, используем первый по умолчанию');
       return _fixtureWarehouses.first;
     }
+  }
+
+  _FixtureWarehouse _fixtureWarehouseByRegion(String regionCode, {bool preferPickUp = false}) {
+    final candidates = _fixtureWarehouses
+        .where((warehouse) => warehouse.regionCode == regionCode)
+        .toList();
+
+    if (candidates.isEmpty) {
+      _logger.warning('⚠️ Фикстурный склад для региона $regionCode не найден, используем первый по умолчанию');
+      return _fixtureWarehouses.first;
+    }
+
+    if (preferPickUp) {
+      return candidates.firstWhere(
+        (warehouse) => warehouse.isPickUpPoint,
+        orElse: () => candidates.first,
+      );
+    }
+
+    return candidates.firstWhere(
+      (warehouse) => !warehouse.isPickUpPoint,
+      orElse: () => candidates.first,
+    );
   }
 }
 

@@ -29,7 +29,9 @@ class TradingPointSyncService {
   final TradingPointRepository _tradingPointRepository;
   final AppUserRepository _appUserRepository;
 
-  Future<Either<Failure, void>> syncTradingPointsForUser(User authUser) async {
+  Future<Either<Failure, TradingPointSyncSummary>> syncTradingPointsForUser(
+    User authUser,
+  ) async {
     if (authUser.id == null) {
       return const Left(ValidationFailure('User id is required to sync trading points'));
     }
@@ -47,21 +49,42 @@ class TradingPointSyncService {
 
           if (payload.tradingPoints.isEmpty) {
             _logger.info('API синхронизации торговых точек вернул пустой список.');
-            return const Right(null);
+            return Right(
+              TradingPointSyncSummary(
+                savedCount: 0,
+                assignedCount: 0,
+                regionCodes: const [],
+                selectedExternalId: payload.selectedExternalId,
+              ),
+            );
           }
 
-          final savedPoints = await _saveAndAssignTradingPoints(
+          final savedResult = await _saveAndAssignTradingPoints(
             payload.tradingPoints,
             appUser.employee,
           );
 
-          await _updateAppUserState(
+          final selectedTradingPoint = await _updateAppUserState(
             appUser: appUser,
-            savedPoints: savedPoints,
+            savedPoints: savedResult.savedPoints,
             selectedExternalId: payload.selectedExternalId,
           );
 
-          return const Right(null);
+          final summary = TradingPointSyncSummary(
+            savedCount: savedResult.savedPoints.length,
+            assignedCount: savedResult.assignedCount,
+            regionCodes: savedResult.savedPoints.values
+                .map((tp) => tp.region)
+                .whereType<String>()
+                .map((region) => region.trim())
+                .where((region) => region.isNotEmpty)
+                .toSet()
+                .toList(),
+            selectedExternalId:
+                selectedTradingPoint?.externalId ?? payload.selectedExternalId,
+          );
+
+          return Right(summary);
         },
       );
     } catch (e, stackTrace) {
@@ -104,11 +127,12 @@ class TradingPointSyncService {
     }
   }
 
-  Future<Map<String, TradingPoint>> _saveAndAssignTradingPoints(
+  Future<_SavedTradingPointsResult> _saveAndAssignTradingPoints(
     List<Map<String, dynamic>> pointsJson,
     Employee employee,
   ) async {
     final Map<String, TradingPoint> savedPoints = {};
+    var assignedCount = 0;
 
     for (final pointJson in pointsJson) {
       late TradingPoint tradingPoint;
@@ -133,23 +157,29 @@ class TradingPointSyncService {
             (failure) => _logger.warning(
               'Не удалось привязать торговую точку ${savedPoint.externalId} к сотруднику ${employee.id}: ${failure.message}',
             ),
-            (_) => _logger.fine('Торговая точка ${savedPoint.externalId} привязана к сотруднику ${employee.id}'),
+            (_) {
+              assignedCount++;
+              _logger.fine('Торговая точка ${savedPoint.externalId} привязана к сотруднику ${employee.id}');
+            },
           );
         },
       );
     }
 
-    return savedPoints;
+    return _SavedTradingPointsResult(
+      savedPoints: savedPoints,
+      assignedCount: assignedCount,
+    );
   }
 
-  Future<void> _updateAppUserState({
+  Future<TradingPoint?> _updateAppUserState({
     required AppUser appUser,
     required Map<String, TradingPoint> savedPoints,
     required String? selectedExternalId,
   }) async {
     if (savedPoints.isEmpty) {
       _logger.info('Нет сохраненных торговых точек для обновления состояния пользователя.');
-      return;
+      return appUser.selectedTradingPoint;
     }
 
     final updatedEmployee = appUser.employee.copyWithTradingPoints(savedPoints.values.toList());
@@ -190,6 +220,8 @@ class TradingPointSyncService {
       (failure) => _logger.warning('Не удалось обновить AppSession после синхронизации торговых точек: ${failure.message}'),
       (_) => _logger.fine('AppSession обновлен с актуальными торговыми точками'),
     );
+
+    return selectedTradingPoint;
   }
 
   _TradingPointSyncPayload _parsePayload(dynamic data) {
@@ -349,4 +381,28 @@ class _TradingPointSyncPayload {
 
   final List<Map<String, dynamic>> tradingPoints;
   final String? selectedExternalId;
+}
+
+class TradingPointSyncSummary {
+  const TradingPointSyncSummary({
+    required this.savedCount,
+    required this.assignedCount,
+    required this.regionCodes,
+    required this.selectedExternalId,
+  });
+
+  final int savedCount;
+  final int assignedCount;
+  final List<String> regionCodes;
+  final String? selectedExternalId;
+}
+
+class _SavedTradingPointsResult {
+  const _SavedTradingPointsResult({
+    required this.savedPoints,
+    required this.assignedCount,
+  });
+
+  final Map<String, TradingPoint> savedPoints;
+  final int assignedCount;
 }

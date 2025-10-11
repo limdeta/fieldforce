@@ -24,11 +24,11 @@ import 'app/services/simple_update_service.dart';
 import 'app/presentation/pages/routes_page.dart';
 import 'app/presentation/pages/profile_page.dart';
 import 'app/presentation/pages/data_page.dart';
+import 'app/presentation/pages/sync_log_page.dart';
 import 'features/shop/presentation/pages/product_catalog_page.dart';
 import 'features/shop/presentation/pages/product_categories_page.dart';
 import 'features/shop/presentation/pages/orders_page.dart';
 import 'features/shop/presentation/pages/promotions_page.dart';
-import 'features/shop/presentation/pages/protobuf_sync_page.dart';
 
 /// Удаляет старую базу данных в dev режиме для чистого старта
 Future<void> _cleanDatabaseInDevMode() async {
@@ -114,7 +114,7 @@ class FieldforceApp extends StatelessWidget {
             '/cart': (context) => const CartPage(),
             '/orders': (context) => const OrdersPage(),
             '/data-sync': (context) => const DataPage(),
-            '/protobuf-sync': (context) => const ProtobufSyncPage(),
+            '/sync-log': (context) => const SyncLogPage(),
           },
           ),
         ),

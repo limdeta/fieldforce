@@ -1,6 +1,7 @@
 // lib/features/shop/data/sync/services/protobuf_sync_coordinator.dart
 
 import 'package:fieldforce/app/services/category_tree_cache_service.dart';
+import 'package:fieldforce/shared/either.dart';
 import 'package:fieldforce/shared/failures.dart';
 import 'package:logging/logging.dart';
 
@@ -15,6 +16,7 @@ import 'regional_sync_service.dart';
 import 'stock_sync_service.dart';
 import 'outlet_pricing_sync_service.dart';
 import 'warehouse_sync_service.dart';
+import 'package:fieldforce/features/shop/domain/entities/sync_report.dart';
 
 /// Координатор для управления protobuf синхронизацией
 /// 
@@ -71,173 +73,79 @@ class ProtobufSyncCoordinator {
     };
     
     try {
-      // 0. Загружаем метаданные складов
-      _logger.info('🏭 Загрузка складов региона...');
-      onProgress?.call('Загрузка складов', 0.1);
+      onProgress?.call('Подготовка', 0.1);
 
-      final warehouseResponse = await _warehouseSyncService.fetchWarehouses(regionVendorId: regionCode);
-      final warehouses = WarehouseProtobufConverter.fromProtoList(warehouseResponse.warehouses);
-
-      final clearResult = await _warehouseRepository.clearWarehousesByRegion(regionCode);
-      if (clearResult.isLeft()) {
-        final failure = clearResult.fold((f) => f, (r) => null)!;
-        _logger.warning('⚠️ Ошибка очистки складов региона: ${failure.message}');
-        result['errors'].add(failure.message);
-      }
-
-      final saveWarehousesResult = await _warehouseRepository.saveWarehouses(warehouses);
-      saveWarehousesResult.fold(
+      onProgress?.call('Загрузка продуктов', 0.2);
+      final productsEither = await syncRegionalProducts(regionCode);
+      final productsReport = productsEither.fold<SyncReport?>(
         (failure) {
-          _logger.severe('❌ Ошибка сохранения складов: ${failure.message}');
+          _logger.warning('⚠️ Ошибка синхронизации продуктов региона $regionCode: ${failure.message}');
           result['errors'].add(failure.message);
+          result['success'] = false;
+          return null;
         },
-        (_) {
-          result['warehouses_synced'] = warehouses.length;
-          _logger.info('🏭 Складов сохранено: ${warehouses.length}');
+        (report) {
+          result['products_synced'] = report.processedCount;
+          return report;
         },
       );
 
-      // 1. Загружаем продукты региона
-      _logger.info('📦 Загрузка продуктов региона...');
-      onProgress?.call('Загрузка продуктов', 0.2);
-      
-  final regionalResponse = await _regionalSyncService.getRegionalProducts(regionCode);
-      final products = ProductProtobufConverter.fromProtobufList(regionalResponse.products);
-      
-      final saveResult = await _productRepository.saveProducts(products);
-      if (saveResult.isLeft()) {
-        final failure = saveResult.fold((f) => f, (r) => null)!;
-        _logger.warning('⚠️ Ошибка сохранения: ${failure.message}');
-        result['errors'].add(failure.message);
-        result['success'] = false;
+      if (productsReport == null) {
         return result;
-      } else {
-        result['products_synced'] = products.length;
-        _logger.info('✅ Сохранено ${products.length} продуктов');
       }
 
-      // 2. Загружаем остатки
-      _logger.info('📦 Загрузка остатков...');
-      onProgress?.call('Загрузка остатков', 0.5);
-      
-  final stockResponse = await _stockSyncService.getRegionalStock(regionCode);
-      _logger.info('✅ Загружены остатки для ${stockResponse.stockItems.length} товаров');
+      onProgress?.call('Загрузка складов и остатков', 0.6);
+      final stockEither = await syncRegionalStock(regionCode);
+      final stockReport = stockEither.fold<SyncReport?>(
+        (failure) {
+          _logger.warning('⚠️ Ошибка синхронизации остатков региона $regionCode: ${failure.message}');
+          result['errors'].add(failure.message);
+          result['success'] = false;
+          return null;
+        },
+        (report) {
+          result['stock_synced'] = report.details['stockItems'] is int
+              ? report.details['stockItems'] as int
+              : report.processedCount;
+          result['warehouses_synced'] = report.details['warehouses'] as int? ?? 0;
+          return report;
+        },
+      );
 
-      // Конвертируем protobuf в domain entities и сохраняем в БД
-      if (stockResponse.stockItems.isNotEmpty) {
-        _logger.info('💾 Сохранение остатков в базу данных...');
-        onProgress?.call('Сохранение остатков', 0.6);
-        
-        final stockItems = StockItemProtobufConverter.fromProtobufList(stockResponse.stockItems);
-        
-        // Диагностика конвертированных данных
-        _logger.info('🔍 ДИАГНОСТИКА после конвертации:');
-        _logger.info('  Всего элементов: ${stockItems.length}');
-        
-        final itemsWithStock = stockItems.where((item) => item.stock > 0).toList();
-        _logger.info('  Элементов с stock > 0: ${itemsWithStock.length}');
-        
-        if (stockItems.isNotEmpty) {
-          final firstItem = stockItems.first;
-          _logger.info('  Первый элемент: productCode=${firstItem.productCode}, stock=${firstItem.stock}, publicStock="${firstItem.publicStock}"');
-        }
-        
-        if (itemsWithStock.isNotEmpty) {
-          final firstWithStock = itemsWithStock.first;
-          _logger.info('  Первый с stock > 0: productCode=${firstWithStock.productCode}, stock=${firstWithStock.stock}, publicStock="${firstWithStock.publicStock}"');
-        }
-        
-        // Диагностика: проверим сколько продуктов есть в БД
-        final existingProductsResult = await _productRepository.getAllProducts();
-        existingProductsResult.fold(
-          (failure) => _logger.warning('⚠️ Не удалось получить список продуктов для диагностики'),
-          (existingProducts) {
-            final existingProductCodes = existingProducts.map((p) => p.code).toSet();
-            final incomingProductCodes = stockItems.map((s) => s.productCode).toSet();
-            final matchingCodes = existingProductCodes.intersection(incomingProductCodes);
-            
-            _logger.info('🔍 Продуктов в БД: ${existingProducts.length}');
-            _logger.info('🔍 Уникальных кодов продуктов в остатках: ${incomingProductCodes.length}');
-            _logger.info('🔍 Совпадающих кодов: ${matchingCodes.length}');
-            
-            if (matchingCodes.isEmpty) {
-              _logger.severe('❌ КРИТИЧНО: Ни одного кода продукта из остатков не найдено в БД!');
-              _logger.info('📋 Примеры кодов в БД: ${existingProductCodes.take(10).join(", ")}');
-              _logger.info('📋 Примеры кодов в остатках: ${incomingProductCodes.take(10).join(", ")}');
-            }
+      if (stockReport == null) {
+        return result;
+      }
+
+      if (outletVendorIds != null && outletVendorIds.isNotEmpty) {
+        onProgress?.call('Загрузка цен торговых точек', 0.8);
+
+        final pricesEither = await syncOutletPrices(outletVendorIds);
+        final pricesReport = pricesEither.fold<SyncReport?>(
+          (failure) {
+            _logger.warning('⚠️ Ошибка синхронизации цен торговых точек: ${failure.message}');
+            result['errors'].add(failure.message);
+            result['success'] = false;
+            return null;
+          },
+          (report) {
+            result['prices_synced'] = report.processedCount;
+            return report;
           },
         );
-        
-        final saveResult = await _stockItemRepository.saveStockItems(stockItems);
 
-        if (saveResult.isLeft()) {
-          Failure? failure;
-          saveResult.fold((f) {
-            failure = f;
-            return null;
-          }, (_) => null);
-
-          failure ??= GeneralFailure('Неизвестная ошибка сохранения остатков');
-          _logger.severe('❌ Ошибка сохранения остатков: ${failure!.message}');
-          throw Exception('Ошибка сохранения остатков: ${failure!.message}');
+        if (pricesReport == null) {
+          return result;
         }
-
-        _logger.info('✅ Сохранено ${stockItems.length} остатков в базу данных');
-
-        // Дополнительная информация для отладки
-        if (stockItems.isNotEmpty) {
-          final firstItem = stockItems.first;
-          _logger.info('📊 Пример сохраненного StockItem: продукт=${firstItem.productCode}, склад=${firstItem.warehouseId}, остаток=${firstItem.stock}, цена=${firstItem.defaultPrice}');
-        }
-
-        result['stock_synced'] = stockItems.length;
-
-        final cacheResult = await _categoryTreeCacheService.refreshRegion(regionCode);
-        if (cacheResult.isLeft()) {
-          Failure? failure;
-          cacheResult.fold((f) {
-            failure = f;
-            return null;
-          }, (_) => null);
-
-          failure ??= GeneralFailure('Неизвестная ошибка обновления дерева категорий');
-          _logger.warning('⚠️ Не удалось обновить кэш дерева категорий для региона $regionCode: ${failure!.message}');
-        } else {
-          _logger.info('🌲 Дерево категорий пересчитано и закэшировано для региона $regionCode');
-        }
+      } else {
+        _logger.info('💰 Торговые точки не указаны — пропускаем синхронизацию цен');
       }
 
-      // 3. Загружаем цены торговых точек (если указаны)
-      if (outletVendorIds != null && outletVendorIds.isNotEmpty) {
-        _logger.info('💰 Загрузка цен торговых точек...');
-        
-        int totalPrices = 0;
-        for (int i = 0; i < outletVendorIds.length; i++) {
-          final vendorId = outletVendorIds[i];
-          onProgress?.call('Загрузка цен точки ${i + 1}/${outletVendorIds.length}', 0.7 + 0.2 * (i / outletVendorIds.length));
-          
-          try {
-            final priceResponse = await _outletPricingSyncService.getOutletPrices(vendorId);
-            totalPrices += priceResponse.products.length;
-          } catch (e) {
-            _logger.warning('⚠️ Ошибка загрузки цен для $vendorId: $e');
-            result['errors'].add('Ошибка цен для $vendorId: $e');
-          }
-        }
-        
-        result['prices_synced'] = totalPrices;
-        _logger.info('✅ Загружены цены для $totalPrices товаров');
-      }
-
-      // Сохраняем время синхронизации
-  // await _syncRepository.updateLastSync(regionCode, DateTime.now());
-      
       result['success'] = true;
       onProgress?.call('Завершено', 1.0);
-      
+
       _logger.info('✅ Синхронизация завершена успешно');
       return result;
-      
+
     } catch (e, stackTrace) {
       _logger.severe('❌ Ошибка синхронизации: $e', e, stackTrace);
       result['success'] = false;
@@ -280,6 +188,186 @@ class ProtobufSyncCoordinator {
       result['errors'].add('Критическая ошибка: $e');
       rethrow;
     }
+  }
+
+  Future<Either<Failure, SyncReport>> syncRegionalProducts(String regionCode) async {
+    final start = DateTime.now();
+
+    try {
+      final regionalResponse = await _regionalSyncService.getRegionalProducts(regionCode);
+      final products = ProductProtobufConverter.fromProtobufList(regionalResponse.products);
+
+      Failure? failure;
+      final saveResult = await _productRepository.saveProducts(products);
+      saveResult.fold((f) => failure = f, (_) {});
+
+      if (failure != null) {
+        return Left(failure!);
+      }
+
+      final duration = DateTime.now().difference(start);
+
+      return Right(
+        SyncReport(
+          processedCount: products.length,
+          duration: duration,
+          description: 'Загружено ${products.length} продуктов региона $regionCode',
+          details: <String, dynamic>{
+            'region': regionCode,
+            'products': products.length,
+            'cacheVersion': regionalResponse.cacheVersion,
+          },
+        ),
+      );
+    } catch (e, stackTrace) {
+      _logger.severe('❌ Ошибка синхронизации продуктов региона $regionCode', e, stackTrace);
+      return Left(GeneralFailure('Ошибка синхронизации продуктов региона $regionCode: $e', details: stackTrace));
+    }
+  }
+
+  Future<Either<Failure, SyncReport>> syncRegionalStock(String regionCode) async {
+    final start = DateTime.now();
+
+    try {
+      final warehouseResponse = await _warehouseSyncService.fetchWarehouses(regionVendorId: regionCode);
+      final warehouses = WarehouseProtobufConverter.fromProtoList(warehouseResponse.warehouses);
+
+      Failure? failure;
+
+      final clearResult = await _warehouseRepository.clearWarehousesByRegion(regionCode);
+      clearResult.fold((f) => failure = f, (_) {});
+      if (failure != null) {
+        return Left(failure!);
+      }
+
+      final saveWarehouseResult = await _warehouseRepository.saveWarehouses(warehouses);
+      saveWarehouseResult.fold((f) => failure = f, (_) {});
+      if (failure != null) {
+        return Left(failure!);
+      }
+
+      final stockResponse = await _stockSyncService.getRegionalStock(regionCode);
+      final stockItems = StockItemProtobufConverter.fromProtobufList(stockResponse.stockItems);
+
+      final saveStockResult = await _stockItemRepository.saveStockItems(stockItems);
+      saveStockResult.fold((f) => failure = f, (_) {});
+      if (failure != null) {
+        return Left(failure!);
+      }
+
+      var cacheUpdated = false;
+      final cacheResult = await _categoryTreeCacheService.refreshRegion(regionCode);
+      cacheResult.fold(
+        (f) {
+          cacheUpdated = false;
+          _logger.warning('⚠️ Не удалось обновить кэш дерева категорий для региона $regionCode: ${f.message}');
+        },
+        (_) {
+          cacheUpdated = true;
+        },
+      );
+
+      final duration = DateTime.now().difference(start);
+
+      return Right(
+        SyncReport(
+          processedCount: stockItems.length,
+          duration: duration,
+          description: 'Обновлено ${stockItems.length} записей остатков по региону $regionCode',
+          details: <String, dynamic>{
+            'region': regionCode,
+            'warehouses': warehouses.length,
+            'stockItems': stockItems.length,
+            'cacheUpdated': cacheUpdated,
+            'warehouseSyncTimestamp': warehouseResponse.syncTimestamp,
+          },
+        ),
+      );
+    } catch (e, stackTrace) {
+      _logger.severe('❌ Ошибка синхронизации остатков региона $regionCode', e, stackTrace);
+      return Left(GeneralFailure('Ошибка синхронизации остатков региона $regionCode: $e', details: stackTrace));
+    }
+  }
+
+  Future<Either<Failure, SyncReport>> syncOutletPrices(List<String> outletVendorIds) async {
+    if (outletVendorIds.isEmpty) {
+      return Right(
+        const SyncReport(
+          processedCount: 0,
+          duration: Duration.zero,
+          description: 'Нет торговых точек для синхронизации цен',
+          details: <String, dynamic>{'outlets': <String>[]},
+        ),
+      );
+    }
+
+    final start = DateTime.now();
+  final errors = <String>[];
+  final perOutlet = <Map<String, dynamic>>[];
+    var totalPrices = 0;
+
+    for (final vendorId in outletVendorIds) {
+      final attemptStarted = DateTime.now();
+      try {
+        final response = await _outletPricingSyncService.getOutletPrices(vendorId);
+        final outletPricingCount = response.outletPricing.length;
+        totalPrices += outletPricingCount;
+        perOutlet.add(<String, dynamic>{
+          'outlet': vendorId,
+          'status': 'success',
+          'pricingRecords': outletPricingCount,
+          'promotions': response.activePromotions.length,
+          'syncTimestamp': response.syncTimestamp.toInt(),
+          'durationMs': DateTime.now().difference(attemptStarted).inMilliseconds,
+        });
+      } catch (e, stackTrace) {
+        _logger.warning('⚠️ Ошибка загрузки цен для торговой точки $vendorId: $e', e, stackTrace);
+        errors.add('Точка $vendorId: $e');
+        final Map<String, dynamic> failureDetails = <String, dynamic>{
+          'outlet': vendorId,
+          'status': 'failure',
+          'error': e.toString(),
+          'durationMs': DateTime.now().difference(attemptStarted).inMilliseconds,
+          'stackTrace': stackTrace.toString().split('\n').take(12).join('\n'),
+        };
+
+        if (e is ProtobufPayloadException) {
+          failureDetails['payloadDebug'] = e.debugData;
+        }
+
+        perOutlet.add(failureDetails);
+      }
+    }
+
+    final duration = DateTime.now().difference(start);
+
+    if (errors.isNotEmpty) {
+      return Left(
+        GeneralFailure(
+          'Ошибки при синхронизации цен: ${errors.join("; ")}',
+          details: <String, dynamic>{
+            'errors': errors,
+            'attemptedOutlets': outletVendorIds,
+            'processedPrices': totalPrices,
+            'durationMs': duration.inMilliseconds,
+            'perOutlet': perOutlet,
+          },
+        ),
+      );
+    }
+
+    return Right(
+      SyncReport(
+        processedCount: totalPrices,
+        duration: duration,
+        description: 'Обновлено $totalPrices записей цен для ${outletVendorIds.length} точек',
+        details: <String, dynamic>{
+          'outlets': outletVendorIds,
+          'durationMs': duration.inMilliseconds,
+          'perOutlet': perOutlet,
+        },
+      ),
+    );
   }
 
   /// Получить статистику синхронизированных данных
