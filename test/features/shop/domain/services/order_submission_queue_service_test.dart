@@ -350,6 +350,7 @@ Future<_SeedResult> _preparePendingOrder({
     id: tradingPointId,
     externalId: 'TP-$employeeId',
     name: 'Тестовая точка',
+    region: 'P3V',
   );
 
   final stockItem = StockItem(

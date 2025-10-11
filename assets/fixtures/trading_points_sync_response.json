@@ -1,0 +1,107 @@
+[
+  {
+    "outlet": {
+      "id": 8879,
+      "vendorId": "0002300707_11",
+      "contractor": {
+        "id": 9,
+        "inn": "_____2300707",
+        "name": "Розничный покупатель",
+        "vendorId": "0002300707",
+        "users": [],
+        "outlets": [],
+        "canMakeOrder": false,
+        "isUsingEDM": false
+      },
+      "address": {
+        "id": 13224,
+        "postcode": 690062,
+        "area": null,
+        "settlement": null,
+        "houseNumber": "21Б",
+        "flatNumber": null,
+        "line": "690062, Приморский край, г. Владивосток, ул. Днепровская, д. 21Б",
+        "longitude": 131.9266,
+        "latitude": 43.144173,
+        "lineStreet": "ул. Днепровская, д. 21Б"
+      },
+      "createdAt": "2023-03-16T10:30:25+10:00",
+      "updatedAt": "2025-10-10T22:09:22+10:00",
+      "canMakeOrder": false,
+      "enabled": true,
+      "name": "Магадан",
+      "is1cAutozakazOn": null,
+      "region": "M3V"
+    }
+  },
+  {
+    "outlet": {
+      "id": 160,
+      "vendorId": "0002300707_9",
+      "contractor": {
+        "id": 9,
+        "inn": "_____2300707",
+        "name": "Розничный покупатель",
+        "vendorId": "0002300707",
+        "users": [],
+        "outlets": [],
+        "canMakeOrder": false,
+        "isUsingEDM": false
+      },
+      "address": {
+        "id": 13231,
+        "postcode": 683023,
+        "area": null,
+        "settlement": null,
+        "houseNumber": "11",
+        "flatNumber": null,
+        "line": "683023, Камчатский край, г. Петропавловск-Камчатский, ул. Крутобереговая, д. 11",
+        "longitude": 158.65595,
+        "latitude": 53.0370074,
+        "lineStreet": "ул. Крутобереговая, д. 11"
+      },
+      "createdAt": "2022-04-08T10:43:25+10:00",
+      "updatedAt": "2025-10-10T22:08:54+10:00",
+      "canMakeOrder": false,
+      "enabled": true,
+      "name": "Камчатка",
+      "is1cAutozakazOn": null,
+      "region": "K3V"
+    }
+  },
+  {
+    "outlet": {
+      "id": 156,
+      "vendorId": "0002300707_8",
+      "contractor": {
+        "id": 9,
+        "inn": "_____2300707",
+        "name": "Розничный покупатель",
+        "vendorId": "0002300707",
+        "users": [],
+        "outlets": [],
+        "canMakeOrder": false,
+        "isUsingEDM": false
+      },
+      "address": {
+        "id": 13230,
+        "postcode": 690062,
+        "area": null,
+        "settlement": null,
+        "houseNumber": "21Б",
+        "flatNumber": null,
+        "line": "690062, Приморский край, г. Владивосток, ул. Днепровская, д. 21Б",
+        "longitude": 131.9266,
+        "latitude": 43.144173,
+        "lineStreet": "ул. Днепровская, д. 21Б"
+      },
+      "createdAt": "2022-04-08T10:43:25+10:00",
+      "updatedAt": "2025-10-10T22:08:04+10:00",
+      "canMakeOrder": true,
+      "enabled": true,
+      "name": "Днепровская",
+      "is1cAutozakazOn": null,
+      "region": "P3V"
+    }
+  }
+]

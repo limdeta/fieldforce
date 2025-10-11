@@ -129,6 +129,7 @@ class RouteMapper {
       externalId: dbEntity.externalId,
       name: dbEntity.name,
       inn: dbEntity.inn,
+      region: _requireRegion(dbEntity.region, dbEntity.externalId),
       createdAt: dbEntity.createdAt,
       updatedAt: dbEntity.updatedAt,
     );
@@ -141,9 +142,17 @@ class RouteMapper {
       inn: point.inn != null 
         ? Value(point.inn!)
         : const Value.absent(),
+      region: Value(point.region),
       updatedAt: point.updatedAt != null 
         ? Value(point.updatedAt!)
         : const Value.absent(),
     );
+  }
+
+  static String _requireRegion(String? region, String externalId) {
+    if (region == null || region.trim().isEmpty) {
+      throw StateError('Trading point $externalId is missing a region');
+    }
+    return region;
   }
 }

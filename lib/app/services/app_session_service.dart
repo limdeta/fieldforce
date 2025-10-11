@@ -3,6 +3,7 @@ import 'package:fieldforce/app/domain/entities/app_user.dart';
 import 'package:fieldforce/app/domain/repositories/app_user_repository.dart';
 import 'package:fieldforce/features/authentication/domain/entities/session_state.dart';
 import 'package:fieldforce/features/authentication/domain/entities/user_session.dart';
+import 'package:fieldforce/features/shop/domain/entities/trading_point.dart';
 import 'package:fieldforce/features/authentication/domain/usecases/get_current_session_usecase.dart';
 import 'package:fieldforce/shared/either.dart';
 import 'package:fieldforce/shared/failures.dart';
@@ -124,5 +125,40 @@ class AppSessionService {
     } catch (e) {
       return Left(DatabaseFailure('Ошибка обновления пользователя: $e'));
     }
+  }
+
+  /// Устанавливает выбранную торговую точку для текущего пользователя.
+  ///
+  /// Возвращает обновленную [AppSession] или ошибку, если сессия отсутствует
+  /// либо не удалось сохранить изменения.
+  static Future<Either<Failure, AppSession>> selectTradingPoint(
+    TradingPoint? tradingPoint,
+  ) async {
+    if (_currentSession == null) {
+      return const Left(
+        NotFoundFailure('Нет активной сессии для выбора торговой точки'),
+      );
+    }
+
+    try {
+      final currentUser = _currentSession!.appUser;
+      final updatedUser = currentUser.selectTradingPoint(tradingPoint);
+
+      final updateResult = await _appUserRepository.updateAppUser(updatedUser);
+
+      return await updateResult.fold(
+        (failure) async => Left(failure),
+        (savedUser) => updateCurrentUser(savedUser),
+      );
+    } catch (e) {
+      return Left(
+        DatabaseFailure('Ошибка выбора торговой точки: $e'),
+      );
+    }
+  }
+
+  /// Сбрасывает выбранную торговую точку текущего пользователя.
+  static Future<Either<Failure, AppSession>> clearSelectedTradingPoint() {
+    return selectTradingPoint(null);
   }
 }

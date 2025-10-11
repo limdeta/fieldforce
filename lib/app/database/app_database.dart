@@ -57,7 +57,7 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase.forTesting(DatabaseConnection super.connection);
 
   @override
-  int get schemaVersion => 3;
+  int get schemaVersion => 4;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -67,11 +67,23 @@ class AppDatabase extends _$AppDatabase {
       await customStatement('PRAGMA foreign_keys = ON');
     },
     onUpgrade: (Migrator m, int from, int to) async {
-      // Здесь будут миграции при обновлении схемы
       _dbLogger.info('Миграция БД с версии $from на $to');
-      
-      // Пока просто пересоздаем все таблицы (для dev режима)
-      // В продакшене нужно будет написать реальные миграции
+
+      if (from < 4) {
+        await customStatement(
+          "UPDATE trading_point_entities SET region = 'P3V' WHERE region IS NULL OR TRIM(region) = '';",
+        );
+
+        await customStatement('ALTER TABLE trading_point_entities RENAME TO trading_point_entities_old;');
+        await m.createTable(tradingPointEntities);
+        await customStatement('''
+          INSERT INTO trading_point_entities (id, external_id, name, inn, region, created_at, updated_at)
+          SELECT id, external_id, name, inn, COALESCE(region, 'P3V'), created_at, updated_at
+          FROM trading_point_entities_old;
+        ''');
+        await customStatement('DROP TABLE trading_point_entities_old;');
+      }
+
       await m.createAll();
     },
     beforeOpen: (details) async {

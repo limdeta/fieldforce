@@ -2230,6 +2230,13 @@ class $TradingPointEntitiesTable extends TradingPointEntities
   late final GeneratedColumn<String> inn = GeneratedColumn<String>(
       'inn', aliasedName, true,
       type: DriftSqlType.string, requiredDuringInsert: false);
+  static const VerificationMeta _regionMeta = const VerificationMeta('region');
+  @override
+  late final GeneratedColumn<String> region = GeneratedColumn<String>(
+      'region', aliasedName, false,
+      type: DriftSqlType.string,
+      requiredDuringInsert: false,
+      defaultValue: const Constant('P3V'));
   static const VerificationMeta _createdAtMeta =
       const VerificationMeta('createdAt');
   @override
@@ -2246,7 +2253,7 @@ class $TradingPointEntitiesTable extends TradingPointEntities
       type: DriftSqlType.dateTime, requiredDuringInsert: false);
   @override
   List<GeneratedColumn> get $columns =>
-      [id, externalId, name, inn, createdAt, updatedAt];
+      [id, externalId, name, inn, region, createdAt, updatedAt];
   @override
   String get aliasedName => _alias ?? actualTableName;
   @override
@@ -2278,6 +2285,10 @@ class $TradingPointEntitiesTable extends TradingPointEntities
       context.handle(
           _innMeta, inn.isAcceptableOrUnknown(data['inn']!, _innMeta));
     }
+    if (data.containsKey('region')) {
+      context.handle(_regionMeta,
+          region.isAcceptableOrUnknown(data['region']!, _regionMeta));
+    }
     if (data.containsKey('created_at')) {
       context.handle(_createdAtMeta,
           createdAt.isAcceptableOrUnknown(data['created_at']!, _createdAtMeta));
@@ -2303,6 +2314,8 @@ class $TradingPointEntitiesTable extends TradingPointEntities
           .read(DriftSqlType.string, data['${effectivePrefix}name'])!,
       inn: attachedDatabase.typeMapping
           .read(DriftSqlType.string, data['${effectivePrefix}inn']),
+      region: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}region'])!,
       createdAt: attachedDatabase.typeMapping
           .read(DriftSqlType.dateTime, data['${effectivePrefix}created_at'])!,
       updatedAt: attachedDatabase.typeMapping
@@ -2322,6 +2335,7 @@ class TradingPointEntity extends DataClass
   final String externalId;
   final String name;
   final String? inn;
+  final String region;
   final DateTime createdAt;
   final DateTime? updatedAt;
   const TradingPointEntity(
@@ -2329,6 +2343,7 @@ class TradingPointEntity extends DataClass
       required this.externalId,
       required this.name,
       this.inn,
+      required this.region,
       required this.createdAt,
       this.updatedAt});
   @override
@@ -2340,6 +2355,7 @@ class TradingPointEntity extends DataClass
     if (!nullToAbsent || inn != null) {
       map['inn'] = Variable<String>(inn);
     }
+    map['region'] = Variable<String>(region);
     map['created_at'] = Variable<DateTime>(createdAt);
     if (!nullToAbsent || updatedAt != null) {
       map['updated_at'] = Variable<DateTime>(updatedAt);
@@ -2353,6 +2369,7 @@ class TradingPointEntity extends DataClass
       externalId: Value(externalId),
       name: Value(name),
       inn: inn == null && nullToAbsent ? const Value.absent() : Value(inn),
+      region: Value(region),
       createdAt: Value(createdAt),
       updatedAt: updatedAt == null && nullToAbsent
           ? const Value.absent()
@@ -2368,6 +2385,7 @@ class TradingPointEntity extends DataClass
       externalId: serializer.fromJson<String>(json['externalId']),
       name: serializer.fromJson<String>(json['name']),
       inn: serializer.fromJson<String?>(json['inn']),
+      region: serializer.fromJson<String>(json['region']),
       createdAt: serializer.fromJson<DateTime>(json['createdAt']),
       updatedAt: serializer.fromJson<DateTime?>(json['updatedAt']),
     );
@@ -2380,6 +2398,7 @@ class TradingPointEntity extends DataClass
       'externalId': serializer.toJson<String>(externalId),
       'name': serializer.toJson<String>(name),
       'inn': serializer.toJson<String?>(inn),
+      'region': serializer.toJson<String>(region),
       'createdAt': serializer.toJson<DateTime>(createdAt),
       'updatedAt': serializer.toJson<DateTime?>(updatedAt),
     };
@@ -2390,6 +2409,7 @@ class TradingPointEntity extends DataClass
           String? externalId,
           String? name,
           Value<String?> inn = const Value.absent(),
+          String? region,
           DateTime? createdAt,
           Value<DateTime?> updatedAt = const Value.absent()}) =>
       TradingPointEntity(
@@ -2397,6 +2417,7 @@ class TradingPointEntity extends DataClass
         externalId: externalId ?? this.externalId,
         name: name ?? this.name,
         inn: inn.present ? inn.value : this.inn,
+        region: region ?? this.region,
         createdAt: createdAt ?? this.createdAt,
         updatedAt: updatedAt.present ? updatedAt.value : this.updatedAt,
       );
@@ -2407,6 +2428,7 @@ class TradingPointEntity extends DataClass
           ..write('externalId: $externalId, ')
           ..write('name: $name, ')
           ..write('inn: $inn, ')
+          ..write('region: $region, ')
           ..write('createdAt: $createdAt, ')
           ..write('updatedAt: $updatedAt')
           ..write(')'))
@@ -2415,7 +2437,7 @@ class TradingPointEntity extends DataClass
 
   @override
   int get hashCode =>
-      Object.hash(id, externalId, name, inn, createdAt, updatedAt);
+      Object.hash(id, externalId, name, inn, region, createdAt, updatedAt);
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
@@ -2424,6 +2446,7 @@ class TradingPointEntity extends DataClass
           other.externalId == this.externalId &&
           other.name == this.name &&
           other.inn == this.inn &&
+          other.region == this.region &&
           other.createdAt == this.createdAt &&
           other.updatedAt == this.updatedAt);
 }
@@ -2434,6 +2457,7 @@ class TradingPointEntitiesCompanion
   final Value<String> externalId;
   final Value<String> name;
   final Value<String?> inn;
+  final Value<String> region;
   final Value<DateTime> createdAt;
   final Value<DateTime?> updatedAt;
   const TradingPointEntitiesCompanion({
@@ -2441,6 +2465,7 @@ class TradingPointEntitiesCompanion
     this.externalId = const Value.absent(),
     this.name = const Value.absent(),
     this.inn = const Value.absent(),
+    this.region = const Value.absent(),
     this.createdAt = const Value.absent(),
     this.updatedAt = const Value.absent(),
   });
@@ -2449,6 +2474,7 @@ class TradingPointEntitiesCompanion
     required String externalId,
     required String name,
     this.inn = const Value.absent(),
+    this.region = const Value.absent(),
     this.createdAt = const Value.absent(),
     this.updatedAt = const Value.absent(),
   })  : externalId = Value(externalId),
@@ -2458,6 +2484,7 @@ class TradingPointEntitiesCompanion
     Expression<String>? externalId,
     Expression<String>? name,
     Expression<String>? inn,
+    Expression<String>? region,
     Expression<DateTime>? createdAt,
     Expression<DateTime>? updatedAt,
   }) {
@@ -2466,6 +2493,7 @@ class TradingPointEntitiesCompanion
       if (externalId != null) 'external_id': externalId,
       if (name != null) 'name': name,
       if (inn != null) 'inn': inn,
+      if (region != null) 'region': region,
       if (createdAt != null) 'created_at': createdAt,
       if (updatedAt != null) 'updated_at': updatedAt,
     });
@@ -2476,6 +2504,7 @@ class TradingPointEntitiesCompanion
       Value<String>? externalId,
       Value<String>? name,
       Value<String?>? inn,
+      Value<String>? region,
       Value<DateTime>? createdAt,
       Value<DateTime?>? updatedAt}) {
     return TradingPointEntitiesCompanion(
@@ -2483,6 +2512,7 @@ class TradingPointEntitiesCompanion
       externalId: externalId ?? this.externalId,
       name: name ?? this.name,
       inn: inn ?? this.inn,
+      region: region ?? this.region,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
     );
@@ -2503,6 +2533,9 @@ class TradingPointEntitiesCompanion
     if (inn.present) {
       map['inn'] = Variable<String>(inn.value);
     }
+    if (region.present) {
+      map['region'] = Variable<String>(region.value);
+    }
     if (createdAt.present) {
       map['created_at'] = Variable<DateTime>(createdAt.value);
     }
@@ -2519,6 +2552,7 @@ class TradingPointEntitiesCompanion
           ..write('externalId: $externalId, ')
           ..write('name: $name, ')
           ..write('inn: $inn, ')
+          ..write('region: $region, ')
           ..write('createdAt: $createdAt, ')
           ..write('updatedAt: $updatedAt')
           ..write(')'))

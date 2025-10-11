@@ -23,6 +23,7 @@ import 'package:fieldforce/app/database/repositories/user_track_repository_drift
 import 'package:fieldforce/app/services/simple_update_service.dart';
 import 'package:fieldforce/app/services/post_authentication_service.dart';
 import 'package:fieldforce/app/services/session_manager.dart';
+import 'package:fieldforce/app/services/trading_point_sync_service.dart';
 import 'package:fieldforce/app/jobs/job_queue_repository.dart';
 import 'package:fieldforce/app/jobs/job_queue_service.dart';
 import 'package:fieldforce/features/authentication/domain/repositories/user_repository.dart';
@@ -294,6 +295,14 @@ Future<void> setupTestServiceLocator({bool startBackgroundWorkers = true}) async
 
   // Session manager for handling HTTP sessions and cookies
   getIt.registerLazySingleton<SessionManager>(() => SessionManager.instance);
+
+  getIt.registerLazySingleton<TradingPointSyncService>(
+    () => TradingPointSyncService(
+      sessionManager: getIt<SessionManager>(),
+      tradingPointRepository: getIt<TradingPointRepository>(),
+      appUserRepository: getIt<AppUserRepository>(),
+    ),
+  );
 
   getIt.registerLazySingleton<AuthenticationService>(
     () => AuthenticationService(

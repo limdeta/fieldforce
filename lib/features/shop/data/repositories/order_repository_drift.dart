@@ -353,6 +353,7 @@ class OrderRepositoryDrift implements OrderRepository {
         externalId: outletEntity.externalId,
         name: outletEntity.name,
         inn: outletEntity.inn,
+        region: _requireRegion(outletEntity.region, outletEntity.externalId),
       );
     } catch (e) {
       _logger.severe('❌ Trading point with ID $outletId not found: $e');
@@ -468,4 +469,11 @@ class OrderRepositoryDrift implements OrderRepository {
         ..where((o) => o.id.equals(draftOrder.id!))).getSingle();
     return await _buildOrderFromEntity(orderData);
   }
+}
+
+String _requireRegion(String? region, String externalId) {
+  if (region == null || region.trim().isEmpty) {
+    throw StateError('Trading point $externalId is missing region');
+  }
+  return region;
 }

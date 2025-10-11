@@ -86,6 +86,18 @@ class AppConfig {
     }
   }
 
+  // Trading points API Configuration
+  static String get tradingPointsApiUrl {
+    switch (_environment) {
+      case Environment.dev:
+        return 'http://$_devApiHost/v1_api/trading-points';
+      case Environment.prod:
+        return 'https://api.instock-dv.ru/v1_api/trading-points';
+      case Environment.test:
+        return '';
+    }
+  }
+
   // Use mock authentication in dev/test modes
   static bool get useMockAuth => isDev || isTest;
   
@@ -147,6 +159,7 @@ class AppConfig {
     print('Auth API URL: $authApiUrl');
     print('User Info API URL: $userInfoApiUrl');
     print('Products API URL: $productsApiUrl');
+  print('Trading Points API URL: $tradingPointsApiUrl');
     print('Database Name: $databaseName');
     print('Use Mock Data: $useMockData');
     print('Use Mock Auth: $useMockAuth');

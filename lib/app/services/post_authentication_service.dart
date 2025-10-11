@@ -32,7 +32,7 @@ class PostAuthenticationService {
       // Проверяем, существует ли уже AppUser для этого пользователя
       final existingAppUserResult = await appUserRepository.getAppUserByUserId(authUser.id!);
 
-      return existingAppUserResult.fold(
+      final Either<Failure, void> mainResult = await existingAppUserResult.fold(
         (failure) async {
           // AppUser не найден, нужно создать Employee и AppUser
           // Пока создаем Employee напрямую (в будущем можно добавить проверку)
@@ -60,7 +60,7 @@ class PostAuthenticationService {
             },
           );
         },
-        (existingAppUser) async {
+  (_) async {
           // AppUser уже существует - синхронизируем данные с API
           final syncResult = await syncUserInfo(authUser);
           return syncResult.fold(
@@ -73,6 +73,8 @@ class PostAuthenticationService {
           );
         },
       );
+
+      return mainResult;
     } catch (e) {
       return Left(DatabaseFailure('Ошибка создания бизнес-сущностей: $e'));
     }
@@ -238,6 +240,28 @@ class PostAuthenticationService {
 
       _logger.info('🏪 Найден outlet в данных пользователя: $outletData');
 
+      // Получаем текущего пользователя по userId и проверяем выбранную точку
+      final currentUserResult = await appUserRepository.getAppUserByUserId(authUser.id!);
+      _logger.info('🏪 Получаем AppUser для userId=${authUser.id}');
+
+      final currentUser = currentUserResult.fold(
+        (failure) {
+          _logger.warning('🏪 AppUser не найден: ${failure.message}');
+          return null;
+        },
+        (user) => user,
+      );
+
+      if (currentUser == null) {
+        _logger.warning('🏪 Текущий AppUser не найден - не можем установить outlet');
+        return;
+      }
+
+      if (currentUser.hasSelectedTradingPoint) {
+        _logger.info('🏪 У пользователя уже выбрана торговая точка (${currentUser.selectedTradingPoint?.externalId}) - пропускаем авто-выбор');
+        return;
+      }
+
       // Пытаемся извлечь ID outlet
       int? outletId;
       String? outletExternalId;
@@ -279,6 +303,7 @@ class PostAuthenticationService {
             id: outletData['id'],
             externalId: outletData['vendorId']?.toString() ?? outletData['id'].toString(),
             name: outletData['name'],
+            region: _extractRegion(outletData),
           );
 
           final createResult = await tradingPointRepository.save(newTradingPoint);
@@ -304,23 +329,6 @@ class PostAuthenticationService {
 
       _logger.info('🏪 Найден TradingPoint: ${tradingPoint.name} (ID: ${tradingPoint.id})');
 
-      // Получаем текущего пользователя по userId
-      final currentUserResult = await appUserRepository.getAppUserByUserId(authUser.id!);
-      _logger.info('🏪 Получаем AppUser для userId=${authUser.id}');
-      
-      final currentUser = currentUserResult.fold(
-        (failure) {
-          _logger.warning('🏪 AppUser не найден: ${failure.message}');
-          return null;
-        },
-        (user) => user,
-      );
-
-      if (currentUser == null) {
-        _logger.warning('🏪 Текущий AppUser не найден - не можем установить outlet');
-        return;
-      }
-
       // Обновляем AppUser с выбранным trading point
       final updatedUser = currentUser.selectTradingPoint(tradingPoint);
       final updateResult = await appUserRepository.updateAppUser(updatedUser);
@@ -334,4 +342,19 @@ class PostAuthenticationService {
       _logger.warning('🏪 Ошибка при парсинге outlet: $e', e, st);
     }
   }
+}
+
+String _extractRegion(Map<String, dynamic> outletData) {
+  final regionValue = outletData['region'] ?? outletData['region_code'] ?? outletData['regionCode'];
+
+  if (regionValue == null) {
+    throw StateError('Outlet ${outletData['id'] ?? outletData['vendorId']} is missing region');
+  }
+
+  final region = regionValue.toString().trim();
+  if (region.isEmpty) {
+    throw StateError('Outlet ${outletData['id'] ?? outletData['vendorId']} has empty region');
+  }
+
+  return region;
 }

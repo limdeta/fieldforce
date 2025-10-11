@@ -22,6 +22,9 @@ class _TradingPointsListPageState extends State<TradingPointsListPage> {
   bool _isLoading = true;
   String? _error;
   final TextEditingController _searchController = TextEditingController();
+  TradingPoint? _selectedTradingPoint;
+  int? _selectedTradingPointId;
+  bool _isSelecting = false;
 
   @override
   void initState() {
@@ -72,9 +75,13 @@ class _TradingPointsListPageState extends State<TradingPointsListPage> {
         setState(() {
           _error = 'Пользователь не найден в сессии';
           _isLoading = false;
+          _selectedTradingPoint = null;
+          _selectedTradingPointId = null;
         });
         return;
       }
+
+      final selectedPoint = session.appUser.selectedTradingPoint;
 
       // Получаем торговые точки сотрудника 
       // TODO переписать .session.appUser.employee
@@ -85,6 +92,8 @@ class _TradingPointsListPageState extends State<TradingPointsListPage> {
           setState(() {
             _error = failure.message;
             _isLoading = false;
+            _selectedTradingPoint = selectedPoint;
+            _selectedTradingPointId = selectedPoint?.id;
           });
         },
         (tradingPoints) {
@@ -92,6 +101,8 @@ class _TradingPointsListPageState extends State<TradingPointsListPage> {
             _tradingPoints = tradingPoints;
             _filteredTradingPoints = List.from(tradingPoints);
             _isLoading = false;
+            _selectedTradingPoint = selectedPoint;
+            _selectedTradingPointId = selectedPoint?.id;
           });
         },
       );
@@ -99,7 +110,86 @@ class _TradingPointsListPageState extends State<TradingPointsListPage> {
       setState(() {
         _error = 'Ошибка: $e';
         _isLoading = false;
+        _selectedTradingPoint = null;
+        _selectedTradingPointId = null;
       });
+    }
+  }
+
+  Future<void> _syncSelectionFromSession() async {
+    final sessionResult = await AppSessionService.getCurrentAppSession();
+    if (!mounted) return;
+
+    sessionResult.fold(
+      (_) {
+        // Ошибку игнорируем здесь, пользователь уже видел сообщение на загрузке списка
+      },
+      (session) {
+        setState(() {
+          _selectedTradingPoint = session?.appUser.selectedTradingPoint;
+          _selectedTradingPointId = session?.appUser.selectedTradingPointId;
+        });
+      },
+    );
+  }
+
+  Future<void> _handleSelectTradingPoint(TradingPoint tradingPoint) async {
+    if (_isSelecting || _selectedTradingPointId == tradingPoint.id) {
+      return;
+    }
+
+    setState(() {
+      _isSelecting = true;
+    });
+
+    final result = await AppSessionService.selectTradingPoint(tradingPoint);
+    if (!mounted) {
+      return;
+    }
+
+    result.fold(
+      (failure) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Не удалось выбрать торговую точку: ${failure.message}'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      },
+      (session) {
+        setState(() {
+          _selectedTradingPoint = session.appUser.selectedTradingPoint;
+          _selectedTradingPointId = session.appUser.selectedTradingPointId;
+        });
+
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Текущая точка: ${tradingPoint.name}'),
+            backgroundColor: Colors.green,
+          ),
+        );
+      },
+    );
+
+    if (mounted) {
+      setState(() {
+        _isSelecting = false;
+      });
+    }
+  }
+
+  Future<void> _openTradingPointDetails(TradingPoint tradingPoint) async {
+    final selectionChanged = await Navigator.push<bool>(
+      context,
+      MaterialPageRoute(
+        builder: (context) => TradingPointDetailPage(
+          tradingPoint: tradingPoint,
+        ),
+      ),
+    );
+
+    if (selectionChanged == true) {
+      await _syncSelectionFromSession();
     }
   }
 
@@ -119,6 +209,45 @@ class _TradingPointsListPageState extends State<TradingPointsListPage> {
       ),
       body: Column(
         children: [
+          if (_selectedTradingPoint != null)
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
+              child: Container(
+                width: double.infinity,
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                decoration: BoxDecoration(
+                  color: Colors.black,
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text(
+                      'Текущая торговая точка',
+                      style: TextStyle(
+                        color: Colors.white70,
+                        fontSize: 13,
+                        letterSpacing: 0.3,
+                      ),
+                    ),
+                    const SizedBox(height: 6),
+                    Text(
+                      _selectedTradingPoint!.name,
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 16,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                    if (_selectedTradingPoint!.externalId.isNotEmpty)
+                      Text(
+                        'ID: ${_selectedTradingPoint!.externalId}',
+                        style: const TextStyle(color: Colors.white70),
+                      ),
+                  ],
+                ),
+              ),
+            ),
           // Поисковая строка
           Padding(
             padding: const EdgeInsets.all(16.0),
@@ -256,57 +385,130 @@ class _TradingPointsListPageState extends State<TradingPointsListPage> {
   }
 
   Widget _buildTradingPointCard(TradingPoint tradingPoint) {
-    return Card(
-      margin: const EdgeInsets.only(bottom: 12),
-      child: ListTile(
-        leading: CircleAvatar(
-          backgroundColor: Colors.blue.shade100,
-          child: Icon(
-            Icons.store,
-            color: Colors.blue.shade700,
+    final theme = Theme.of(context);
+    final isSelected = _selectedTradingPointId == tradingPoint.id;
+    return InkWell(
+      onTap: () => _openTradingPointDetails(tradingPoint),
+      child: Container(
+        margin: const EdgeInsets.only(bottom: 12),
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          border: Border.all(
+            color: isSelected ? Colors.black : Colors.grey.shade300,
+            width: isSelected ? 1.5 : 1,
           ),
+          borderRadius: BorderRadius.circular(10),
+          boxShadow: isSelected
+              ? [
+                  BoxShadow(
+                    color: Colors.black.withOpacity(0.08),
+                    blurRadius: 12,
+                    offset: const Offset(0, 6),
+                  ),
+                ]
+              : null,
         ),
-        title: Text(
-          tradingPoint.name,
-          style: const TextStyle(
-            fontWeight: FontWeight.bold,
-            fontSize: 16,
-          ),
-        ),
-        subtitle: Column(
+        child: Row(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            if (tradingPoint.inn != null) ...[
-              const SizedBox(height: 4),
-              Text(
-                'ИНН: ${tradingPoint.inn}',
-                style: TextStyle(
-                  color: Colors.grey.shade600,
-                  fontSize: 12,
+            Container(
+              width: 36,
+              height: 36,
+              alignment: Alignment.center,
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(color: Colors.black87, width: 1.2),
+              ),
+              child: const Icon(Icons.store, color: Colors.black87, size: 18),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Expanded(
+                        child: Text(
+                          tradingPoint.name,
+                          style: theme.textTheme.titleMedium?.copyWith(
+                            fontWeight: FontWeight.w600,
+                            color: Colors.black87,
+                          ),
+                        ),
+                      ),
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                        decoration: BoxDecoration(
+                          borderRadius: BorderRadius.circular(6),
+                          border: Border.all(color: Colors.black87, width: 1),
+                        ),
+                        child: Text(
+                          tradingPoint.region,
+                          style: theme.textTheme.labelSmall?.copyWith(
+                            fontFeatures: const [FontFeature.tabularFigures()],
+                            letterSpacing: 0.5,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 6),
+                  Text(
+                    'ID: ${tradingPoint.externalId}',
+                    style: theme.textTheme.bodySmall?.copyWith(
+                      color: Colors.black54,
+                    ),
+                  ),
+                  if (tradingPoint.inn != null) ...[
+                    const SizedBox(height: 4),
+                    Text(
+                      'ИНН: ${tradingPoint.inn}',
+                      style: theme.textTheme.bodySmall?.copyWith(
+                        color: Colors.black54,
+                      ),
+                    ),
+                  ],
+                    if (isSelected) ...[
+                      const SizedBox(height: 8),
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                        decoration: BoxDecoration(
+                          color: Colors.black,
+                          borderRadius: BorderRadius.circular(6),
+                        ),
+                        child: const Text(
+                          'Текущая точка',
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontSize: 12,
+                            letterSpacing: 0.4,
+                          ),
+                        ),
+                      ),
+                    ],
+                ],
+              ),
+            ),
+            Column(
+              children: [
+                IconButton(
+                  onPressed: _isSelecting
+                      ? null
+                      : () => _handleSelectTradingPoint(tradingPoint),
+                  icon: Icon(
+                    isSelected ? Icons.radio_button_checked : Icons.radio_button_off,
+                    color: Colors.black87,
+                  ),
+                  tooltip: isSelected ? 'Уже выбрана' : 'Сделать текущей',
                 ),
-              ),
-            ],
-            const SizedBox(height: 4),
-            Text(
-              'ID: ${tradingPoint.externalId}',
-              style: TextStyle(
-                color: Colors.grey.shade500,
-                fontSize: 11,
-              ),
+                const SizedBox(height: 8),
+                const Icon(Icons.chevron_right, color: Colors.black54),
+              ],
             ),
           ],
         ),
-        trailing: const Icon(Icons.chevron_right),
-        onTap: () {
-          Navigator.push(
-            context,
-            MaterialPageRoute(
-              builder: (context) => TradingPointDetailPage(
-                tradingPoint: tradingPoint,
-              ),
-            ),
-          );
-        },
       ),
     );
   }

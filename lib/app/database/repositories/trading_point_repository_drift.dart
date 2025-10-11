@@ -28,14 +28,9 @@ class DriftTradingPointRepository implements TradingPointRepository {
         ..where((tbl) => tbl.externalId.isIn(tradingPointIds))
       ).get();
 
-      final tradingPoints = tradingPointEntities.map((entity) => TradingPoint(
-        id: entity.id,
-        externalId: entity.externalId,
-        name: entity.name,
-        inn: entity.inn,
-        createdAt: entity.createdAt,
-        updatedAt: entity.updatedAt,
-      )).toList();
+    final tradingPoints = tradingPointEntities
+      .map(_mapEntityToDomain)
+          .toList();
       return Right(tradingPoints);
     } catch (e) {
       return Left(DatabaseFailure('Ошибка получения торговых точек сотрудника: $e'));
@@ -53,14 +48,7 @@ class DriftTradingPointRepository implements TradingPointRepository {
         return const Right(null);
       }
 
-      final tradingPoint = TradingPoint(
-        id: entity.id,
-        externalId: entity.externalId,
-        name: entity.name,
-        inn: entity.inn,
-        createdAt: entity.createdAt,
-        updatedAt: entity.updatedAt,
-      );
+  final tradingPoint = _mapEntityToDomain(entity);
 
       return Right(tradingPoint);
     } catch (e) {
@@ -79,14 +67,7 @@ class DriftTradingPointRepository implements TradingPointRepository {
         return const Right(null);
       }
 
-      final tradingPoint = TradingPoint(
-        id: entity.id,
-        externalId: entity.externalId,
-        name: entity.name,
-        inn: entity.inn,
-        createdAt: entity.createdAt,
-        updatedAt: entity.updatedAt,
-      );
+  final tradingPoint = _mapEntityToDomain(entity);
 
       return Right(tradingPoint);
     } catch (e) {
@@ -101,6 +82,7 @@ class DriftTradingPointRepository implements TradingPointRepository {
         externalId: tradingPoint.externalId,
         name: tradingPoint.name,
         inn: tradingPoint.inn != null ? Value(tradingPoint.inn!) : const Value.absent(),
+          region: Value(tradingPoint.region),
         updatedAt: Value(DateTime.now()),
       );
 
@@ -166,14 +148,7 @@ class DriftTradingPointRepository implements TradingPointRepository {
     try {
       final entities = await _database.select(_database.tradingPointEntities).get();
 
-      final tradingPoints = entities.map((entity) => TradingPoint(
-        id: entity.id,
-        externalId: entity.externalId,
-        name: entity.name,
-        inn: entity.inn,
-        createdAt: entity.createdAt,
-        updatedAt: entity.updatedAt,
-      )).toList();
+  final tradingPoints = entities.map(_mapEntityToDomain).toList();
 
       return Right(tradingPoints);
     } catch (e) {
@@ -188,18 +163,27 @@ class DriftTradingPointRepository implements TradingPointRepository {
         ..where((tbl) => tbl.name.like('%$query%'))
       ).get();
 
-      final tradingPoints = entities.map((entity) => TradingPoint(
-        id: entity.id,
-        externalId: entity.externalId,
-        name: entity.name,
-        inn: entity.inn,
-        createdAt: entity.createdAt,
-        updatedAt: entity.updatedAt,
-      )).toList();
+  final tradingPoints = entities.map(_mapEntityToDomain).toList();
 
       return Right(tradingPoints);
     } catch (e) {
       return Left(DatabaseFailure('Ошибка поиска торговых точек: $e'));
     }
+  }
+  TradingPoint _mapEntityToDomain(TradingPointEntity entity) {
+    final region = entity.region;
+    if (region == null || region.trim().isEmpty) {
+      throw StateError('Trading point ${entity.externalId} saved without region');
+    }
+
+    return TradingPoint(
+      id: entity.id,
+      externalId: entity.externalId,
+      name: entity.name,
+      inn: entity.inn,
+      region: region,
+      createdAt: entity.createdAt,
+      updatedAt: entity.updatedAt,
+    );
   }
 }

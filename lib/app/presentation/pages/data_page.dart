@@ -1,3 +1,9 @@
+import 'package:fieldforce/app/domain/entities/app_user.dart';
+import 'package:fieldforce/app/services/app_session_service.dart';
+import 'package:fieldforce/app/services/trading_point_sync_service.dart';
+import 'package:fieldforce/features/shop/domain/entities/trading_point.dart';
+import 'package:fieldforce/features/shop/presentation/trading_points_import_log_page.dart';
+import 'package:fieldforce/features/shop/presentation/trading_points_list_page.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:get_it/get_it.dart';
@@ -20,6 +26,7 @@ class DataPage extends StatefulWidget {
 
 class _DataPageState extends State<DataPage> {
   final ProductSyncServiceImpl _syncService = GetIt.instance<ProductSyncServiceImpl>();
+  final TradingPointSyncService _tradingPointSyncService = GetIt.instance<TradingPointSyncService>();
   static final Logger _logger = Logger('DataPage');
 
   SyncProgress? _currentProgress;
@@ -35,11 +42,21 @@ class _DataPageState extends State<DataPage> {
   String _categories = '29, 156'; // Дефолтные категории
   final TextEditingController _categoriesController = TextEditingController();
 
+  AppUser? _appUser;
+  List<TradingPoint> _tradingPoints = <TradingPoint>[];
+  TradingPoint? _selectedTradingPoint;
+  bool _isTradingPointLoading = false;
+  String? _tradingPointStatus;
+  List<String> _tradingPointErrors = <String>[];
+
   @override
   void initState() {
     super.initState();
     _categoriesController.text = _categories;
     _setupProgressListener();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _loadTradingPointState();
+    });
   }
 
   @override
@@ -74,6 +91,33 @@ class _DataPageState extends State<DataPage> {
         });
       }
     });
+  }
+
+  Future<void> _loadTradingPointState() async {
+    final sessionResult = await AppSessionService.getCurrentAppSession();
+    if (!mounted) return;
+
+    sessionResult.fold(
+      (failure) {
+        setState(() {
+          _appUser = null;
+          _tradingPoints = <TradingPoint>[];
+          _selectedTradingPoint = null;
+          _tradingPointErrors = <String>['Ошибка загрузки сессии: ${failure.message}'];
+          _isTradingPointLoading = false;
+          _tradingPointStatus ??= 'Ошибка загрузки сессии';
+        });
+      },
+      (session) {
+        final appUser = session?.appUser;
+        setState(() {
+          _appUser = appUser;
+          _tradingPoints = appUser?.employee.assignedTradingPoints ?? <TradingPoint>[];
+          _selectedTradingPoint = appUser?.selectedTradingPoint;
+          _isTradingPointLoading = false;
+        });
+      },
+    );
   }
 
   Future<void> _startProductSync() async {
@@ -185,6 +229,7 @@ class _DataPageState extends State<DataPage> {
   }
 
   Future<void> _startFullSync() async {
+    await _startTradingPointSync();
     // Сначала синхронизируем категории
     await _startCategorySync();
     
@@ -199,6 +244,274 @@ class _DataPageState extends State<DataPage> {
         ),
       );
     }
+  }
+
+  Future<void> _startTradingPointSync() async {
+    final appUser = _appUser;
+
+    if (appUser == null) {
+      setState(() {
+        _tradingPointStatus = 'Нет активного пользователя';
+        _tradingPointErrors = <String>['Не удалось определить текущего пользователя. Перезапустите сессию и попробуйте снова.'];
+      });
+      return;
+    }
+
+    setState(() {
+      _isTradingPointLoading = true;
+      _tradingPointStatus = 'Синхронизация...';
+      _tradingPointErrors = <String>[];
+    });
+
+    try {
+      final result = await _tradingPointSyncService.syncTradingPointsForUser(appUser.authUser);
+
+      if (!mounted) {
+        return;
+      }
+
+      await result.fold(
+        (failure) async {
+          final message = failure.message.isNotEmpty ? failure.message : failure.toString();
+          setState(() {
+            _isTradingPointLoading = false;
+            _tradingPointStatus = 'Ошибка';
+            _tradingPointErrors = <String>[message];
+          });
+
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Ошибка синхронизации торговых точек: $message'),
+              backgroundColor: Colors.red,
+            ),
+          );
+        },
+        (_) async {
+          await _loadTradingPointState();
+          if (!mounted) {
+            return;
+          }
+
+          setState(() {
+            _isTradingPointLoading = false;
+            _tradingPointStatus = 'Синхронизация завершена';
+            _tradingPointErrors = <String>[];
+          });
+
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Торговые точки успешно обновлены'),
+              backgroundColor: Colors.green,
+            ),
+          );
+        },
+      );
+    } catch (e, st) {
+      _logger.severe('Ошибка синхронизации торговых точек', e, st);
+
+      if (!mounted) {
+        return;
+      }
+
+      final message = e.toString();
+      setState(() {
+        _isTradingPointLoading = false;
+        _tradingPointStatus = 'Ошибка';
+        _tradingPointErrors = <String>[message];
+      });
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Ошибка синхронизации торговых точек: $message'),
+          backgroundColor: Colors.red,
+        ),
+      );
+    }
+  }
+
+  Future<void> _copyTradingPointErrors() async {
+    if (_tradingPointErrors.isEmpty) {
+      return;
+    }
+
+    final buffer = StringBuffer();
+    for (final error in _tradingPointErrors) {
+      buffer.writeln(error);
+    }
+
+    await Clipboard.setData(ClipboardData(text: buffer.toString().trim()));
+
+    if (!mounted) {
+      return;
+    }
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text('Ошибки синхронизации скопированы в буфер обмена'),
+        backgroundColor: AppColors.primary,
+      ),
+    );
+  }
+
+  Future<void> _openTradingPointsList() async {
+    final result = await Navigator.of(context).push<bool>(
+      MaterialPageRoute(builder: (_) => const TradingPointsListPage()),
+    );
+
+    if (result == true) {
+      await _loadTradingPointState();
+    }
+  }
+
+  Future<void> _openTradingPointsLog() async {
+    if (_tradingPoints.isEmpty) {
+      if (!mounted) {
+        return;
+      }
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Лог пуст: синхронизируйте торговые точки'),
+        ),
+      );
+      return;
+    }
+
+    await Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) => TradingPointsImportLogPage(
+          tradingPoints: _tradingPoints,
+        ),
+      ),
+    );
+  }
+
+  Color _getTradingPointStatusColor() {
+    final status = _tradingPointStatus?.toLowerCase() ?? '';
+    if (status.contains('ошиб')) {
+      return Colors.red;
+    }
+    if (status.contains('заверш')) {
+      return Colors.green;
+    }
+    if (status.contains('синхрони')) {
+      return AppColors.primary;
+    }
+    return Colors.black87;
+  }
+
+  Widget _buildTradingPointSyncSection() {
+    return Card(
+      elevation: 2,
+      child: Padding(
+        padding: const EdgeInsets.all(16.0),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                const Icon(Icons.storefront, color: AppColors.primary),
+                const SizedBox(width: 8),
+                const Text(
+                  'Торговые точки',
+                  style: TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                const Spacer(),
+                IconButton(
+                  onPressed: _isTradingPointLoading
+                      ? null
+                      : _openTradingPointsLog,
+                  icon: const Icon(Icons.article_outlined),
+                  tooltip: 'Лог импорта',
+                ),
+                IconButton(
+                  onPressed: _isTradingPointLoading
+                      ? null
+                      : _openTradingPointsList,
+                  icon: const Icon(Icons.list_alt),
+                  tooltip: 'Открыть список точек',
+                ),
+                IconButton(
+                  onPressed: _isTradingPointLoading ? null : _startTradingPointSync,
+                  icon: const Icon(Icons.refresh),
+                  tooltip: 'Синхронизировать',
+                ),
+              ],
+            ),
+            const SizedBox(height: 12),
+            if (_isTradingPointLoading)
+              const LinearProgressIndicator(),
+            if (_tradingPointStatus != null) ...[
+              const SizedBox(height: 12),
+              Text(
+                _tradingPointStatus!,
+                style: TextStyle(
+                  color: _getTradingPointStatusColor(),
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ],
+            if (_appUser == null) ...[
+              const SizedBox(height: 12),
+              const Text(
+                'Нет активного пользователя. Выполните вход, чтобы синхронизировать торговые точки.',
+                style: TextStyle(color: Colors.grey),
+              ),
+            ],
+            if (_selectedTradingPoint != null) ...[
+              const SizedBox(height: 12),
+              Text(
+                'Выбрана точка: ${_selectedTradingPoint!.name} (${_selectedTradingPoint!.externalId})',
+                style: const TextStyle(fontWeight: FontWeight.w600),
+              ),
+              if (_selectedTradingPoint!.inn != null)
+                Text('ИНН: ${_selectedTradingPoint!.inn}'),
+            ],
+            if (_tradingPointErrors.isNotEmpty) ...[
+              const SizedBox(height: 16),
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Icon(Icons.error_outline, color: Colors.red),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Text(
+                          'Ошибки синхронизации',
+                          style: TextStyle(fontWeight: FontWeight.bold),
+                        ),
+                        const SizedBox(height: 8),
+                        ..._tradingPointErrors.map(
+                          (error) => Padding(
+                            padding: const EdgeInsets.only(bottom: 8),
+                            child: SelectableText(
+                              error,
+                              style: const TextStyle(color: Colors.red),
+                            ),
+                          ),
+                        ),
+                        Align(
+                          alignment: Alignment.centerLeft,
+                          child: TextButton.icon(
+                            onPressed: _copyTradingPointErrors,
+                            icon: const Icon(Icons.copy),
+                            label: const Text('Скопировать ошибки'),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ],
+        ),
+      ),
+    );
   }
 
   Future<void> _cancelSync() async {
@@ -256,6 +569,10 @@ class _DataPageState extends State<DataPage> {
 
               // Раздел синхронизации категорий
               _buildCategorySyncSection(),
+
+              const SizedBox(height: 32),
+
+              _buildTradingPointSyncSection(),
 
               const SizedBox(height: 32),
 

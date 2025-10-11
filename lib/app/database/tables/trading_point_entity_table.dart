@@ -8,6 +8,7 @@ class TradingPointEntities extends Table {
   TextColumn get externalId => text().unique()();
   TextColumn get name => text()();
   TextColumn get inn => text().nullable()();
+  TextColumn get region => text().withDefault(const Constant('P3V'))();
   DateTimeColumn get createdAt => dateTime().withDefault(currentDateAndTime)();
   DateTimeColumn get updatedAt => dateTime().nullable()();
 }

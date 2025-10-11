@@ -132,6 +132,7 @@ flutter:
       - assets/fixtures/product_example4.json
       - assets/fixtures/product_example2_compact_view.json
       - assets/fixtures/price_category.json
+      - assets/fixtures/trading_points_sync_response.json
 
   # An image asset can refer to one or more resolution-specific "variants", see
   # https://flutter.dev/to/resolution-aware-images
