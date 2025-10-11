@@ -79,6 +79,37 @@ class CachedNetworkImageWidget extends StatelessWidget {
     );
   }
 
+  /// Предварительно загружает изображение продукта в кэш, чтобы избежать морганий при прокрутке
+  static Future<void> prefetchProductImage(
+    BuildContext context, {
+    required String imageUrl,
+    String? webpUrl,
+    double? width,
+    double? height,
+  }) async {
+    if (imageUrl.isEmpty) return;
+
+    final optimizedUrl = _resolveOptimizedUrl(
+      imageUrl: imageUrl,
+      webpUrl: webpUrl,
+      width: width,
+    );
+    final cacheKey = _generateCacheKey(optimizedUrl, width, height);
+
+    try {
+      final provider = CachedNetworkImageProvider(
+        optimizedUrl,
+        cacheKey: cacheKey,
+      );
+
+      await precacheImage(provider, context);
+      _logger.finer('🗃️ Prefetched image: $optimizedUrl');
+    } catch (error, stackTrace) {
+      _logger.fine('⚠️ Failed to prefetch image $optimizedUrl: $error');
+      _logger.finest('Prefetch stack trace for $optimizedUrl', error, stackTrace);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     // Если нет URL изображения
@@ -87,7 +118,11 @@ class CachedNetworkImageWidget extends StatelessWidget {
     }
 
     // Выбираем оптимальный URL (предпочитаем WebP)
-    final optimizedUrl = _getOptimizedImageUrl();
+    final optimizedUrl = _resolveOptimizedUrl(
+      imageUrl: imageUrl!,
+      webpUrl: webpUrl,
+      width: width,
+    );
     
     // Логируем только при действительной загрузке
     _logger.fine('🖼️ Загружаем изображение: $optimizedUrl');
@@ -103,7 +138,7 @@ class CachedNetworkImageWidget extends StatelessWidget {
         return errorWidget != null ? errorWidget!(context, url, error) : _buildDefaultErrorWidget();
       },
       // Кеширование
-      cacheKey: _generateCacheKey(optimizedUrl),
+      cacheKey: _generateCacheKey(optimizedUrl, width, height),
       memCacheWidth: width?.round(),
       memCacheHeight: height?.round(),
       // Настройки производительности
@@ -114,26 +149,22 @@ class CachedNetworkImageWidget extends StatelessWidget {
   }
 
   /// Выбирает оптимальный URL для загрузки
-  String _getOptimizedImageUrl() {
-    // Предпочитаем WebP если доступен (меньше размер, лучше сжатие)
-    String baseUrl;
-    if (webpUrl != null && webpUrl!.isNotEmpty) {
-      baseUrl = webpUrl!;
-    } else {
-      baseUrl = imageUrl!;
-    }
-    
-    // Добавляем параметр ширины для оптимизации загрузки
-    return _addWidthParameter(baseUrl);
+  static String _resolveOptimizedUrl({
+    required String imageUrl,
+    String? webpUrl,
+    double? width,
+  }) {
+    final baseUrl = (webpUrl != null && webpUrl.isNotEmpty) ? webpUrl : imageUrl;
+    return _addWidthParameter(baseUrl, width);
   }
 
   /// Добавляет параметр ширины к URL изображения для оптимизации загрузки
-  String _addWidthParameter(String imageUrl) {
+  static String _addWidthParameter(String imageUrl, double? width) {
     if (imageUrl.isEmpty) return imageUrl;
     
     // Для маленьких размеров (превью) используем 400px
     // Для больших размеров используем 1000px или оригинальную ширину
-    final targetWidth = _getThumbnailWidth();
+    final targetWidth = _getThumbnailWidth(width);
     
     // Проверяем, нет ли уже параметра w в URL
     final uri = Uri.tryParse(imageUrl);
@@ -154,14 +185,14 @@ class CachedNetworkImageWidget extends StatelessWidget {
   }
 
   /// Определяет оптимальную ширину для загрузки
-  int _getThumbnailWidth() {
+  static int _getThumbnailWidth(double? width) {
     // Если ширина не задана или маленькая (меньше 100px) - используем превью 400px
-    if (width == null || width! < 100) {
+    if (width == null || width < 100) {
       return 400;
     }
     
     // Для больших изображений используем 1000px (full-size)
-    if (width! > 400) {
+    if (width > 400) {
       return 1000;
     }
     
@@ -170,7 +201,7 @@ class CachedNetworkImageWidget extends StatelessWidget {
   }
 
   /// Генерирует ключ для кеширования
-  String _generateCacheKey(String url) {
+  static String _generateCacheKey(String url, double? width, double? height) {
     // Используем URL + размеры для уникального ключа
     final sizeKey = '${width?.round() ?? 0}x${height?.round() ?? 0}';
     return '$url-$sizeKey';

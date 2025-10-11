@@ -25,12 +25,17 @@ class ProductCatalogCardWidget extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final product = productWithStock.product;
+    final defaultImage = product.defaultImage;
+    final imageUrl = defaultImage == null
+        ? null
+        : (defaultImage.uri.isNotEmpty ? defaultImage.uri : defaultImage.getOptimalUrl());
     final price = selectedStockItem != null
       ? (selectedStockItem!.offerPrice ?? selectedStockItem!.defaultPrice)
       : productWithStock.displayPrice;
 
     return ProductPurchaseCard(
-      imageUrl: product.defaultImage?.getOptimalUrl(),
+      imageUrl: imageUrl,
+      webpUrl: defaultImage?.webp,
       title: product.title,
       productCode: product.code.toString(),
       priceInKopecks: price,

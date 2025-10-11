@@ -10,6 +10,7 @@ import 'package:fieldforce/shared/widgets/cached_network_image_widget.dart';
 ///  - справа (внизу): селектор склада слева, кнопка "В корзину" справа
 class ProductPurchaseCard extends StatelessWidget {
   final String? imageUrl;
+  final String? webpUrl;
   final String title;
   final String productCode; // показываем под названием
   final int priceInKopecks;
@@ -22,6 +23,7 @@ class ProductPurchaseCard extends StatelessWidget {
   const ProductPurchaseCard({
     super.key,
     this.imageUrl,
+  this.webpUrl,
     required this.title,
     required this.productCode,
     required this.priceInKopecks,
@@ -38,6 +40,8 @@ class ProductPurchaseCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final displayImageUrl = imageUrl ?? webpUrl;
+
     return Card(
       // Remove horizontal offset so card stretches to list padding edges
       margin: const EdgeInsets.only(bottom: 8),
@@ -57,15 +61,15 @@ class ProductPurchaseCard extends StatelessWidget {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       // Inline tappable area: image + title block
-                      if (imageUrl != null) ...[
+                      if (displayImageUrl != null && displayImageUrl.isNotEmpty) ...[
                         InkWell(
                           onTap: onTap,
                           customBorder: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6)),
                           child: ClipRRect(
                             borderRadius: BorderRadius.circular(6),
                             child: CachedNetworkImageWidget.lazyProduct(
-                              imageUrl: imageUrl!,
-                              webpUrl: null, // WebP можно добавить в будущем
+                              imageUrl: displayImageUrl,
+                              webpUrl: webpUrl,
                               width: 48,
                               height: 48,
                               fit: BoxFit.cover,

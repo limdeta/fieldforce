@@ -1,3 +1,6 @@
+import 'dart:async';
+import 'dart:math' as math;
+
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:get_it/get_it.dart';
@@ -11,6 +14,7 @@ import 'package:fieldforce/features/shop/presentation/bloc/cart_bloc.dart';
 import 'package:fieldforce/features/shop/presentation/widgets/navigation_fab_widget.dart';
 import 'package:fieldforce/features/shop/presentation/pages/product_detail_page.dart';
 import 'package:fieldforce/features/shop/presentation/widgets/product_catalog_card_widget.dart';
+import 'package:fieldforce/shared/widgets/cached_network_image_widget.dart';
 
 /// Страница списка продуктов для выбранной категории
 class CategoryProductsPage extends StatefulWidget {
@@ -37,6 +41,8 @@ class _CategoryProductsPageState extends State<CategoryProductsPage> {
   bool _hasMore = true;
   int _currentOffset = 0;
   final int _limit = 20;
+  final int _prefetchBatchSize = 8;
+  final Set<int> _prefetchedProductCodes = <int>{};
 
   
   // Отслеживаем выбранные StockItem для каждого продукта
@@ -131,6 +137,7 @@ class _CategoryProductsPageState extends State<CategoryProductsPage> {
     }
 
     final newProducts = result.getOrElse(() => []);
+    final int previousLength = _products.length;
     
     setState(() {
       _isLoading = false;
@@ -146,6 +153,13 @@ class _CategoryProductsPageState extends State<CategoryProductsPage> {
       
       _logger.fine('Загружено ${newProducts.length} продуктов для категории "${widget.category.name}" (всего: ${_products.length})');
     });
+
+    if (newProducts.isNotEmpty) {
+      if (reset) {
+        _prefetchedProductCodes.clear();
+      }
+      _schedulePrefetchForProducts(reset ? _products.take(_prefetchBatchSize).toList() : _products.sublist(previousLength));
+    }
   }
 
   void _onProductTap(ProductWithStock productWithStock) {
@@ -316,6 +330,7 @@ class _CategoryProductsPageState extends State<CategoryProductsPage> {
           }
 
           final productWithStock = _products[index];
+          _prefetchAheadOf(index);
           
           return Padding(
             padding: const EdgeInsets.only(bottom: 12),
@@ -329,5 +344,51 @@ class _CategoryProductsPageState extends State<CategoryProductsPage> {
         },
       ),
     );
+  }
+
+  void _schedulePrefetchForProducts(List<ProductWithStock> products) {
+    if (!_hasImagesToPrefetch(products)) return;
+
+    Future.microtask(() async {
+      if (!mounted) return;
+      final toPrefetch = products.take(_prefetchBatchSize).toList(growable: false);
+
+      await Future.wait(toPrefetch.map((product) async {
+        final image = product.product.defaultImage;
+        if (image == null) return;
+        if (!_prefetchedProductCodes.add(product.product.code)) return;
+
+        final rawUrl = image.uri;
+        final fallbackUrl = image.getOptimalUrl();
+        final resolvedUrl = rawUrl.isNotEmpty ? rawUrl : fallbackUrl;
+        if (resolvedUrl.isEmpty) return;
+
+        await CachedNetworkImageWidget.prefetchProductImage(
+          context,
+          imageUrl: resolvedUrl,
+          webpUrl: image.webp,
+          width: 48,
+          height: 48,
+        );
+      }));
+    });
+  }
+
+  bool _hasImagesToPrefetch(List<ProductWithStock> products) {
+    return products.any((product) {
+      final image = product.product.defaultImage;
+      if (image == null) return false;
+      if (_prefetchedProductCodes.contains(product.product.code)) return false;
+      return image.uri.isNotEmpty || image.getOptimalUrl().isNotEmpty;
+    });
+  }
+
+  void _prefetchAheadOf(int index) {
+    final nextIndex = index + 1;
+    if (nextIndex >= _products.length) return;
+
+    final end = math.min(_products.length, nextIndex + _prefetchBatchSize);
+    final slice = _products.sublist(nextIndex, end);
+    _schedulePrefetchForProducts(slice);
   }
 }
