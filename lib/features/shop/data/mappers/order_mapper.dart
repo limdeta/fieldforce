@@ -19,11 +19,11 @@ class OrderMapper {
       creatorId: order.creator.id,
       outletId: order.outlet.id!,
       state: order.state.value,
-      paymentType: Value(order.paymentKind.type),
-      paymentDetails: Value(order.paymentKind.details),
-      paymentIsCash: Value(order.paymentKind.isCashPayment),
-      paymentIsCard: Value(order.paymentKind.isCardPayment),
-      paymentIsCredit: Value(order.paymentKind.isOnCredit),
+  paymentType: Value(order.paymentKind.paymentCode),
+  paymentDetails: Value(order.paymentKind.methodCode),
+  paymentIsCash: Value(order.paymentKind.isCash),
+  paymentIsCard: const Value(false),
+  paymentIsCredit: Value(order.paymentKind.payOnReceive),
       comment: Value(order.comment),
       name: Value(order.name),
       isPickup: Value(order.isPickup),
@@ -44,11 +44,9 @@ class OrderMapper {
     List<OrderLine> orderLines,
   ) {
     final paymentKind = PaymentKind(
-      type: orderEntity.paymentType,
-      details: orderEntity.paymentDetails,
-      isCashPayment: orderEntity.paymentIsCash,
-      isCardPayment: orderEntity.paymentIsCard,
-      isOnCredit: orderEntity.paymentIsCredit,
+      payment: orderEntity.paymentType,
+      method: orderEntity.paymentDetails,
+      payOnReceive: orderEntity.paymentIsCredit,
     );
 
     return Order(

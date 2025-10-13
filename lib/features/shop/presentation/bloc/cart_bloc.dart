@@ -422,25 +422,35 @@ class CartBloc extends Bloc<CartEvent, CartState> {
         outletId: event.outletId,
       ));
 
-      result.fold(
-        (failure) {
+      await result.fold(
+        (failure) async {
           _logger.warning('Ошибка обновления параметров: ${failure.message}');
-          emit(CartError(message: failure.message));
+          if (!emit.isDone) {
+            emit(CartError(message: failure.message));
+          }
         },
         (_) async {
           _logger.info('Параметры корзины обновлены, получаем обновленную корзину');
-          
+
           // Загружаем обновленную корзину напрямую, без события
           final cartResult = await _getCurrentCartUseCase();
           cartResult.fold(
-            (failure) => emit(CartError(message: failure.message)),
+            (failure) {
+              if (!emit.isDone) {
+                emit(CartError(message: failure.message));
+              }
+            },
             (cart) {
+              if (emit.isDone) {
+                return;
+              }
+
               if (cart.lines.isEmpty) {
                 emit(CartEmpty(cart: cart));
               } else {
                 final totalAmount = _calculateTotalAmount(cart.lines);
                 final totalItems = _calculateTotalItems(cart.lines);
-                
+
                 emit(CartLoaded(
                   cart: cart,
                   orderLines: cart.lines,

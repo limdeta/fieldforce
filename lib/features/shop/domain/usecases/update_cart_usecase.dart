@@ -58,10 +58,20 @@ class UpdateCartUseCase {
         );
       }
 
-      // TODO: Реализовать обновление других параметров заказа
-      // (paymentKind, isPickup, deliveryDay, etc.)
-      
-      return const Left(ValidationFailure('Не указаны обязательные параметры для обновления корзины'));
+      final shouldUpdateMetadata =
+          params.paymentKind != null ||
+          params.isPickup != null ||
+          params.approvedDeliveryDay != null ||
+          params.approvedAssemblyDay != null ||
+          params.comment != null;
+
+      if (shouldUpdateMetadata) {
+        return await _updateOrderMetadata(params);
+      }
+
+      return const Left(
+        ValidationFailure('Не указаны обязательные параметры для обновления корзины'),
+      );
     } catch (e, stackTrace) {
       _logger.severe('Ошибка обновления корзины', e, stackTrace);
       return Left(NetworkFailure('Ошибка обновления корзины: $e'));
@@ -205,6 +215,90 @@ class UpdateCartUseCase {
     } catch (e, stackTrace) {
       _logger.severe('Ошибка очистки корзины', e, stackTrace);
       return Left(DatabaseFailure('Ошибка очистки корзины: $e'));
+    }
+  }
+
+  Future<Either<Failure, Order>> _updateOrderMetadata(
+    UpdateCartParams params,
+  ) async {
+    try {
+      _logger.info('Обновление параметров черновика заказа (metadata)');
+
+      final sessionResult = await AppSessionService.getCurrentAppSession();
+      final session = sessionResult.fold(
+        (failure) {
+          _logger.warning('Не удалось получить сессию пользователя: ${failure.message}');
+          return null;
+        },
+        (current) => current,
+      );
+
+      if (session == null) {
+        return const Left(NotFoundFailure('Активная сессия не найдена'));
+      }
+
+      final employeeId = session.appUser.employee.id;
+      final outletId = params.outletId ??
+          session.currentOutletId ??
+          session.appUser.selectedTradingPointId;
+
+      if (outletId == null) {
+        return const Left(ValidationFailure('Не выбрана торговая точка'));
+      }
+
+      final currentOrder = await _orderRepository.getCurrentDraftOrder(
+        employeeId,
+        outletId,
+      );
+
+      var updatedOrder = currentOrder;
+      var hasChanges = false;
+
+      if (params.paymentKind != null &&
+          params.paymentKind != currentOrder.paymentKind) {
+        if (!params.paymentKind!.isValid()) {
+          return const Left(ValidationFailure('Выбран некорректный способ оплаты'));
+        }
+        updatedOrder = updatedOrder.updatePaymentKind(params.paymentKind!);
+        hasChanges = true;
+      }
+
+      if (params.isPickup != null && params.isPickup != currentOrder.isPickup) {
+        updatedOrder = updatedOrder.copyWith(isPickup: params.isPickup);
+        hasChanges = true;
+      }
+
+      if (params.approvedDeliveryDay != null &&
+          params.approvedDeliveryDay != currentOrder.approvedDeliveryDay) {
+        updatedOrder = updatedOrder.copyWith(
+          approvedDeliveryDay: params.approvedDeliveryDay,
+        );
+        hasChanges = true;
+      }
+
+      if (params.approvedAssemblyDay != null &&
+          params.approvedAssemblyDay != currentOrder.approvedAssemblyDay) {
+        updatedOrder = updatedOrder.copyWith(
+          approvedAssemblyDay: params.approvedAssemblyDay,
+        );
+        hasChanges = true;
+      }
+
+      if (params.comment != null && params.comment != currentOrder.comment) {
+        updatedOrder = updatedOrder.copyWith(comment: params.comment);
+        hasChanges = true;
+      }
+
+      if (!hasChanges) {
+        _logger.info('Изменений параметров заказа не обнаружено — пропускаем сохранение');
+        return Right(currentOrder);
+      }
+
+      final savedOrder = await _orderRepository.saveOrder(updatedOrder);
+      return Right(savedOrder);
+    } catch (e, stackTrace) {
+      _logger.severe('Ошибка обновления параметров корзины', e, stackTrace);
+      return Left(DatabaseFailure('Ошибка обновления параметров корзины: $e'));
     }
   }
 }

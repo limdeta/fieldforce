@@ -113,7 +113,10 @@ void main() {
         quantity: 1,
       );
 
-      var order = draftOrder.copyWith(lines: [orderLine]);
+      var order = draftOrder.copyWith(
+        lines: [orderLine],
+        paymentKind: const PaymentKind.empty(),
+      );
       expect(order.canSubmit, isFalse);
 
       // Заказ с товаром и способом оплаты может быть отправлен
@@ -160,19 +163,18 @@ void main() {
   group('PaymentKind Tests', () {
     test('должен создавать корректные способы оплаты', () {
       const cash = PaymentKind.cash();
-      const card = PaymentKind.card();
-      const credit = PaymentKind.credit();
+      const cashless = PaymentKind.cashless();
       const empty = PaymentKind.empty();
 
       expect(cash.isValid(), isTrue);
-      expect(card.isValid(), isTrue);
-      expect(credit.isValid(), isTrue);
+      expect(cashless.isValid(), isTrue);
       expect(empty.isValid(), isFalse);
 
-      expect(cash.type, 'cash');
-      expect(card.type, 'card');
-      expect(credit.type, 'credit');
-      expect(empty.type, isNull);
+  expect(cash.paymentCode, PaymentKind.paymentCash);
+  expect(cash.documentLabel, 'Копия чека');
+  expect(cashless.paymentCode, PaymentKind.paymentCashless);
+  expect(cashless.documentLabel, 'Универсальные передаточные документы');
+      expect(empty.paymentCode, isNull);
     });
   });
 }

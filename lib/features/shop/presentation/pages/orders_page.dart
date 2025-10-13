@@ -1076,20 +1076,18 @@ class _OrdersPageState extends State<OrdersPage> {
   }
 
   String _describePaymentKind(PaymentKind paymentKind) {
-    if (paymentKind.isCashPayment) {
-      return 'Наличные';
+    if (!paymentKind.isValid()) {
+      return 'Не указан';
     }
-    if (paymentKind.isCardPayment) {
-      return 'Банковская карта';
+
+    final paymentLabel = paymentKind.paymentLabel;
+    final documentLabel = paymentKind.documentLabel;
+
+    if (documentLabel != '—' && documentLabel.isNotEmpty) {
+      return '$paymentLabel · $documentLabel';
     }
-    if (paymentKind.isOnCredit) {
-      return 'Отсрочка платежа';
-    }
-    final rawType = paymentKind.type;
-    if (rawType != null && rawType.isNotEmpty) {
-      return rawType;
-    }
-    return 'Не указан';
+
+    return paymentLabel;
   }
 
   String _formatMoney(int amountInCents) {

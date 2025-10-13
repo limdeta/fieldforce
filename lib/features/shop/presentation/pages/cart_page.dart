@@ -7,8 +7,11 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 
 import 'package:fieldforce/features/shop/presentation/widgets/navigation_fab_widget.dart';
 import 'package:fieldforce/features/shop/presentation/widgets/cart_item_widget.dart';
+import 'package:fieldforce/features/shop/presentation/widgets/payment_method_selector.dart';
+import 'package:fieldforce/features/shop/presentation/widgets/delivery_date_selector.dart';
 import 'product_detail_page.dart';
 import 'package:fieldforce/features/shop/domain/entities/product_with_stock.dart';
+import 'package:fieldforce/features/shop/domain/entities/payment_kind.dart';
 
 /// Страница корзины (текущий draft заказ)
 class CartPage extends StatefulWidget {
@@ -147,6 +150,11 @@ class _CartPageState extends State<CartPage> {
 
   /// Виджет загруженной корзины
   Widget _buildLoadedCart(CartLoaded state) {
+    final paymentKind = state.cart.paymentKind;
+    final deliveryDate = state.cart.approvedDeliveryDay;
+    final canSubmit = paymentKind.isValid() && deliveryDate != null;
+    final maxButtonWidth = MediaQuery.of(context).size.width * 0.5;
+
     return Column(
       children: [
         // Информация о корзине
@@ -186,63 +194,82 @@ class _CartPageState extends State<CartPage> {
 
         // Список товаров в корзине
         Expanded(
-          child: ListView.builder(
-            itemCount: state.orderLines.length,
-            itemBuilder: (context, index) {
-              final orderLine = state.orderLines[index];
-              
-              return CartItemWidget(
-                orderLine: orderLine,
-                showNavigation: true,
-                onTap: () => _navigateToProductDetails(orderLine),
-                onRemove: orderLine.id != null 
-                  ? () {
-                      _removeItem(orderLine.id!);
-                    }
-                  : null,
-              );
-            },
-          ),
-        ),
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.fromLTRB(16, 16, 16, 24),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                ListView.builder(
+                  itemCount: state.orderLines.length,
+                  shrinkWrap: true,
+                  physics: const NeverScrollableScrollPhysics(),
+                  itemBuilder: (context, index) {
+                    final orderLine = state.orderLines[index];
 
-        // Кнопки действий
-        Container(
-          padding: const EdgeInsets.all(16),
-          decoration: BoxDecoration(
-            color: Colors.white,
-            boxShadow: [
-              BoxShadow(
-                color: Colors.grey.shade300,
-                blurRadius: 4,
-                offset: const Offset(0, -2),
-              ),
-            ],
-          ),
-          child: Column(
-            children: [
-              // Кнопка оформления заказа
-              SizedBox(
-                width: double.infinity,
-                height: 48,
-                child: ElevatedButton.icon(
-                  onPressed: () => _submitOrder(),
-                  icon: const Icon(Icons.check_circle),
-                  label: const Text('Оформить заказ'),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.green,
-                    foregroundColor: Colors.white,
-                    textStyle: const TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.bold,
+                    return CartItemWidget(
+                      orderLine: orderLine,
+                      showNavigation: true,
+                      onTap: () => _navigateToProductDetails(orderLine),
+                      onRemove: orderLine.id != null
+                          ? () {
+                              _removeItem(orderLine.id!);
+                            }
+                          : null,
+                    );
+                  },
+                ),
+
+                const SizedBox(height: 24),
+
+                PaymentMethodSelector(
+                  selected: paymentKind,
+                  onSelected: _onPaymentSelected,
+                ),
+
+                const SizedBox(height: 24),
+
+                DeliveryDateSelector(
+                  selectedDate: deliveryDate,
+                  onDateSelected: _onDeliveryDateSelected,
+                ),
+
+                const SizedBox(height: 24),
+
+                _CommentInputField(
+                  initialValue: state.cart.comment,
+                  onChanged: _onCommentChanged,
+                ),
+
+                const SizedBox(height: 32),
+
+                Align(
+                  alignment: Alignment.center,
+                  child: ConstrainedBox(
+                    constraints: BoxConstraints(
+                      maxWidth: maxButtonWidth,
+                    ),
+                    child: SizedBox(
+                      height: 48,
+                      child: ElevatedButton(
+                        onPressed: canSubmit ? () => _submitOrder() : null,
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor:
+                              canSubmit ? Colors.green : Colors.grey.shade400,
+                          foregroundColor: Colors.white,
+                          textStyle: const TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.bold,
+                          ),
+                          disabledBackgroundColor: Colors.grey.shade400,
+                          disabledForegroundColor: Colors.white,
+                        ),
+                        child: const Text('Оформить заказ'),
+                      ),
                     ),
                   ),
                 ),
-              ),
-              const SizedBox(height: 8),
-              
-              // Кнопка отправки на проверку
-
-            ],
+              ],
+            ),
           ),
         ),
       ],
@@ -330,6 +357,33 @@ class _CartPageState extends State<CartPage> {
     context.read<CartBloc>().add(const SubmitCartEvent());
   }
 
+  void _onPaymentSelected(PaymentKind paymentKind) {
+    final bloc = context.read<CartBloc>();
+    final currentState = bloc.state;
+
+    if (currentState is CartLoaded &&
+        currentState.cart.paymentKind == paymentKind) {
+      return;
+    }
+
+    bloc.add(UpdateCartDetailsEvent(paymentKind: paymentKind));
+  }
+
+  void _onDeliveryDateSelected(DateTime date) {
+    final bloc = context.read<CartBloc>();
+    final currentState = bloc.state;
+
+    if (currentState is CartLoaded &&
+        currentState.cart.approvedDeliveryDay == date) {
+      return;
+    }
+
+    bloc.add(UpdateCartDetailsEvent(approvedDeliveryDay: date));
+  }
+
+  void _onCommentChanged(String value) {
+    context.read<CartBloc>().add(UpdateCartDetailsEvent(comment: value));
+  }
   /// Навигация к деталям продукта из корзины
   void _navigateToProductDetails(OrderLine orderLine) async {
     // Для навигации к деталям нужен ProductWithStock, создаем его из OrderLine
@@ -361,5 +415,43 @@ class _CartPageState extends State<CartPage> {
   void dispose() {
     // Не dispose блок здесь, так как он может использоваться в других местах
     super.dispose();
+  }
+}
+
+class _CommentInputField extends StatelessWidget {
+  const _CommentInputField({
+    required this.initialValue,
+    required this.onChanged,
+  });
+
+  final String? initialValue;
+  final ValueChanged<String> onChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          'Комментарий к заказу',
+          style: theme.textTheme.titleMedium,
+        ),
+        const SizedBox(height: 8),
+        TextFormField(
+          key: ValueKey(initialValue ?? ''),
+          initialValue: initialValue,
+          onChanged: onChanged,
+          minLines: 3,
+          maxLines: 5,
+          keyboardType: TextInputType.multiline,
+          textInputAction: TextInputAction.newline,
+          decoration: const InputDecoration(
+            border: OutlineInputBorder()
+          ),
+        ),
+      ],
+    );
   }
 }
