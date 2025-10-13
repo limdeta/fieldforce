@@ -25,6 +25,8 @@ import 'app/presentation/pages/routes_page.dart';
 import 'app/presentation/pages/profile_page.dart';
 import 'app/presentation/pages/data_page.dart';
 import 'app/presentation/pages/sync_log_page.dart';
+import 'app/presentation/pages/dashboard_page.dart';
+import 'app/presentation/pages/settings_page.dart';
 import 'features/shop/presentation/pages/product_catalog_page.dart';
 import 'features/shop/presentation/pages/product_categories_page.dart';
 import 'features/shop/presentation/pages/orders_page.dart';
@@ -105,6 +107,7 @@ class FieldforceApp extends StatelessWidget {
               gpsDataManager: GetIt.instance<GpsDataManager>(),
             ),
             '/menu': (context) => const MainMenuPage(),
+            '/dashboard': (context) => const DashboardPage(),
             '/routes': (context) => const RoutesPage(),
             '/profile': (context) => const ProfilePage(),
             '/outlets': (context) => const TradingPointsListPage(),
@@ -114,6 +117,7 @@ class FieldforceApp extends StatelessWidget {
             '/cart': (context) => const CartPage(),
             '/orders': (context) => const OrdersPage(),
             '/data-sync': (context) => const DataPage(),
+            '/settings': (context) => const SettingsPage(),
             '/sync-log': (context) => const SyncLogPage(),
           },
           ),

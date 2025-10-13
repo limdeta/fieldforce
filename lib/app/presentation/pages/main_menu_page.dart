@@ -1,4 +1,3 @@
-import 'package:fieldforce/app/services/simple_update_service.dart';
 import 'package:fieldforce/features/authentication/domain/usecases/logout_usecase.dart';
 import 'package:fieldforce/app/theme/app_colors.dart';
 import 'package:flutter/material.dart';
@@ -32,6 +31,11 @@ class _MainMenuPageState extends State<MainMenuPage> {
 
   /// Структура меню
   final List<MenuItem> _menuItems = const [
+    MenuItem(
+      title: 'Дашборд',
+      icon: Icons.dashboard,
+      route: '/dashboard',
+    ),
     MenuItem(
       title: 'Маршруты',
       icon: Icons.route,
@@ -84,9 +88,9 @@ class _MainMenuPageState extends State<MainMenuPage> {
       route: '/profile',
     ),
     MenuItem(
-      title: 'Проверить обновления',
-      icon: Icons.system_update,
-      route: '/check-updates',
+      title: 'Настройки',
+      icon: Icons.settings,
+      route: '/settings',
     ),
     MenuItem(
       title: 'Выйти',
@@ -221,8 +225,10 @@ class _MainMenuPageState extends State<MainMenuPage> {
         Navigator.pushNamed(context, '/orders');
       } else if (item.route == '/data-sync') {
         Navigator.pushNamed(context, '/data-sync');
-      } else if (item.route == '/check-updates') {
-        _handleCheckUpdates();
+      } else if (item.route == '/dashboard') {
+        Navigator.pushNamed(context, '/dashboard');
+      } else if (item.route == '/settings') {
+        Navigator.pushNamed(context, '/settings');
       } else if (item.route == '/logout') {
         _handleLogout();
       } else {
@@ -294,8 +300,4 @@ class _MainMenuPageState extends State<MainMenuPage> {
     }
   }
 
-  /// Обработка проверки обновлений
-  void _handleCheckUpdates() {
-    SimpleUpdateService.checkForUpdatesIfEnabled(context);
-  }
 }
