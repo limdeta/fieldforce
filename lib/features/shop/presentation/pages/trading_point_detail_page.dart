@@ -1,47 +1,62 @@
-import 'package:fieldforce/app/services/app_session_service.dart';
 import 'package:fieldforce/app/presentation/widgets/trading_point_map/trading_point_map_factory.dart';
+import 'package:fieldforce/app/services/app_session_service.dart';
+import 'package:fieldforce/features/shop/domain/entities/order.dart';
 import 'package:fieldforce/features/shop/domain/entities/trading_point.dart';
+import 'package:fieldforce/features/shop/domain/usecases/get_trading_point_orders_usecase.dart';
+import 'package:fieldforce/features/shop/presentation/pages/order_detail_page.dart';
+import 'package:fieldforce/features/shop/presentation/widgets/order_card_widget.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:get_it/get_it.dart';
+import 'package:intl/intl.dart';
+import 'package:logging/logging.dart';
 
 /// Страница детализации торговой точки
 class TradingPointDetailPage extends StatefulWidget {
   final TradingPoint tradingPoint;
 
-  const TradingPointDetailPage({
-    super.key,
-    required this.tradingPoint,
-  });
+  const TradingPointDetailPage({super.key, required this.tradingPoint});
 
   @override
   State<TradingPointDetailPage> createState() => _TradingPointDetailPageState();
 }
 
 class _TradingPointDetailPageState extends State<TradingPointDetailPage> {
+  static final Logger _logger = Logger('TradingPointDetailPage');
+
   final TradingPointMapFactory _mapFactory =
       GetIt.instance<TradingPointMapFactory>();
+  final GetTradingPointOrdersUseCase _getTradingPointOrdersUseCase =
+      GetIt.instance<GetTradingPointOrdersUseCase>();
+  final DateFormat _orderDateFormat = DateFormat('dd.MM.yyyy HH:mm');
+  final NumberFormat _currencyFormat = NumberFormat.currency(
+    locale: 'ru_RU',
+    symbol: '₽',
+    decimalDigits: 2,
+  );
+
   bool _isProcessing = false;
   int? _selectedTradingPointId;
+  bool _ordersLoading = false;
+  List<Order> _orders = const [];
+  String? _ordersError;
 
   @override
   void initState() {
     super.initState();
     _loadSelectionState();
+    _loadOrders();
   }
 
   Future<void> _loadSelectionState() async {
     final sessionResult = await AppSessionService.getCurrentAppSession();
     if (!mounted) return;
 
-    sessionResult.fold(
-      (_) {},
-      (session) {
-        setState(() {
-          _selectedTradingPointId = session?.appUser.selectedTradingPointId;
-        });
-      },
-    );
+    sessionResult.fold((_) {}, (session) {
+      setState(() {
+        _selectedTradingPointId = session?.appUser.selectedTradingPointId;
+      });
+    });
   }
 
   bool get _isCurrentlySelected =>
@@ -57,7 +72,9 @@ class _TradingPointDetailPageState extends State<TradingPointDetailPage> {
       _isProcessing = true;
     });
 
-    final result = await AppSessionService.selectTradingPoint(widget.tradingPoint);
+    final result = await AppSessionService.selectTradingPoint(
+      widget.tradingPoint,
+    );
     if (!mounted) {
       return;
     }
@@ -66,7 +83,9 @@ class _TradingPointDetailPageState extends State<TradingPointDetailPage> {
       (failure) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Не удалось выбрать торговую точку: ${failure.message}'),
+            content: Text(
+              'Не удалось выбрать торговую точку: ${failure.message}',
+            ),
             backgroundColor: Colors.red,
           ),
         );
@@ -125,6 +144,49 @@ class _TradingPointDetailPageState extends State<TradingPointDetailPage> {
     }
   }
 
+  Future<void> _loadOrders() async {
+    final tradingPointId = widget.tradingPoint.id;
+    if (tradingPointId == null) {
+      setState(() {
+        _ordersLoading = false;
+        _orders = const [];
+        _ordersError = 'Торговая точка ещё не синхронизирована с базой';
+      });
+      return;
+    }
+
+    setState(() {
+      _ordersLoading = true;
+      _ordersError = null;
+    });
+
+    final result = await _getTradingPointOrdersUseCase(tradingPointId);
+    if (!mounted) {
+      return;
+    }
+
+    result.fold(
+      (failure) {
+        _logger.warning(
+          'Не удалось загрузить заказы для торговой точки $tradingPointId: ${failure.message}',
+          failure.details,
+        );
+
+        setState(() {
+          _ordersLoading = false;
+          _orders = const [];
+          _ordersError = failure.message;
+        });
+      },
+      (orders) {
+        setState(() {
+          _ordersLoading = false;
+          _orders = orders;
+        });
+      },
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -154,7 +216,10 @@ class _TradingPointDetailPageState extends State<TradingPointDetailPage> {
             if (_isCurrentlySelected)
               Container(
                 width: double.infinity,
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 16,
+                  vertical: 14,
+                ),
                 margin: const EdgeInsets.only(bottom: 16),
                 decoration: BoxDecoration(
                   color: Colors.black,
@@ -167,10 +232,7 @@ class _TradingPointDetailPageState extends State<TradingPointDetailPage> {
                     Expanded(
                       child: Text(
                         'Эта торговая точка выбрана как текущая',
-                        style: TextStyle(
-                          color: Colors.white,
-                          fontSize: 15,
-                        ),
+                        style: TextStyle(color: Colors.white, fontSize: 15),
                       ),
                     ),
                   ],
@@ -200,21 +262,12 @@ class _TradingPointDetailPageState extends State<TradingPointDetailPage> {
                 ],
               ),
             ),
-            
+
             const SizedBox(height: 16),
             _DetailSection(
               icon: Icons.shopping_cart_outlined,
               title: 'Заказы',
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: const [
-                  SizedBox(height: 4),
-                  Text(
-                    'Информация о заказах появится позже',
-                    style: TextStyle(color: Colors.black54),
-                  ),
-                ],
-              ),
+              child: _buildOrdersSection(),
             ),
             // Заглушка под карту
             _DetailSection(
@@ -240,7 +293,8 @@ class _TradingPointDetailPageState extends State<TradingPointDetailPage> {
                       if (widget.tradingPoint.latitude != null &&
                           widget.tradingPoint.longitude != null)
                         IconButton(
-                          onPressed: () => _copyCoordinates(widget.tradingPoint),
+                          onPressed: () =>
+                              _copyCoordinates(widget.tradingPoint),
                           icon: const Icon(Icons.copy, size: 18),
                           tooltip: 'Скопировать координаты',
                         ),
@@ -249,9 +303,9 @@ class _TradingPointDetailPageState extends State<TradingPointDetailPage> {
                 ],
               ),
             ),
-            
+
             const SizedBox(height: 16),
-            
+
             // Дополнительная информация (заглушка)
             _DetailSection(
               icon: Icons.info_outline,
@@ -319,6 +373,182 @@ class _TradingPointDetailPageState extends State<TradingPointDetailPage> {
     );
   }
 
+  Widget _buildOrdersSection() {
+    final headerText = _ordersLoading
+        ? 'Загружаем заказы...'
+        : 'Всего заказов: ${_orders.length}';
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            Text(
+              headerText,
+              style: const TextStyle(fontWeight: FontWeight.w600),
+            ),
+            const Spacer(),
+            IconButton(
+              onPressed: _ordersLoading ? null : _loadOrders,
+              icon: const Icon(Icons.refresh, size: 18),
+              tooltip: 'Обновить заказы',
+            ),
+          ],
+        ),
+        const SizedBox(height: 12),
+        if (_ordersLoading)
+          const Padding(
+            padding: EdgeInsets.symmetric(vertical: 12),
+            child: Center(
+              child: SizedBox(
+                width: 24,
+                height: 24,
+                child: CircularProgressIndicator(strokeWidth: 2),
+              ),
+            ),
+          )
+        else if (_ordersError != null)
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                _ordersError!,
+                style: const TextStyle(color: Colors.redAccent),
+              ),
+              const SizedBox(height: 8),
+              OutlinedButton.icon(
+                onPressed: _loadOrders,
+                icon: const Icon(Icons.refresh, size: 18),
+                label: const Text('Попробовать снова'),
+              ),
+            ],
+          )
+        else if (_orders.isEmpty)
+          Text(
+            'Заказы ещё не оформляли',
+            style: TextStyle(color: Colors.grey.shade600),
+          )
+        else
+          ListView.separated(
+            shrinkWrap: true,
+            physics: const NeverScrollableScrollPhysics(),
+            itemCount: _orders.length,
+            separatorBuilder: (_, __) => const SizedBox(height: 12),
+            itemBuilder: (context, index) {
+              final order = _orders[index];
+              return _buildOrderTile(order);
+            },
+          ),
+      ],
+    );
+  }
+
+  Widget _buildOrderTile(Order order) {
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        borderRadius: BorderRadius.circular(8),
+        onTap: () => _openOrder(order),
+        child: Container(
+          padding: const EdgeInsets.all(12),
+          decoration: BoxDecoration(
+            color: Colors.grey.shade50,
+            borderRadius: BorderRadius.circular(8),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  Text(
+                    order.id != null ? 'Заказ #${order.id}' : 'Черновик',
+                    style: const TextStyle(
+                      fontSize: 15,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  OrderStatusChip(status: order.state),
+                  const Spacer(),
+                  Text(
+                    _orderDateFormat.format(order.updatedAt),
+                    style: TextStyle(fontSize: 12, color: Colors.grey.shade600),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 8),
+              Row(
+                children: [
+                  Icon(
+                    Icons.inventory_2_outlined,
+                    size: 16,
+                    color: Colors.grey.shade700,
+                  ),
+                  const SizedBox(width: 6),
+                  Text(
+                    'Позиций: ${order.lines.length}',
+                    style: TextStyle(color: Colors.grey.shade700),
+                  ),
+                  const SizedBox(width: 16),
+                  Icon(
+                    Icons.payments_outlined,
+                    size: 16,
+                    color: Colors.grey.shade700,
+                  ),
+                  const SizedBox(width: 6),
+                  Text(
+                    _formatOrderAmount(order),
+                    style: const TextStyle(fontWeight: FontWeight.w600),
+                  ),
+                ],
+              ),
+              if ((order.comment?.isNotEmpty ?? false)) ...[
+                const SizedBox(height: 8),
+                Text(
+                  order.comment!,
+                  style: TextStyle(color: Colors.grey.shade600),
+                ),
+              ],
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  String _formatOrderAmount(Order order) {
+    final amount = order.totalCost / 100;
+    return _currencyFormat.format(amount);
+  }
+
+  Future<void> _openOrder(Order order) async {
+    final orderId = order.id;
+    if (orderId == null) {
+      if (!mounted) {
+        return;
+      }
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text(
+            'Заказ ещё не синхронизирован и недоступен для просмотра',
+          ),
+        ),
+      );
+      return;
+    }
+
+    await Navigator.push(
+      context,
+      MaterialPageRoute(builder: (_) => OrderDetailPage(orderId: orderId)),
+    );
+
+    if (!mounted) {
+      return;
+    }
+
+    _loadOrders();
+  }
+
   Widget _buildInfoRow(String label, String value) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 12),
@@ -335,12 +565,7 @@ class _TradingPointDetailPageState extends State<TradingPointDetailPage> {
               ),
             ),
           ),
-          Expanded(
-            child: Text(
-              value,
-              style: const TextStyle(fontSize: 16),
-            ),
-          ),
+          Expanded(child: Text(value, style: const TextStyle(fontSize: 16))),
         ],
       ),
     );
@@ -369,11 +594,9 @@ class _TradingPointDetailPageState extends State<TradingPointDetailPage> {
 
     if (!mounted) return;
 
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text('Скопировано: $coordinates'),
-      ),
-    );
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(SnackBar(content: Text('Скопировано: $coordinates')));
   }
 }
 

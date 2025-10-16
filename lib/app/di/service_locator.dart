@@ -93,6 +93,7 @@ import 'package:fieldforce/features/shop/domain/usecases/submit_order_usecase.da
 import 'package:fieldforce/features/shop/domain/usecases/retry_order_submission_usecase.dart';
 import 'package:fieldforce/features/shop/domain/usecases/get_orders_usecase.dart';
 import 'package:fieldforce/features/shop/domain/usecases/get_order_by_id_usecase.dart';
+import 'package:fieldforce/features/shop/domain/usecases/get_trading_point_orders_usecase.dart';
 import 'package:fieldforce/features/shop/presentation/bloc/cart_bloc.dart';
 import 'package:fieldforce/features/shop/presentation/bloc/orders_bloc.dart';
 import 'package:fieldforce/features/shop/domain/usecases/update_order_state_usecase.dart';
@@ -171,9 +172,7 @@ Future<void> setupServiceLocator() async {
     () => DriftProductRepository(),
   );
 
-  getIt.registerLazySingleton<Connectivity>(
-    () => Connectivity(),
-  );
+  getIt.registerLazySingleton<Connectivity>(() => Connectivity());
 
   // Order repositories and use cases
   getIt.registerLazySingleton<OrderRepository>(
@@ -203,9 +202,7 @@ Future<void> setupServiceLocator() async {
     () => OrderJobRepositoryImpl(getIt<AppDatabase>()),
   );
 
-  getIt.registerLazySingleton<OrderApiService>(
-    () => MockOrderApiService(),
-  );
+  getIt.registerLazySingleton<OrderApiService>(() => MockOrderApiService());
 
   getIt.registerLazySingleton<OrderSubmissionService>(
     () => OrderSubmissionService(apiService: getIt<OrderApiService>()),
@@ -243,27 +240,19 @@ Future<void> setupServiceLocator() async {
   );
 
   getIt.registerLazySingleton<RegionalSyncService>(
-    () => RegionalSyncService(
-      baseUrl: AppConfig.apiBaseUrl,
-    ),
+    () => RegionalSyncService(baseUrl: AppConfig.apiBaseUrl),
   );
 
   getIt.registerLazySingleton<StockSyncService>(
-    () => StockSyncService(
-      baseUrl: AppConfig.apiBaseUrl,
-    ),
+    () => StockSyncService(baseUrl: AppConfig.apiBaseUrl),
   );
 
   getIt.registerLazySingleton<OutletPricingSyncService>(
-    () => OutletPricingSyncService(
-      baseUrl: AppConfig.apiBaseUrl,
-    ),
+    () => OutletPricingSyncService(baseUrl: AppConfig.apiBaseUrl),
   );
 
   getIt.registerLazySingleton<WarehouseSyncService>(
-    () => WarehouseSyncService(
-      baseUrl: AppConfig.apiBaseUrl,
-    ),
+    () => WarehouseSyncService(baseUrl: AppConfig.apiBaseUrl),
   );
 
   getIt.registerLazySingleton<ProtobufSyncCoordinator>(
@@ -345,6 +334,10 @@ Future<void> setupServiceLocator() async {
 
   getIt.registerLazySingleton<GetOrderByIdUseCase>(
     () => GetOrderByIdUseCase(getIt<OrderRepository>()),
+  );
+
+  getIt.registerLazySingleton<GetTradingPointOrdersUseCase>(
+    () => GetTradingPointOrdersUseCase(getIt<OrderRepository>()),
   );
 
   getIt.registerLazySingleton<PerformProtobufSyncUseCase>(

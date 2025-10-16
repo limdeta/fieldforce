@@ -90,6 +90,7 @@ import 'package:fieldforce/features/shop/domain/usecases/submit_order_usecase.da
 import 'package:fieldforce/features/shop/domain/usecases/sync_warehouses_only_usecase.dart';
 import 'package:fieldforce/features/shop/domain/usecases/get_orders_usecase.dart';
 import 'package:fieldforce/features/shop/domain/usecases/get_order_by_id_usecase.dart';
+import 'package:fieldforce/features/shop/domain/usecases/get_trading_point_orders_usecase.dart';
 import 'package:fieldforce/features/shop/domain/usecases/retry_order_submission_usecase.dart';
 import 'package:fieldforce/features/shop/domain/usecases/perform_protobuf_sync_usecase.dart';
 import 'package:fieldforce/features/shop/data/sync/services/protobuf_sync_coordinator.dart';
@@ -117,19 +118,19 @@ import 'package:fieldforce/features/shop/domain/services/order_submission_queue_
 
 final getIt = GetIt.instance;
 
-Future<void> setupTestServiceLocator({bool startBackgroundWorkers = true}) async {
+Future<void> setupTestServiceLocator({
+  bool startBackgroundWorkers = true,
+}) async {
   AppConfig.configureFromArgs();
   AppConfig.printConfig();
 
   await getIt.reset();
 
-  getIt.registerLazySingleton<UserPreferencesService>(
-    () {
-      final service = UserPreferencesService();
-      service.initialize();
-      return service;
-    },
-  );
+  getIt.registerLazySingleton<UserPreferencesService>(() {
+    final service = UserPreferencesService();
+    service.initialize();
+    return service;
+  });
 
   getIt.registerLazySingleton<AppDatabase>(
     () => AppDatabase.withFile(AppConfig.databaseName),
@@ -138,12 +139,12 @@ Future<void> setupTestServiceLocator({bool startBackgroundWorkers = true}) async
     () => WorkDayRepository(getIt<AppDatabase>()),
   );
   getIt.registerLazySingleton<SessionRepository>(() => SessionRepositoryImpl());
-  getIt.registerLazySingleton<OsrmPathPredictionService>(() => OsrmPathPredictionService());
+  getIt.registerLazySingleton<OsrmPathPredictionService>(
+    () => OsrmPathPredictionService(),
+  );
 
   getIt.registerLazySingleton<UserRepositoryImpl>(
-    () => UserRepositoryImpl(
-      database: getIt(),
-    ),
+    () => UserRepositoryImpl(database: getIt()),
   );
 
   getIt.registerLazySingleton<UserRepository>(
@@ -159,10 +160,10 @@ Future<void> setupTestServiceLocator({bool startBackgroundWorkers = true}) async
   );
 
   getIt.registerLazySingleton<UserTrackRepositoryDrift>(
-        () => UserTrackRepositoryDrift(
-          getIt<AppDatabase>(),
-          getIt<EmployeeRepositoryDrift>(),
-        ),
+    () => UserTrackRepositoryDrift(
+      getIt<AppDatabase>(),
+      getIt<EmployeeRepositoryDrift>(),
+    ),
   );
 
   getIt.registerLazySingleton<TradingPointRepository>(
@@ -177,13 +178,12 @@ Future<void> setupTestServiceLocator({bool startBackgroundWorkers = true}) async
     () => DriftProductRepository(),
   );
 
-  getIt.registerLazySingleton<Connectivity>(
-    () => Connectivity(),
-  );
+  getIt.registerLazySingleton<Connectivity>(() => Connectivity());
 
   // Order repositories and use cases
   getIt.registerLazySingleton<OrderRepository>(
-    () => OrderRepositoryDrift(getIt<AppDatabase>(), getIt<ProductRepository>()),
+    () =>
+        OrderRepositoryDrift(getIt<AppDatabase>(), getIt<ProductRepository>()),
   );
 
   getIt.registerLazySingleton<StockItemRepository>(
@@ -206,27 +206,19 @@ Future<void> setupTestServiceLocator({bool startBackgroundWorkers = true}) async
 
   // Protobuf sync services
   getIt.registerLazySingleton<RegionalSyncService>(
-    () => RegionalSyncService(
-      baseUrl: AppConfig.apiBaseUrl,
-    ),
+    () => RegionalSyncService(baseUrl: AppConfig.apiBaseUrl),
   );
 
   getIt.registerLazySingleton<StockSyncService>(
-    () => StockSyncService(
-      baseUrl: AppConfig.apiBaseUrl,
-    ),
+    () => StockSyncService(baseUrl: AppConfig.apiBaseUrl),
   );
 
   getIt.registerLazySingleton<OutletPricingSyncService>(
-    () => OutletPricingSyncService(
-      baseUrl: AppConfig.apiBaseUrl,
-    ),
+    () => OutletPricingSyncService(baseUrl: AppConfig.apiBaseUrl),
   );
 
   getIt.registerLazySingleton<WarehouseSyncService>(
-    () => WarehouseSyncService(
-      baseUrl: AppConfig.apiBaseUrl,
-    ),
+    () => WarehouseSyncService(baseUrl: AppConfig.apiBaseUrl),
   );
 
   getIt.registerLazySingleton<ProtobufSyncRepository>(
@@ -251,9 +243,7 @@ Future<void> setupTestServiceLocator({bool startBackgroundWorkers = true}) async
     () => OrderJobRepositoryImpl(getIt<AppDatabase>()),
   );
 
-  getIt.registerLazySingleton<OrderApiService>(
-    () => MockOrderApiService(),
-  );
+  getIt.registerLazySingleton<OrderApiService>(() => MockOrderApiService());
 
   getIt.registerLazySingleton<OrderSubmissionService>(
     () => OrderSubmissionService(apiService: getIt<OrderApiService>()),
@@ -303,11 +293,17 @@ Future<void> setupTestServiceLocator({bool startBackgroundWorkers = true}) async
   );
 
   getIt.registerLazySingleton<UpdateCartItemUseCase>(
-    () => UpdateCartItemUseCase(getIt<OrderRepository>(), getIt<StockItemRepository>()),
+    () => UpdateCartItemUseCase(
+      getIt<OrderRepository>(),
+      getIt<StockItemRepository>(),
+    ),
   );
-  
+
   getIt.registerLazySingleton<UpdateCartStockItemUseCase>(
-    () => UpdateCartStockItemUseCase(getIt<OrderRepository>(), getIt<StockItemRepository>()),
+    () => UpdateCartStockItemUseCase(
+      getIt<OrderRepository>(),
+      getIt<StockItemRepository>(),
+    ),
   );
 
   getIt.registerLazySingleton<RemoveFromCartUseCase>(
@@ -339,6 +335,10 @@ Future<void> setupTestServiceLocator({bool startBackgroundWorkers = true}) async
 
   getIt.registerLazySingleton<GetOrderByIdUseCase>(
     () => GetOrderByIdUseCase(getIt<OrderRepository>()),
+  );
+
+  getIt.registerLazySingleton<GetTradingPointOrdersUseCase>(
+    () => GetTradingPointOrdersUseCase(getIt<OrderRepository>()),
   );
 
   getIt.registerLazySingleton<PerformProtobufSyncUseCase>(
@@ -439,25 +439,19 @@ Future<void> setupTestServiceLocator({bool startBackgroundWorkers = true}) async
     ),
   );
 
-  getIt.registerLazySingleton<LoginUseCase>(
-    () => LoginUseCase(getIt()),
-  );
+  getIt.registerLazySingleton<LoginUseCase>(() => LoginUseCase(getIt()));
 
   getIt.registerLazySingleton<GetEmployeeTradingPointsUseCase>(
     () => GetEmployeeTradingPointsUseCase(getIt<TradingPointRepository>()),
   );
 
-  getIt.registerLazySingleton<AppUserLoginUseCase>(
-    () => AppUserLoginUseCase(),
-  );
+  getIt.registerLazySingleton<AppUserLoginUseCase>(() => AppUserLoginUseCase());
 
   getIt.registerLazySingleton<AppUserLogoutUseCase>(
     () => AppUserLogoutUseCase(),
   );
 
-  getIt.registerLazySingleton<SimpleUpdateService>(
-    () => SimpleUpdateService(),
-  );
+  getIt.registerLazySingleton<SimpleUpdateService>(() => SimpleUpdateService());
 
   getIt.registerLazySingleton<CategoryParsingService>(
     () => CategoryParsingService(),
@@ -476,7 +470,7 @@ Future<void> setupTestServiceLocator({bool startBackgroundWorkers = true}) async
   );
 
   getIt.registerLazySingleton<GetUserTrackForDateUseCase>(
-        () => GetUserTrackForDateUseCase(userTrackRepository: getIt()),
+    () => GetUserTrackForDateUseCase(userTrackRepository: getIt()),
   );
 
   getIt.registerLazySingleton<GetWorkDaysForUserUseCase>(
@@ -491,9 +485,7 @@ Future<void> setupTestServiceLocator({bool startBackgroundWorkers = true}) async
     ),
   );
 
-  getIt.registerLazySingleton<AppLifecycleManager>(
-    () => AppLifecycleManager(),
-  );
+  getIt.registerLazySingleton<AppLifecycleManager>(() => AppLifecycleManager());
 
   RouteDI.registerDependencies();
 
@@ -514,13 +506,12 @@ Future<void> setupTestServiceLocator({bool startBackgroundWorkers = true}) async
   );
 
   getIt.registerLazySingleton<LocationTrackingServiceBase>(
-    () => LocationTrackingService(getIt<GpsDataManager>(), getIt<TrackManager>()),
+    () =>
+        LocationTrackingService(getIt<GpsDataManager>(), getIt<TrackManager>()),
   );
 
   // TrackingBloc как синглтон для сохранения состояния между экранами
-  getIt.registerLazySingleton<TrackingBloc>(
-    () => TrackingBloc(),
-  );
+  getIt.registerLazySingleton<TrackingBloc>(() => TrackingBloc());
 
   // UserTracksBloc as a singleton so its subscriptions and state survive navigation
   getIt.registerLazySingleton<UserTracksBloc>(() => UserTracksBloc());
@@ -566,9 +557,7 @@ Future<void> setupTestServiceLocator({bool startBackgroundWorkers = true}) async
   );
 
   // --- UserFixture and DevFixtureOrchestrator dependencies ---
-  getIt.registerLazySingleton<UserService>(
-    () => UserServiceFactory.create(),
-  );
+  getIt.registerLazySingleton<UserService>(() => UserServiceFactory.create());
 
   getIt.registerLazySingleton<CreateEmployeeUseCase>(
     () => CreateEmployeeUseCase(getIt<EmployeeRepository>()),
@@ -615,7 +604,7 @@ Future<void> setupTestServiceLocator({bool startBackgroundWorkers = true}) async
 
   // Sync services for product synchronization
   // Удалены устаревшие SyncIsolateManager и SyncProgressManager
-  
+
   // New isolate-based sync manager for dev/test
   getIt.registerLazySingleton(
     () => IsolateSyncManager(

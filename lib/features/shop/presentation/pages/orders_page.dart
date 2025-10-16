@@ -17,7 +17,9 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:get_it/get_it.dart';
 
 class OrdersPage extends StatefulWidget {
-  const OrdersPage({super.key});
+  final int? initialOrderId;
+
+  const OrdersPage({super.key, this.initialOrderId});
 
   @override
   State<OrdersPage> createState() => _OrdersPageState();
@@ -103,6 +105,13 @@ class _OrdersPageState extends State<OrdersPage> {
     super.initState();
     _ordersBloc = GetIt.instance<OrdersBloc>();
     _loadOrders();
+
+    final initialOrderId = widget.initialOrderId;
+    if (initialOrderId != null) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        _ordersBloc.add(GetOrderByIdEvent(initialOrderId));
+      });
+    }
   }
 
   @override
@@ -332,9 +341,7 @@ class _OrdersPageState extends State<OrdersPage> {
   }
 
   Map<OrderState, int> _statusCountsForState(OrdersState state) {
-    final counts = {
-      for (final status in _filterableStates) status: 0,
-    };
+    final counts = {for (final status in _filterableStates) status: 0};
 
     if (state is OrdersLoaded) {
       for (final entry in state.statusCounts.entries) {
@@ -392,8 +399,9 @@ class _OrdersPageState extends State<OrdersPage> {
       context: context,
       isScrollControlled: true,
       builder: (context) {
-        final searchController =
-            TextEditingController(text: filter.searchQuery ?? '');
+        final searchController = TextEditingController(
+          text: filter.searchQuery ?? '',
+        );
         final selectedStates = <OrderState>{...initialStates};
         DateTime? tempFrom = filter.dateFrom;
         DateTime? tempTo = filter.dateTo;
@@ -418,11 +426,7 @@ class _OrdersPageState extends State<OrdersPage> {
               range.start.month,
               range.start.day,
             );
-            tempTo = DateTime(
-              range.end.year,
-              range.end.month,
-              range.end.day,
-            );
+            tempTo = DateTime(range.end.year, range.end.month, range.end.day);
           }
         }
 
@@ -447,12 +451,7 @@ class _OrdersPageState extends State<OrdersPage> {
               child: FractionallySizedBox(
                 heightFactor: 0.85,
                 child: Padding(
-                  padding: EdgeInsets.fromLTRB(
-                    16,
-                    16,
-                    16,
-                    16 + bottomInset,
-                  ),
+                  padding: EdgeInsets.fromLTRB(16, 16, 16, 16 + bottomInset),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
@@ -461,10 +460,9 @@ class _OrdersPageState extends State<OrdersPage> {
                           width: 40,
                           height: 4,
                           decoration: BoxDecoration(
-                            color: Theme.of(context)
-                                .colorScheme
-                                .primary
-                                .withValues(alpha: 0.4),
+                            color: Theme.of(
+                              context,
+                            ).colorScheme.primary.withValues(alpha: 0.4),
                             borderRadius: BorderRadius.circular(2),
                           ),
                         ),
@@ -496,15 +494,12 @@ class _OrdersPageState extends State<OrdersPage> {
                       const SizedBox(height: 24),
                       Text(
                         'Статусы',
-                        style: Theme.of(context)
-                            .textTheme
-                            .titleMedium
+                        style: Theme.of(context).textTheme.titleMedium
                             ?.copyWith(fontWeight: FontWeight.w600),
                       ),
                       CheckboxListTile(
                         value: allSelected,
-                        controlAffinity:
-                            ListTileControlAffinity.leading,
+                        controlAffinity: ListTileControlAffinity.leading,
                         title: const Text('Все статусы'),
                         onChanged: (value) {
                           modalSetState(() {
@@ -523,19 +518,17 @@ class _OrdersPageState extends State<OrdersPage> {
                           itemCount: _filterableStates.length,
                           itemBuilder: (context, index) {
                             final status = _filterableStates[index];
-                            final meta = _statusPresentation[status] ??
+                            final meta =
+                                _statusPresentation[status] ??
                                 _OrderStatusPresentation(
                                   label: status.name,
-                                  color: Theme.of(context)
-                                      .colorScheme
-                                      .primary,
+                                  color: Theme.of(context).colorScheme.primary,
                                   icon: Icons.help_outline,
                                 );
 
                             return CheckboxListTile(
                               value: selectedStates.contains(status),
-                              controlAffinity:
-                                  ListTileControlAffinity.leading,
+                              controlAffinity: ListTileControlAffinity.leading,
                               title: Text(meta.label),
                               secondary: Row(
                                 mainAxisSize: MainAxisSize.min,
@@ -576,17 +569,20 @@ class _OrdersPageState extends State<OrdersPage> {
                         contentPadding: EdgeInsets.zero,
                         leading: const Icon(Icons.date_range),
                         title: const Text('Период'),
-                        subtitle: Text(_formatDateRangeLabel(
-                          OrdersFilter(
-                            dateFrom: tempFrom,
-                            dateTo: tempTo,
-                            states: selectedStates.length ==
-                                    _filterableStates.length
-                                ? null
-                                : selectedStates.toList(),
-                            searchQuery: searchController.text,
+                        subtitle: Text(
+                          _formatDateRangeLabel(
+                            OrdersFilter(
+                              dateFrom: tempFrom,
+                              dateTo: tempTo,
+                              states:
+                                  selectedStates.length ==
+                                      _filterableStates.length
+                                  ? null
+                                  : selectedStates.toList(),
+                              searchQuery: searchController.text,
+                            ),
                           ),
-                        )),
+                        ),
                         onTap: () async {
                           await pickDateRange();
                           modalSetState(() {});
@@ -616,30 +612,29 @@ class _OrdersPageState extends State<OrdersPage> {
                           Expanded(
                             child: FilledButton(
                               onPressed: () {
-                final normalizedStates =
-                  selectedStates.length ==
-                      _filterableStates.length
-                    ? null
-                    : selectedStates.toList();
-                final trimmedSearch =
-                  searchController.text.trim();
-                final hasSearch =
-                  trimmedSearch.isNotEmpty;
+                                final normalizedStates =
+                                    selectedStates.length ==
+                                        _filterableStates.length
+                                    ? null
+                                    : selectedStates.toList();
+                                final trimmedSearch = searchController.text
+                                    .trim();
+                                final hasSearch = trimmedSearch.isNotEmpty;
 
-                _applyFilter(
-                  filter.copyWith(
-                  states: normalizedStates,
-                  clearStates:
-                    normalizedStates == null,
-                  dateFrom: tempFrom,
-                  clearDateFrom: tempFrom == null,
-                  dateTo: tempTo,
-                  clearDateTo: tempTo == null,
-                  searchQuery:
-                    hasSearch ? trimmedSearch : null,
-                  clearSearch: !hasSearch,
-                  ),
-                );
+                                _applyFilter(
+                                  filter.copyWith(
+                                    states: normalizedStates,
+                                    clearStates: normalizedStates == null,
+                                    dateFrom: tempFrom,
+                                    clearDateFrom: tempFrom == null,
+                                    dateTo: tempTo,
+                                    clearDateTo: tempTo == null,
+                                    searchQuery: hasSearch
+                                        ? trimmedSearch
+                                        : null,
+                                    clearSearch: !hasSearch,
+                                  ),
+                                );
 
                                 Navigator.pop(context);
                               },
@@ -694,25 +689,20 @@ class _OrdersPageState extends State<OrdersPage> {
             ),
           ),
           SliverList(
-            delegate: SliverChildBuilderDelegate(
-              (context, index) {
-                final order = state.orders[index];
-                final isFirst = index == 0;
-                return Column(
-                  children: [
-                    if (isFirst) const Divider(height: 0),
-                    _buildOrderCard(order),
-                    const Divider(height: 0),
-                  ],
-                );
-              },
-              childCount: state.orders.length,
-            ),
+            delegate: SliverChildBuilderDelegate((context, index) {
+              final order = state.orders[index];
+              final isFirst = index == 0;
+              return Column(
+                children: [
+                  if (isFirst) const Divider(height: 0),
+                  _buildOrderCard(order),
+                  const Divider(height: 0),
+                ],
+              );
+            }, childCount: state.orders.length),
           ),
           SliverToBoxAdapter(
-            child: SizedBox(
-              height: MediaQuery.of(context).padding.bottom + 72,
-            ),
+            child: SizedBox(height: MediaQuery.of(context).padding.bottom + 72),
           ),
         ],
       ),
@@ -728,17 +718,17 @@ class _OrdersPageState extends State<OrdersPage> {
     final statusSummary = visibleStates.length == _filterableStates.length
         ? 'Все статусы'
         : visibleStates
-            .map((state) => _statusPresentation[state]?.label ?? state.name)
-            .join(', ');
+              .map((state) => _statusPresentation[state]?.label ?? state.name)
+              .join(', ');
     final hasDateFilter = filter.dateFrom != null || filter.dateTo != null;
     final searchSummary = filter.searchQuery;
-  final statusDetails = statusCounts.entries
-    .where((entry) => entry.value > 0)
-    .map(
-      (entry) =>
-        '${_statusPresentation[entry.key]?.label ?? entry.key.name}: ${entry.value}',
-    )
-    .toList();
+    final statusDetails = statusCounts.entries
+        .where((entry) => entry.value > 0)
+        .map(
+          (entry) =>
+              '${_statusPresentation[entry.key]?.label ?? entry.key.name}: ${entry.value}',
+        )
+        .toList();
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -758,15 +748,17 @@ class _OrdersPageState extends State<OrdersPage> {
             children: [
               Row(
                 children: [
-                  Icon(Icons.filter_list,
-                      size: 18,
-                      color: Theme.of(context).colorScheme.primary),
+                  Icon(
+                    Icons.filter_list,
+                    size: 18,
+                    color: Theme.of(context).colorScheme.primary,
+                  ),
                   const SizedBox(width: 8),
                   Text(
                     'Выбранные фильтры',
                     style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                          fontWeight: FontWeight.w600,
-                        ),
+                      fontWeight: FontWeight.w600,
+                    ),
                   ),
                 ],
               ),
@@ -778,10 +770,8 @@ class _OrdersPageState extends State<OrdersPage> {
               if (statusDetails.isNotEmpty) ...[
                 const SizedBox(height: 6),
                 ...statusDetails.map(
-                  (line) => Text(
-                    line,
-                    style: Theme.of(context).textTheme.bodySmall,
-                  ),
+                  (line) =>
+                      Text(line, style: Theme.of(context).textTheme.bodySmall),
                 ),
               ],
               if (hasDateFilter) ...[
@@ -813,9 +803,9 @@ class _OrdersPageState extends State<OrdersPage> {
         const SizedBox(height: 16),
         Text(
           'Всего заказов: $totalCount',
-          style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                fontWeight: FontWeight.w600,
-              ),
+          style: Theme.of(
+            context,
+          ).textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w600),
         ),
       ],
     );
@@ -856,15 +846,15 @@ class _OrdersPageState extends State<OrdersPage> {
                   Text(
                     'Нет заказов',
                     style: Theme.of(context).textTheme.headlineMedium?.copyWith(
-                          color: Colors.grey.shade600,
-                        ),
+                      color: Colors.grey.shade600,
+                    ),
                   ),
                   const SizedBox(height: 12),
                   Text(
                     'Ваши заказы будут отображаться здесь, как только они появятся.',
                     style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                          color: Colors.grey.shade500,
-                        ),
+                      color: Colors.grey.shade500,
+                    ),
                     textAlign: TextAlign.center,
                   ),
                   const SizedBox(height: 24),
@@ -882,22 +872,14 @@ class _OrdersPageState extends State<OrdersPage> {
     );
   }
 
-  Widget _buildError(
-    OrdersError state,
-    int? employeeId,
-    OrdersFilter filter,
-  ) {
+  Widget _buildError(OrdersError state, int? employeeId, OrdersFilter filter) {
     return Center(
       child: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 24),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(
-              Icons.error_outline,
-              size: 64,
-              color: Colors.red.shade400,
-            ),
+            Icon(Icons.error_outline, size: 64, color: Colors.red.shade400),
             const SizedBox(height: 16),
             Text(
               'Ошибка загрузки заказов',
@@ -922,19 +904,20 @@ class _OrdersPageState extends State<OrdersPage> {
   }
 
   Widget _buildOrderCard(Order order) {
-    final meta = _statusPresentation[order.state] ??
+    final meta =
+        _statusPresentation[order.state] ??
         const _OrderStatusPresentation(
           label: 'Неизвестный статус',
           color: Color(0xFF6B7280),
           icon: Icons.help_outline,
         );
 
-  final totalAmount = _formatMoney(order.totalCost);
-  final orderId = order.id;
-  final bool canRetry = order.state == OrderState.error && orderId != null;
-  final int? retryOrderId = canRetry ? orderId : null;
-  final bool isRetrying =
-    retryOrderId != null && _retryingOrders.contains(retryOrderId);
+    final totalAmount = _formatMoney(order.totalCost);
+    final orderId = order.id;
+    final bool canRetry = order.state == OrderState.error && orderId != null;
+    final int? retryOrderId = canRetry ? orderId : null;
+    final bool isRetrying =
+        retryOrderId != null && _retryingOrders.contains(retryOrderId);
 
     final textTheme = Theme.of(context).textTheme;
 
@@ -971,11 +954,7 @@ class _OrdersPageState extends State<OrdersPage> {
             const SizedBox(height: 6),
             Row(
               children: [
-                Icon(
-                  Icons.shopping_bag_outlined,
-                  size: 18,
-                  color: meta.color,
-                ),
+                Icon(Icons.shopping_bag_outlined, size: 18, color: meta.color),
                 const SizedBox(width: 6),
                 Text(
                   '${order.totalQuantity} шт. · $totalAmount',
@@ -1001,8 +980,9 @@ class _OrdersPageState extends State<OrdersPage> {
               Align(
                 alignment: Alignment.centerRight,
                 child: FilledButton.icon(
-                  onPressed:
-                      isRetrying ? null : () => _retryOrder(retryOrderId),
+                  onPressed: isRetrying
+                      ? null
+                      : () => _retryOrder(retryOrderId),
                   icon: isRetrying
                       ? SizedBox(
                           width: 16,
@@ -1015,9 +995,7 @@ class _OrdersPageState extends State<OrdersPage> {
                           ),
                         )
                       : const Icon(Icons.restart_alt),
-                  label: Text(
-                    isRetrying ? 'Отправляем...' : 'Отправить снова',
-                  ),
+                  label: Text(isRetrying ? 'Отправляем...' : 'Отправить снова'),
                 ),
               ),
             ],
@@ -1041,10 +1019,7 @@ class _OrdersPageState extends State<OrdersPage> {
           const SizedBox(width: 6),
           Text(
             meta.label,
-            style: TextStyle(
-              color: meta.color,
-              fontWeight: FontWeight.w600,
-            ),
+            style: TextStyle(color: meta.color, fontWeight: FontWeight.w600),
           ),
         ],
       ),
@@ -1063,7 +1038,7 @@ class _OrdersPageState extends State<OrdersPage> {
     if (_retryingOrders.contains(orderId)) {
       return;
     }
-  _ordersBloc.add(RetryOrderSubmissionEvent(orderId));
+    _ordersBloc.add(RetryOrderSubmissionEvent(orderId));
   }
 
   String _formatDate(DateTime date) {
@@ -1096,16 +1071,18 @@ class _OrdersPageState extends State<OrdersPage> {
     final rubles = absValue ~/ 100;
     final pennies = absValue % 100;
 
-    final rublesStr = rubles
-        .toString()
-        .replaceAll(RegExp(r'(?<=\d)(?=(\d{3})+(?!\d))'), ' ');
+    final rublesStr = rubles.toString().replaceAll(
+      RegExp(r'(?<=\d)(?=(\d{3})+(?!\d))'),
+      ' ',
+    );
 
     return '$sign$rublesStr,${pennies.toString().padLeft(2, '0')} ₽';
   }
 
   Widget _buildOrderDetail(OrderDetailLoaded state) {
     final order = state.order;
-    final meta = _statusPresentation[order.state] ??
+    final meta =
+        _statusPresentation[order.state] ??
         const _OrderStatusPresentation(
           label: 'Неизвестный статус',
           color: Color(0xFF6B7280),
@@ -1121,10 +1098,7 @@ class _OrdersPageState extends State<OrdersPage> {
           onPressed: () {
             final id = _employeeId ?? order.creator.id;
             _ordersBloc.add(
-              LoadOrdersEvent(
-                employeeId: id,
-                filter: _lastFilter,
-              ),
+              LoadOrdersEvent(employeeId: id, filter: _lastFilter),
             );
           },
         ),
@@ -1164,9 +1138,7 @@ class _OrdersPageState extends State<OrdersPage> {
           const SizedBox(height: 12),
           Text(
             'Итого: ${_formatMoney(order.totalCost)}',
-            style: textTheme.titleMedium?.copyWith(
-              fontWeight: FontWeight.w600,
-            ),
+            style: textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w600),
           ),
           const SizedBox(height: 4),
           Text(
@@ -1280,10 +1252,7 @@ class _OrdersPageState extends State<OrdersPage> {
               Column(
                 crossAxisAlignment: CrossAxisAlignment.end,
                 children: [
-                  Text(
-                    '${line.quantity} шт.',
-                    style: textTheme.bodyMedium,
-                  ),
+                  Text('${line.quantity} шт.', style: textTheme.bodyMedium),
                   const SizedBox(height: 4),
                   Text(
                     _formatMoney(line.totalCost),
@@ -1368,14 +1337,12 @@ class _OrdersPageState extends State<OrdersPage> {
             child: Text(
               label,
               style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                    color: Colors.grey.shade600,
-                    fontWeight: FontWeight.w600,
-                  ),
+                color: Colors.grey.shade600,
+                fontWeight: FontWeight.w600,
+              ),
             ),
           ),
-          Expanded(
-            child: Text(value),
-          ),
+          Expanded(child: Text(value)),
         ],
       ),
     );
