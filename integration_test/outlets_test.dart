@@ -4,8 +4,8 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:integration_test/integration_test.dart';
 import 'package:get_it/get_it.dart';
 import 'package:fieldforce/app/fixtures/dev_fixture_orchestrator.dart';
-import 'package:fieldforce/features/shop/presentation/trading_points_list_page.dart';
-import 'package:fieldforce/features/shop/presentation/trading_point_detail_page.dart';
+import 'package:fieldforce/features/shop/presentation/pages/trading_points_list_page.dart';
+import 'package:fieldforce/features/shop/presentation/pages/trading_point_detail_page.dart';
 import 'package:fieldforce/app/di/test_service_locator.dart' as test_di;
 import './helpers/session_test_helper.dart' as h;
 

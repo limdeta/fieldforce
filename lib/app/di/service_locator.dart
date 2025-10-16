@@ -29,6 +29,7 @@ import 'package:fieldforce/app/services/session_manager.dart';
 import 'package:fieldforce/app/services/trading_point_sync_service.dart';
 import 'package:fieldforce/app/services/warehouse_filter_service.dart';
 import 'package:fieldforce/app/presentation/bloc/data_sync/data_sync_bloc.dart';
+import 'package:fieldforce/app/presentation/widgets/trading_point_map/trading_point_map_factory.dart';
 import 'package:fieldforce/app/jobs/job_queue_repository.dart';
 import 'package:fieldforce/app/jobs/job_queue_service.dart';
 import 'package:fieldforce/features/authentication/domain/repositories/user_repository.dart';
@@ -230,6 +231,10 @@ Future<void> setupServiceLocator() async {
       connectivity: getIt<Connectivity>(),
       queueService: getIt<JobQueueService<OrderSubmissionJob>>(),
     ),
+  );
+
+  getIt.registerLazySingleton<TradingPointMapFactory>(
+    () => DefaultTradingPointMapFactory(),
   );
 
   // Protobuf Sync Services

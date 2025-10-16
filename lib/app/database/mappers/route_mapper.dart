@@ -130,6 +130,8 @@ class RouteMapper {
       name: dbEntity.name,
       inn: dbEntity.inn,
       region: _requireRegion(dbEntity.region, dbEntity.externalId),
+      latitude: dbEntity.latitude,
+      longitude: dbEntity.longitude,
       createdAt: dbEntity.createdAt,
       updatedAt: dbEntity.updatedAt,
     );
@@ -143,6 +145,12 @@ class RouteMapper {
         ? Value(point.inn!)
         : const Value.absent(),
       region: Value(point.region),
+      latitude: point.latitude != null
+          ? Value(point.latitude!)
+          : const Value.absent(),
+      longitude: point.longitude != null
+          ? Value(point.longitude!)
+          : const Value.absent(),
       updatedAt: point.updatedAt != null 
         ? Value(point.updatedAt!)
         : const Value.absent(),

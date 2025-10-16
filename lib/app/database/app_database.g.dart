@@ -2237,6 +2237,18 @@ class $TradingPointEntitiesTable extends TradingPointEntities
       type: DriftSqlType.string,
       requiredDuringInsert: false,
       defaultValue: const Constant('P3V'));
+  static const VerificationMeta _latitudeMeta =
+      const VerificationMeta('latitude');
+  @override
+  late final GeneratedColumn<double> latitude = GeneratedColumn<double>(
+      'latitude', aliasedName, true,
+      type: DriftSqlType.double, requiredDuringInsert: false);
+  static const VerificationMeta _longitudeMeta =
+      const VerificationMeta('longitude');
+  @override
+  late final GeneratedColumn<double> longitude = GeneratedColumn<double>(
+      'longitude', aliasedName, true,
+      type: DriftSqlType.double, requiredDuringInsert: false);
   static const VerificationMeta _createdAtMeta =
       const VerificationMeta('createdAt');
   @override
@@ -2252,8 +2264,17 @@ class $TradingPointEntitiesTable extends TradingPointEntities
       'updated_at', aliasedName, true,
       type: DriftSqlType.dateTime, requiredDuringInsert: false);
   @override
-  List<GeneratedColumn> get $columns =>
-      [id, externalId, name, inn, region, createdAt, updatedAt];
+  List<GeneratedColumn> get $columns => [
+        id,
+        externalId,
+        name,
+        inn,
+        region,
+        latitude,
+        longitude,
+        createdAt,
+        updatedAt
+      ];
   @override
   String get aliasedName => _alias ?? actualTableName;
   @override
@@ -2289,6 +2310,14 @@ class $TradingPointEntitiesTable extends TradingPointEntities
       context.handle(_regionMeta,
           region.isAcceptableOrUnknown(data['region']!, _regionMeta));
     }
+    if (data.containsKey('latitude')) {
+      context.handle(_latitudeMeta,
+          latitude.isAcceptableOrUnknown(data['latitude']!, _latitudeMeta));
+    }
+    if (data.containsKey('longitude')) {
+      context.handle(_longitudeMeta,
+          longitude.isAcceptableOrUnknown(data['longitude']!, _longitudeMeta));
+    }
     if (data.containsKey('created_at')) {
       context.handle(_createdAtMeta,
           createdAt.isAcceptableOrUnknown(data['created_at']!, _createdAtMeta));
@@ -2316,6 +2345,10 @@ class $TradingPointEntitiesTable extends TradingPointEntities
           .read(DriftSqlType.string, data['${effectivePrefix}inn']),
       region: attachedDatabase.typeMapping
           .read(DriftSqlType.string, data['${effectivePrefix}region'])!,
+      latitude: attachedDatabase.typeMapping
+          .read(DriftSqlType.double, data['${effectivePrefix}latitude']),
+      longitude: attachedDatabase.typeMapping
+          .read(DriftSqlType.double, data['${effectivePrefix}longitude']),
       createdAt: attachedDatabase.typeMapping
           .read(DriftSqlType.dateTime, data['${effectivePrefix}created_at'])!,
       updatedAt: attachedDatabase.typeMapping
@@ -2336,6 +2369,8 @@ class TradingPointEntity extends DataClass
   final String name;
   final String? inn;
   final String region;
+  final double? latitude;
+  final double? longitude;
   final DateTime createdAt;
   final DateTime? updatedAt;
   const TradingPointEntity(
@@ -2344,6 +2379,8 @@ class TradingPointEntity extends DataClass
       required this.name,
       this.inn,
       required this.region,
+      this.latitude,
+      this.longitude,
       required this.createdAt,
       this.updatedAt});
   @override
@@ -2356,6 +2393,12 @@ class TradingPointEntity extends DataClass
       map['inn'] = Variable<String>(inn);
     }
     map['region'] = Variable<String>(region);
+    if (!nullToAbsent || latitude != null) {
+      map['latitude'] = Variable<double>(latitude);
+    }
+    if (!nullToAbsent || longitude != null) {
+      map['longitude'] = Variable<double>(longitude);
+    }
     map['created_at'] = Variable<DateTime>(createdAt);
     if (!nullToAbsent || updatedAt != null) {
       map['updated_at'] = Variable<DateTime>(updatedAt);
@@ -2370,6 +2413,12 @@ class TradingPointEntity extends DataClass
       name: Value(name),
       inn: inn == null && nullToAbsent ? const Value.absent() : Value(inn),
       region: Value(region),
+      latitude: latitude == null && nullToAbsent
+          ? const Value.absent()
+          : Value(latitude),
+      longitude: longitude == null && nullToAbsent
+          ? const Value.absent()
+          : Value(longitude),
       createdAt: Value(createdAt),
       updatedAt: updatedAt == null && nullToAbsent
           ? const Value.absent()
@@ -2386,6 +2435,8 @@ class TradingPointEntity extends DataClass
       name: serializer.fromJson<String>(json['name']),
       inn: serializer.fromJson<String?>(json['inn']),
       region: serializer.fromJson<String>(json['region']),
+      latitude: serializer.fromJson<double?>(json['latitude']),
+      longitude: serializer.fromJson<double?>(json['longitude']),
       createdAt: serializer.fromJson<DateTime>(json['createdAt']),
       updatedAt: serializer.fromJson<DateTime?>(json['updatedAt']),
     );
@@ -2399,6 +2450,8 @@ class TradingPointEntity extends DataClass
       'name': serializer.toJson<String>(name),
       'inn': serializer.toJson<String?>(inn),
       'region': serializer.toJson<String>(region),
+      'latitude': serializer.toJson<double?>(latitude),
+      'longitude': serializer.toJson<double?>(longitude),
       'createdAt': serializer.toJson<DateTime>(createdAt),
       'updatedAt': serializer.toJson<DateTime?>(updatedAt),
     };
@@ -2410,6 +2463,8 @@ class TradingPointEntity extends DataClass
           String? name,
           Value<String?> inn = const Value.absent(),
           String? region,
+          Value<double?> latitude = const Value.absent(),
+          Value<double?> longitude = const Value.absent(),
           DateTime? createdAt,
           Value<DateTime?> updatedAt = const Value.absent()}) =>
       TradingPointEntity(
@@ -2418,6 +2473,8 @@ class TradingPointEntity extends DataClass
         name: name ?? this.name,
         inn: inn.present ? inn.value : this.inn,
         region: region ?? this.region,
+        latitude: latitude.present ? latitude.value : this.latitude,
+        longitude: longitude.present ? longitude.value : this.longitude,
         createdAt: createdAt ?? this.createdAt,
         updatedAt: updatedAt.present ? updatedAt.value : this.updatedAt,
       );
@@ -2429,6 +2486,8 @@ class TradingPointEntity extends DataClass
           ..write('name: $name, ')
           ..write('inn: $inn, ')
           ..write('region: $region, ')
+          ..write('latitude: $latitude, ')
+          ..write('longitude: $longitude, ')
           ..write('createdAt: $createdAt, ')
           ..write('updatedAt: $updatedAt')
           ..write(')'))
@@ -2436,8 +2495,8 @@ class TradingPointEntity extends DataClass
   }
 
   @override
-  int get hashCode =>
-      Object.hash(id, externalId, name, inn, region, createdAt, updatedAt);
+  int get hashCode => Object.hash(id, externalId, name, inn, region, latitude,
+      longitude, createdAt, updatedAt);
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
@@ -2447,6 +2506,8 @@ class TradingPointEntity extends DataClass
           other.name == this.name &&
           other.inn == this.inn &&
           other.region == this.region &&
+          other.latitude == this.latitude &&
+          other.longitude == this.longitude &&
           other.createdAt == this.createdAt &&
           other.updatedAt == this.updatedAt);
 }
@@ -2458,6 +2519,8 @@ class TradingPointEntitiesCompanion
   final Value<String> name;
   final Value<String?> inn;
   final Value<String> region;
+  final Value<double?> latitude;
+  final Value<double?> longitude;
   final Value<DateTime> createdAt;
   final Value<DateTime?> updatedAt;
   const TradingPointEntitiesCompanion({
@@ -2466,6 +2529,8 @@ class TradingPointEntitiesCompanion
     this.name = const Value.absent(),
     this.inn = const Value.absent(),
     this.region = const Value.absent(),
+    this.latitude = const Value.absent(),
+    this.longitude = const Value.absent(),
     this.createdAt = const Value.absent(),
     this.updatedAt = const Value.absent(),
   });
@@ -2475,6 +2540,8 @@ class TradingPointEntitiesCompanion
     required String name,
     this.inn = const Value.absent(),
     this.region = const Value.absent(),
+    this.latitude = const Value.absent(),
+    this.longitude = const Value.absent(),
     this.createdAt = const Value.absent(),
     this.updatedAt = const Value.absent(),
   })  : externalId = Value(externalId),
@@ -2485,6 +2552,8 @@ class TradingPointEntitiesCompanion
     Expression<String>? name,
     Expression<String>? inn,
     Expression<String>? region,
+    Expression<double>? latitude,
+    Expression<double>? longitude,
     Expression<DateTime>? createdAt,
     Expression<DateTime>? updatedAt,
   }) {
@@ -2494,6 +2563,8 @@ class TradingPointEntitiesCompanion
       if (name != null) 'name': name,
       if (inn != null) 'inn': inn,
       if (region != null) 'region': region,
+      if (latitude != null) 'latitude': latitude,
+      if (longitude != null) 'longitude': longitude,
       if (createdAt != null) 'created_at': createdAt,
       if (updatedAt != null) 'updated_at': updatedAt,
     });
@@ -2505,6 +2576,8 @@ class TradingPointEntitiesCompanion
       Value<String>? name,
       Value<String?>? inn,
       Value<String>? region,
+      Value<double?>? latitude,
+      Value<double?>? longitude,
       Value<DateTime>? createdAt,
       Value<DateTime?>? updatedAt}) {
     return TradingPointEntitiesCompanion(
@@ -2513,6 +2586,8 @@ class TradingPointEntitiesCompanion
       name: name ?? this.name,
       inn: inn ?? this.inn,
       region: region ?? this.region,
+      latitude: latitude ?? this.latitude,
+      longitude: longitude ?? this.longitude,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
     );
@@ -2536,6 +2611,12 @@ class TradingPointEntitiesCompanion
     if (region.present) {
       map['region'] = Variable<String>(region.value);
     }
+    if (latitude.present) {
+      map['latitude'] = Variable<double>(latitude.value);
+    }
+    if (longitude.present) {
+      map['longitude'] = Variable<double>(longitude.value);
+    }
     if (createdAt.present) {
       map['created_at'] = Variable<DateTime>(createdAt.value);
     }
@@ -2553,6 +2634,8 @@ class TradingPointEntitiesCompanion
           ..write('name: $name, ')
           ..write('inn: $inn, ')
           ..write('region: $region, ')
+          ..write('latitude: $latitude, ')
+          ..write('longitude: $longitude, ')
           ..write('createdAt: $createdAt, ')
           ..write('updatedAt: $updatedAt')
           ..write(')'))

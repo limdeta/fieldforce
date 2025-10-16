@@ -1,9 +1,9 @@
+import 'package:fieldforce/features/shop/presentation/pages/trading_point_detail_page.dart';
 import 'package:flutter/material.dart';
 import 'package:get_it/get_it.dart';
 import 'package:fieldforce/app/services/app_session_service.dart';
 import 'package:fieldforce/features/shop/domain/entities/trading_point.dart';
 import 'package:fieldforce/features/shop/domain/usecases/get_employee_trading_points_usecase.dart';
-import 'package:fieldforce/features/shop/presentation/trading_point_detail_page.dart';
 
 /// Страница со списком торговых точек закрепленных за сотрудником
 class TradingPointsListPage extends StatefulWidget {

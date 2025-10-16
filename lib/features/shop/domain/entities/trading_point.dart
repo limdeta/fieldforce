@@ -12,6 +12,8 @@ class TradingPoint implements SyncableEntity {
   final String name;
   final String? inn;
   final String region;
+  final double? latitude;
+  final double? longitude;
   final DateTime createdAt;
   @override
   final DateTime? updatedAt;
@@ -22,6 +24,8 @@ class TradingPoint implements SyncableEntity {
     required this.name,
     this.inn,
     String? region,
+    this.latitude,
+    this.longitude,
     DateTime? createdAt,
     this.updatedAt,
   })  : region = _normalizeRegion(region),
@@ -34,6 +38,8 @@ class TradingPoint implements SyncableEntity {
     String? name,
     String? inn,
     String? region,
+    double? latitude,
+    double? longitude,
     DateTime? createdAt,
     DateTime? updatedAt,
   }) {
@@ -43,6 +49,8 @@ class TradingPoint implements SyncableEntity {
       name: name ?? this.name,
       inn: inn ?? this.inn,
       region: region ?? this.region,
+      latitude: latitude ?? this.latitude,
+      longitude: longitude ?? this.longitude,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
     );
@@ -59,6 +67,9 @@ class TradingPoint implements SyncableEntity {
     return other is TradingPoint && other.externalId == externalId;
   }
 
+  @override
+  int get hashCode => externalId.hashCode;
+
   /// Создает TradingPoint из JSON данных
   factory TradingPoint.fromJson(Map<String, dynamic> json) {
     return TradingPoint(
@@ -66,7 +77,9 @@ class TradingPoint implements SyncableEntity {
       externalId: json['external_id'] ?? json['externalId'] ?? '',
       name: json['name'] ?? '',
       inn: json['inn'] as String?,
-    region: _requireRegion(json),
+      region: _requireRegion(json),
+      latitude: _parseCoordinate(json, 'latitude'),
+      longitude: _parseCoordinate(json, 'longitude'),
       createdAt: json['created_at'] != null 
           ? DateTime.parse(json['created_at']) 
           : DateTime.now(),
@@ -84,6 +97,8 @@ class TradingPoint implements SyncableEntity {
       'name': name,
       'inn': inn,
       'region': region,
+      'latitude': latitude,
+      'longitude': longitude,
       'created_at': createdAt.toIso8601String(),
       'updated_at': updatedAt?.toIso8601String(),
     };
@@ -114,5 +129,30 @@ class TradingPoint implements SyncableEntity {
     }
 
     return region;
+  }
+
+  static double? _parseCoordinate(Map<String, dynamic> json, String key) {
+    if (json.containsKey(key)) {
+      final value = json[key];
+      if (value is num) {
+        return value.toDouble();
+      }
+      if (value is String) {
+        return double.tryParse(value);
+      }
+    }
+
+    final address = json['address'];
+    if (address is Map<String, dynamic>) {
+      final value = address[key];
+      if (value is num) {
+        return value.toDouble();
+      }
+      if (value is String) {
+        return double.tryParse(value);
+      }
+    }
+
+    return null;
   }
 }

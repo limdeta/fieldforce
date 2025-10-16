@@ -1,6 +1,9 @@
-import 'package:flutter/material.dart';
 import 'package:fieldforce/app/services/app_session_service.dart';
+import 'package:fieldforce/app/presentation/widgets/trading_point_map/trading_point_map_factory.dart';
 import 'package:fieldforce/features/shop/domain/entities/trading_point.dart';
+import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+import 'package:get_it/get_it.dart';
 
 /// Страница детализации торговой точки
 class TradingPointDetailPage extends StatefulWidget {
@@ -16,6 +19,8 @@ class TradingPointDetailPage extends StatefulWidget {
 }
 
 class _TradingPointDetailPageState extends State<TradingPointDetailPage> {
+  final TradingPointMapFactory _mapFactory =
+      GetIt.instance<TradingPointMapFactory>();
   bool _isProcessing = false;
   int? _selectedTradingPointId;
 
@@ -219,40 +224,27 @@ class _TradingPointDetailPageState extends State<TradingPointDetailPage> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   const SizedBox(height: 16),
-                  Container(
-                    height: 200,
-                    width: double.infinity,
-                    decoration: BoxDecoration(
-                      color: Colors.grey.shade100,
-                      borderRadius: BorderRadius.circular(10),
-                      border: Border.all(color: Colors.grey.shade300),
-                    ),
-                    child: const Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Icon(
-                          Icons.map_outlined,
-                          size: 48,
-                          color: Colors.black45,
-                        ),
-                        SizedBox(height: 8),
-                        Text(
-                          'Карта местоположения',
+                  _mapFactory.build(tradingPoint: widget.tradingPoint),
+                  const SizedBox(height: 12),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: Text(
+                          _formatCoordinates(widget.tradingPoint),
                           style: TextStyle(
-                            color: Colors.black54,
-                            fontSize: 16,
+                            color: Colors.grey.shade600,
+                            fontSize: 13,
                           ),
                         ),
-                        SizedBox(height: 4),
-                        Text(
-                          'Будет реализована позже',
-                          style: TextStyle(
-                            color: Colors.black38,
-                            fontSize: 12,
-                          ),
+                      ),
+                      if (widget.tradingPoint.latitude != null &&
+                          widget.tradingPoint.longitude != null)
+                        IconButton(
+                          onPressed: () => _copyCoordinates(widget.tradingPoint),
+                          icon: const Icon(Icons.copy, size: 18),
+                          tooltip: 'Скопировать координаты',
                         ),
-                      ],
-                    ),
+                    ],
                   ),
                 ],
               ),
@@ -356,6 +348,32 @@ class _TradingPointDetailPageState extends State<TradingPointDetailPage> {
 
   String _formatDate(DateTime date) {
     return '${date.day.toString().padLeft(2, '0')}.${date.month.toString().padLeft(2, '0')}.${date.year} ${date.hour.toString().padLeft(2, '0')}:${date.minute.toString().padLeft(2, '0')}';
+  }
+
+  String _formatCoordinates(TradingPoint tradingPoint) {
+    final lat = tradingPoint.latitude;
+    final lon = tradingPoint.longitude;
+    if (lat == null || lon == null) {
+      return 'Координаты недоступны';
+    }
+    return 'Широта: ${lat.toStringAsFixed(6)}, долгота: ${lon.toStringAsFixed(6)}';
+  }
+
+  Future<void> _copyCoordinates(TradingPoint tradingPoint) async {
+    final lat = tradingPoint.latitude;
+    final lon = tradingPoint.longitude;
+    if (lat == null || lon == null) return;
+
+    final coordinates = '${lat.toStringAsFixed(6)}, ${lon.toStringAsFixed(6)}';
+    await Clipboard.setData(ClipboardData(text: coordinates));
+
+    if (!mounted) return;
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text('Скопировано: $coordinates'),
+      ),
+    );
   }
 }
 

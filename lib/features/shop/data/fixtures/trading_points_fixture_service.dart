@@ -17,18 +17,24 @@ class TradingPointsFixtureService {
         name: 'Магадан',
         inn: '_____2300707',
         region: 'M3V',
+        latitude: 43.144173,
+        longitude: 131.9266,
       ),
       TradingPoint(
         externalId: '0002300707_9',
         name: 'Камчатка',
         inn: '_____2300707',
         region: 'K3V',
+        latitude: 53.0370074,
+        longitude: 158.65595,
       ),
       TradingPoint(
         externalId: '0002300707_8',
         name: 'Днепровская',
         inn: '_____2300707',
         region: 'P3V',
+        latitude: 43.144173,
+        longitude: 131.9266,
       ),
     ];
     
@@ -91,6 +97,12 @@ class TradingPointsFixtureService {
       name: point.name,
       inn: point.inn != null ? Value(point.inn!) : const Value.absent(),
       region: Value(point.region),
+      latitude: point.latitude != null
+          ? Value(point.latitude!)
+          : const Value.absent(),
+      longitude: point.longitude != null
+          ? Value(point.longitude!)
+          : const Value.absent(),
       updatedAt: Value(DateTime.now()),
     );
     await database.upsertTradingPoint(companion);

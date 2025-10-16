@@ -1,5 +1,5 @@
 import 'package:fieldforce/app/di/test_service_locator.dart' as test_di;
-import 'package:fieldforce/features/shop/presentation/trading_points_list_page.dart';
+import 'package:fieldforce/features/shop/presentation/pages/trading_points_list_page.dart';
 import 'package:fieldforce/features/shop/presentation/pages/cart_page.dart';
 import 'package:fieldforce/features/shop/presentation/bloc/cart_bloc.dart';
 import 'package:flutter/material.dart';

@@ -9,6 +9,8 @@ class TradingPointEntities extends Table {
   TextColumn get name => text()();
   TextColumn get inn => text().nullable()();
   TextColumn get region => text().withDefault(const Constant('P3V'))();
+  RealColumn get latitude => real().nullable()();
+  RealColumn get longitude => real().nullable()();
   DateTimeColumn get createdAt => dateTime().withDefault(currentDateAndTime)();
   DateTimeColumn get updatedAt => dateTime().nullable()();
 }

@@ -82,7 +82,13 @@ class DriftTradingPointRepository implements TradingPointRepository {
         externalId: tradingPoint.externalId,
         name: tradingPoint.name,
         inn: tradingPoint.inn != null ? Value(tradingPoint.inn!) : const Value.absent(),
-          region: Value(tradingPoint.region),
+        region: Value(tradingPoint.region),
+        latitude: tradingPoint.latitude != null
+            ? Value(tradingPoint.latitude!)
+            : const Value.absent(),
+        longitude: tradingPoint.longitude != null
+            ? Value(tradingPoint.longitude!)
+            : const Value.absent(),
         updatedAt: Value(DateTime.now()),
       );
 
@@ -171,8 +177,8 @@ class DriftTradingPointRepository implements TradingPointRepository {
     }
   }
   TradingPoint _mapEntityToDomain(TradingPointEntity entity) {
-    final region = entity.region;
-    if (region == null || region.trim().isEmpty) {
+    final region = entity.region.trim();
+    if (region.isEmpty) {
       throw StateError('Trading point ${entity.externalId} saved without region');
     }
 
@@ -182,6 +188,8 @@ class DriftTradingPointRepository implements TradingPointRepository {
       name: entity.name,
       inn: entity.inn,
       region: region,
+      latitude: entity.latitude,
+      longitude: entity.longitude,
       createdAt: entity.createdAt,
       updatedAt: entity.updatedAt,
     );

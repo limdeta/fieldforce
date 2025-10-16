@@ -42,6 +42,7 @@ import 'package:fieldforce/features/authentication/presentation/bloc/bloc.dart';
 import 'package:fieldforce/features/navigation/tracking/presentation/bloc/tracking_bloc.dart';
 import 'package:fieldforce/features/navigation/tracking/presentation/bloc/user_tracks_bloc.dart';
 import 'package:fieldforce/app/presentation/bloc/data_sync/data_sync_bloc.dart';
+import 'package:fieldforce/app/presentation/widgets/trading_point_map/trading_point_map_factory.dart';
 import 'package:fieldforce/features/shop/data/fixtures/product_fixture_service.dart';
 import 'package:fieldforce/app/database/repositories/trading_point_repository_drift.dart';
 import 'package:fieldforce/app/domain/repositories/app_user_repository.dart';
@@ -278,6 +279,10 @@ Future<void> setupTestServiceLocator({bool startBackgroundWorkers = true}) async
       connectivity: getIt<Connectivity>(),
       queueService: getIt<JobQueueService<OrderSubmissionJob>>(),
     ),
+  );
+
+  getIt.registerLazySingleton<TradingPointMapFactory>(
+    () => DefaultTradingPointMapFactory(),
   );
 
   getIt.registerLazySingleton<CreateOrderUseCase>(

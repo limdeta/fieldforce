@@ -61,7 +61,7 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase.forTesting(DatabaseConnection super.connection);
 
   @override
-  int get schemaVersion => 6;
+  int get schemaVersion => 7;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -94,6 +94,11 @@ class AppDatabase extends _$AppDatabase {
 
       if (from < 6) {
         await m.createTable(syncLogs);
+      }
+
+      if (from < 7) {
+        await customStatement('ALTER TABLE trading_point_entities ADD COLUMN latitude REAL;');
+        await customStatement('ALTER TABLE trading_point_entities ADD COLUMN longitude REAL;');
       }
 
       await m.createAll();
