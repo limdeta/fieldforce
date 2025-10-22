@@ -10,6 +10,7 @@ import 'package:fieldforce/shared/either.dart';
 import 'package:fieldforce/features/navigation/tracking/domain/entities/user_track.dart';
 import 'package:fieldforce/shared/failures.dart';
 import 'package:fieldforce/features/navigation/tracking/domain/services/gps_data_manager.dart';
+import 'package:fieldforce/features/navigation/tracking/domain/services/device_orientation_service.dart';
 
 class _FakeGpsDataManager {
   final StreamController<Position> controller = StreamController<Position>();
@@ -76,8 +77,9 @@ void main() {
     final manager = TrackManager(repo);
     final fakeGps = _FakeGpsDataManager();
 
-    final service = LocationTrackingService(GpsDataManager(), manager,
-        positionStreamProvider: (settings) => fakeGps.controller.stream);
+  final orientation = NoopDeviceOrientationService();
+  final service = LocationTrackingService(GpsDataManager(), manager, orientation,
+    positionStreamProvider: (settings) => fakeGps.controller.stream);
 
     final user = _TestUser(333);
     final started = await service.startTracking(user);
@@ -119,5 +121,6 @@ void main() {
     await sub.cancel();
     manager.dispose();
     service.dispose();
+    await orientation.dispose();
   });
 }

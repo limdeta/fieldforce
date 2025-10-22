@@ -5,6 +5,7 @@ import 'package:geolocator/geolocator.dart';
 import 'package:fieldforce/features/navigation/tracking/domain/services/location_tracking_service.dart';
 import 'package:fieldforce/features/navigation/tracking/domain/services/gps_data_manager.dart';
 import 'package:fieldforce/features/navigation/tracking/domain/services/track_manager.dart';
+import 'package:fieldforce/features/navigation/tracking/domain/services/device_orientation_service.dart';
 import 'package:fieldforce/features/navigation/tracking/domain/repositories/user_track_repository.dart';
 import 'package:fieldforce/features/navigation/tracking/domain/entities/navigation_user.dart';
 import 'package:fieldforce/shared/either.dart';
@@ -77,7 +78,8 @@ void main() {
     final fakeGps = _FakeGpsDataManager();
 
   final realGps = GpsDataManager();
-  final service = LocationTrackingService(realGps, manager,
+  final orientation = NoopDeviceOrientationService();
+  final service = LocationTrackingService(realGps, manager, orientation,
     positionStreamProvider: (settings) => fakeGps.controller.stream);
 
     final user = _TestUser(999);
@@ -122,5 +124,6 @@ void main() {
     await sub.cancel();
     manager.dispose();
     service.dispose();
+    await orientation.dispose();
   });
 }

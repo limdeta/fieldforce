@@ -244,6 +244,33 @@ class TrackManager {
     }
   }
 
+  /// Принудительно завершает текущий сегмент, чтобы избежать "телепортов".
+  Future<void> breakCurrentSegment({String? reason}) async {
+    if (_currentTrack == null) {
+      _logger.warning('TrackManager.breakCurrentSegment: нет активного трека (reason=$reason)');
+      _buffer.clear();
+      return;
+    }
+
+    _logger.warning('TrackManager.breakCurrentSegment: reason=$reason, bufferedPoints=${_buffer.pointCount}');
+
+    if (_buffer.hasData) {
+      final saved = await flushBufferToCurrentTrack();
+      if (!saved) {
+        _logger.severe('TrackManager.breakCurrentSegment: не удалось сохранить буфер, очищаем чтобы не допустить телепорта');
+        _buffer.clear();
+      } else {
+        _buffer.clear();
+      }
+    } else {
+      _buffer.clear();
+    }
+  }
+
+  void clearLiveBuffer() {
+    _buffer.clear();
+  }
+
   /// Persist externally-provided segments (for example from native background queue).
   ///
   /// Rules:

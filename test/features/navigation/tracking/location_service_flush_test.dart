@@ -10,6 +10,7 @@ import 'package:fieldforce/features/navigation/tracking/domain/entities/navigati
 import 'package:fieldforce/shared/either.dart';
 import 'package:fieldforce/features/navigation/tracking/domain/entities/user_track.dart';
 import 'package:fieldforce/shared/failures.dart';
+import 'package:fieldforce/features/navigation/tracking/domain/services/device_orientation_service.dart';
 
 // Minimal fake GpsDataManager for tests
 class _FakeGpsDataManager {
@@ -81,7 +82,8 @@ void main() {
   // Inject the fake GPS stream via the optional positionStreamProvider
   // Pass the real GpsDataManager singleton but inject our fake stream
   final realGps = GpsDataManager();
-  final service = LocationTrackingService(realGps, manager,
+  final orientation = NoopDeviceOrientationService();
+  final service = LocationTrackingService(realGps, manager, orientation,
     positionStreamProvider: (settings) => fakeGps.controller.stream);
 
     final user = _TestUser(77);
@@ -121,5 +123,6 @@ void main() {
     await sub.cancel();
     manager.dispose();
     service.dispose();
+    await orientation.dispose();
   });
 }

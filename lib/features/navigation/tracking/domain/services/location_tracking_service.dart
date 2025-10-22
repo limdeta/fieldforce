@@ -66,6 +66,11 @@ class LocationTrackingService implements LocationTrackingServiceBase  {
   static const double _gpsHeadingSpeedThreshold = 1.5; // м/с (~5.4 км/ч)
   static const Duration _compassThrottle = Duration(milliseconds: 120);
   static const double _compassJitterThreshold = 0.3; // градусы
+  static const Duration _segmentGapDuration = Duration(seconds: 75);
+  static const double _segmentGapDistanceMeters = 500.0;
+  static const double _segmentGapDistanceForLongGap = 120.0;
+  static const double _segmentBreakMinDistance = 30.0;
+  static const double _maxTeleportSpeedMps = 65.0; // ≈234 км/ч
 
   LocationTrackingService(
     this._gpsDataManager,
@@ -229,14 +234,16 @@ class LocationTrackingService implements LocationTrackingServiceBase  {
       }
       _logger.info('✅ GPS источник данных запущен');
 
-  await _startOrientationUpdates();
+      await _startOrientationUpdates();
 
       _logger.info('🔄 Подписываемся на поток GPS позиций...');
-    final Stream<Position> posStream = _positionStreamProvider != null
-      ? _positionStreamProvider(_locationSettings)
-      : _gpsDataManager.getPositionStream(settings: _locationSettings);
+      final Stream<Position> posStream = _positionStreamProvider != null
+          ? _positionStreamProvider(_locationSettings)
+          : _gpsDataManager.getPositionStream(settings: _locationSettings);
 
-      _positionSubscription = posStream.listen((pos) => _onPositionUpdate(pos), onError: (error) async {
+      _positionSubscription = posStream.listen((pos) {
+        unawaited(_onPositionUpdate(pos));
+      }, onError: (error) async {
         _logger.warning('⚠️ LocationTrackingService: позиционный стрим выдал ошибку, пытаемся сохранить буфер: $error');
         try {
           await _trackManager.flushBufferToCurrentTrack();
@@ -368,7 +375,10 @@ class LocationTrackingService implements LocationTrackingServiceBase  {
   }
 
   /// Обработчик новой позиции GPS
-  void _onPositionUpdate(Position position) {
+  Future<void> _onPositionUpdate(Position position) async {
+    final sub = _positionSubscription;
+    sub?.pause();
+
     try {
       _logger.info('📍 LocationTrackingService.onPositionUpdate: ${position.latitude}, ${position.longitude} (точность: ${position.accuracy}m)');
 
@@ -377,8 +387,15 @@ class LocationTrackingService implements LocationTrackingServiceBase  {
         return;
       }
 
-      final double fusedHeading = _fuseHeading(position);
-      final Position corrected = _copyPositionWithHeading(position, fusedHeading);
+  double fusedHeading = _fuseHeading(position);
+  Position corrected = _copyPositionWithHeading(position, fusedHeading);
+
+      final _SegmentBreakDecision? gapDecision = _detectSegmentBreak(corrected);
+      if (gapDecision != null) {
+        await _handleSegmentBreak(gapDecision);
+        fusedHeading = _fuseHeading(position);
+        corrected = _copyPositionWithHeading(position, fusedHeading);
+      }
 
       if (!_shouldRecordPosition(corrected)) {
         double distance = 0.0;
@@ -419,6 +436,8 @@ class LocationTrackingService implements LocationTrackingServiceBase  {
       _broadcastPosition(corrected);
     } catch (e, st) {
       _logger.severe('💥 Ошибка обработки позиции', e, st);
+    } finally {
+      sub?.resume();
     }
   }
 
@@ -622,6 +641,83 @@ class LocationTrackingService implements LocationTrackingServiceBase  {
     _lastCompassUiEmission = null;
   }
 
+  _SegmentBreakDecision? _detectSegmentBreak(Position nextPosition) {
+    final Position? previous = _lastBroadcastPosition ?? _lastPosition;
+    if (previous == null) return null;
+
+  final DateTime previousTs = previous.timestamp;
+  final DateTime nextTs = nextPosition.timestamp;
+
+    Duration rawGap = nextTs.difference(previousTs);
+    final bool gapNegative = rawGap.isNegative;
+    if (gapNegative) {
+      rawGap = Duration(milliseconds: rawGap.inMilliseconds.abs());
+    }
+
+    final double distance = Geolocator.distanceBetween(
+      previous.latitude,
+      previous.longitude,
+      nextPosition.latitude,
+      nextPosition.longitude,
+    );
+
+    final double seconds = rawGap.inMilliseconds > 0 ? rawGap.inMilliseconds / 1000.0 : 0.0;
+    final double speed = seconds > 0 ? distance / seconds : double.infinity;
+
+    final bool largeJump = distance >= _segmentGapDistanceMeters;
+    final bool longGap = rawGap >= _segmentGapDuration && distance >= _segmentGapDistanceForLongGap;
+    final bool teleportSpeed = speed > _maxTeleportSpeedMps && distance >= _segmentBreakMinDistance;
+    final bool timestampRegression = gapNegative && distance >= _segmentBreakMinDistance;
+
+    if (!largeJump && !longGap && !teleportSpeed && !timestampRegression) {
+      return null;
+    }
+
+    final String reason;
+    if (largeJump) {
+      reason = 'large_distance_jump';
+    } else if (teleportSpeed) {
+      reason = 'speed_spike';
+    } else if (longGap) {
+      reason = 'long_gap';
+    } else {
+      reason = 'timestamp_regressed';
+    }
+
+    return _SegmentBreakDecision(
+      reason: reason,
+      distanceMeters: distance,
+      timeGap: rawGap,
+      speedMps: speed,
+    );
+  }
+
+  Future<void> _handleSegmentBreak(_SegmentBreakDecision decision) async {
+    final double speedKmh = decision.speedMps.isFinite ? decision.speedMps * 3.6 : double.infinity;
+    _logger.warning(
+      '🧭 Segment break (${decision.reason}): gap=${decision.timeGap.inSeconds}s, '
+      'distance=${decision.distanceMeters.toStringAsFixed(1)}м, '
+      'speed=${speedKmh.isFinite ? speedKmh.toStringAsFixed(1) : 'inf'} км/ч',
+    );
+
+    try {
+      await _trackManager.breakCurrentSegment(reason: decision.reason);
+    } catch (e, st) {
+      _logger.severe('Не удалось принудительно завершить сегмент в TrackManager', e, st);
+      try {
+        _trackManager.clearLiveBuffer();
+      } catch (inner, innerSt) {
+        _logger.warning('Не удалось очистить live buffer после ошибки breakCurrentSegment', inner, innerSt);
+      }
+    } finally {
+      _lastPosition = null;
+      _lastBroadcastPosition = null;
+      _resetHeadingState();
+      _stationaryCount = 0;
+    }
+  }
+
+
   void _setLastPositionFromTrack(UserTrack track) {
     if (track.segments.isEmpty) return;
 
@@ -665,4 +761,18 @@ class LocationTrackingService implements LocationTrackingServiceBase  {
     _liveTrackUpdateController.close();
     _resetHeadingState();
   }
+}
+
+class _SegmentBreakDecision {
+  final String reason;
+  final double distanceMeters;
+  final Duration timeGap;
+  final double speedMps;
+
+  const _SegmentBreakDecision({
+    required this.reason,
+    required this.distanceMeters,
+    required this.timeGap,
+    required this.speedMps,
+  });
 }
