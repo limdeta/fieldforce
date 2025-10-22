@@ -237,10 +237,6 @@ class RouteService {
     return false;
   }
 
-  /// Генерирует уникальный ID
-  String _generateId() {
-    return 'route_${DateTime.now().millisecondsSinceEpoch}';
-  }
 
   // TODO: Реализовать после создания data слоя
   /*

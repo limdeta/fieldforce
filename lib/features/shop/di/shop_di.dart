@@ -109,9 +109,6 @@ void registerShopDependencies(GetIt getIt) {
     ..registerLazySingleton<TradingPointMapFactory>(
       () => DefaultTradingPointMapFactory(),
     )
-    ..registerLazySingleton<ProtobufSyncRepository>(
-      () => ProtobufSyncRepository(getIt<AppDatabase>()),
-    )
     ..registerLazySingleton<RegionalSyncService>(
       () => RegionalSyncService(baseUrl: AppConfig.apiBaseUrl),
     )

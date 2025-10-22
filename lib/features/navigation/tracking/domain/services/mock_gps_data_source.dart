@@ -199,8 +199,8 @@ class MockGpsDataSource implements GpsDataSource {
       }
 
       try {
-        final currentPoint = _routePoints[_currentPointIndex];
-        final position = _createPositionFromPoint(currentPoint);
+        // final currentPoint = _routePoints[_currentPointIndex];
+        // final position = _createPositionFromPoint(currentPoint);
 
         // if (!_positionController.isClosed) {
         //   _positionController.add(position);
