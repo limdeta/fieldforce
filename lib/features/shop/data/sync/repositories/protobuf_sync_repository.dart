@@ -1,14 +1,12 @@
 import 'package:logging/logging.dart';
-import '../../../../../app/database/app_database.dart';
 
 /// Repository для хранения метаданных protobuf синхронизации
 /// Отслеживает времена последних обновлений, статистику и состояние синхронизации
 class ProtobufSyncRepository {
   static final Logger _logger = Logger('ProtobufSyncRepository');
   
-  final AppDatabase _database;
   
-  ProtobufSyncRepository(this._database);
+  ProtobufSyncRepository();
 
   /// Сохраняет время последней региональной синхронизации
   Future<void> saveLastRegionalSync(String regionCode, DateTime syncTime, int productsCount) async {

@@ -35,8 +35,8 @@ class UserInitializationService {
     // - Персональные настройки UI
     // - Предпочитаемые настройки карты
 
-    final isDarkTheme = preferencesService.getDarkTheme();
-    final fontSize = preferencesService.getFontSize();
+    // final isDarkTheme = preferencesService.getDarkTheme();
+    // final fontSize = preferencesService.getFontSize();
   }
   
   /// Очищает пользовательские настройки (при выходе)

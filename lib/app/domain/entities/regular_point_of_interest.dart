@@ -66,7 +66,6 @@ class RegularPointOfInterest implements PointOfInterest {
   @override
   String get displayName => name;
 
-  @override
   String? get additionalInfo => description;
 
   @override
