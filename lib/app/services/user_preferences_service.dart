@@ -1,3 +1,4 @@
+import 'package:fieldforce/features/shop/domain/entities/catalog_display_mode.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 /// Сервис для управления пользовательскими настройками и состоянием UI
@@ -15,6 +16,8 @@ class UserPreferencesService {
   static const String _isDarkThemeKey = 'is_dark_theme';
   static const String _fontSizeKey = 'font_size';
   static const String _lastViewedTabKey = 'last_viewed_tab';
+  static const String _catalogDisplayModeKey = 'catalog_display_mode';
+  static const String _catalogSplitStateKey = 'catalog_split_state';
   
   SharedPreferences? _prefs;
   
@@ -113,6 +116,35 @@ class UserPreferencesService {
     return _prefs!.getDouble(_fontSizeKey) ?? 14.0; // По умолчанию 14px
   }
 
+  /// Сохраняет предпочтительный режим отображения каталога товаров
+  Future<void> setCatalogDisplayMode(CatalogDisplayMode mode) async {
+    _ensureInitialized();
+    await _prefs!.setString(_catalogDisplayModeKey, mode.storageValue);
+  }
+
+  /// Получает предпочтительный режим отображения каталога товаров
+  CatalogDisplayMode getCatalogDisplayMode() {
+    _ensureInitialized();
+    final stored = _prefs!.getString(_catalogDisplayModeKey);
+    return CatalogDisplayModeX.fromStorage(stored);
+  }
+
+  /// Сохраняет сериализованное состояние сплит-каталога
+  Future<void> setCatalogSplitStateJson(String? stateJson) async {
+    _ensureInitialized();
+    if (stateJson == null) {
+      await _prefs!.remove(_catalogSplitStateKey);
+      return;
+    }
+    await _prefs!.setString(_catalogSplitStateKey, stateJson);
+  }
+
+  /// Возвращает сериализованное состояние сплит-каталога
+  String? getCatalogSplitStateJson() {
+    _ensureInitialized();
+    return _prefs!.getString(_catalogSplitStateKey);
+  }
+
   // ============================================================================
   // НАВИГАЦИЯ И СОСТОЯНИЕ ЭКРАНОВ
   // ============================================================================
@@ -146,6 +178,8 @@ class UserPreferencesService {
       _prefs!.remove(_isDarkThemeKey),
       _prefs!.remove(_fontSizeKey),
       _prefs!.remove(_lastViewedTabKey),
+      _prefs!.remove(_catalogDisplayModeKey),
+      _prefs!.remove(_catalogSplitStateKey),
     ]);
   }
 }
