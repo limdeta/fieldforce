@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'package:fieldforce/features/navigation/tracking/domain/services/device_orientation_service.dart';
 import 'package:fieldforce/features/navigation/tracking/domain/services/location_tracking_service_base.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:logging/logging.dart';
@@ -21,10 +22,12 @@ class LocationTrackingService implements LocationTrackingServiceBase  {
   static final Logger _logger = Logger('LocationTrackingService');
   final GpsDataManager _gpsDataManager;
   late final TrackManager _trackManager;
+  final DeviceOrientationService _orientationService;
   // Optional injection point for tests: custom position stream provider
   final Stream<Position> Function(LocationSettings settings)? _positionStreamProvider;
   StreamSubscription<Position>? _positionSubscription;
   StreamSubscription<UserTrack>? _trackUpdateSubscription; // Добавлено для подписки на TrackManager
+  StreamSubscription<double>? _orientationSubscription;
   
   final StreamController<Position> _positionController = 
       StreamController<Position>.broadcast();
@@ -42,8 +45,12 @@ class LocationTrackingService implements LocationTrackingServiceBase  {
   CompactTrack? _lastLiveBuffer;
   
   Position? _lastPosition;
+  Position? _lastBroadcastPosition;
   bool _isActive = false;
   int _stationaryCount = 0;
+  double? _lastComputedHeading;
+  double? _lastCompassHeading;
+  DateTime? _lastCompassUiEmission;
 
   // Настройки трекинга
   final LocationSettings _locationSettings = const LocationSettings(
@@ -56,8 +63,16 @@ class LocationTrackingService implements LocationTrackingServiceBase  {
   static const double _maxSpeed = 150.0; // км/ч - максимальная разумная скорость
   static const int _stationaryThreshold = 50; // количество статичных точек для паузы (увеличено чтобы не прерывать трекинг)
   static const double _minDistanceMeters = 5.0; // минимальное расстояние между точками
+  static const double _gpsHeadingSpeedThreshold = 1.5; // м/с (~5.4 км/ч)
+  static const Duration _compassThrottle = Duration(milliseconds: 120);
+  static const double _compassJitterThreshold = 0.3; // градусы
 
-  LocationTrackingService(this._gpsDataManager, this._trackManager, {Stream<Position> Function(LocationSettings settings)? positionStreamProvider}) : _positionStreamProvider = positionStreamProvider {
+  LocationTrackingService(
+    this._gpsDataManager,
+    this._trackManager,
+    this._orientationService, {
+    Stream<Position> Function(LocationSettings settings)? positionStreamProvider,
+  }) : _positionStreamProvider = positionStreamProvider {
     _logger.fine('🏗️ LocationTrackingService: получили TrackManager из DI');
     _trackingStateController.add(false);
     _pauseStateController.add(false);
@@ -100,7 +115,8 @@ class LocationTrackingService implements LocationTrackingServiceBase  {
   /// Стримы для подписки на обновления
   Stream<Position> get positionStream => Stream<Position>.multi((controller) {
         // replay last known position to late subscribers
-        if (_lastPosition != null) controller.add(_lastPosition!);
+        final Position? lastForReplay = _lastBroadcastPosition ?? _lastPosition;
+        if (lastForReplay != null) controller.add(lastForReplay);
         final sub = _positionController.stream.listen((p) {
           controller.add(p);
         }, onError: controller.addError, onDone: controller.close);
@@ -113,7 +129,7 @@ class LocationTrackingService implements LocationTrackingServiceBase  {
   TrackSnapshot getCurrentSnapshot() {
     final persisted = _trackManager.currentTrackForUI;
     final live = _lastLiveBuffer;
-    final pos = _lastPosition;
+    final pos = _lastBroadcastPosition ?? _lastPosition;
     return TrackSnapshot(persistedTrack: persisted, liveBuffer: live, lastPosition: pos);
   }
 
@@ -213,6 +229,8 @@ class LocationTrackingService implements LocationTrackingServiceBase  {
       }
       _logger.info('✅ GPS источник данных запущен');
 
+  await _startOrientationUpdates();
+
       _logger.info('🔄 Подписываемся на поток GPS позиций...');
     final Stream<Position> posStream = _positionStreamProvider != null
       ? _positionStreamProvider(_locationSettings)
@@ -286,6 +304,9 @@ class LocationTrackingService implements LocationTrackingServiceBase  {
       if (_trackManager.currentTrackForUI != null) {
         await _trackManager.stopTracking();
       }
+
+      await _stopOrientationUpdates();
+      _resetHeadingState();
       
       _isActive = false;
       _trackingStateController.add(false);
@@ -313,6 +334,8 @@ class LocationTrackingService implements LocationTrackingServiceBase  {
 
       await _trackManager.pauseTracking();
 
+  await _stopOrientationUpdates();
+
       _isActive = false;
       _pauseStateController.add(true);
 
@@ -332,6 +355,7 @@ class LocationTrackingService implements LocationTrackingServiceBase  {
       }
       
       await _trackManager.resumeTracking();
+  await _startOrientationUpdates();
       
       _isActive = true;
       _pauseStateController.add(false);
@@ -347,54 +371,52 @@ class LocationTrackingService implements LocationTrackingServiceBase  {
   void _onPositionUpdate(Position position) {
     try {
       _logger.info('📍 LocationTrackingService.onPositionUpdate: ${position.latitude}, ${position.longitude} (точность: ${position.accuracy}m)');
-      
+
       if (!_isValidPosition(position)) {
         _logger.warning('⚠️ Позиция отфильтрована как невалидная (точность: ${position.accuracy})');
         return;
       }
-      
-      // Проверяем минимальное расстояние
-      if (!_shouldRecordPosition(position)) {
+
+      final double fusedHeading = _fuseHeading(position);
+      final Position corrected = _copyPositionWithHeading(position, fusedHeading);
+
+      if (!_shouldRecordPosition(corrected)) {
         double distance = 0.0;
         if (_lastPosition != null) {
           distance = Geolocator.distanceBetween(
             _lastPosition!.latitude,
             _lastPosition!.longitude,
-            position.latitude,
-            position.longitude,
+            corrected.latitude,
+            corrected.longitude,
           );
         }
-        _logger.info('📏 Позиция отфильтрована по минимальному расстоянию: ${distance.toStringAsFixed(1)}m < $_minDistanceMeters');
+        _logger.fine('📏 Позиция пропущена по дистанции: ${distance.toStringAsFixed(1)}м < $_minDistanceMeters');
+
+        final Position uiPosition = _copyPositionWithHeading(
+          _lastBroadcastPosition ?? corrected,
+          fusedHeading,
+          timestamp: DateTime.now(),
+        );
+        _broadcastPosition(uiPosition);
         return;
       }
 
-      // Добавляем точку в track manager (он использует буферизацию)
       if (_isActive) {
         _logger.info('📍 LocationTrackingService: передаем точку в TrackManager (_isActive=true)');
-        _trackManager.addGpsPoint(position);
+        _trackManager.addGpsPoint(corrected);
         _logger.info('✅ Точка передана в TrackManager');
-        
-        // КРИТИЧНО: Эмитируем полное состояние трека (включая буфер) в UI
+
         final currentTrack = _trackManager.currentTrackForUI;
-        if (currentTrack != null) {
-          _logger.fine('📡 Эмитируем полное состояние трека с буфером в liveTrackUpdateController');
-          if (!_liveTrackUpdateController.isClosed) {
-            _liveTrackUpdateController.add(currentTrack);
-          }
+        if (currentTrack != null && !_liveTrackUpdateController.isClosed) {
+          _liveTrackUpdateController.add(currentTrack);
         }
       } else {
-        _logger.warning('⚠️ LocationTrackingService: трекинг неактивен (_isActive=false) - НЕ добавляем точку в TrackManager');
+        _logger.fine('⚠️ LocationTrackingService: трекинг неактивен (_isActive=false) - точка не сохранена');
       }
 
-      _lastPosition = position;
-
-      // Проверяем стационарность
-      _checkStationaryState(position);
-      
-      // Отправляем позицию в стрим для UI
-      _positionController.add(position);
-      _logger.fine('📡 Позиция отправлена в UI стрим');
-      
+      _checkStationaryState(corrected);
+      _lastPosition = corrected;
+      _broadcastPosition(corrected);
     } catch (e, st) {
       _logger.severe('💥 Ошибка обработки позиции', e, st);
     }
@@ -461,6 +483,145 @@ class LocationTrackingService implements LocationTrackingServiceBase  {
     }
   }
 
+  Future<void> _startOrientationUpdates() async {
+    await _orientationSubscription?.cancel();
+    _orientationSubscription = null;
+
+    try {
+      await _orientationService.start();
+    } catch (e, st) {
+      _logger.warning('Не удалось запустить сервис ориентации', e, st);
+    }
+
+    try {
+      _orientationSubscription = _orientationService.headingStream.listen(
+        _onCompassHeading,
+        onError: (error, stackTrace) {
+          _logger.warning('Ошибка compass stream', error, stackTrace);
+        },
+      );
+    } catch (e, st) {
+      _logger.warning('Не удалось подписаться на compass stream', e, st);
+    }
+  }
+
+  Future<void> _stopOrientationUpdates() async {
+    await _orientationSubscription?.cancel();
+    _orientationSubscription = null;
+    try {
+      await _orientationService.stop();
+    } catch (e, st) {
+      _logger.warning('Не удалось остановить сервис ориентации', e, st);
+    }
+  }
+
+  void _onCompassHeading(double heading) {
+    final normalized = normalizeHeading(heading);
+    _lastCompassHeading = normalized;
+
+    final Position? base = _lastBroadcastPosition ?? _lastPosition;
+    if (base == null) {
+      return;
+    }
+
+    if (_isHeadingUsable(base.heading) && base.speed >= _gpsHeadingSpeedThreshold) {
+      return;
+    }
+
+    final now = DateTime.now();
+    if (_lastCompassUiEmission != null && now.difference(_lastCompassUiEmission!) < _compassThrottle) {
+      return;
+    }
+
+    final double blended = _applyHeadingSmoothing(normalized, 0.25, enforceJitter: true);
+    final Position updated = _copyPositionWithHeading(base, blended, timestamp: now);
+    _broadcastPosition(updated);
+    _lastCompassUiEmission = now;
+  }
+
+  void _broadcastPosition(Position position) {
+    _lastBroadcastPosition = position;
+    if (!_positionController.isClosed) {
+      _positionController.add(position);
+    }
+  }
+
+  Position _copyPositionWithHeading(Position position, double heading, {DateTime? timestamp}) {
+    return Position(
+      latitude: position.latitude,
+      longitude: position.longitude,
+      timestamp: timestamp ?? position.timestamp,
+      accuracy: position.accuracy,
+      altitude: position.altitude,
+      altitudeAccuracy: position.altitudeAccuracy,
+      heading: normalizeHeading(heading),
+      headingAccuracy: position.headingAccuracy,
+      speed: position.speed,
+      speedAccuracy: position.speedAccuracy,
+    );
+  }
+
+  double _fuseHeading(Position position) {
+    final bool gpsUsable = _isHeadingUsable(position.heading);
+    final bool gpsReliable = _isGpsHeadingReliable(position);
+    final double? compassHeading = _orientationService.lastHeading ?? _lastCompassHeading;
+    final bool compassUsable = _isHeadingUsable(compassHeading);
+
+    double candidate;
+    if (gpsReliable && gpsUsable) {
+      candidate = position.heading;
+    } else if (compassUsable) {
+      candidate = compassHeading!;
+    } else if (gpsUsable) {
+      candidate = position.heading;
+    } else if (_lastComputedHeading != null) {
+      candidate = _lastComputedHeading!;
+    } else {
+      candidate = 0.0;
+    }
+
+    return _applyHeadingSmoothing(candidate, gpsReliable ? 0.35 : 0.2);
+  }
+
+  double _applyHeadingSmoothing(double candidate, double alpha, {bool enforceJitter = false}) {
+    final double normalizedCandidate = normalizeHeading(candidate);
+    if (_lastComputedHeading == null) {
+      _lastComputedHeading = normalizedCandidate;
+      return _lastComputedHeading!;
+    }
+
+    final double delta = shortestHeadingDelta(normalizedCandidate, _lastComputedHeading!);
+    if (enforceJitter && delta.abs() < _compassJitterThreshold) {
+      return _lastComputedHeading!;
+    }
+
+    _lastComputedHeading = normalizeHeading(_lastComputedHeading! + delta * alpha);
+    return _lastComputedHeading!;
+  }
+
+  bool _isHeadingUsable(double? heading) {
+    if (heading == null) return false;
+    if (heading.isNaN || !heading.isFinite) return false;
+    if (heading == -1) return false;
+    return true;
+  }
+
+  bool _isGpsHeadingReliable(Position position) {
+    final double speed = position.speed;
+    if (speed >= _gpsHeadingSpeedThreshold) {
+      return true;
+    }
+
+    final double accuracy = position.headingAccuracy;
+    return accuracy >= 0 && accuracy <= 25;
+  }
+
+  void _resetHeadingState() {
+    _lastComputedHeading = null;
+    _lastCompassHeading = null;
+    _lastCompassUiEmission = null;
+  }
+
   void _setLastPositionFromTrack(UserTrack track) {
     if (track.segments.isEmpty) return;
 
@@ -471,29 +632,37 @@ class LocationTrackingService implements LocationTrackingServiceBase  {
     final (lat, lng) = lastSegment.getCoordinates(lastIndex);
     final timestamp = lastSegment.getTimestamp(lastIndex);
 
-    _lastPosition = Position(
+    final heading = normalizeHeading(lastSegment.getBearing(lastIndex) ?? 0.0);
+    final restoredPosition = Position(
       latitude: lat,
       longitude: lng,
       timestamp: timestamp,
       accuracy: lastSegment.getAccuracy(lastIndex) ?? 5.0,
       altitude: 0.0,
       altitudeAccuracy: 10.0,
-      heading: lastSegment.getBearing(lastIndex) ?? 0.0,
+      heading: heading,
       headingAccuracy: 15.0,
       speed: (lastSegment.getSpeed(lastIndex) ?? 30.0) / 3.6, // км/ч -> м/с
       speedAccuracy: 2.0,
     );
+
+    _lastPosition = restoredPosition;
+    _lastBroadcastPosition = restoredPosition;
+    _lastComputedHeading = heading;
 
     _logger.info("Последняя позиция установлена: $lat, $lng");
   }
 
   void dispose() {
     _positionSubscription?.cancel();
+    _orientationSubscription?.cancel();
+    unawaited(_orientationService.stop());
     _trackUpdateSubscription?.cancel(); // Добавлено
     _trackManager.dispose();
     _positionController.close();
     _trackingStateController.close();
     _pauseStateController.close();
     _liveTrackUpdateController.close();
+    _resetHeadingState();
   }
 }

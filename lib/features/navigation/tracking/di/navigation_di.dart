@@ -7,6 +7,7 @@ import 'package:fieldforce/app/domain/repositories/route_repository.dart';
 import 'package:fieldforce/app/domain/usecases/load_user_routes_usecase.dart';
 import 'package:fieldforce/app/presentation/bloc/data_sync/data_sync_bloc.dart';
 import 'package:fieldforce/features/navigation/tracking/domain/repositories/user_track_repository.dart';
+import 'package:fieldforce/features/navigation/tracking/domain/services/device_orientation_service.dart';
 import 'package:fieldforce/features/navigation/tracking/domain/services/gps_data_manager.dart';
 import 'package:fieldforce/features/navigation/tracking/domain/services/location_tracking_service.dart';
 import 'package:fieldforce/features/navigation/tracking/domain/services/location_tracking_service_base.dart';
@@ -38,6 +39,10 @@ Future<void> registerNavigationDependencies(
     ..registerLazySingleton<SyncLogRepository>(
       () => SyncLogRepository(getIt<AppDatabase>()),
     )
+    ..registerLazySingleton<DeviceOrientationService>(
+      () => createDeviceOrientationService(),
+      dispose: (service) => service.dispose(),
+    )
     ..registerLazySingleton<DataSyncBloc>(
       () => DataSyncBloc(
         syncTradingPointsUseCase: getIt<SyncTradingPointsUseCase>(),
@@ -56,6 +61,7 @@ Future<void> registerNavigationDependencies(
       () => LocationTrackingService(
         getIt<GpsDataManager>(),
         getIt<TrackManager>(),
+        getIt<DeviceOrientationService>(),
       ),
     )
     ..registerLazySingleton<TrackingBloc>(() => TrackingBloc())
