@@ -17,7 +17,7 @@ import 'package:fieldforce/app/database/repositories/employee_repository_drift.d
 import 'package:fieldforce/app/database/repositories/trading_point_repository_drift.dart';
 import 'package:fieldforce/app/database/repositories/category_repository_drift.dart';
 import 'package:fieldforce/app/database/repositories/product_repository_drift.dart';
-import 'package:fieldforce/app/services/simple_update_service.dart';
+
 import 'package:fieldforce/app/services/post_authentication_service.dart';
 import 'package:fieldforce/app/services/session_manager.dart';
 import 'package:fieldforce/app/services/trading_point_sync_service.dart';
@@ -100,8 +100,6 @@ Future<void> setupServiceLocator() async {
 
   registerShopDependencies(getIt);
   registerAuthenticationDependencies(getIt);
-
-  getIt.registerLazySingleton<SimpleUpdateService>(() => SimpleUpdateService());
 
   getIt.registerLazySingleton<GetWorkDaysForUserUseCase>(
     () => GetWorkDaysForUserUseCase(),

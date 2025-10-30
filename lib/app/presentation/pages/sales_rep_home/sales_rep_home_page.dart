@@ -113,27 +113,44 @@ class _SalesRepHomeViewState extends State<SalesRepHomeView> {
   }
 
   Future<void> _initializeUser() async {
-    final sessionResult = await AppSessionService.getCurrentAppSession();
-    final session = sessionResult.fold((l) => null, (r) => r);
-    if (session != null && !_initialized) {
-      setState(() {
-        _user = session.appUser;
-        _initialized = true;
-      });
-
-      // Инициализируем треки для пользователя и показываем активный трек
-      if (mounted) {
-        context.read<UserTracksBloc>().add(
-          LoadUserTracksEvent(_user!, showActiveTrack: true),
-        );
-
-        // Обязательно установим пользователя в TrackingBloc чтобы кнопка трекинга работала
-        try {
-          final trackingBloc = context.read<TrackingBloc>();
-          trackingBloc.setUser(_user!);
-        } catch (_) {
-          // Если блок недоступен — игнорируем (не критично)
+    try {
+      final sessionResult = await AppSessionService.getCurrentAppSession();
+      final session = sessionResult.fold((l) => null, (r) => r);
+      
+      // Если нет AppSession, пытаемся создать или перенаправляем на логин
+      if (session == null) {
+        if (mounted) {
+          Navigator.of(context).pushReplacementNamed('/login');
         }
+        return;
+      }
+      
+      if (!_initialized) {
+        setState(() {
+          _user = session.appUser;
+          _initialized = true;
+        });
+
+        // Инициализируем треки для пользователя и показываем активный трек
+        if (mounted) {
+          context.read<UserTracksBloc>().add(
+            LoadUserTracksEvent(_user!, showActiveTrack: true),
+          );
+
+          // Обязательно установим пользователя в TrackingBloc чтобы кнопка трекинга работала
+          try {
+            final trackingBloc = context.read<TrackingBloc>();
+            trackingBloc.setUser(_user!);
+          } catch (_) {
+            // Если блок недоступен — игнорируем (не критично)
+          }
+        }
+      }
+    } catch (e) {
+      // Любая ошибка инициализации - тихо перенаправляем на логин
+      // Не показываем ошибку пользователю
+      if (mounted) {
+        Navigator.of(context).pushReplacementNamed('/login');
       }
     }
   }

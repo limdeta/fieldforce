@@ -153,8 +153,20 @@ class AppConfig {
   static bool get useMockData => isDev;
   static bool get enableDebugTools => isDev || isTest;
   static bool get enableDetailedLogging => !isProd;
-  static bool get checkForUpdates => isDev; // Включено только для dev пока
+  static bool get checkForUpdates => true; // Включено всегда, но разные источники по окружениям
   static bool get enableTileCaching => true; // Включение кеширования тайлов карты (экономит трафик, ускоряет загрузку)
+  
+  // Update Service Configuration
+  static String get updateServerUrl {
+    switch (_environment) {
+      case Environment.dev:
+        return 'https://api.instock-dv.ru/v1_api/mobile-sync/app/version';
+      case Environment.prod:
+        return 'https://api.instock-dv.ru/v1_api/mobile-sync/app/version';
+      case Environment.test:
+        return 'https://test-api.fieldforce.com/mobile-sync/app/version';
+    }
+  }
   
   // GPS Debug Flags 
   static bool get enableGpsDebugMode => const String.fromEnvironment('GPS_DEBUG', defaultValue: 'false') == 'true';

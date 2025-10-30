@@ -20,7 +20,8 @@ import 'app/di/service_locator.dart' as prod_di;
 import 'app/fixtures/dev_fixture_orchestrator.dart';
 import 'app/theme/app_theme.dart';
 import 'app/services/app_lifecycle_manager.dart';
-import 'app/services/simple_update_service.dart';
+import 'app/services/update_service.dart';
+import 'app/services/upgrader_wrapper.dart';
 import 'app/presentation/pages/routes_page.dart';
 import 'app/presentation/pages/profile_page.dart';
 import 'app/presentation/pages/data_page.dart';
@@ -54,9 +55,15 @@ void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   hierarchicalLoggingEnabled = true;
   
-  Logger.root.level = Level.INFO; // Временно включаем детальные логи для диагностики protobuf
+  Logger.root.level = Level.WARNING;
   Logger.root.onRecord.listen((record) {
-    debugPrint('${record.level.name}: ${record.time}: ${record.message}');
+    debugPrint('${record.level.name}: ${record.time}: ${record.loggerName}: ${record.message}');
+    if (record.error != null) {
+      debugPrint('ERROR: ${record.error}');
+    }
+    if (record.stackTrace != null) {
+      debugPrint('STACK: ${record.stackTrace}');
+    }
   });
 
   AppConfig.configureFromArgs();
@@ -84,6 +91,9 @@ void main() async {
   final lifecycleManager = GetIt.instance<AppLifecycleManager>();
   await lifecycleManager.initialize();
 
+
+  await UpdateService.initialize();
+
   runApp(const FieldforceApp());
 }
 
@@ -99,7 +109,7 @@ class FieldforceApp extends StatelessWidget {
           create: (context) => GetIt.instance<CartBloc>(),
           child: MaterialApp(
             title: 'fieldforce',
-            theme: AppTheme.lightTheme, // Используем новую тему в стиле фронтенда
+            theme: AppTheme.lightTheme,
             initialRoute: '/',
             routes: {
             '/': (context) => const SplashPage(),

@@ -1,4 +1,4 @@
-import 'package:fieldforce/app/services/simple_update_service.dart';
+import 'package:fieldforce/app/services/update_service.dart';
 import 'package:fieldforce/app/services/user_preferences_service.dart';
 import 'package:fieldforce/features/shop/domain/entities/catalog_display_mode.dart';
 import 'package:flutter/material.dart';
@@ -42,7 +42,7 @@ class _SettingsPageState extends State<SettingsPage> {
   }
 
   void _handleCheckUpdates() {
-    SimpleUpdateService.checkForUpdatesIfEnabled(context);
+    UpdateService.checkForUpdatesManually(context);
   }
 
   @override

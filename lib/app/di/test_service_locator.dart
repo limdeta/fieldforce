@@ -24,7 +24,7 @@ import 'package:fieldforce/app/jobs/job_queue_service.dart';
 import 'package:fieldforce/app/services/app_lifecycle_manager.dart';
 import 'package:fieldforce/app/services/post_authentication_service.dart';
 import 'package:fieldforce/app/services/session_manager.dart';
-import 'package:fieldforce/app/services/simple_update_service.dart';
+
 import 'package:fieldforce/app/services/trading_point_sync_service.dart';
 import 'package:fieldforce/app/services/user_preferences_service.dart';
 import 'package:fieldforce/features/authentication/di/auth_di.dart';
@@ -110,8 +110,6 @@ Future<void> setupTestServiceLocator({
   getIt.registerLazySingleton<SessionManager>(() => SessionManager.instance);
   registerShopDependencies(getIt);
   registerAuthenticationDependencies(getIt);
-
-  getIt.registerLazySingleton<SimpleUpdateService>(() => SimpleUpdateService());
 
   getIt.registerLazySingleton<CategoryParsingService>(
     () => CategoryParsingService(),

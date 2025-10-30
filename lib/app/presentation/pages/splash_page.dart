@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:get_it/get_it.dart';
 import '../../../features/authentication/domain/usecases/get_current_session_usecase.dart';
 import '../../../features/authentication/domain/entities/session_state.dart';
-import '../../services/user_initialization_service.dart';
 
 /// Экран загрузки с проверкой сессии
 class SplashPage extends StatefulWidget {
@@ -26,22 +25,25 @@ class _SplashPageState extends State<SplashPage> {
     if (!mounted) return;
 
     try {
+      // Простая проверка: есть ли сохраненная security session
       final getCurrentSession = GetIt.instance<GetCurrentSessionUseCase>();
       final result = await getCurrentSession.call();
       
       if (mounted) {
         result.fold(
           (failure) {
-            // Ошибка получения сессии - идем на логин
+            // Техническая ошибка - идем на логин
             Navigator.of(context).pushReplacementNamed('/login');
           },
-          (sessionState) async {
+          (sessionState) {
             sessionState.when(
               onNotFound: () {
+                // Нет сессии - идем на логин
                 Navigator.of(context).pushReplacementNamed('/login');
               },
-              onFound: (userSession) async {
-                await UserInitializationService.initializeUserSettings(userSession.user);
+              onFound: (userSession) {
+                // Есть security session - идем на главную
+                // Всю инициализацию сделаем там
                 Navigator.of(context).pushReplacementNamed('/sales-home');
               },
             );

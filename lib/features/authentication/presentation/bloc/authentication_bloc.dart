@@ -30,6 +30,7 @@ class AuthenticationBloc extends Bloc<AuthenticationEvent, AuthenticationState> 
     on<AuthenticationLogoutRequested>(_onLogoutRequested);
     on<AuthenticationSessionCheckRequested>(_onSessionCheckRequested);
     on<AuthenticationErrorCleared>(_onErrorCleared);
+    on<AuthenticationSessionInvalidated>(_onSessionInvalidated);
   }
 
   /// Обработчик события логина
@@ -103,5 +104,12 @@ class AuthenticationBloc extends Bloc<AuthenticationEvent, AuthenticationState> 
     if (state is AuthenticationError) {
       emit(const AuthenticationUnauthenticated());
     }
+  }
+
+  void _onSessionInvalidated(
+    AuthenticationSessionInvalidated event,
+    Emitter<AuthenticationState> emit,
+  ) {
+    emit(const AuthenticationUnauthenticated());
   }
 }

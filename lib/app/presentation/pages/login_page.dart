@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:logging/logging.dart';
 import 'package:fieldforce/app/di/service_locator.dart';
 import 'package:fieldforce/app/config/app_config.dart';
 import 'package:fieldforce/features/authentication/domain/repositories/session_repository.dart';
@@ -38,8 +40,10 @@ class LoginPageView extends StatefulWidget {
 }
 
 class _LoginPageViewState extends State<LoginPageView> {
+  static final Logger _logger = Logger('_LoginPageViewState');
   String? _initialPhone;
   String? _initialPassword;
+  bool _isRestoringSession = true;
 
   @override
   void initState() {
@@ -85,27 +89,50 @@ class _LoginPageViewState extends State<LoginPageView> {
 
   Future<void> _handleAuthenticationSuccess(
     BuildContext context,
-    AuthenticationAuthenticated state,
-  ) async {
+    AuthenticationAuthenticated state, {
+    required bool isAutoLogin,
+  }) async {
     try {
       // 1. Создаем бизнес-сущности (Employee, AppUser) после успешной аутентификации
       final postAuthService = getIt<PostAuthenticationService>();
       final businessEntitiesResult = await postAuthService.createBusinessEntitiesForUser(state.userSession.user);
 
-      businessEntitiesResult.fold(
-        (failure) {
-          // Логируем ошибку, но не прерываем процесс - пользователь уже аутентифицирован
-          debugPrint('Ошибка создания бизнес-сущностей: ${failure.message}');
-        },
-        (_) {
-          debugPrint('Бизнес-сущности успешно созданы');
-        },
-      );
+      final businessEntitiesFailure = businessEntitiesResult.fold((failure) => failure, (_) => null);
+      if (businessEntitiesFailure != null) {
+        final message = 'Ошибка создания бизнес-сущностей: ${businessEntitiesFailure.message}';
+        if (isAutoLogin) {
+          await _handleSilentSessionFailure(
+            context,
+            message,
+          );
+        } else {
+          _logger.warning('Ошибка создания бизнес-сущностей при логине: $message');
+          if (mounted) {
+            _showError(message);
+          }
+        }
+        return;
+      }
 
-      // 2. Создаем AppSession
+      _logger.fine('Бизнес-сущности успешно созданы');
+
+      // 2. Создаем AppSession (теперь AppUser должен существовать)
       final appSessionResult = await AppSessionService.createFromSecuritySession(state.userSession);
       if (appSessionResult.isLeft()) {
-        throw Exception('Не удалось создать сессию приложения');
+        final failure = appSessionResult.fold((l) => l, (r) => null);
+        final message = 'Не удалось создать сессию приложения: ${failure?.message ?? 'неизвестная ошибка'}';
+        if (isAutoLogin) {
+          await _handleSilentSessionFailure(
+            context,
+            message,
+          );
+        } else {
+          _logger.warning('Ошибка создания сессии приложения при логине: $message');
+          if (mounted) {
+            _showError(message);
+          }
+        }
+        return;
       }
 
       // 3. Инициализируем пользовательские настройки
@@ -114,11 +141,49 @@ class _LoginPageViewState extends State<LoginPageView> {
       if (context.mounted) {
         _navigateByUserRole(context, state.userSession.user.role);
       }
-    } catch (e) {
+    } catch (error, stackTrace) {
+      if (isAutoLogin) {
+        await _handleSilentSessionFailure(
+          context,
+          'Ошибка инициализации: $error',
+          error: error,
+          stackTrace: stackTrace,
+        );
+        return;
+      }
+
+      _logger.severe('Ошибка инициализации после логина', error, stackTrace);
       if (context.mounted) {
-        _showError(context, 'Ошибка инициализации: $e');
+        _showError('Ошибка инициализации: $error');
       }
     }
+  }
+
+  Future<void> _handleSilentSessionFailure(
+    BuildContext context,
+    String reason, {
+    Object? error,
+    StackTrace? stackTrace,
+  }) async {
+    _logger.warning('Не удалось восстановить сохраненную сессию: $reason', error, stackTrace);
+
+    try {
+      final sessionRepository = getIt<SessionRepository>();
+      final clearResult = await sessionRepository.clearSession();
+
+      clearResult.fold(
+        (failure) => _logger.warning('Не удалось очистить поврежденную сессию: ${failure.message}'),
+        (_) => _logger.fine('Поврежденная сессия успешно очищена'),
+      );
+    } catch (cleanupError, cleanupStackTrace) {
+      _logger.severe('Исключение при очистке поврежденной сессии', cleanupError, cleanupStackTrace);
+    }
+
+    if (!mounted) {
+      return;
+    }
+
+    context.read<AuthenticationBloc>().add(const AuthenticationSessionInvalidated());
   }
 
   void _navigateByUserRole(BuildContext context, UserRole role) {
@@ -138,12 +203,70 @@ class _LoginPageViewState extends State<LoginPageView> {
     Navigator.of(context).pushReplacementNamed(targetRoute);
   }
 
-  void _showError(BuildContext context, String message) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(message),
-        backgroundColor: Colors.red,
-      ),
+  void _showError(String message) {
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: const Text('Ошибка входа'),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text(
+                'Не удалось выполнить вход в систему.',
+                style: TextStyle(fontWeight: FontWeight.w500),
+              ),
+              const SizedBox(height: 12),
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: Colors.grey[100],
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(color: Colors.grey[300]!),
+                ),
+                child: SelectableText(
+                  message,
+                  style: const TextStyle(
+                    fontSize: 12,
+                    fontFamily: 'monospace',
+                  ),
+                ),
+              ),
+              const SizedBox(height: 8),
+              const Text(
+                'Скопируйте это сообщение и отправьте разработчику для устранения проблемы.',
+                style: TextStyle(
+                  fontSize: 12,
+                  color: Colors.grey,
+                ),
+              ),
+            ],
+          ),
+          actions: [
+            TextButton.icon(
+              onPressed: () {
+                Clipboard.setData(ClipboardData(text: message));
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(
+                    content: Text('Ошибка скопирована в буфер обмена'),
+                    duration: Duration(seconds: 2),
+                  ),
+                );
+              },
+              icon: const Icon(Icons.copy),
+              label: const Text('Скопировать'),
+            ),
+            ElevatedButton(
+              onPressed: () {
+                Navigator.of(context).pop();
+              },
+              child: const Text('Закрыть'),
+            ),
+          ],
+        );
+      },
     );
   }
 
@@ -153,11 +276,26 @@ class _LoginPageViewState extends State<LoginPageView> {
       body: BlocConsumer<AuthenticationBloc, AuthenticationState>(
         listener: (context, state) {
           switch (state) {
+            case AuthenticationSessionChecking():
+              _isRestoringSession = true;
+              break;
+            case AuthenticationLoading():
+              _isRestoringSession = false;
+              break;
             case AuthenticationAuthenticated():
-              _handleAuthenticationSuccess(context, state);
+              _handleAuthenticationSuccess(
+                context,
+                state,
+                isAutoLogin: _isRestoringSession,
+              );
+              _isRestoringSession = false;
               break;
             case AuthenticationError():
-              _showError(context, state.message);
+              _isRestoringSession = false;
+              _showError(state.message);
+              break;
+            case AuthenticationUnauthenticated():
+              _isRestoringSession = false;
               break;
             default:
               break;

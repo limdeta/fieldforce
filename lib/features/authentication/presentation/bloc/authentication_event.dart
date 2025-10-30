@@ -34,6 +34,11 @@ class AuthenticationSessionCheckRequested extends AuthenticationEvent {
   const AuthenticationSessionCheckRequested();
 }
 
+/// Событие сброса сессии без показа ошибки
+class AuthenticationSessionInvalidated extends AuthenticationEvent {
+  const AuthenticationSessionInvalidated();
+}
+
 /// Событие сброса состояния ошибки
 class AuthenticationErrorCleared extends AuthenticationEvent {
   const AuthenticationErrorCleared();

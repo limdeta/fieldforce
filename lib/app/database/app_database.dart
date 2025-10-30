@@ -61,58 +61,56 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase.forTesting(DatabaseConnection super.connection);
 
   @override
-  int get schemaVersion => 7;
+  int get schemaVersion => 1;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
     onCreate: (Migrator m) async {
+      _dbLogger.info('🆕 Создание новой БД версии $schemaVersion');
       await m.createAll();
+      
       // Включаем foreign key constraints
       await customStatement('PRAGMA foreign_keys = ON');
+      _dbLogger.info('✅ БД создана с версией $schemaVersion');
     },
     onUpgrade: (Migrator m, int from, int to) async {
-      _dbLogger.info('Миграция БД с версии $from на $to');
-
-      if (from < 4) {
-        await customStatement(
-          "UPDATE trading_point_entities SET region = 'P3V' WHERE region IS NULL OR TRIM(region) = '';",
-        );
-
-        await customStatement('ALTER TABLE trading_point_entities RENAME TO trading_point_entities_old;');
-        await m.createTable(tradingPointEntities);
-        await customStatement('''
-          INSERT INTO trading_point_entities (id, external_id, name, inn, region, created_at, updated_at)
-          SELECT id, external_id, name, inn, COALESCE(region, 'P3V'), created_at, updated_at
-          FROM trading_point_entities_old;
-        ''');
-        await customStatement('DROP TABLE trading_point_entities_old;');
+      _dbLogger.info('🔄 Обновление БД с версии $from на $to');
+      
+      // Простая стратегия: пересоздаем все таблицы
+      _dbLogger.warning('⚠️ Пересоздание всех таблиц (данные будут потеряны)');
+      
+      // Отключаем foreign keys для безопасного удаления
+      await customStatement('PRAGMA foreign_keys = OFF');
+      
+      // Удаляем все таблицы
+      for (final table in allTables) {
+        await customStatement('DROP TABLE IF EXISTS ${table.actualTableName};');
       }
-
-      if (from < 5) {
-        await m.createTable(warehouses);
-      }
-
-      if (from < 6) {
-        await m.createTable(syncLogs);
-      }
-
-      if (from < 7) {
-        await customStatement('ALTER TABLE trading_point_entities ADD COLUMN latitude REAL;');
-        await customStatement('ALTER TABLE trading_point_entities ADD COLUMN longitude REAL;');
-      }
-
+      
+      // Создаем заново
       await m.createAll();
+      
+      // Включаем foreign keys обратно
+      await customStatement('PRAGMA foreign_keys = ON');
+      
+      _dbLogger.info('✅ БД обновлена до версии $to');
     },
     beforeOpen: (details) async {
       // Включаем foreign key constraints для всех соединений
       await customStatement('PRAGMA foreign_keys = ON');
-
-      await customStatement(
-        'CREATE INDEX IF NOT EXISTS idx_sync_logs_created_at ON sync_logs(created_at DESC);',
-      );
-      await customStatement(
-        'CREATE INDEX IF NOT EXISTS idx_sync_logs_task_created_at ON sync_logs(task, created_at DESC);',
-      );
+      
+      // Создаем индексы после того, как все таблицы точно созданы
+      try {
+        await customStatement(
+          'CREATE INDEX IF NOT EXISTS idx_sync_logs_created_at ON sync_logs(created_at DESC);',
+        );
+        await customStatement(
+          'CREATE INDEX IF NOT EXISTS idx_sync_logs_task_created_at ON sync_logs(task, created_at DESC);',
+        );
+        _dbLogger.info('✅ Индексы для sync_logs созданы');
+      } catch (e) {
+        _dbLogger.warning('⚠️ Ошибка создания индексов sync_logs: $e');
+      }
       
       if (details.hadUpgrade) {
         _dbLogger.info('БД была обновлена с версии ${details.versionBefore} на ${details.versionNow}');
