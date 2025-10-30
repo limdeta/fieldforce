@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'package:drift/drift.dart';
 import 'package:fieldforce/app/database/app_database.dart';
 import 'package:fieldforce/features/shop/domain/entities/sync_log_entry.dart';
+import 'package:fixnum/fixnum.dart';
 
 class SyncLogRepository {
   SyncLogRepository(this._database);
@@ -27,7 +28,7 @@ class SyncLogRepository {
       eventType: Value(eventType),
       status: Value(status),
       message: Value(message),
-      detailsJson: Value(details == null ? null : jsonEncode(details)),
+      detailsJson: Value(details == null ? null : _safeJsonEncode(details)),
       regionCode: Value(regionCode),
       tradingPointExternalId: Value(tradingPointExternalId),
       durationMs: Value(duration?.inMilliseconds),
@@ -127,5 +128,46 @@ class SyncLogRepository {
       details: details,
       createdAt: row.createdAt,
     );
+  }
+
+  /// Безопасно сериализует объект в JSON, обрабатывая Int64 и другие проблемные типы
+  String _safeJsonEncode(Map<String, dynamic> details) {
+    try {
+      return jsonEncode(_sanitizeForJson(details));
+    } catch (e) {
+      // Если сериализация не удалась, создаем упрощенную версию
+      return jsonEncode({
+        'error': 'Failed to serialize details',
+        'details_summary': details.keys.map((key) => '$key: ${details[key].runtimeType}').join(', '),
+      });
+    }
+  }
+
+  /// Рекурсивно обрабатывает объект, заменяя несериализуемые типы на строковые представления
+  dynamic _sanitizeForJson(dynamic obj) {
+    if (obj == null) return null;
+    
+    if (obj is Int64) {
+      return obj.toInt();
+    }
+    
+    if (obj is Map<String, dynamic>) {
+      final result = <String, dynamic>{};
+      for (final entry in obj.entries) {
+        result[entry.key] = _sanitizeForJson(entry.value);
+      }
+      return result;
+    }
+    
+    if (obj is List) {
+      return obj.map(_sanitizeForJson).toList();
+    }
+    
+    if (obj is String || obj is int || obj is double || obj is bool) {
+      return obj;
+    }
+    
+    // Для всех остальных типов возвращаем строковое представление
+    return obj.toString();
   }
 }

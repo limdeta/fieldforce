@@ -185,16 +185,31 @@ class TradingPointSyncService {
     final updatedEmployee = appUser.employee.copyWithTradingPoints(savedPoints.values.toList());
     TradingPoint? selectedTradingPoint = appUser.selectedTradingPoint;
 
-    if (!appUser.hasSelectedTradingPoint && selectedExternalId != null) {
-      selectedTradingPoint = savedPoints[selectedExternalId] ?? selectedTradingPoint;
+    if (!appUser.hasSelectedTradingPoint) {
+      if (selectedExternalId != null) {
+        selectedTradingPoint = savedPoints[selectedExternalId] ?? selectedTradingPoint;
 
-      // Если по externalId не нашли (например точка уже была в БД), пробуем загрузить из репозитория
-      if (selectedTradingPoint == null) {
-        final lookupResult = await _tradingPointRepository.getByExternalId(selectedExternalId);
-        lookupResult.fold(
-          (failure) => _logger.warning('Не удалось получить выбранную торговую точку $selectedExternalId: ${failure.message}'),
-          (tp) => selectedTradingPoint = tp,
-        );
+        // Если по externalId не нашли (например точка уже была в БД), пробуем загрузить из репозитория
+        if (selectedTradingPoint == null) {
+          final lookupResult = await _tradingPointRepository.getByExternalId(selectedExternalId);
+          lookupResult.fold(
+            (failure) => _logger.warning('Не удалось получить выбранную торговую точку $selectedExternalId: ${failure.message}'),
+            (tp) => selectedTradingPoint = tp,
+          );
+        }
+      } else {
+        // Fallback: выбираем предпочтительную точку из сохраненных
+        final pointsList = savedPoints.values.toList();
+        final p3vPoint = pointsList.where((tp) => tp.region == 'P3V').toList();
+        final k3vPoint = pointsList.where((tp) => tp.region == 'K3V').toList();
+        
+        if (p3vPoint.isNotEmpty) {
+          selectedTradingPoint = p3vPoint.first;
+        } else if (k3vPoint.isNotEmpty) {
+          selectedTradingPoint = k3vPoint.first;
+        } else if (pointsList.isNotEmpty) {
+          selectedTradingPoint = pointsList.first;
+        }
       }
     }
 
@@ -257,7 +272,7 @@ class TradingPointSyncService {
       selectedExternalId = _extractSelectedExternalId(points) ?? _extractSelectedFromMap(data);
     }
 
-    selectedExternalId ??= points.isNotEmpty ? _extractExternalId(points.first) : null;
+    selectedExternalId ??= points.isNotEmpty ? _selectPreferredPoint(points) : null;
 
     return _TradingPointSyncPayload(
       tradingPoints: points,
@@ -267,6 +282,27 @@ class TradingPointSyncService {
 
   String? _extractExternalId(Map<String, dynamic> point) {
     return point['external_id']?.toString() ?? point['externalId']?.toString() ?? point['vendorId']?.toString();
+  }
+
+  /// Выбирает предпочтительную торговую точку для автоматического выбора
+  /// Приоритет: P3V > K3V > первая в списке
+  String? _selectPreferredPoint(List<Map<String, dynamic>> points) {
+    // Ищем P3V точку
+    for (final point in points) {
+      if (point['region'] == 'P3V') {
+        return _extractExternalId(point);
+      }
+    }
+    
+    // Ищем K3V точку
+    for (final point in points) {
+      if (point['region'] == 'K3V') {
+        return _extractExternalId(point);
+      }
+    }
+    
+    // Если ни P3V, ни K3V не найдены, берем первую
+    return _extractExternalId(points.first);
   }
 
   String? _extractSelectedExternalId(List<Map<String, dynamic>> points) {

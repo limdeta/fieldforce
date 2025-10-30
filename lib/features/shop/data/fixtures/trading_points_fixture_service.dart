@@ -13,10 +13,10 @@ class TradingPointsFixtureService {
     final points = [
       // Совпадает с ответом синхронизации торговых точек
       TradingPoint(
-        externalId: '0002300707_11',
-        name: 'Магадан',
+        externalId: '0002300707_8',
+        name: 'Днепровская',
         inn: '_____2300707',
-        region: 'M3V',
+        region: 'P3V',
         latitude: 43.144173,
         longitude: 131.9266,
       ),
@@ -29,10 +29,10 @@ class TradingPointsFixtureService {
         longitude: 158.65595,
       ),
       TradingPoint(
-        externalId: '0002300707_8',
-        name: 'Днепровская',
+        externalId: '0002300707_11',
+        name: 'Магадан',
         inn: '_____2300707',
-        region: 'P3V',
+        region: 'M3V',
         latitude: 43.144173,
         longitude: 131.9266,
       ),

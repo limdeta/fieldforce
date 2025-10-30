@@ -175,8 +175,20 @@ class DevFixtureOrchestrator {
         },
         (tradingPoints) async {
           if (tradingPoints.isNotEmpty) {
-            final firstPoint = tradingPoints.first;
-            debugPrint('📍 Выбираем первую торговую точку: ${firstPoint.name} (ID: ${firstPoint.id})');
+            // Приоритезируем выбор торговой точки: P3V > K3V > M3V
+            TradingPoint firstPoint;
+            final p3vPoints = tradingPoints.where((tp) => tp.region == 'P3V').toList();
+            final k3vPoints = tradingPoints.where((tp) => tp.region == 'K3V').toList();
+            
+            if (p3vPoints.isNotEmpty) {
+              firstPoint = p3vPoints.first;
+            } else if (k3vPoints.isNotEmpty) {
+              firstPoint = k3vPoints.first;
+            } else {
+              firstPoint = tradingPoints.first;
+            }
+            
+            debugPrint('📍 Выбираем торговую точку: ${firstPoint.name} (${firstPoint.region}, ID: ${firstPoint.id})');
             
             // Обновляем пользователя с выбранной торговой точкой
             final updatedUser = user.selectTradingPoint(firstPoint);

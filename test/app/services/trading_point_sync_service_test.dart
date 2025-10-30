@@ -161,10 +161,10 @@ void main() {
       mockito.verify(appUserRepository.updateAppUser(mockito.any)).called(1);
 
       expect(updatedUser, isNotNull);
-      expect(updatedUser!.selectedTradingPoint?.externalId, '0002300707_11');
-      expect(updatedUser!.selectedTradingPoint?.name, 'Магадан');
+      expect(updatedUser!.selectedTradingPoint?.externalId, '0002300707_8');
+      expect(updatedUser!.selectedTradingPoint?.name, 'Днепровская');
       expect(updatedUser!.selectedTradingPoint?.inn, '_____2300707');
-      expect(updatedUser!.selectedTradingPoint?.region, 'M3V');
+      expect(updatedUser!.selectedTradingPoint?.region, 'P3V');
       expect(updatedUser!.employee.assignedTradingPoints, isNotEmpty);
       expect(updatedUser!.employee.assignedTradingPoints.length, 3);
       expect(savedPoints.map((tp) => tp.region).toSet(), containsAll({'M3V', 'K3V', 'P3V'}));

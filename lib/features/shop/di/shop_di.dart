@@ -121,6 +121,9 @@ void registerShopDependencies(GetIt getIt) {
     ..registerLazySingleton<WarehouseSyncService>(
       () => WarehouseSyncService(baseUrl: AppConfig.apiBaseUrl),
     )
+    ..registerLazySingleton<ProtobufSyncRepository>(
+      () => ProtobufSyncRepository(),
+    )
     ..registerLazySingleton<ProtobufSyncCoordinator>(
       () => ProtobufSyncCoordinator(
         regionalSyncService: getIt<RegionalSyncService>(),

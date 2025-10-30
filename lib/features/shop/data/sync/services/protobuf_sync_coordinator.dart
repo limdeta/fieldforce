@@ -279,7 +279,7 @@ class ProtobufSyncCoordinator {
             'warehouses': warehouses.length,
             'stockItems': stockItems.length,
             'cacheUpdated': cacheUpdated,
-            'warehouseSyncTimestamp': warehouseResponse.syncTimestamp,
+            'warehouseSyncTimestamp': warehouseResponse.syncTimestamp.toInt(),
           },
         ),
       );
