@@ -3,7 +3,7 @@ import 'package:get_it/get_it.dart';
 import 'package:logging/logging.dart';
 import 'package:fieldforce/app/services/category_tree_cache_service.dart';
 import 'package:fieldforce/features/shop/domain/entities/category.dart';
-import 'package:fieldforce/features/shop/presentation/widgets/navigation_fab_widget.dart';
+import 'package:fieldforce/features/shop/presentation/widgets/catalog_app_bar_actions.dart';
 import 'category_products_page.dart';
 
 class ProductCatalogPage extends StatefulWidget {
@@ -242,23 +242,46 @@ class _ProductCatalogPageState extends State<ProductCatalogPage>
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Colors.white,
-      appBar: _buildAppBar(),
-      body: _buildBody(),
-      floatingActionButton: _buildFloatingActionButton(),
+  appBar: _buildAppBar(),
+  body: _buildBody(),
     );
   }
 
   PreferredSizeWidget _buildAppBar() {
     return AppBar(
       elevation: 0,
+      toolbarHeight: 50,
+      centerTitle: false,
+      titleSpacing: 0,
 
       foregroundColor: Colors.white,
-      title: const Text(
-        'Каталог товаров',
-        style: TextStyle(
-          fontWeight: FontWeight.bold,
-          fontSize: 20,
-        ),
+      title: Row(
+        mainAxisSize: MainAxisSize.max,
+        children: [
+          const Expanded(
+            child: Align(
+              alignment: Alignment.centerLeft,
+              child: Padding(
+                padding: EdgeInsets.only(left: 4),
+                child: Text(
+                  'Каталог товаров',
+                  style: TextStyle(
+                    fontWeight: FontWeight.bold,
+                    fontSize: 20,
+                  ),
+                ),
+              ),
+            ),
+          ),
+          SizedBox(
+            width: 56,
+            child: Center(
+              child: CatalogFilterButton(
+                onPressed: () => showCatalogFilterPlaceholder(context),
+              ),
+            ),
+          ),
+        ],
       ),
       leading: IconButton(
         icon: const Icon(Icons.arrow_back),
@@ -266,6 +289,7 @@ class _ProductCatalogPageState extends State<ProductCatalogPage>
           Navigator.pushReplacementNamed(context, '/menu');
         },
       ),
+      actions: const [CatalogAppBarActions(showFilter: false)],
       bottom: PreferredSize(
         preferredSize: const Size.fromHeight(40),
         child: Container(
@@ -650,14 +674,5 @@ class _ProductCatalogPageState extends State<ProductCatalogPage>
       ),
     );
   }
-
-  Widget _buildFloatingActionButton() {
-    return const NavigationFabWidget(
-      onCartPressed: null, // Используем дефолтную логику
-      onHomePressed: null, // Используем дефолтную логику
-      heroTagPrefix: 'product_catalog', // Уникальный префикс для этой страницы
-    );
-  }
-
 
 }

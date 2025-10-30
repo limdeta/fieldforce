@@ -6,7 +6,7 @@ import 'package:fieldforce/app/services/category_tree_cache_service.dart';
 import 'package:fieldforce/features/shop/domain/entities/category.dart';
 import 'package:fieldforce/features/shop/domain/entities/stock_item.dart';
 import 'package:fieldforce/features/shop/presentation/state/catalog_split_state.dart';
-import 'package:fieldforce/features/shop/presentation/widgets/navigation_fab_widget.dart';
+import 'package:fieldforce/features/shop/presentation/widgets/catalog_app_bar_actions.dart';
 import 'package:fieldforce/features/shop/presentation/widgets/split_category_products_panel.dart';
 
 /// Альтернативная страница каталога в формате сплит-экрана.
@@ -253,29 +253,55 @@ class _ProductCatalogSplitPageState extends State<ProductCatalogSplitPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Каталог'),
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back),
-          onPressed: () => Navigator.pushReplacementNamed(context, '/menu'),
+        appBar: AppBar(
+          toolbarHeight: 50,
+          titleSpacing: 0,
+          title: Row(
+            mainAxisSize: MainAxisSize.max,
+            children: [
+              const Expanded(
+                child: Align(
+                  alignment: Alignment.centerLeft,
+                  child: Padding(
+                    padding: EdgeInsets.only(left: 4),
+                    child: Text('Каталог'),
+                  ),
+                ),
+              ),
+              SizedBox(
+                width: 56,
+                child: Center(
+                  child: CatalogFilterButton(
+                    onPressed: () => showCatalogFilterPlaceholder(context),
+                  ),
+                ),
+              ),
+            ],
+          ),
+          leading: IconButton(
+            icon: const Icon(Icons.arrow_back),
+            tooltip: 'Назад',
+            onPressed: () => Navigator.pushReplacementNamed(context, '/menu'),
+          ),
+          actions: const [
+            CatalogAppBarActions(showFilter: false),
+          ],
         ),
-      ),
-      floatingActionButton: const NavigationFabWidget(
-        heroTagPrefix: 'product_catalog_split',
-      ),
       body: LayoutBuilder(
         builder: (context, constraints) {
           final width = constraints.maxWidth;
+          final mediaQuery = MediaQuery.of(context);
           final height = constraints.maxHeight.isFinite
               ? constraints.maxHeight
-              : MediaQuery.of(context).size.height;
+              : mediaQuery.size.height;
+          final isPortrait = mediaQuery.orientation == Orientation.portrait;
+          final bool useVerticalLayout = isPortrait || width < _compactWidthBreakpoint;
 
           if (width <= 0) {
             return const SizedBox.shrink();
           }
 
-          final isVertical = width < _verticalBreakpoint;
-          if (isVertical) {
+          if (useVerticalLayout) {
             final topFlex = (_verticalSplitRatio.clamp(_minSplitRatio, _maxSplitRatio) * 1000).round();
             final bottomFlex = 1000 - topFlex;
 
@@ -670,5 +696,5 @@ class _ProductCatalogSplitPageState extends State<ProductCatalogSplitPage> {
   static const double _dividerThickness = 8;
   static const double _minSplitRatio = 0.2;
   static const double _maxSplitRatio = 0.8;
-  static const double _verticalBreakpoint = 900;
+  static const double _compactWidthBreakpoint = 620;
 }
