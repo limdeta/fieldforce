@@ -3,6 +3,7 @@ import 'package:fieldforce/app/services/user_preferences_service.dart';
 import 'package:fieldforce/features/shop/domain/entities/catalog_display_mode.dart';
 import 'package:flutter/material.dart';
 import 'package:get_it/get_it.dart';
+import 'package:package_info_plus/package_info_plus.dart';
 
 class SettingsPage extends StatefulWidget {
   const SettingsPage({super.key});
@@ -16,11 +17,22 @@ class _SettingsPageState extends State<SettingsPage> {
       GetIt.instance<UserPreferencesService>();
 
   late CatalogDisplayMode _catalogMode;
+  late final Future<String> _versionLabelFuture;
 
   @override
   void initState() {
     super.initState();
     _catalogMode = _preferencesService.getCatalogDisplayMode();
+    _versionLabelFuture = _loadVersionLabel();
+  }
+
+  Future<String> _loadVersionLabel() async {
+    try {
+      final info = await PackageInfo.fromPlatform();
+      return 'ver. ${info.version}';
+    } catch (_) {
+      return '';
+    }
   }
 
   Future<void> _onCatalogModeChanged(CatalogDisplayMode? mode) async {
@@ -62,6 +74,8 @@ class _SettingsPageState extends State<SettingsPage> {
             icon: Icons.system_update,
             onTap: _handleCheckUpdates,
           ),
+          const SizedBox(height: 20),
+          _buildVersionFooter(context),
         ],
       ),
     );
@@ -151,6 +165,36 @@ class _SettingsPageState extends State<SettingsPage> {
         ),
         onTap: onTap,
       ),
+    );
+  }
+
+  Widget _buildVersionFooter(BuildContext context) {
+    final color = Theme.of(context).colorScheme.onSurface.withOpacity(0.5);
+    return FutureBuilder<String>(
+      future: _versionLabelFuture,
+      builder: (context, snapshot) {
+        final label = snapshot.data;
+        if (label == null || label.isEmpty) {
+          return const SizedBox.shrink();
+        }
+
+        return Center(
+          child: Padding(
+            padding: const EdgeInsets.only(bottom: 12),
+            child: Text(
+              label,
+              style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                    color: color,
+                    letterSpacing: 0.4,
+                  ) ?? TextStyle(
+                    fontSize: 12,
+                    color: color,
+                    letterSpacing: 0.4,
+                  ),
+            ),
+          ),
+        );
+      },
     );
   }
 }

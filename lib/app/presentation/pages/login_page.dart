@@ -11,6 +11,7 @@ import 'package:fieldforce/app/services/post_authentication_service.dart';
 import 'package:fieldforce/features/authentication/domain/entities/user.dart';
 import 'package:fieldforce/features/authentication/presentation/bloc/bloc.dart';
 import 'package:fieldforce/features/authentication/presentation/widgets/authentication_widget.dart';
+import 'package:package_info_plus/package_info_plus.dart';
 
 /// Страница входа в систему (App-уровень)
 /// 
@@ -44,11 +45,22 @@ class _LoginPageViewState extends State<LoginPageView> {
   String? _initialPhone;
   String? _initialPassword;
   bool _isRestoringSession = true;
+  late final Future<String> _versionLabelFuture;
 
   @override
   void initState() {
     super.initState();
+    _versionLabelFuture = _loadVersionLabel();
     _prepareInitialCredentials();
+  }
+
+  Future<String> _loadVersionLabel() async {
+    try {
+      final info = await PackageInfo.fromPlatform();
+      return 'ver. ${info.version}';
+    } catch (_) {
+      return '';
+    }
   }
 
   Future<void> _prepareInitialCredentials() async {
@@ -323,12 +335,41 @@ class _LoginPageViewState extends State<LoginPageView> {
                 ),
               ),
 
+              Align(
+                alignment: Alignment.bottomCenter,
+                child: Padding(
+                  padding: const EdgeInsets.only(bottom: 24),
+                  child: FutureBuilder<String>(
+                    future: _versionLabelFuture,
+                    builder: (context, snapshot) {
+                      final label = snapshot.data;
+                      if (label == null || label.isEmpty) {
+                        return const SizedBox.shrink();
+                      }
+
+                      final color = Theme.of(context).colorScheme.onSurface.withOpacity(0.5);
+                      return Text(
+                        label,
+                        style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                              color: color,
+                              letterSpacing: 0.4,
+                            ) ?? TextStyle(
+                              fontSize: 12,
+                              color: color,
+                              letterSpacing: 0.4,
+                            ),
+                      );
+                    },
+                  ),
+                ),
+              ),
+
               // Bottom-centered overlay spinner when loading or checking session
               if (state is AuthenticationLoading || state is AuthenticationSessionChecking)
                 Align(
                   alignment: Alignment.bottomCenter,
                   child: Padding(
-                    padding: const EdgeInsets.all(16.0),
+                    padding: const EdgeInsets.fromLTRB(16, 16, 16, 72),
                     child: Container(
                       decoration: BoxDecoration(
                         color: Theme.of(context).dialogBackgroundColor.withOpacity(0.9),
