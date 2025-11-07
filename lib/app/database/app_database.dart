@@ -74,6 +74,23 @@ class AppDatabase extends _$AppDatabase {
       _dbLogger.info('✅ БД создана с версией $schemaVersion');
     },
     onUpgrade: (Migrator m, int from, int to) async {
+      _dbLogger.info('🔄 Миграция БД с версии $from на $to');
+      
+      // TODO: Добавить миграции по мере изменения схемы
+      // Пример:
+      // if (from == 1 && to == 2) {
+      //   await m.addColumn(orders, orders.newColumn);
+      // }
+      // if (from <= 2 && to >= 3) {
+      //   await m.createTable(newTable);
+      // }
+      
+      _dbLogger.info('✅ БД обновлена до версии $to');
+    },
+    /* 
+    // ⚠️ ДЕСТРУКТИВНАЯ СТРАТЕГИЯ - ЗАКОММЕНТИРОВАНА ДЛЯ PRODUCTION
+    // Используйте для локальной разработки при необходимости полного сброса БД
+    onUpgrade: (Migrator m, int from, int to) async {
       _dbLogger.info('🔄 Обновление БД с версии $from на $to');
       
       // Простая стратегия: пересоздаем все таблицы
@@ -95,6 +112,7 @@ class AppDatabase extends _$AppDatabase {
       
       _dbLogger.info('✅ БД обновлена до версии $to');
     },
+    */
     beforeOpen: (details) async {
       // Включаем foreign key constraints для всех соединений
       await customStatement('PRAGMA foreign_keys = ON');
@@ -119,31 +137,6 @@ class AppDatabase extends _$AppDatabase {
       }
     },
   );
-
-  // Методы для работы с торговыми точками
-  // TODO вынести в репозитории и отрефакторить
-  Future<void> upsertTradingPoint(TradingPointEntitiesCompanion companion) async {
-
-    if (companion.externalId.present) {
-      final existing = await getTradingPointByExternalId(companion.externalId.value);
-      
-      if (existing != null) {
-        await (update(tradingPointEntities)
-          ..where((tp) => tp.externalId.equals(companion.externalId.value))
-        ).write(companion);
-      } else {
-        await into(tradingPointEntities).insert(companion);
-      }
-    } else {
-      await into(tradingPointEntities).insert(companion);
-    }
-  }
-
-  Future<TradingPointEntity?> getTradingPointByExternalId(String externalId) async {
-    final query = select(tradingPointEntities)
-      ..where((tp) => tp.externalId.equals(externalId));
-    return await query.getSingleOrNull();
-  }
 }
 
 LazyDatabase _openConnection(String dbFileName) {

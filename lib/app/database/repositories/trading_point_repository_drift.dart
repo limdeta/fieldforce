@@ -92,7 +92,7 @@ class DriftTradingPointRepository implements TradingPointRepository {
         updatedAt: Value(DateTime.now()),
       );
 
-      await _database.upsertTradingPoint(companion);
+      await _upsertTradingPoint(companion);
 
       // Получаем обновленную торговую точку
       final result = await getByExternalId(tradingPoint.externalId);
@@ -105,6 +105,30 @@ class DriftTradingPointRepository implements TradingPointRepository {
     } catch (e) {
       return Left(DatabaseFailure('Ошибка сохранения торговой точки: $e'));
     }
+  }
+
+  /// Upsert (insert or update) торговой точки
+  Future<void> _upsertTradingPoint(TradingPointEntitiesCompanion companion) async {
+    if (companion.externalId.present) {
+      final existing = await _getTradingPointEntityByExternalId(companion.externalId.value);
+      
+      if (existing != null) {
+        await (_database.update(_database.tradingPointEntities)
+          ..where((tp) => tp.externalId.equals(companion.externalId.value))
+        ).write(companion);
+      } else {
+        await _database.into(_database.tradingPointEntities).insert(companion);
+      }
+    } else {
+      await _database.into(_database.tradingPointEntities).insert(companion);
+    }
+  }
+
+  /// Получить entity торговой точки по external ID (для внутренних нужд репозитория)
+  Future<TradingPointEntity?> _getTradingPointEntityByExternalId(String externalId) async {
+    final query = _database.select(_database.tradingPointEntities)
+      ..where((tp) => tp.externalId.equals(externalId));
+    return await query.getSingleOrNull();
   }
 
   @override

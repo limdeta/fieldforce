@@ -1,6 +1,4 @@
 import 'package:get_it/get_it.dart';
-import 'package:drift/drift.dart';
-import 'package:fieldforce/app/database/app_database.dart';
 import 'package:fieldforce/features/shop/domain/entities/trading_point.dart';
 import 'package:fieldforce/features/shop/domain/entities/employee.dart';
 import 'package:fieldforce/features/shop/domain/repositories/trading_point_repository.dart';
@@ -91,21 +89,13 @@ class TradingPointsFixtureService {
   
   /// Приватный метод для сохранения торговой точки
   Future<void> _saveTradingPoint(TradingPoint point) async {
-    final database = GetIt.instance<AppDatabase>();
-    final companion = TradingPointEntitiesCompanion.insert(
-      externalId: point.externalId,
-      name: point.name,
-      inn: point.inn != null ? Value(point.inn!) : const Value.absent(),
-      region: Value(point.region),
-      latitude: point.latitude != null
-          ? Value(point.latitude!)
-          : const Value.absent(),
-      longitude: point.longitude != null
-          ? Value(point.longitude!)
-          : const Value.absent(),
-      updatedAt: Value(DateTime.now()),
+    final tradingPointRepository = GetIt.instance<TradingPointRepository>();
+    final result = await tradingPointRepository.save(point);
+    
+    result.fold(
+      (failure) => throw Exception('Не удалось сохранить торговую точку: ${failure.message}'),
+      (_) => null,
     );
-    await database.upsertTradingPoint(companion);
   }
 }
 
