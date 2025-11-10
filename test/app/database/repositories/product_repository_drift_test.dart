@@ -98,7 +98,7 @@ void main() {
   setUp(() async {
     await getIt.reset();
     database = AppDatabase.forTesting(
-      DatabaseConnection.fromExecutor(NativeDatabase.memory()),
+      DatabaseConnection(NativeDatabase.memory()),
     );
     getIt.registerSingleton<AppDatabase>(database);
 

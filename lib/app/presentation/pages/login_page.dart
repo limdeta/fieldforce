@@ -113,7 +113,9 @@ class _LoginPageViewState extends State<LoginPageView> {
       if (businessEntitiesFailure != null) {
         final message = 'Ошибка создания бизнес-сущностей: ${businessEntitiesFailure.message}';
         if (isAutoLogin) {
+          if (!mounted) return;
           await _handleSilentSessionFailure(
+            // ignore: use_build_context_synchronously
             context,
             message,
           );
@@ -134,7 +136,9 @@ class _LoginPageViewState extends State<LoginPageView> {
         final failure = appSessionResult.fold((l) => l, (r) => null);
         final message = 'Не удалось создать сессию приложения: ${failure?.message ?? 'неизвестная ошибка'}';
         if (isAutoLogin) {
+          if (!mounted) return;
           await _handleSilentSessionFailure(
+            // ignore: use_build_context_synchronously
             context,
             message,
           );
@@ -150,12 +154,15 @@ class _LoginPageViewState extends State<LoginPageView> {
       // 3. Инициализируем пользовательские настройки
       await UserInitializationService.initializeUserSettings(state.userSession.user);
 
-      if (context.mounted) {
+      if (mounted) {
+        // ignore: use_build_context_synchronously
         _navigateByUserRole(context, state.userSession.user.role);
       }
     } catch (error, stackTrace) {
       if (isAutoLogin) {
+        if (!mounted) return;
         await _handleSilentSessionFailure(
+          // ignore: use_build_context_synchronously
           context,
           'Ошибка инициализации: $error',
           error: error,
@@ -165,7 +172,7 @@ class _LoginPageViewState extends State<LoginPageView> {
       }
 
       _logger.severe('Ошибка инициализации после логина', error, stackTrace);
-      if (context.mounted) {
+      if (mounted) {
         _showError('Ошибка инициализации: $error');
       }
     }
@@ -195,6 +202,7 @@ class _LoginPageViewState extends State<LoginPageView> {
       return;
     }
 
+    // ignore: use_build_context_synchronously
     context.read<AuthenticationBloc>().add(const AuthenticationSessionInvalidated());
   }
 
@@ -347,7 +355,7 @@ class _LoginPageViewState extends State<LoginPageView> {
                         return const SizedBox.shrink();
                       }
 
-                      final color = Theme.of(context).colorScheme.onSurface.withOpacity(0.5);
+                      final color = Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.5);
                       return Text(
                         label,
                         style: Theme.of(context).textTheme.labelSmall?.copyWith(
@@ -372,7 +380,7 @@ class _LoginPageViewState extends State<LoginPageView> {
                     padding: const EdgeInsets.fromLTRB(16, 16, 16, 72),
                     child: Container(
                       decoration: BoxDecoration(
-                        color: Theme.of(context).dialogBackgroundColor.withOpacity(0.9),
+                        color: Theme.of(context).colorScheme.surface.withValues(alpha: 0.9),
                         borderRadius: BorderRadius.circular(8),
                       ),
                       padding: const EdgeInsets.all(8.0),

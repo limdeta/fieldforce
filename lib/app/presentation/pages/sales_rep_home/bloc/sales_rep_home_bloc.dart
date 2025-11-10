@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'package:fieldforce/app/domain/entities/app_session.dart';
 import 'package:fieldforce/app/domain/entities/point_of_interest.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:get_it/get_it.dart';
@@ -325,10 +326,8 @@ class SalesRepHomeBloc extends Bloc<SalesRepHomeEvent, SalesRepHomeState> {
     }
 
     // Если сохраненный маршрут не найден - используем активный или сегодняшний
-    if (routeToDisplay == null) {
-      routeToDisplay = _findCurrentRoute(event.routes);
-      // Using current route
-    }
+    routeToDisplay ??= _findCurrentRoute(event.routes);
+    // Using current route
 
     emit(
       SalesRepHomeLoaded(
@@ -360,7 +359,7 @@ class SalesRepHomeBloc extends Bloc<SalesRepHomeEvent, SalesRepHomeState> {
     }
   }
 
-  void _setupRouteStreamListener(session) {
+  void _setupRouteStreamListener(AppSession session) {
     _routesSubscription?.cancel();
     _routesSubscription = _routeRepository
         .watchEmployeeRoutes(session.appUser.employee)

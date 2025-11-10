@@ -103,7 +103,7 @@ class RealGpsDataSource implements GpsDataSource {
     _logger.info(
       '⏰ $_tag: Запуск таймера контролируемой эмиссии (интервал: $_emissionInterval)',
     );
-    Position? _lastEmittedPosition;
+    Position? lastEmittedPosition;
 
     _emissionTimer = Timer.periodic(_emissionInterval, (timer) {
       if (!_isActive ||
@@ -116,14 +116,14 @@ class RealGpsDataSource implements GpsDataSource {
       // Эмитируем ТОЛЬКО если позиция изменилась
       if (_lastBufferedPosition != null) {
         final shouldEmit =
-            _lastEmittedPosition == null ||
-            _lastEmittedPosition!.latitude != _lastBufferedPosition!.latitude ||
-            _lastEmittedPosition!.longitude != _lastBufferedPosition!.longitude;
+            lastEmittedPosition == null ||
+            lastEmittedPosition!.latitude != _lastBufferedPosition!.latitude ||
+            lastEmittedPosition!.longitude != _lastBufferedPosition!.longitude;
 
         if (shouldEmit) {
           try {
             _positionController!.add(_lastBufferedPosition!);
-            _lastEmittedPosition = _lastBufferedPosition;
+            lastEmittedPosition = _lastBufferedPosition;
             _logger.info(
               '📤 $_tag: Эмитирована НОВАЯ позиция: ${_lastBufferedPosition!.latitude}, ${_lastBufferedPosition!.longitude} - отправляем в LocationTrackingService',
             );
@@ -179,7 +179,7 @@ class RealGpsDataSource implements GpsDataSource {
       _logger.info('📍 $_tag: Получение текущей позиции');
 
       final position = await Geolocator.getCurrentPosition(
-        desiredAccuracy: settings.accuracy,
+        locationSettings: settings,
       ).timeout(_positionTimeout);
 
       _logger.info(

@@ -253,7 +253,7 @@ class _ProductDetailPageState extends State<ProductDetailPage> {
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                   decoration: BoxDecoration(
-                    color: productWithStock.stockStatusColor.color.withOpacity(0.1),
+                    color: productWithStock.stockStatusColor.color.withValues(alpha: 0.1),
                     border: Border.all(color: productWithStock.stockStatusColor.color),
                     borderRadius: BorderRadius.circular(8),
                   ),

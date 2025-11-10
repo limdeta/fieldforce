@@ -133,6 +133,7 @@ class OrderSubmissionQueueService implements JobQueueService<OrderSubmissionJob>
     }
 
     _logger.warning(
+      // ignore: unnecessary_brace_in_string_interps
       'Job ${record.job.id} failed on attempt $attempts/${_maxAttempts}: ${failure.message}. Scheduling retry.',
       failure,
     );

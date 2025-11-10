@@ -138,68 +138,47 @@ class DriftProductRepository implements ProductRepository {
       // Получаем все категории в иерархии (родитель + все потомки)
       final categoryRepository = GetIt.instance<CategoryRepository>();
       final descendantsResult = await categoryRepository.getAllDescendants(categoryId);
-      final ancestorsResult = await categoryRepository.getAllAncestors(categoryId);
 
-      if (descendantsResult.isLeft() || ancestorsResult.isLeft()) {
+      if (descendantsResult.isLeft()) {
         return Left(DatabaseFailure('Ошибка получения иерархии категорий'));
       }
 
       final descendants = descendantsResult.getOrElse(() => []);
-      final ancestors = ancestorsResult.getOrElse(() => []);
 
       // Создаем множество всех релевантных ID категорий
       final relevantCategoryIds = {categoryId};
       relevantCategoryIds.addAll(descendants.map((c) => c.id));
-      relevantCategoryIds.addAll(ancestors.map((c) => c.id));
+      // НЕ добавляем родительские категории - это приводит к показу нерелевантных товаров
+      // relevantCategoryIds.addAll(ancestors.map((c) => c.id));
 
-      // Сначала ищем по точному совпадению categoryId
-      final relevantCategoryIdList = relevantCategoryIds.toList();
+      _logger.fine('Поиск товаров по категориям (только categoriesInstock): $relevantCategoryIds');
 
-      _logger.fine('📚 Поиск прямых совпадений по категориям: $relevantCategoryIdList');
-
-      final directMatchesQuery = _database.select(_database.products);
-
-      if (relevantCategoryIdList.isNotEmpty) {
-        directMatchesQuery.where(
-          (tbl) => tbl.categoryId.isIn(relevantCategoryIdList),
-        );
-      } else {
-        // Защитный сценарий — fallback на исходное поведение
-        directMatchesQuery.where((tbl) => tbl.categoryId.equals(categoryId));
-      }
-
-      final directMatches = await directMatchesQuery.get();
-
-      // Затем ищем продукты, у которых categoryId есть в массиве categoriesInstock
+      // НЕ используем categoryId - это legacy поле! Ищем ТОЛЬКО по categoriesInstock
       final allEntities = await _database.select(_database.products).get();
-      final instockMatches = <ProductData>[];
+      final matchingProducts = <ProductData>[];
 
       for (final entity in allEntities) {
         try {
           final productJson = jsonDecode(entity.rawJson) as Map<String, dynamic>;
-          final categoriesInstock = productJson['categoriesInstock'] as List<dynamic>?;
+          final categoriesInstock = productJson['categoriesInstock'] as List<dynamic>? ?? [];
 
-          if (categoriesInstock != null) {
-            final hasRelevantCategory = categoriesInstock.any((cat) {
-              final catMap = cat as Map<String, dynamic>;
-              final catId = catMap['id'] as int;
-              return relevantCategoryIds.contains(catId);
-            });
+          final hasRelevantCategory = categoriesInstock.any((cat) {
+            final catMap = cat as Map<String, dynamic>;
+            final catId = catMap['id'] as int;
+            return relevantCategoryIds.contains(catId);
+          });
 
-            if (hasRelevantCategory && !directMatches.contains(entity)) {
-              instockMatches.add(entity);
-            }
+          if (hasRelevantCategory) {
+            matchingProducts.add(entity);
           }
         } catch (e) {
           // Игнорируем ошибки парсинга отдельных продуктов
-          // TODO вывести эти ошибки в отдельный лог
+          _logger.warning('Ошибка парсинга categoriesInstock для продукта ${entity.code}: $e');
           continue;
         }
       }
 
-      final allMatches = [...directMatches, ...instockMatches];
-
-      final paginatedEntities = allMatches.skip(offset).take(limit).toList();
+      final paginatedEntities = matchingProducts.skip(offset).take(limit).toList();
 
       final products = paginatedEntities.map((entity) {
         final productJson = jsonDecode(entity.rawJson) as Map<String, dynamic>;
@@ -221,43 +200,33 @@ class DriftProductRepository implements ProductRepository {
     int limit = 20,
   }) async {
     try {
-      _logger.info('🚀 getProductsWithStockByCategoryPaginated: categoryId=$categoryId, vendorId=${vendorId ?? 'ALL'}, offset=$offset, limit=$limit');
+      _logger.info('getProductsWithStockByCategoryPaginated: categoryId=$categoryId, vendorId=${vendorId ?? 'ALL'}, offset=$offset, limit=$limit');
       
       // Получаем иерархию категорий как в обычном методе
       final categoryRepository = GetIt.instance<CategoryRepository>();
       final descendantsResult = await categoryRepository.getAllDescendants(categoryId);
-      final ancestorsResult = await categoryRepository.getAllAncestors(categoryId);
 
-      if (descendantsResult.isLeft() || ancestorsResult.isLeft()) {
+      if (descendantsResult.isLeft()) {
         return Left(DatabaseFailure('Ошибка получения иерархии категорий'));
       }
 
       final descendants = descendantsResult.getOrElse(() => []);
-      final ancestors = ancestorsResult.getOrElse(() => []);
       final relevantCategoryIds = {categoryId};
       relevantCategoryIds.addAll(descendants.map((c) => c.id));
-      relevantCategoryIds.addAll(ancestors.map((c) => c.id));
+      // НЕ добавляем родительские категории - это приводит к показу нерелевантных товаров
+      // relevantCategoryIds.addAll(ancestors.map((c) => c.id));
 
       _logger.info('Relevant category IDs: $relevantCategoryIds');
       _logger.info('  - Descendants: ${descendants.map((c) => '${c.id}:${c.name}').join(', ')}');
-      _logger.info('  - Ancestors: ${ancestors.map((c) => '${c.id}:${c.name}').join(', ')}');
       
-      final directMatches = await (_database.select(_database.products)
-        ..where((tbl) => tbl.categoryId.equals(categoryId))
-      ).get();
-
-      _logger.info('🔍 Прямые совпадения по categoryId=$categoryId: ${directMatches.length} продуктов');
-      
+      // НЕ используем categoryId - это legacy поле! Используем только categoriesInstock
       final allProductEntities = await (_database.select(_database.products)).get();
       
-      _logger.info('🔍 Всего продуктов в БД: ${allProductEntities.length}');
+      _logger.info('Всего продуктов в БД: ${allProductEntities.length}');
       
       final matchingProductsMap = <int, ProductData>{};
-
-      for (final entity in directMatches) {
-        matchingProductsMap[entity.code] = entity;
-      }
       
+      // Ищем товары ТОЛЬКО по categoriesInstock (актуальные данные)
       for (final productEntity in allProductEntities) {
         try {
           final productJson = jsonDecode(productEntity.rawJson) as Map<String, dynamic>;
@@ -273,7 +242,7 @@ class DriftProductRepository implements ProductRepository {
           
           if (productCategoryIds.intersection(relevantCategoryIds).isNotEmpty) {
             matchingProductsMap[productEntity.code] = productEntity;
-            _logger.fine('🔍 Продукт ${productEntity.code} найден через categoriesInstock: ${productCategoryIds.intersection(relevantCategoryIds)}');
+            _logger.fine('Продукт ${productEntity.code} найден через categoriesInstock: ${productCategoryIds.intersection(relevantCategoryIds)}');
           }
         } catch (e) {
           _logger.warning('Ошибка парсинга categoriesInstock для продукта ${productEntity.code}: $e');
@@ -285,11 +254,11 @@ class DriftProductRepository implements ProductRepository {
 
       if (matchingProducts.isNotEmpty) {
         final sampleProducts = matchingProducts.take(3).map((p) => 'code=${p.code}, title=${p.title}').join('; ');
-        _logger.info('🔍 Примеры продуктов: $sampleProducts');
+        _logger.info('Примеры продуктов: $sampleProducts');
       }
 
       if (matchingProducts.isEmpty) {
-        _logger.info('✅ Возвращаем 0 ProductWithStock для категории $categoryId (нет продуктов)');
+        _logger.info('Возвращаем 0 ProductWithStock для категории $categoryId (нет продуктов)');
         return Right([]);
       }
 
@@ -336,7 +305,7 @@ class DriftProductRepository implements ProductRepository {
       }
 
       final stockEntities = await stockQuery.get();
-      _logger.info('� Найдено ${stockEntities.length} stock_items (stock>0) для выбранных продуктов (vendor=${vendorId ?? 'ALL'})');
+      _logger.info('Найдено ${stockEntities.length} stock_items (stock>0) для выбранных продуктов (vendor=${vendorId ?? 'ALL'})');
 
       final stockByProduct = <int, List<StockItemData>>{};
       for (final entity in stockEntities) {
@@ -347,18 +316,18 @@ class DriftProductRepository implements ProductRepository {
         .where((product) => (stockByProduct[product.code]?.isNotEmpty ?? false))
         .toList();
 
-      _logger.info('🔍 После фильтрации по остаткам: ${availableProducts.length} из ${sortedProducts.length} продуктов');
+      _logger.info('После фильтрации по остаткам: ${availableProducts.length} из ${sortedProducts.length} продуктов');
 
       if (availableProducts.isEmpty) {
-        _logger.info('✅ Возвращаем 0 ProductWithStock для категории $categoryId (нет продуктов с остатками)');
+        _logger.info('Возвращаем 0 ProductWithStock для категории $categoryId (нет продуктов с остатками)');
         return Right([]);
       }
 
       final paginatedAvailableProducts = availableProducts.skip(offset).take(limit).toList();
-      _logger.info('🔍 После пагинации: ${paginatedAvailableProducts.length} продуктов (offset=$offset, limit=$limit)');
+      _logger.info('После пагинации: ${paginatedAvailableProducts.length} продуктов (offset=$offset, limit=$limit)');
 
       if (paginatedAvailableProducts.isEmpty) {
-        _logger.info('✅ Возвращаем 0 ProductWithStock для категории $categoryId (пагинация)');
+        _logger.info('Возвращаем 0 ProductWithStock для категории $categoryId (пагинация)');
         return Right([]);
       }
 
@@ -590,42 +559,31 @@ class DriftProductRepository implements ProductRepository {
   @override
   Future<Either<Failure, int>> getProductsCountByCategory(int categoryId) async {
     try {
-
-      // Считаем прямые совпадения
-      final directCount = await (_database.selectOnly(_database.products)
-        ..addColumns([_database.products.id.count()])
-        ..where(_database.products.categoryId.equals(categoryId))
-      ).map((row) => row.read(_database.products.id.count())).getSingle();
-
-      // Считаем совпадения в categoriesInstock
+      // НЕ используем categoryId - это legacy поле! Считаем ТОЛЬКО по categoriesInstock
       final allEntities = await _database.select(_database.products).get();
-      int instockCount = 0;
+      int count = 0;
 
       for (final entity in allEntities) {
         try {
           final productJson = jsonDecode(entity.rawJson) as Map<String, dynamic>;
-          final categoriesInstock = productJson['categoriesInstock'] as List<dynamic>?;
+          final categoriesInstock = productJson['categoriesInstock'] as List<dynamic>? ?? [];
 
-          if (categoriesInstock != null) {
-            final hasCategory = categoriesInstock.any((cat) {
-              final catMap = cat as Map<String, dynamic>;
-              return catMap['id'] == categoryId;
-            });
+          final hasCategory = categoriesInstock.any((cat) {
+            final catMap = cat as Map<String, dynamic>;
+            return catMap['id'] == categoryId;
+          });
 
-            if (hasCategory && entity.categoryId != categoryId) {
-              instockCount++;
-            }
+          if (hasCategory) {
+            count++;
           }
         } catch (e) {
           // Игнорируем ошибки парсинга отдельных продуктов
+          _logger.warning('Ошибка парсинга categoriesInstock для продукта ${entity.code}: $e');
           continue;
         }
       }
 
-
-      final totalCount = (directCount ?? 0) + instockCount;
-
-      return Right(totalCount);
+      return Right(count);
     } catch (e) {
       return Left(DatabaseFailure('Ошибка получения количества продуктов в категории: $e'));
     }

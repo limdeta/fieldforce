@@ -17,6 +17,8 @@ BDD Сценарий: Переход в категорию, проверка к�
   Тогда попадаю на страницу с полным описанием продукта
 */
 
+// ignore_for_file: avoid_print
+
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:integration_test/integration_test.dart';

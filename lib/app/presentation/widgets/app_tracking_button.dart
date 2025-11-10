@@ -16,7 +16,7 @@ class AppTrackingButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final _logger = Logger('AppTrackingButton');
+    final logger = Logger('AppTrackingButton');
     return BlocBuilder<TrackingBloc, TrackingState>(
       builder: (context, state) {
         // ИСПРАВЛЕНО: Всегда проверяем и устанавливаем пользователя если его нет
@@ -45,7 +45,7 @@ class AppTrackingButton extends StatelessWidget {
                   return;
                 }
               }
-              _logger.info('AppTrackingButton: dispatching TrackingTogglePressed (state=${state.runtimeType})');
+              logger.info('AppTrackingButton: dispatching TrackingTogglePressed (state=${state.runtimeType})');
               context.read<TrackingBloc>().add(TrackingTogglePressed());
             }
 
@@ -54,7 +54,7 @@ class AppTrackingButton extends StatelessWidget {
               // immediately so the centralized permission flow in
               // GpsDataManager.startGps() will call Geolocator.requestPermission()
               // and trigger the native system permission dialog.
-              _logger.info('AppTrackingButton: starting tracking; dispatching to TrackingBloc to trigger native permission prompt');
+              logger.info('AppTrackingButton: starting tracking; dispatching to TrackingBloc to trigger native permission prompt');
               if (state is TrackingNoUser) {
                 final currentSession = AppSessionService.currentSession;
                 if (currentSession?.appUser != null) {

@@ -34,11 +34,14 @@ class PaymentMethodSelector extends StatelessWidget {
               selected.paymentCode == option.paymentCode;
           return Column(
             children: [
+              // ignore: deprecated_member_use
               RadioListTile<String>(
                 value: option.paymentCode!,
+                // ignore: deprecated_member_use
                 groupValue: selected.paymentCode,
                 contentPadding: EdgeInsets.zero,
                 activeColor: theme.colorScheme.primary,
+                // ignore: deprecated_member_use
                 onChanged: (_) {
                   if (!isSelected) {
                     onSelected(option);

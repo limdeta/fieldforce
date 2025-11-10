@@ -44,12 +44,15 @@ void main() {
 
     setUp(() async {
       TestWidgetsFlutterBinding.ensureInitialized();
-      connectivityChannel.setMockMethodCallHandler((methodCall) async {
-        if (methodCall.method == 'check') {
-          return <String>[ConnectivityResult.wifi.name];
-        }
-        return null;
-      });
+      TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger.setMockMethodCallHandler(
+        connectivityChannel,
+        (methodCall) async {
+          if (methodCall.method == 'check') {
+            return <String>[ConnectivityResult.wifi.name];
+          }
+          return null;
+        },
+      );
 
       tempDir = await Directory.systemTemp.createTemp('order_queue_test');
       final dbFile = File(p.join(tempDir.path, 'orders_test.db'));
@@ -74,7 +77,10 @@ void main() {
       if (tempDir.existsSync()) {
         await tempDir.delete(recursive: true);
       }
-      connectivityChannel.setMockMethodCallHandler(null);
+      TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger.setMockMethodCallHandler(
+        connectivityChannel,
+        null,
+      );
     });
 
     test('keeps order pending and schedules retry when API returns failure', () async {

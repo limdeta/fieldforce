@@ -449,7 +449,7 @@ class _ProductCatalogSplitPageState extends State<ProductCatalogSplitPage> {
             Icon(
               Icons.category_outlined,
               size: 64,
-              color: Theme.of(context).colorScheme.onSurface.withOpacity(0.6),
+              color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6),
             ),
             const SizedBox(height: 16),
             Text(
@@ -461,7 +461,7 @@ class _ProductCatalogSplitPageState extends State<ProductCatalogSplitPage> {
               'Попробуйте изменить параметры поиска',
               textAlign: TextAlign.center,
               style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                    color: Theme.of(context).colorScheme.onSurface.withOpacity(0.6),
+                    color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6),
                   ),
             ),
           ],
@@ -486,7 +486,7 @@ class _ProductCatalogSplitPageState extends State<ProductCatalogSplitPage> {
           Container(
             decoration: BoxDecoration(
               color: isSelected
-                  ? theme.colorScheme.primary.withOpacity(0.1)
+                  ? theme.colorScheme.primary.withValues(alpha: 0.1)
                   : _getCategoryColor(level),
               border: Border(
                 left: BorderSide(

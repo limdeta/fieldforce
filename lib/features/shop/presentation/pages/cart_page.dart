@@ -160,7 +160,7 @@ class _CartPageState extends State<CartPage> {
         // Информация о корзине
         Container(
           width: double.infinity,
-          color: Theme.of(context).colorScheme.primaryContainer.withOpacity(0.1),
+          color: Theme.of(context).colorScheme.primaryContainer.withValues(alpha: 0.1),
           padding: const EdgeInsets.all(16),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,

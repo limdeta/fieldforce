@@ -125,6 +125,7 @@ class WorkDayBloc extends Bloc<WorkDayEvent, WorkDayState> {
     try {
       final workDays = await _getWorkDaysForUser(user);
       _workDays = workDays;
+      // ignore: avoid_print
       print('[WorkDayBloc] Loaded workDays: count=${_workDays.length}');
 
       // Auto-select workday based on target date or today
@@ -142,11 +143,13 @@ class WorkDayBloc extends Bloc<WorkDayEvent, WorkDayState> {
 
         if (targetWorkDay != null) {
           _selectedWorkDay = targetWorkDay;
+          // ignore: avoid_print
           print(
             '[WorkDayBloc] Found workday for target date: ${targetDate.year}-${targetDate.month}-${targetDate.day}',
           );
         } else {
           _selectedWorkDay = null;
+          // ignore: avoid_print
           print(
             '[WorkDayBloc] No workday found for target date: ${targetDate.year}-${targetDate.month}-${targetDate.day}',
           );
@@ -154,6 +157,7 @@ class WorkDayBloc extends Bloc<WorkDayEvent, WorkDayState> {
       } else {
         _selectedWorkDay = null;
       }
+      // ignore: avoid_print
       print(
         '[WorkDayBloc] Selected workday: id=${_selectedWorkDay?.id}, date=${_selectedWorkDay?.date}',
       );

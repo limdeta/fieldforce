@@ -16,7 +16,7 @@ import 'package:fieldforce/features/navigation/tracking/domain/services/device_o
 class _FakeGpsDataManager {
   final StreamController<Position> controller = StreamController<Position>();
 
-  Stream<Position> getPositionStream({required settings}) => controller.stream;
+  Stream<Position> getPositionStream({required Object? settings}) => controller.stream;
   Future<bool> startGps() async => true;
   Future<bool> checkPermissions() async => true;
   void dispose() => controller.close();

@@ -1,4 +1,5 @@
 #!/usr/bin/env dart
+// ignore_for_file: avoid_print, non_constant_identifier_names
 // FieldForce Update Deployment Script in Dart
 // Использование: dart deploy_update.dart [версия] [changelog]
 

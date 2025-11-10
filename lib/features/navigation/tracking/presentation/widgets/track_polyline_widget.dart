@@ -46,10 +46,10 @@ class TrackPolylineWidget extends StatelessWidget {
       polylines.add(
         Polyline(
           points: points,
-          color: color.withOpacity(opacity),
+          color: color.withValues(alpha: opacity),
           strokeWidth: strokeWidth,
           // Дополнительные стили для лучшей видимости
-          borderColor: Colors.white.withOpacity(0.5),
+          borderColor: Colors.white.withValues(alpha: 0.5),
           borderStrokeWidth: strokeWidth + 1.0,
         ),
       );
@@ -88,9 +88,9 @@ class SingleTrackPolylineWidget extends StatelessWidget {
       polylines: [
         Polyline(
           points: points,
-          color: trackColor.withOpacity(opacity),
+          color: trackColor.withValues(alpha: opacity),
           strokeWidth: strokeWidth,
-          borderColor: Colors.white.withOpacity(0.5),
+          borderColor: Colors.white.withValues(alpha: 0.5),
           borderStrokeWidth: strokeWidth + 1.0,
         ),
       ],

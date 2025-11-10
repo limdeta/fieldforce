@@ -55,7 +55,7 @@ void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   hierarchicalLoggingEnabled = true;
   
-  Logger.root.level = Level.INFO;
+  Logger.root.level = Level.WARNING;
   Logger.root.onRecord.listen((record) {
     debugPrint('${record.level.name}: ${record.time}: ${record.loggerName}: ${record.message}');
     if (record.error != null) {

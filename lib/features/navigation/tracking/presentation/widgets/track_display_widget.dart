@@ -57,13 +57,13 @@ class TrackDisplayWidget {
   static Color _getTrackColor(TrackStatus status) {
     switch (status) {
       case TrackStatus.active:
-        return Colors.blue.withOpacity(0.8);
+        return Colors.blue.withValues(alpha: 0.8);
       case TrackStatus.completed:
-        return Colors.green.withOpacity(0.6);
+        return Colors.green.withValues(alpha: 0.6);
       case TrackStatus.paused:
-        return Colors.orange.withOpacity(0.6);
+        return Colors.orange.withValues(alpha: 0.6);
       case TrackStatus.cancelled:
-        return Colors.red.withOpacity(0.6);
+        return Colors.red.withValues(alpha: 0.6);
     }
   }
   

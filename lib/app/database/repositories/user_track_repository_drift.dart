@@ -174,6 +174,7 @@ class UserTrackRepositoryDrift implements UserTrackRepository {
       if (existing != null) {
         final msg = 'UserTrackRepository: attempt to create new same-day track for userId=$userId; merging into existing id=${existing.id}';
         // Print immediately for runtime visibility (developer requested)
+        // ignore: avoid_print
         print(msg);
         _logger.warning(msg);
         // Load existing segments and map existing DB row to domain model
@@ -217,6 +218,7 @@ class UserTrackRepositoryDrift implements UserTrackRepository {
 
   final userTrackId = await _database.into(_database.userTracks).insert(userTrackCompanion);
   final insertMsg = 'UserTrackRepository: inserted new UserTrack id=$userTrackId for userId=$userId';
+  // ignore: avoid_print
   print(insertMsg);
   _logger.info(insertMsg);
 

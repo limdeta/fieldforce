@@ -1,6 +1,5 @@
 import 'dart:convert';
 import 'dart:io';
-import 'dart:typed_data';
 
 import 'package:fieldforce/app/config/app_config.dart';
 import 'package:fieldforce/app/domain/entities/app_user.dart';
@@ -44,9 +43,9 @@ void main() {
 
     fixtureJson = File('assets/fixtures/trading_points_sync_response.json').readAsStringSync();
 
-    ServicesBinding.instance.defaultBinaryMessenger.setMockMessageHandler(
+    TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger.setMockMessageHandler(
       'flutter/assets',
-      (ByteData? message) async {
+      (message) async {
         if (message == null) {
           return null;
         }
@@ -90,7 +89,7 @@ void main() {
   });
 
   tearDownAll(() {
-    ServicesBinding.instance.defaultBinaryMessenger.setMockMessageHandler('flutter/assets', null);
+    TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger.setMockMessageHandler('flutter/assets', null);
   });
 
   setUp(() {

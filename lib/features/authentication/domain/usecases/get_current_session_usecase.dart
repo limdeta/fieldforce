@@ -12,7 +12,7 @@ class GetCurrentSessionUseCase {
 
   /// Возвращает состояние сессии без null!
   /// 
-  /// Either<Failure, SessionState> где:
+  /// `Either<Failure, SessionState>` где:
   /// - Left(Failure) = техническая ошибка (нет сети, ошибка БД)
   /// - Right(SessionNotFound) = нет сессии (нормальное состояние)
   /// - Right(SessionFound) = есть активная сессия

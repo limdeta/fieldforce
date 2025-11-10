@@ -17,6 +17,7 @@ class OutletPricingSyncService {
   static final ZLibCodec _zlibRawCodec = ZLibCodec(raw: true);
   
   final String _baseUrl;
+  // ignore: prefer_final_fields
   String? _sessionCookie;
   
   OutletPricingSyncService({
@@ -30,7 +31,7 @@ class OutletPricingSyncService {
   /// 
   /// Возвращает специфичные для точки цены
   Future<OutletSpecificCacheResponse> getOutletPrices(String outletVendorId) async {
-    _logger.info('💰 Загрузка цен для торговой точки $outletVendorId');
+    _logger.info('Загрузка цен для торговой точки $outletVendorId');
     
     final url = '$_baseUrl/mobile-sync/outlet-prices/$outletVendorId';
     
@@ -40,7 +41,7 @@ class OutletPricingSyncService {
 
   final pricingCount = priceData.outletPricing.length;
   final promotionsCount = priceData.activePromotions.length;
-  _logger.info('✅ Получено ${pricingCount} ценовых записей (акций: $promotionsCount) для точки $outletVendorId');
+  _logger.info('Получено $pricingCount ценовых записей (акций: $promotionsCount) для точки $outletVendorId');
       
       return priceData;
     } catch (e, stackTrace) {
@@ -71,14 +72,14 @@ class OutletPricingSyncService {
             ? _sessionCookie!
             : 'PHPSESSID=$_sessionCookie';
         headers['Cookie'] = fullCookie;
-        _logger.fine('🍪 Используется сессионная кука');
+        _logger.fine('Используется сессионная кука');
       }
       
-      _logger.fine('📤 Отправка protobuf запроса к $uri');
+      _logger.fine('Отправка protobuf запроса к $uri');
       
       // Проверяем тип запроса
       if (requestData != null) {
-        _logger.info('📤 POST запрос с данными (${requestData.length} байт)');
+        _logger.info('POST запрос с данными (${requestData.length} байт)');
         final response = await client.post(uri, headers: headers, body: requestData);
         
         if (response.statusCode != 200) {
@@ -87,7 +88,7 @@ class OutletPricingSyncService {
         return _processResponse(response, debugLabel: debugLabel);
         
       } else {
-        _logger.info('🌐 GET запрос (без данных)');
+        _logger.info('GET запрос (без данных)');
         final response = await client.get(uri, headers: headers);
         
         if (response.statusCode != 200) {
@@ -111,7 +112,7 @@ class OutletPricingSyncService {
     if (normalizedEncoding == 'gzip') {
       try {
   responseBytes = Uint8List.fromList(_gzipCodec.decode(rawBytes));
-        _logger.fine('📦 Данные распакованы из gzip');
+        _logger.fine('Данные распакованы из gzip');
       } catch (e, stackTrace) {
         throw ProtobufPayloadException(
           'Не удалось распаковать gzip-ответ',
@@ -128,12 +129,12 @@ class OutletPricingSyncService {
     } else if (normalizedEncoding == 'deflate') {
       try {
   responseBytes = Uint8List.fromList(_zlibCodec.decode(rawBytes));
-        _logger.fine('📦 Данные распакованы из deflate (zlib)');
+        _logger.fine('Данные распакованы из deflate (zlib)');
       } catch (zlibError, zlibStack) {
-        _logger.warning('⚠️ Стандартный ZLibCodec не смог распаковать deflate: $zlibError');
+        _logger.warning('Стандартный ZLibCodec не смог распаковать deflate: $zlibError');
         try {
           responseBytes = Uint8List.fromList(_zlibRawCodec.decode(rawBytes));
-          _logger.fine('📦 Данные распакованы из deflate (raw) после повторного прогона');
+          _logger.fine('Данные распакованы из deflate (raw) после повторного прогона');
         } catch (rawError, rawStack) {
           throw ProtobufPayloadException(
             'Не удалось распаковать deflate-ответ',

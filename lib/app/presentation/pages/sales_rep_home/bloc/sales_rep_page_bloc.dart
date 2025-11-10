@@ -96,6 +96,7 @@ class SalesRepPageBloc extends Bloc<SalesRepPageEvent, SalesRepPageState> {
     RouteSelectedEvent event,
     Emitter<SalesRepPageState> emit,
   ) {
+    // ignore: avoid_print
     print('[SalesRepPageBloc] Route selected: ${event.route.name}');
 
     if (state is SalesRepPageLoaded) {
@@ -115,6 +116,7 @@ class SalesRepPageBloc extends Bloc<SalesRepPageEvent, SalesRepPageState> {
     TrackUpdatedEvent event,
     Emitter<SalesRepPageState> emit,
   ) {
+    // ignore: avoid_print
     print('[SalesRepPageBloc] Track updated: id=${event.track?.id}');
 
     if (state is SalesRepPageLoaded) {

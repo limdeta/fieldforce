@@ -34,7 +34,7 @@ class OrderCardWidget extends StatelessWidget {
     return Card(
       margin: const EdgeInsets.only(bottom: 8),
       elevation: 1,
-      color: Colors.white.withOpacity(0.7),
+      color: Colors.white.withValues(alpha: 0.7),
       child: InkWell(
         onTap: onTap,
         borderRadius: BorderRadius.circular(4),
@@ -159,7 +159,7 @@ class OrderCardWidget extends StatelessWidget {
           Row(
             children: [
               Text(
-                '${(order.totalCost / 100).toStringAsFixed(2)}',
+                (order.totalCost / 100).toStringAsFixed(2),
                 style: const TextStyle(
                   fontSize: 18,
                   fontWeight: FontWeight.bold,
@@ -255,7 +255,7 @@ class OrderStatusChip extends StatelessWidget {
       decoration: BoxDecoration(
         color: backgroundColor,
         borderRadius: BorderRadius.circular(4),
-        border: Border.all(color: color.withOpacity(0.3)),
+        border: Border.all(color: color.withValues(alpha: 0.3)),
       ),
       child: Text(
         customText ?? text,

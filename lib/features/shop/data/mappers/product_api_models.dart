@@ -382,7 +382,7 @@ class StockItemApi extends Equatable {
     return StockItemApi(
       warehouseId: json['warehouse']?['id'] as int? ?? json['warehouseId'] as int? ?? 0,
       warehouseName: json['warehouse']?['name'] as String? ?? json['warehouseName'] as String? ?? 'Неизвестный склад',
-      vendorId: vendorIdRaw != null ? vendorIdRaw.toString() : null,
+      vendorId: vendorIdRaw?.toString(),
       price: (json['price'] as num?)?.toDouble() ?? (json['defaultPrice'] as num?)?.toDouble() ?? 0.0,
       availablePrice: (json['availablePrice'] as num?)?.toDouble(),
       offerPrice: (json['offerPrice'] as num?)?.toDouble(),

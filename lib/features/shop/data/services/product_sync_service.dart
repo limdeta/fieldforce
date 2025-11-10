@@ -181,7 +181,7 @@ class ApiProductSyncService implements ProductSyncService {
 
         if (response.statusCode != 200) {
           final responseString = response.body;
-          final preview = responseString.length > 500 ? responseString.substring(0, 500) + '...[truncated]' : responseString;
+          final preview = responseString.length > 500 ? '${responseString.substring(0, 500)}...[truncated]' : responseString;
           _logger.warning('HTTP ${response.statusCode} ${response.reasonPhrase ?? ''}. Response preview: $preview');
           throw Exception('HTTP ${response.statusCode}: ${response.reasonPhrase}');
         }

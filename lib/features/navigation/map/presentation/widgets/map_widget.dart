@@ -247,7 +247,7 @@ class _MapWidgetState extends State<MapWidget> {
             border: Border.all(color: Colors.white, width: 2),
             boxShadow: [
               BoxShadow(
-                color: Colors.black.withOpacity(0.3),
+                color: Colors.black.withValues(alpha: 0.3),
                 blurRadius: 4,
                 offset: const Offset(0, 2),
               ),
@@ -670,7 +670,7 @@ class _MapWidgetState extends State<MapWidget> {
       // Проверяем временной разрыв
       final timeDiff = startTime.difference(endTime).inMilliseconds;
       if (timeDiff > maxTimeGapMs) {
-        _logger.fine('⏱️ Пропускаем соединение между сегментами ${i} и ${i+1}: временной разрыв ${(timeDiff / 60000).toStringAsFixed(1)} мин > $maxTimeGapMinutes мин');
+        _logger.fine('⏱️ Пропускаем соединение между сегментами $i и ${i+1}: временной разрыв ${(timeDiff / 60000).toStringAsFixed(1)} мин > $maxTimeGapMinutes мин');
         continue;
       }
       
@@ -682,7 +682,7 @@ class _MapWidgetState extends State<MapWidget> {
             LatLng(startLat, startLng),
           ],
           strokeWidth: _connectionStrokeWidth,
-          color: _connectionLineColor.withOpacity(_connectionOpacity),
+          color: _connectionLineColor.withValues(alpha: _connectionOpacity),
         ),
       );
     }
@@ -718,7 +718,7 @@ class _MapWidgetState extends State<MapWidget> {
           );
         } else {
           if (distance > maxDistance) {
-            _logger.fine('⚠️ Пропускаем соединение до live буфера: расстояние ${distance.toStringAsFixed(1)}м > ${maxDistance}м');
+            _logger.fine('⚠️ Пропускаем соединение до live буфера: расстояние ${distance.toStringAsFixed(1)}м > $maxDistance м');
           }
           if (timeDiff > maxTimeGapMs) {
             _logger.fine('⏱️ Пропускаем соединение до live буфера: временной разрыв ${(timeDiff / 60000).toStringAsFixed(1)} мин > $maxTimeGapMinutes мин');
@@ -736,7 +736,7 @@ class TrianglePainter extends CustomPainter {
   @override
   void paint(Canvas canvas, Size size) {
     final Paint paint = Paint()
-      ..color = const Color.fromARGB(255, 243, 33, 156).withOpacity(0.9)
+      ..color = const Color.fromARGB(255, 243, 33, 156).withValues(alpha: 0.9)
       ..style = PaintingStyle.fill;
 
     final Paint borderPaint = Paint()
@@ -758,7 +758,7 @@ class TrianglePainter extends CustomPainter {
 
     // Рисуем тень
     final Paint shadowPaint = Paint()
-      ..color = Colors.black.withOpacity(0.3)
+      ..color = Colors.black.withValues(alpha: 0.3)
       ..style = PaintingStyle.fill
       ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 4);
 

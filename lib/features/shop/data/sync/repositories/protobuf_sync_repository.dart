@@ -68,7 +68,7 @@ class ProtobufSyncRepository {
     
     _logger.info(
       '📈 Статистика синхронизации $syncType: '
-      '${recordsCount} записей за ${duration.inMilliseconds}мс '
+      '$recordsCount записей за ${duration.inMilliseconds}мс '
       '(${_formatBytes(dataSize)})'
     );
     

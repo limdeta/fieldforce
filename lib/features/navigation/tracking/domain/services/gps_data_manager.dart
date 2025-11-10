@@ -136,9 +136,13 @@ class GpsDataManager {
     return Stream<Position>.multi((controller) {
       final subs = <StreamSubscription<Position>>[];
       subs.add(_currentSource!.getPositionStream(settings: settings).listen(controller.add, onError: controller.addError));
-      if (Platform.isAndroid) subs.add(_nativePositionController.stream.listen(controller.add, onError: controller.addError));
+      if (Platform.isAndroid) {
+        subs.add(_nativePositionController.stream.listen(controller.add, onError: controller.addError));
+      }
       controller.onCancel = () {
-        for (final s in subs) s.cancel();
+        for (final s in subs) {
+          s.cancel();
+        }
       };
     });
   }

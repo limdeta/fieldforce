@@ -1,3 +1,4 @@
+// ignore_for_file: avoid_print
 import 'package:fieldforce/app/domain/entities/app_user.dart';
 import 'package:fieldforce/app/domain/repositories/app_user_repository.dart';
 import 'package:fieldforce/app/domain/usecases/create_work_day_usecase.dart';

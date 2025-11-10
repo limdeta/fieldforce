@@ -118,7 +118,7 @@ class ProductPurchaseCard extends StatelessWidget {
                   const SizedBox(height: 8),
 
                   // Bottom row: stock selector (left expands) and add-to-cart button (fixed right)
-                  Container(
+                  SizedBox(
                     width: double.infinity,
                     child: Row(
                       children: [

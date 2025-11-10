@@ -13,6 +13,7 @@ class GetWorkDaysForUserUseCase {
     return result.fold(
       (failure) {
         // Можно обработать failure, например, логировать или выбросить
+        // ignore: avoid_print
         print('Ошибка получения рабочих дней: ${failure.message}');
         return [];
       },

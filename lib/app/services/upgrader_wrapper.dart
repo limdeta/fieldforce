@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:upgrader/upgrader.dart';
 import '../config/app_config.dart';
-import 'update_service.dart';
+// import 'update_service.dart'; // Закомментировано вместе с автопроверкой
 
 /// Обёртка для системы обновлений
 /// Комбинирует автоматическую проверку через upgrader (для App Store/Google Play)
@@ -34,6 +34,7 @@ class _UpgraderWrapperState extends State<UpgraderWrapper> {
     */
   }
 
+  /* Закомментировано вместе с автопроверкой выше
   Future<void> _checkForUpdatesOnStartup() async {
     // Небольшая задержка чтобы UI успел загрузиться
     await Future.delayed(const Duration(seconds: 2));
@@ -42,6 +43,7 @@ class _UpgraderWrapperState extends State<UpgraderWrapper> {
       await UpdateService.checkForUpdatesIfEnabled(context);
     }
   }
+  */
 
   @override
   Widget build(BuildContext context) {

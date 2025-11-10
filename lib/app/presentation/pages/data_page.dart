@@ -140,7 +140,7 @@ class _SyncContextCard extends StatelessWidget {
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(12),
         color: Theme.of(context).colorScheme.surface,
-        border: Border.all(color: Theme.of(context).dividerColor.withOpacity(0.4)),
+        border: Border.all(color: Theme.of(context).dividerColor.withValues(alpha: 0.4)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -203,7 +203,7 @@ class _FullSyncRow extends StatelessWidget {
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: Theme.of(context).dividerColor.withOpacity(0.4)),
+        border: Border.all(color: Theme.of(context).dividerColor.withValues(alpha: 0.4)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -291,7 +291,7 @@ class _TaskRow extends StatelessWidget {
       lastSyncText = 'Нет зафиксированных запусков';
     }
 
-    final Color borderColor = Theme.of(context).dividerColor.withOpacity(0.4);
+    final Color borderColor = Theme.of(context).dividerColor.withValues(alpha: 0.4);
 
     return Container(
       padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 16),
@@ -405,9 +405,9 @@ class _StatusBadge extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
       decoration: BoxDecoration(
-        color: color.withOpacity(0.12),
+        color: color.withValues(alpha: 0.12),
         borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: color.withOpacity(0.4)),
+        border: Border.all(color: color.withValues(alpha: 0.4)),
       ),
       child: AnimatedSwitcher(
         duration: const Duration(milliseconds: 150),

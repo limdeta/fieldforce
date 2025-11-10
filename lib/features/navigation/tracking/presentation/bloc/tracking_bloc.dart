@@ -168,11 +168,14 @@ class TrackingBloc extends Bloc<TrackingEvent, TrackingState> {
           add(TrackingPositionUpdated(position.latitude, position.longitude, position.heading));
         },
         onError: (error) {
+          // Ошибки обрабатываются внутри TrackingService
         },
         onDone: () {
+          // Завершение стрима - нормальное поведение при остановке трекинга
         },
       );
     } catch (e) {
+      // Subscription может быть отменена, игнорируем
     }
   }
 

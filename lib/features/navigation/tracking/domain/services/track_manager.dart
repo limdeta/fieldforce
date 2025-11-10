@@ -289,8 +289,10 @@ class TrackManager {
     }
 
     _logger.info('TrackManager.persistExternalSegments: delegating to persister for track id=${_currentTrack!.id} segments=${segments.length}');
+    // ignore: avoid_print
     print('TRACE: persistExternalSegments -> track id=${_currentTrack!.id} segments=${segments.length}');
     final success = await _externalPersister.persistExternalSegments(_currentTrack!, segments, allowedBackfillSeconds: allowedBackfillSeconds);
+    // ignore: avoid_print
     print('TRACE: persister returned $success');
     if (success) {
       _updateCounter++;

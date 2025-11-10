@@ -10,7 +10,6 @@ import 'package:fieldforce/features/shop/domain/entities/payment_kind.dart';
 import 'package:fieldforce/features/shop/domain/entities/product_with_stock.dart';
 import 'package:fieldforce/features/shop/presentation/bloc/orders_bloc.dart';
 import 'package:fieldforce/features/shop/presentation/pages/product_detail_page.dart';
-import 'package:fieldforce/features/shop/presentation/widgets/navigation_fab_widget.dart';
 import 'package:fieldforce/shared/services/image_cache_service.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -316,11 +315,6 @@ class _OrdersPageState extends State<OrdersPage> {
 
             return const Center(child: Text('Неизвестное состояние'));
           },
-        ),
-        floatingActionButton: const NavigationFabWidget(
-          heroTagPrefix: 'orders',
-          showCart: true,
-          showHome: true,
         ),
       ),
     );

@@ -101,7 +101,7 @@ class _SettingsPageState extends State<SettingsPage> {
             Text(
               'Выберите, как отображаются категории и список товаров.',
               style: theme.textTheme.bodySmall?.copyWith(
-                color: theme.colorScheme.onSurface.withOpacity(0.6),
+                color: theme.colorScheme.onSurface.withValues(alpha: 0.6),
               ),
             ),
             const SizedBox(height: 16),
@@ -169,7 +169,7 @@ class _SettingsPageState extends State<SettingsPage> {
   }
 
   Widget _buildVersionFooter(BuildContext context) {
-    final color = Theme.of(context).colorScheme.onSurface.withOpacity(0.5);
+    final color = Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.5);
     return FutureBuilder<String>(
       future: _versionLabelFuture,
       builder: (context, snapshot) {

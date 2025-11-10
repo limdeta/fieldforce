@@ -170,14 +170,17 @@ class ProtobufSyncResult {
   String _formatDuration(Duration duration) {
     final seconds = duration.inSeconds;
     if (seconds < 60) {
+      // ignore: unnecessary_brace_in_string_interps
       return '${seconds}с';
     } else if (seconds < 3600) {
       final minutes = seconds ~/ 60;
       final remainingSeconds = seconds % 60;
+      // ignore: unnecessary_brace_in_string_interps
       return '${minutes}м ${remainingSeconds}с';
     } else {
       final hours = seconds ~/ 3600;
       final minutes = (seconds % 3600) ~/ 60;
+      // ignore: unnecessary_brace_in_string_interps
       return '${hours}ч ${minutes}м';
     }
   }

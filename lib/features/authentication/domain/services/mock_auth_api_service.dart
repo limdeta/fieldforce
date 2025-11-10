@@ -1,3 +1,4 @@
+// ignore_for_file: avoid_print
 import 'package:fieldforce/features/authentication/domain/value_objects/phone_number.dart';
 import 'package:fieldforce/shared/either.dart';
 import 'package:fieldforce/shared/failures.dart';

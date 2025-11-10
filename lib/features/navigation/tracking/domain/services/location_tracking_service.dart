@@ -118,6 +118,7 @@ class LocationTrackingService implements LocationTrackingServiceBase  {
   }
 
   /// Стримы для подписки на обновления
+  @override
   Stream<Position> get positionStream => Stream<Position>.multi((controller) {
         // replay last known position to late subscribers
         final Position? lastForReplay = _lastBroadcastPosition ?? _lastPosition;
@@ -152,6 +153,7 @@ class LocationTrackingService implements LocationTrackingServiceBase  {
         };
       });
   
+  @override
   Stream<CompactTrack> get liveBufferStream => Stream<CompactTrack>.multi((controller) {
         // replay last live buffer to late subscribers
         if (_lastLiveBuffer != null) controller.add(_lastLiveBuffer!);
@@ -169,6 +171,7 @@ class LocationTrackingService implements LocationTrackingServiceBase  {
   
   /// Текущее состояние
   Stream<UserTrack?> get currentTrackStream => _trackManager.trackUpdateStream;
+  @override
   UserTrack? get currentTrack => _trackManager.currentTrackForUI;
   @override
   bool get isTracking => _positionSubscription != null && _isActive;

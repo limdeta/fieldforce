@@ -186,6 +186,8 @@ class _SalesRepHomeViewState extends State<SalesRepHomeView> {
                       final perm = await Geolocator.checkPermission();
                       if (perm != LocationPermission.always) {
                         Logger('SalesRepHomePage').info('Background permission not granted (current=$perm) - prompting user to open settings');
+                        if (!mounted) return;
+                        // ignore: use_build_context_synchronously
                         ScaffoldMessenger.of(context).showSnackBar(
                           SnackBar(
                             content: const Text('Для стабильной работы в фоне нужно разрешить «Всегда» для местоположения.'),

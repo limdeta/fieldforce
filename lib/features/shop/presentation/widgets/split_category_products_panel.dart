@@ -474,7 +474,7 @@ class _SplitCategoryProductsPanelState extends State<SplitCategoryProductsPanel>
             Icon(
               Icons.inventory_2_outlined,
               size: 64,
-              color: Theme.of(context).colorScheme.onSurface.withOpacity(0.6),
+              color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6),
             ),
             const SizedBox(height: 16),
             Text(
@@ -486,7 +486,7 @@ class _SplitCategoryProductsPanelState extends State<SplitCategoryProductsPanel>
               'В категории "${category.name}" пока нет товаров',
               textAlign: TextAlign.center,
               style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                    color: Theme.of(context).colorScheme.onSurface.withOpacity(0.6),
+                    color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6),
                   ),
             ),
           ],
@@ -506,7 +506,7 @@ class _SplitCategoryProductsPanelState extends State<SplitCategoryProductsPanel>
             Icon(
               Icons.category_outlined,
               size: 64,
-              color: Theme.of(context).colorScheme.onSurface.withOpacity(0.5),
+              color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.5),
             ),
             const SizedBox(height: 16),
             Text(
@@ -518,7 +518,7 @@ class _SplitCategoryProductsPanelState extends State<SplitCategoryProductsPanel>
               'Список товаров появится после выбора категории слева',
               textAlign: TextAlign.center,
               style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                    color: Theme.of(context).colorScheme.onSurface.withOpacity(0.6),
+                    color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6),
                   ),
             ),
           ],
