@@ -1,7 +1,8 @@
 #!/usr/bin/env dart
 // ignore_for_file: avoid_print, non_constant_identifier_names
 // FieldForce Update Deployment Script in Dart
-// Использование: dart deploy_update.dart [версия] [changelog]
+// Использование: dart deploy_update.dart "changelog текст"
+// Версия автоматически берется из pubspec.yaml
 
 import 'dart:io';
 import 'dart:convert';
@@ -101,40 +102,21 @@ void main(List<String> args) async {
   printInfo('🔧 Режим SSH: ${interactiveMode ? "интерактивный" : "автоматический"}');
   if (showCommandsOnly) printInfo('🔧 Режим: только показать команды');
 
-  // Получаем версию
-  String? version;
-  String? changelog;
-  
-  // Фильтруем аргументы, убирая флаги
-  final filteredArgs = args.where((arg) => !arg.startsWith('--')).toList();
-  
-  if (filteredArgs.isNotEmpty) {
-    version = filteredArgs[0];
-  }
-  
-  if (filteredArgs.length > 1) {
-    changelog = filteredArgs.skip(1).join(' ');
-  }
-
-  // Читаем версию из pubspec.yaml если не указана
-  if (version == null || version.isEmpty) {
+  // Читаем версию из pubspec.yaml (единственный источник версии)
   final pubspecContent = await File('${projectDir.path}/pubspec.yaml').readAsString();
-    final versionMatch = RegExp(r'version:\s*([0-9]+\.[0-9]+\.[0-9]+)').firstMatch(pubspecContent);
-    
-    if (versionMatch != null) {
-      version = versionMatch.group(1)!;
-      printInfo('📝 Версия из pubspec.yaml: $version');
-    } else {
-      printError('❌ Не удалось определить версию из pubspec.yaml');
-      exit(1);
-    }
-  }
-
-  // Проверяем формат версии
-  if (!RegExp(r'^[0-9]+\.[0-9]+\.[0-9]+$').hasMatch(version)) {
-    printError('❌ Неверный формат версии: $version (ожидается x.y.z)');
+  final versionMatch = RegExp(r'version:\s*([0-9]+\.[0-9]+\.[0-9]+)').firstMatch(pubspecContent);
+  
+  if (versionMatch == null) {
+    printError('❌ Не удалось определить версию из pubspec.yaml');
     exit(1);
   }
+  
+  final version = versionMatch.group(1)!;
+  printInfo('📝 Версия из pubspec.yaml: $version');
+
+  // Получаем changelog из аргументов
+  final filteredArgs = args.where((arg) => !arg.startsWith('--')).toList();
+  final changelog = filteredArgs.isNotEmpty ? filteredArgs.join(' ') : null;
 
   final apkName = 'fieldforce-v$version.apk';
 
@@ -189,7 +171,7 @@ void main(List<String> args) async {
 
   // Создаем update-info.json в папке deploy
   final updateInfo = {
-    'changelog': changelog ?? '🚀 Обновление до версии $version\n✨ Улучшения производительности\n🔧 Исправления ошибок',
+    'changelog': changelog ?? 'Обновление до версии $version\n',
     'required': false,
     'min_supported_version': DEFAULT_MIN_SUPPORTED_VERSION,
   };
