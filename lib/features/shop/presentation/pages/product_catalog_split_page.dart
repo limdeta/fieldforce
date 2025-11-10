@@ -197,19 +197,93 @@ class _ProductCatalogSplitPageState extends State<ProductCatalogSplitPage> {
     setState(() {
       if (query.isEmpty) {
         _filteredCategories = _categories;
+        // Сбрасываем раскрытие категорий при очистке поиска
+        _expandedCategoryIds.clear();
+        _stateStore.expandedCategoryIds = Set<int>.from(_expandedCategoryIds);
       } else {
         _filteredCategories = _filterCategories(_categories, query);
+        // Автоматически раскрываем все найденные категории
+        _expandFilteredCategories(_filteredCategories);
+        _stateStore.expandedCategoryIds = Set<int>.from(_expandedCategoryIds);
       }
     });
   }
 
+  /// Собирает ID всех категорий из отфильтрованного дерева для авто-раскрытия
+  void _expandFilteredCategories(List<Category> categories) {
+    _expandedCategoryIds.clear();
+    
+    void collectIds(Category category) {
+      if (category.children.isNotEmpty) {
+        _expandedCategoryIds.add(category.id);
+        for (final child in category.children) {
+          collectIds(child);
+        }
+      }
+    }
+    
+    for (final category in categories) {
+      collectIds(category);
+    }
+  }
+
   List<Category> _filterCategories(List<Category> categories, String query) {
-    return categories.where((category) {
-      final matchesName = category.name.toLowerCase().contains(query);
-      final matchesChildren = category.children.isNotEmpty &&
-          _filterCategories(category.children, query).isNotEmpty;
-      return matchesName || matchesChildren;
-    }).toList();
+    // Находим все категории, которые совпадают с поиском
+    final matchedCategories = _categoryIndex.values
+        .where((cat) => cat.name.toLowerCase().contains(query))
+        .toList();
+
+    if (matchedCategories.isEmpty) {
+      return [];
+    }
+
+    // Собираем ID всех категорий, которые нужно показать
+    // (найденные + все их предки для построения путей)
+    final categoriesToShow = <int>{};
+    
+    for (final matched in matchedCategories) {
+      categoriesToShow.add(matched.id);
+      
+      // Добавляем всех предков используя nested set model
+      // Предок: lft < matched.lft AND rgt > matched.rgt
+      for (final candidate in _categoryIndex.values) {
+        if (candidate.lft < matched.lft && candidate.rgt > matched.rgt) {
+          categoriesToShow.add(candidate.id);
+        }
+      }
+    }
+
+    // Рекурсивно строим дерево, оставляя только нужные категории
+    Category? filterRecursive(Category category) {
+      if (!categoriesToShow.contains(category.id)) {
+        return null;
+      }
+
+      // Фильтруем детей - оставляем только те, что в нашем наборе
+      final filteredChildren = category.children
+          .map((child) => filterRecursive(child))
+          .where((child) => child != null)
+          .cast<Category>()
+          .toList();
+
+      return Category(
+        id: category.id,
+        name: category.name,
+        lft: category.lft,
+        lvl: category.lvl,
+        rgt: category.rgt,
+        description: category.description,
+        query: category.query,
+        count: category.count,
+        children: filteredChildren,
+      );
+    }
+
+    return categories
+        .map((category) => filterRecursive(category))
+        .where((category) => category != null)
+        .cast<Category>()
+        .toList();
   }
 
   Category? get _selectedCategory =>
@@ -350,14 +424,11 @@ class _ProductCatalogSplitPageState extends State<ProductCatalogSplitPage> {
       return _buildCategoriesErrorState(context, _categoriesError!);
     }
 
-    if (_filteredCategories.isEmpty) {
-      return _buildEmptyCategoriesState(context);
-    }
-
     final theme = Theme.of(context);
 
     return Column(
       children: [
+        // Поле поиска всегда видимо
         Container(
           color: theme.colorScheme.surface,
           padding: const EdgeInsets.fromLTRB(12, 12, 12, 8),
@@ -386,18 +457,21 @@ class _ProductCatalogSplitPageState extends State<ProductCatalogSplitPage> {
             ),
           ),
         ),
+        // Показываем либо список категорий, либо пустое состояние
         Expanded(
-          child: RefreshIndicator(
-            onRefresh: () => _loadCategories(forceRefresh: true),
-            child: ListView(
-              controller: _categoryScrollController,
-              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
-              physics: const AlwaysScrollableScrollPhysics(),
-              children: _filteredCategories
-                  .map((category) => _buildCategoryCard(context, category, 0))
-                  .toList(),
-            ),
-          ),
+          child: _filteredCategories.isEmpty
+              ? _buildEmptyCategoriesContent(context)
+              : RefreshIndicator(
+                  onRefresh: () => _loadCategories(forceRefresh: true),
+                  child: ListView(
+                    controller: _categoryScrollController,
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+                    physics: const AlwaysScrollableScrollPhysics(),
+                    children: _filteredCategories
+                        .map((category) => _buildCategoryCard(context, category, 0))
+                        .toList(),
+                  ),
+                ),
         ),
       ],
     );
@@ -439,7 +513,7 @@ class _ProductCatalogSplitPageState extends State<ProductCatalogSplitPage> {
     );
   }
 
-  Widget _buildEmptyCategoriesState(BuildContext context) {
+  Widget _buildEmptyCategoriesContent(BuildContext context) {
     return Center(
       child: Padding(
         padding: const EdgeInsets.all(24),

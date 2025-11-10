@@ -39,6 +39,7 @@ import 'package:fieldforce/features/shop/domain/usecases/clear_cart_usecase.dart
 import 'package:fieldforce/features/shop/domain/usecases/create_order_usecase.dart';
 import 'package:fieldforce/features/shop/domain/usecases/create_employee_usecase.dart';
 import 'package:fieldforce/features/shop/domain/usecases/get_current_cart_usecase.dart';
+import 'package:fieldforce/features/shop/domain/usecases/search_products_usecase.dart';
 import 'package:fieldforce/features/shop/domain/usecases/get_order_by_id_usecase.dart';
 import 'package:fieldforce/features/shop/domain/usecases/get_orders_usecase.dart';
 import 'package:fieldforce/features/shop/domain/usecases/get_trading_point_orders_usecase.dart';
@@ -151,6 +152,9 @@ void registerShopDependencies(GetIt getIt) {
     )
     ..registerLazySingleton<GetCurrentCartUseCase>(
       () => GetCurrentCartUseCase(getIt<OrderRepository>()),
+    )
+    ..registerLazySingleton<SearchProductsUseCase>(
+      () => SearchProductsUseCase(getIt<ProductRepository>()),
     )
     ..registerLazySingleton<UpdateCartItemUseCase>(
       () => UpdateCartItemUseCase(

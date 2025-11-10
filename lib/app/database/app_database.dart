@@ -26,6 +26,7 @@ import 'tables/stock_item_table.dart';
 import 'tables/warehouse_table.dart';
 import 'tables/order_job_table.dart';
 import 'tables/sync_log_table.dart';
+import 'migrations/migration_v2_fts5.dart';
 
 part 'app_database.g.dart';
 
@@ -61,13 +62,17 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase.forTesting(DatabaseConnection super.connection);
 
   @override
-  int get schemaVersion => 1;
+  int get schemaVersion => 2; // Увеличиваем версию для FTS5
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
     onCreate: (Migrator m) async {
       _dbLogger.info('🆕 Создание новой БД версии $schemaVersion');
       await m.createAll();
+      
+      // Создаём FTS5 таблицу и триггеры (миграция v2)
+      await MigrationV2Fts5.createFtsTable(this);
+      await MigrationV2Fts5.createFtsTriggers(this);
       
       // Включаем foreign key constraints
       await customStatement('PRAGMA foreign_keys = ON');
@@ -76,14 +81,10 @@ class AppDatabase extends _$AppDatabase {
     onUpgrade: (Migrator m, int from, int to) async {
       _dbLogger.info('🔄 Миграция БД с версии $from на $to');
       
-      // TODO: Добавить миграции по мере изменения схемы
-      // Пример:
-      // if (from == 1 && to == 2) {
-      //   await m.addColumn(orders, orders.newColumn);
-      // }
-      // if (from <= 2 && to >= 3) {
-      //   await m.createTable(newTable);
-      // }
+      // Миграция v1 -> v2: добавление FTS5 для поиска продуктов
+      if (from < 2 && to >= 2) {
+        await MigrationV2Fts5.migrate(this);
+      }
       
       _dbLogger.info('✅ БД обновлена до версии $to');
     },

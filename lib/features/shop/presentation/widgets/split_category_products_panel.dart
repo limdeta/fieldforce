@@ -6,6 +6,7 @@ import 'package:fieldforce/features/shop/domain/entities/category.dart';
 import 'package:fieldforce/features/shop/domain/entities/product_with_stock.dart';
 import 'package:fieldforce/features/shop/domain/entities/stock_item.dart';
 import 'package:fieldforce/features/shop/domain/repositories/product_repository.dart';
+import 'package:fieldforce/features/shop/domain/usecases/search_products_usecase.dart';
 import 'package:fieldforce/features/shop/presentation/bloc/cart_bloc.dart';
 import 'package:fieldforce/features/shop/presentation/pages/product_detail_page.dart';
 import 'package:fieldforce/features/shop/presentation/state/catalog_split_state.dart';
@@ -40,12 +41,18 @@ class _SplitCategoryProductsPanelState extends State<SplitCategoryProductsPanel>
   static final Logger _logger = Logger('SplitCategoryProductsPanel');
 
   final ProductRepository _productRepository = GetIt.instance<ProductRepository>();
+  final SearchProductsUseCase _searchProductsUseCase = GetIt.instance<SearchProductsUseCase>();
   final WarehouseFilterService _warehouseFilterService = GetIt.instance<WarehouseFilterService>();
   final CatalogSplitStateStore _stateStore = CatalogSplitStateStore.instance;
 
   final ScrollController _scrollController = ScrollController();
+  final TextEditingController _productSearchController = TextEditingController();
+  Timer? _searchDebounce;
+  
   List<ProductWithStock> _products = <ProductWithStock>[];
+  List<ProductWithStock> _searchResults = <ProductWithStock>[];
   bool _isLoading = false;
+  bool _isSearching = false;
   bool _hasMore = true;
   int _currentOffset = 0;
   String? _error;
@@ -83,8 +90,10 @@ class _SplitCategoryProductsPanelState extends State<SplitCategoryProductsPanel>
 
   @override
   void dispose() {
+    _searchDebounce?.cancel();
     _scrollController.removeListener(_onScroll);
     _scrollController.dispose();
+    _productSearchController.dispose();
     super.dispose();
   }
 
@@ -137,6 +146,68 @@ class _SplitCategoryProductsPanelState extends State<SplitCategoryProductsPanel>
         _loadProducts(reset: false);
       }
     }
+  }
+
+  void _onProductSearchChanged(String query) {
+    // Отменяем предыдущий debounce
+    _searchDebounce?.cancel();
+    
+    if (query.trim().isEmpty) {
+      setState(() {
+        _searchResults = <ProductWithStock>[];
+        _isSearching = false;
+      });
+      return;
+    }
+    
+    // Debounce на 500ms (люди печатают медленно)
+    _searchDebounce = Timer(const Duration(milliseconds: 500), () {
+      _performProductSearch(query.trim());
+    });
+  }
+
+  Future<void> _performProductSearch(String query) async {
+    if (!mounted) return;
+    
+    setState(() {
+      _isSearching = true;
+      _searchResults = <ProductWithStock>[];
+    });
+    
+    _logger.info('🔍 Поиск продуктов: "$query"');
+    
+    final result = await _searchProductsUseCase(query: query, limit: 50);
+    
+    if (!mounted) return;
+    
+    result.fold(
+      (failure) {
+        _logger.warning('⚠️ Ошибка поиска продуктов: ${failure.message}');
+        setState(() {
+          _isSearching = false;
+        });
+      },
+      (products) {
+        _logger.info('✅ Найдено ${products.length} продуктов');
+        
+        // Преобразуем Product в ProductWithStock без остатков
+        // (остатки подгрузятся при открытии карточки товара)
+        final productsWithStock = products.map((product) => ProductWithStock(
+          product: product,
+          totalStock: 0,
+          maxPrice: 0,
+          minPrice: 0,
+          hasDiscounts: false,
+        )).toList();
+        
+        if (!mounted) return;
+        
+        setState(() {
+          _searchResults = productsWithStock;
+          _isSearching = false;
+        });
+      },
+    );
   }
 
   Future<void> _loadProducts({required bool reset}) async {
@@ -295,21 +366,76 @@ class _SplitCategoryProductsPanelState extends State<SplitCategoryProductsPanel>
 
   @override
   Widget build(BuildContext context) {
-    if (widget.category == null) {
+    final theme = Theme.of(context);
+    
+    // Определяем какой список показывать
+    final bool showSearchResults = _productSearchController.text.trim().isNotEmpty;
+    final List<ProductWithStock> displayProducts = showSearchResults ? _searchResults : _products;
+    
+    return Column(
+      children: [
+        // Поисковая строка для продуктов
+        Container(
+          color: theme.colorScheme.surface,
+          padding: const EdgeInsets.fromLTRB(12, 12, 12, 8),
+          child: TextField(
+            controller: _productSearchController,
+            onChanged: _onProductSearchChanged,
+            decoration: InputDecoration(
+              hintText: 'Поиск по товарам',
+              prefixIcon: const Icon(Icons.search),
+              suffixIcon: _productSearchController.text.isNotEmpty
+                  ? IconButton(
+                      onPressed: () {
+                        _productSearchController.clear();
+                        _onProductSearchChanged('');
+                      },
+                      icon: const Icon(Icons.clear),
+                    )
+                  : null,
+              filled: true,
+              fillColor: Colors.grey.shade100,
+              border: const OutlineInputBorder(
+                borderRadius: BorderRadius.zero,
+                borderSide: BorderSide.none,
+              ),
+              contentPadding: const EdgeInsets.symmetric(vertical: 10),
+            ),
+          ),
+        ),
+        // Контент
+        Expanded(
+          child: _buildContent(context, displayProducts, showSearchResults),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildContent(BuildContext context, List<ProductWithStock> displayProducts, bool showSearchResults) {
+    if (widget.category == null && !showSearchResults) {
       return _buildEmptyCategoryPlaceholder(context);
     }
 
-    if (_isLoading && _products.isEmpty && _error == null) {
+    if (_isLoading && displayProducts.isEmpty && _error == null) {
       return const Center(
         child: CircularProgressIndicator(),
       );
     }
 
-    if (_error != null && _products.isEmpty) {
+    if (_isSearching) {
+      return const Center(
+        child: CircularProgressIndicator(),
+      );
+    }
+
+    if (_error != null && displayProducts.isEmpty) {
       return _buildErrorPlaceholder(context, _error!);
     }
 
-    if (!_isLoading && _products.isEmpty) {
+    if (!_isLoading && !_isSearching && displayProducts.isEmpty) {
+      if (showSearchResults) {
+        return _buildNoSearchResultsPlaceholder(context);
+      }
       return _buildNoProductsPlaceholder(context, widget.category!);
     }
 
@@ -319,30 +445,32 @@ class _SplitCategoryProductsPanelState extends State<SplitCategoryProductsPanel>
         controller: _scrollController,
         padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 12),
         physics: const AlwaysScrollableScrollPhysics(),
-        itemCount: _products.length + (_hasMore ? 1 : 0) + (_shouldShowHeader ? 1 : 0),
+        itemCount: displayProducts.length + (_hasMore && !showSearchResults ? 1 : 0) + (_shouldShowHeader && !showSearchResults ? 1 : 0),
         itemBuilder: (context, index) {
           int adjustedIndex = index;
 
-          if (_shouldShowHeader) {
+          if (_shouldShowHeader && !showSearchResults) {
             if (index == 0) {
               return _buildCategoryHeader(context, widget.category!);
             }
             adjustedIndex -= 1;
           }
 
-          if (adjustedIndex == _products.length) {
+          if (adjustedIndex == displayProducts.length) {
             return const Padding(
               padding: EdgeInsets.all(16.0),
               child: Center(child: CircularProgressIndicator()),
             );
           }
 
-          if (adjustedIndex >= _products.length) {
+          if (adjustedIndex >= displayProducts.length) {
             return const SizedBox.shrink();
           }
 
-          final productWithStock = _products[adjustedIndex];
-          _prefetchAheadOf(adjustedIndex);
+          final productWithStock = displayProducts[adjustedIndex];
+          if (!showSearchResults) {
+            _prefetchAheadOf(adjustedIndex);
+          }
 
           return Padding(
             padding: const EdgeInsets.only(bottom: 12),
@@ -357,6 +485,39 @@ class _SplitCategoryProductsPanelState extends State<SplitCategoryProductsPanel>
             ),
           );
         },
+      ),
+    );
+  }
+
+  Widget _buildNoSearchResultsPlaceholder(BuildContext context) {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(24),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(
+              Icons.search_off,
+              size: 64,
+              color: Colors.grey.shade400,
+            ),
+            const SizedBox(height: 16),
+            Text(
+              'Ничего не найдено',
+              style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                    color: Colors.grey.shade600,
+                  ),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              'Попробуйте изменить поисковый запрос',
+              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                    color: Colors.grey.shade500,
+                  ),
+              textAlign: TextAlign.center,
+            ),
+          ],
+        ),
       ),
     );
   }

@@ -57,6 +57,8 @@ class _StockItemSelectorWidgetState extends State<StockItemSelectorWidget> {
   }
 
   Future<void> _loadStockItems() async {
+    if (!mounted) return;
+    
     setState(() {
       _isLoading = true;
       _errorMessage = null;
@@ -67,9 +69,12 @@ class _StockItemSelectorWidgetState extends State<StockItemSelectorWidget> {
       
       final result = await _stockItemRepository.getStockItemsByProductCode(widget.productCode);
       
+      if (!mounted) return;
+      
       result.fold(
         (failure) {
           _logger.warning('Ошибка загрузки товаров: $failure');
+          if (!mounted) return;
           setState(() {
             _errorMessage = 'Ошибка загрузки складских остатков';
             _isLoading = false;
@@ -77,6 +82,7 @@ class _StockItemSelectorWidgetState extends State<StockItemSelectorWidget> {
         },
         (stockItems) {
           _logger.info('Загружено ${stockItems.length} товаров для продукта ${widget.productCode}');
+          if (!mounted) return;
           setState(() {
             _stockItems = stockItems;
             _isLoading = false;
@@ -92,6 +98,7 @@ class _StockItemSelectorWidgetState extends State<StockItemSelectorWidget> {
       );
     } catch (e, st) {
       _logger.severe('Неожиданная ошибка при загрузке StockItem', e, st);
+      if (!mounted) return;
       setState(() {
         _errorMessage = 'Неожиданная ошибка';
         _isLoading = false;

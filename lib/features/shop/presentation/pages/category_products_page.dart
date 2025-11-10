@@ -10,6 +10,7 @@ import 'package:fieldforce/features/shop/domain/entities/category.dart';
 import 'package:fieldforce/features/shop/domain/entities/product_with_stock.dart';
 import 'package:fieldforce/features/shop/domain/entities/stock_item.dart';
 import 'package:fieldforce/features/shop/domain/repositories/product_repository.dart';
+import 'package:fieldforce/features/shop/domain/usecases/search_products_usecase.dart';
 import 'package:fieldforce/features/shop/presentation/bloc/cart_bloc.dart';
 import 'package:fieldforce/features/shop/presentation/widgets/navigation_fab_widget.dart';
 import 'package:fieldforce/features/shop/presentation/pages/product_detail_page.dart';
@@ -32,10 +33,16 @@ class CategoryProductsPage extends StatefulWidget {
 class _CategoryProductsPageState extends State<CategoryProductsPage> {
   static final Logger _logger = Logger('CategoryProductsPage');
   final ProductRepository _productRepository = GetIt.instance<ProductRepository>();
+  final SearchProductsUseCase _searchProductsUseCase = GetIt.instance<SearchProductsUseCase>();
   final WarehouseFilterService _warehouseFilterService = GetIt.instance<WarehouseFilterService>();
 
+  final TextEditingController _searchController = TextEditingController();
+  Timer? _searchDebounce;
+  
   List<ProductWithStock> _products = [];
+  List<ProductWithStock> _searchResults = [];
   bool _isLoading = true;
+  bool _isSearching = false;
   String? _error;
   final ScrollController _scrollController = ScrollController();
   bool _hasMore = true;
@@ -62,7 +69,9 @@ class _CategoryProductsPageState extends State<CategoryProductsPage> {
 
   @override
   void dispose() {
+    _searchDebounce?.cancel();
     _scrollController.dispose();
+    _searchController.dispose();
     super.dispose();
   }
 
@@ -72,6 +81,68 @@ class _CategoryProductsPageState extends State<CategoryProductsPage> {
         _loadMoreProducts();
       }
     }
+  }
+
+  void _onSearchChanged(String query) {
+    _searchDebounce?.cancel();
+    
+    if (query.trim().isEmpty) {
+      setState(() {
+        _searchResults = [];
+        _isSearching = false;
+      });
+      return;
+    }
+    
+    _searchDebounce = Timer(const Duration(milliseconds: 500), () {
+      _performProductSearch(query.trim());
+    });
+  }
+
+  Future<void> _performProductSearch(String query) async {
+    if (!mounted) return;
+    
+    setState(() {
+      _isSearching = true;
+      _searchResults = [];
+    });
+    
+    _logger.info('🔍 Поиск продуктов: "$query"');
+    
+    final result = await _searchProductsUseCase(
+      query: query,
+      categoryId: widget.category.id,
+      limit: 50,
+    );
+    
+    if (!mounted) return;
+    
+    result.fold(
+      (failure) {
+        _logger.warning('⚠️ Ошибка поиска продуктов: ${failure.message}');
+        setState(() {
+          _isSearching = false;
+        });
+      },
+      (products) {
+        _logger.info('✅ Найдено ${products.length} продуктов');
+        
+        final productsWithStock = products.map((product) => ProductWithStock(
+          product: product,
+          totalStock: 0,
+          maxPrice: 0,
+          minPrice: 0,
+          hasDiscounts: false,
+        )).toList();
+        
+        if (!mounted) return;
+        
+        setState(() {
+          _searchResults = productsWithStock;
+          _isSearching = false;
+        });
+      },
+    );
   }
 
   Future<void> _loadProducts() async {
@@ -233,7 +304,51 @@ class _CategoryProductsPageState extends State<CategoryProductsPage> {
   }
 
   Widget _buildBody() {
-    if (_error != null) {
+    final theme = Theme.of(context);
+    final bool showSearchResults = _searchController.text.trim().isNotEmpty;
+    final List<ProductWithStock> displayProducts = showSearchResults ? _searchResults : _products;
+    
+    return Column(
+      children: [
+        // Поисковая строка
+        Container(
+          color: theme.colorScheme.surface,
+          padding: const EdgeInsets.fromLTRB(12, 12, 12, 8),
+          child: TextField(
+            controller: _searchController,
+            onChanged: _onSearchChanged,
+            decoration: InputDecoration(
+              hintText: 'Поиск по товарам',
+              prefixIcon: const Icon(Icons.search),
+              suffixIcon: _searchController.text.isNotEmpty
+                  ? IconButton(
+                      onPressed: () {
+                        _searchController.clear();
+                        _onSearchChanged('');
+                      },
+                      icon: const Icon(Icons.clear),
+                    )
+                  : null,
+              filled: true,
+              fillColor: Colors.grey.shade100,
+              border: const OutlineInputBorder(
+                borderRadius: BorderRadius.zero,
+                borderSide: BorderSide.none,
+              ),
+              contentPadding: const EdgeInsets.symmetric(vertical: 10),
+            ),
+          ),
+        ),
+        // Контент
+        Expanded(
+          child: _buildContent(displayProducts, showSearchResults),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildContent(List<ProductWithStock> displayProducts, bool showSearchResults) {
+    if (_error != null && displayProducts.isEmpty) {
       return Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
@@ -270,7 +385,20 @@ class _CategoryProductsPageState extends State<CategoryProductsPage> {
       );
     }
 
-    if (_isLoading && _products.isEmpty) {
+    if (_isSearching) {
+      return const Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            CircularProgressIndicator(),
+            SizedBox(height: 16),
+            Text('Поиск товаров...'),
+          ],
+        ),
+      );
+    }
+
+    if (_isLoading && displayProducts.isEmpty) {
       return const Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
@@ -283,43 +411,21 @@ class _CategoryProductsPageState extends State<CategoryProductsPage> {
       );
     }
 
-    if (_products.isEmpty) {
-      return Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(
-              Icons.shopping_bag_outlined,
-              size: 64,
-              color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.5),
-            ),
-            const SizedBox(height: 16),
-            Text(
-              'Товары не найдены',
-              style: Theme.of(context).textTheme.headlineSmall,
-            ),
-            const SizedBox(height: 8),
-            Text(
-              'В категории "${widget.category.name}" пока нет товаров',
-              textAlign: TextAlign.center,
-              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.7),
-              ),
-            ),
-          ],
-        ),
-      );
+    if (displayProducts.isEmpty) {
+      if (showSearchResults) {
+        return _buildNoSearchResultsPlaceholder();
+      }
+      return _buildNoProductsPlaceholder();
     }
 
     return RefreshIndicator(
       onRefresh: _loadProducts,
       child: ListView.builder(
         controller: _scrollController,
-        // Reduced horizontal padding so cards align with screen edges
         padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 12),
-        itemCount: _products.length + (_hasMore ? 1 : 0),
+        itemCount: displayProducts.length + (_hasMore && !showSearchResults ? 1 : 0),
         itemBuilder: (context, index) {
-          if (index == _products.length) {
+          if (index == displayProducts.length) {
             // Показываем индикатор загрузки в конце списка
             return const Padding(
               padding: EdgeInsets.all(16.0),
@@ -329,8 +435,10 @@ class _CategoryProductsPageState extends State<CategoryProductsPage> {
             );
           }
 
-          final productWithStock = _products[index];
-          _prefetchAheadOf(index);
+          final productWithStock = displayProducts[index];
+          if (!showSearchResults) {
+            _prefetchAheadOf(index);
+          }
           
           return Padding(
             padding: const EdgeInsets.only(bottom: 12),
@@ -390,5 +498,66 @@ class _CategoryProductsPageState extends State<CategoryProductsPage> {
     final end = math.min(_products.length, nextIndex + _prefetchBatchSize);
     final slice = _products.sublist(nextIndex, end);
     _schedulePrefetchForProducts(slice);
+  }
+
+  Widget _buildNoSearchResultsPlaceholder() {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(24),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(
+              Icons.search_off,
+              size: 64,
+              color: Colors.grey.shade400,
+            ),
+            const SizedBox(height: 16),
+            Text(
+              'Ничего не найдено',
+              style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                    color: Colors.grey.shade600,
+                  ),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              'Попробуйте изменить поисковый запрос',
+              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                    color: Colors.grey.shade500,
+                  ),
+              textAlign: TextAlign.center,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildNoProductsPlaceholder() {
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(
+            Icons.shopping_bag_outlined,
+            size: 64,
+            color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.5),
+          ),
+          const SizedBox(height: 16),
+          Text(
+            'Товары не найдены',
+            style: Theme.of(context).textTheme.headlineSmall,
+          ),
+          const SizedBox(height: 8),
+          Text(
+            'В категории "${widget.category.name}" пока нет товаров',
+            textAlign: TextAlign.center,
+            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+              color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.7),
+            ),
+          ),
+        ],
+      ),
+    );
   }
 }

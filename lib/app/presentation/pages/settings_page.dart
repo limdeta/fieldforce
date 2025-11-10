@@ -42,10 +42,14 @@ class _SettingsPageState extends State<SettingsPage> {
       _catalogMode = mode;
     });
 
+    // Сохраняем ScaffoldMessenger ДО async операции
+    final messenger = ScaffoldMessenger.of(context);
+
     await _preferencesService.setCatalogDisplayMode(mode);
 
     if (!mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(
+    
+    messenger.showSnackBar(
       SnackBar(
         content: Text('Режим каталога: ${mode.label}'),
         duration: const Duration(seconds: 2),

@@ -90,19 +90,112 @@ class _ProductCatalogPageState extends State<ProductCatalogPage>
       _searchQuery = query.toLowerCase();
       if (_searchQuery.isEmpty) {
         _filteredCategories = _categories;
+        // Сбрасываем раскрытие категорий при очистке поиска
+        _expandedCategories.clear();
       } else {
         _filteredCategories = _filterCategories(_categories, _searchQuery);
+        // Автоматически раскрываем все найденные категории
+        _expandFilteredCategories(_filteredCategories);
       }
     });
   }
 
+  /// Собирает ID всех категорий из отфильтрованного дерева для авто-раскрытия
+  void _expandFilteredCategories(List<Category> categories) {
+    _expandedCategories.clear();
+    
+    void collectIds(Category category) {
+      if (category.children.isNotEmpty) {
+        _expandedCategories.add(category.id);
+        for (final child in category.children) {
+          collectIds(child);
+        }
+      }
+    }
+    
+    for (final category in categories) {
+      collectIds(category);
+    }
+  }
+
+  /// Строит плоский индекс всех категорий для быстрого поиска
+  Map<int, Category> _buildCategoryIndex(List<Category> categories) {
+    final map = <int, Category>{};
+    
+    void visit(Category category) {
+      map[category.id] = category;
+      for (final child in category.children) {
+        visit(child);
+      }
+    }
+    
+    for (final category in categories) {
+      visit(category);
+    }
+    
+    return map;
+  }
+
   List<Category> _filterCategories(List<Category> categories, String query) {
-    return categories.where((category) {
-      final matchesName = category.name.toLowerCase().contains(query);
-      final matchesChildren = category.children.isNotEmpty &&
-          _filterCategories(category.children, query).isNotEmpty;
-      return matchesName || matchesChildren;
-    }).toList();
+    // Строим плоский индекс для поиска
+    final categoryIndex = _buildCategoryIndex(categories);
+    
+    // Находим все категории, которые совпадают с поиском
+    final matchedCategories = categoryIndex.values
+        .where((cat) => cat.name.toLowerCase().contains(query))
+        .toList();
+
+    if (matchedCategories.isEmpty) {
+      return [];
+    }
+
+    // Собираем ID всех категорий, которые нужно показать
+    // (найденные + все их предки для построения путей)
+    final categoriesToShow = <int>{};
+    
+    for (final matched in matchedCategories) {
+      categoriesToShow.add(matched.id);
+      
+      // Добавляем всех предков используя nested set model
+      // Предок: lft < matched.lft AND rgt > matched.rgt
+      for (final candidate in categoryIndex.values) {
+        if (candidate.lft < matched.lft && candidate.rgt > matched.rgt) {
+          categoriesToShow.add(candidate.id);
+        }
+      }
+    }
+
+    // Рекурсивно строим дерево, оставляя только нужные категории
+    Category? _filterRecursive(Category category) {
+      if (!categoriesToShow.contains(category.id)) {
+        return null;
+      }
+
+      // Фильтруем детей - оставляем только те, что в нашем наборе
+      final filteredChildren = category.children
+          .map((child) => _filterRecursive(child))
+          .where((child) => child != null)
+          .cast<Category>()
+          .toList();
+
+      return Category(
+        id: category.id,
+        name: category.name,
+        lft: category.lft,
+        lvl: category.lvl,
+        rgt: category.rgt,
+        description: category.description,
+        query: category.query,
+        count: category.count,
+        children: filteredChildren,
+      );
+    }
+
+    return categories
+        .map((category) => _filterRecursive(category))
+        .where((category) => category != null)
+        .cast<Category>()
+        .toList();
   }
 
   void _toggleCategoryExpansion(int categoryId) {

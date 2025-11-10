@@ -409,6 +409,126 @@ class DriftProductRepository implements ProductRepository {
   }
 
   @override
+  Future<Either<Failure, List<Product>>> searchProductsWithFts(
+    String query, {
+    int? categoryId,
+    int offset = 0,
+    int limit = 20,
+  }) async {
+    try {
+      if (query.trim().isEmpty) {
+        return const Right([]);
+      }
+
+      final sanitizedQuery = _sanitizeFtsQuery(query);
+      final lowerQuery = query.trim().toLowerCase();
+      
+      // Строим условие для фильтрации по категории
+      // categoriesInstock — это массив объектов [{id: 100, name: "..."}, ...]
+      // Извлекаем поле id из каждого объекта
+      final categoryFilter = categoryId != null 
+          ? 'AND EXISTS (SELECT 1 FROM json_each(json_extract(p.raw_json, \'\$.categoriesInstock\')) WHERE CAST(json_extract(value, \'\$.id\') AS INTEGER) = ?)'
+          : '';
+      
+      // FTS5 поиск с многоуровневым ранжированием
+      final results = await _database.customSelect(
+        '''
+        SELECT 
+          p.code,
+          p.raw_json,
+          -- Расчёт релевантности по приоритетам
+          CASE
+            -- Приоритет 1000: Точное совпадение code
+            WHEN CAST(p.code AS TEXT) = ? THEN 1000
+            
+            -- Приоритет 1000: Точное совпадение любого barcode
+            WHEN EXISTS (
+              SELECT 1 FROM json_each(json_extract(p.raw_json, '\$.barcodes'))
+              WHERE value = ?
+            ) THEN 1000
+            
+            -- Приоритет 100: Title начинается с запроса (без учёта регистра)
+            WHEN lower(p.title) LIKE ? || '%' THEN 100
+            
+            -- Приоритет 50: Title содержит запрос
+            WHEN lower(p.title) LIKE '%' || ? || '%' THEN 50
+            
+            -- Приоритет 30: VendorCode содержит запрос
+            WHEN lower(COALESCE(json_extract(p.raw_json, '\$.vendorCode'), '')) LIKE '%' || ? || '%' THEN 30
+            
+            -- Приоритет 20: Brand name содержит запрос
+            WHEN lower(COALESCE(json_extract(p.raw_json, '\$.brand.name'), '')) LIKE '%' || ? || '%' THEN 20
+            
+            -- Приоритет 10: FTS match (BM25 ранжирование)
+            ELSE CAST(bm25(products_fts) * -10 AS INTEGER)
+          END as relevance
+        FROM products p
+        INNER JOIN products_fts fts ON p.code = fts.product_code
+        WHERE products_fts MATCH ?
+        $categoryFilter
+        ORDER BY relevance DESC, p.title ASC
+        LIMIT ? OFFSET ?
+        ''',
+        variables: [
+          Variable.withString(lowerQuery),     // code exact match
+          Variable.withString(query),          // barcode exact match
+          Variable.withString(lowerQuery),     // title starts with
+          Variable.withString(lowerQuery),     // title contains
+          Variable.withString(lowerQuery),     // vendorCode contains
+          Variable.withString(lowerQuery),     // brand contains
+          Variable.withString(sanitizedQuery), // FTS MATCH query
+          if (categoryId != null) Variable.withInt(categoryId), // category filter
+          Variable.withInt(limit),
+          Variable.withInt(offset),
+        ],
+        readsFrom: {_database.products},
+      ).get();
+
+      final productList = results.map((row) {
+        final json = jsonDecode(row.data['raw_json'] as String) as Map<String, dynamic>;
+        return Product.fromJson(json);
+      }).toList();
+
+      final categoryInfo = categoryId != null ? ' в категории $categoryId' : '';
+      _logger.fine('FTS поиск "$query"$categoryInfo: найдено ${productList.length} продуктов');
+      return Right(productList);
+      
+    } catch (e, stackTrace) {
+      _logger.severe('Ошибка FTS поиска продуктов', e, stackTrace);
+      return Left(DatabaseFailure('Ошибка поиска: $e'));
+    }
+  }
+
+  /// Санитизация запроса для FTS5 - удаляет спецсимволы и добавляет prefix matching
+  String _sanitizeFtsQuery(String query) {
+    // Убираем спецсимволы FTS5 которые могут вызвать синтаксические ошибки
+    final sanitized = query
+        .replaceAll('"', '')
+        .replaceAll('*', '')
+        .replaceAll('(', '')
+        .replaceAll(')', '')
+        .replaceAll(':', '')
+        .replaceAll('^', '')
+        .trim();
+    
+    if (sanitized.isEmpty) {
+      return '';
+    }
+    
+    // Разбиваем на токены по пробелам И дефисам (чтобы соответствовать FTS tokenizer)
+    final tokens = sanitized.split(RegExp(r'[\s\-]+'))
+        .where((t) => t.isNotEmpty)
+        .toList();
+    
+    if (tokens.isEmpty) {
+      return '';
+    }
+    
+    // Для FTS5: каждый токен с * для частичного совпадения
+    return tokens.map((token) => '$token*').join(' ');
+  }
+
+  @override
   Future<Either<Failure, void>> saveProducts(List<Product> products) async {
     try {
       await _database.transaction(() async {

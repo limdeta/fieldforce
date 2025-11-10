@@ -38,6 +38,21 @@ abstract class ProductRepository {
   /// Поиск продуктов с пагинацией
   Future<Either<Failure, List<Product>>> searchProductsPaginated(String query, {int offset = 0, int limit = 20});
 
+  /// Полнотекстовый поиск продуктов с FTS5 и ранжированием
+  /// Поддерживает поиск по: title, code, barcode, vendorCode, brand
+  /// Приоритеты: точное совпадение code/barcode > начало title > содержит title
+  /// 
+  /// [query] - поисковый запрос
+  /// [categoryId] - опциональный ID категории для фильтрации (null = поиск везде)
+  /// [offset] - смещение для пагинации
+  /// [limit] - лимит результатов
+  Future<Either<Failure, List<Product>>> searchProductsWithFts(
+    String query, {
+    int? categoryId,
+    int offset = 0,
+    int limit = 20,
+  });
+
   /// Сохранить продукты
   Future<Either<Failure, void>> saveProducts(List<Product> products);
 
