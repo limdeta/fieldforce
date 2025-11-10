@@ -1,4 +1,5 @@
 import 'package:fieldforce/features/authentication/domain/usecases/logout_usecase.dart';
+import 'package:fieldforce/app/helpers/navigation_helper.dart';
 import 'package:fieldforce/app/theme/app_colors.dart';
 import 'package:flutter/material.dart';
 import 'package:get_it/get_it.dart';
@@ -32,6 +33,11 @@ class _MainMenuPageState extends State<MainMenuPage> {
   /// Структура меню
   final List<MenuItem> _menuItems = const [
     MenuItem(
+      title: 'Карта',
+      icon: Icons.map,
+      route: '/sales-home',
+    ),
+    MenuItem(
       title: 'Дашборд',
       icon: Icons.dashboard,
       route: '/dashboard',
@@ -40,6 +46,11 @@ class _MainMenuPageState extends State<MainMenuPage> {
       title: 'Маршруты',
       icon: Icons.route,
       route: '/routes',
+    ),
+    MenuItem(
+      title: 'Поиск',
+      icon: Icons.search,
+      route: '/products/search',
     ),
     MenuItem(
       title: 'Товары',
@@ -215,10 +226,14 @@ class _MainMenuPageState extends State<MainMenuPage> {
         Navigator.pushNamed(context, '/routes');
       } else if (item.route == '/profile') {
         Navigator.pushNamed(context, '/profile');
+      } else if (item.route == '/sales-home') {
+        Navigator.pushNamed(context, '/sales-home');
       } else if (item.route == '/outlets') {
         Navigator.pushNamed(context, '/outlets');
       } else if (item.route == '/products/catalog') {
         Navigator.pushNamed(context, '/products/catalog');
+      } else if (item.route == '/products/search') {
+        Navigator.pushNamed(context, '/products/search');
       } else if (item.route == '/cart') {
         Navigator.pushNamed(context, '/cart');
       } else if (item.route == '/orders') {
@@ -232,11 +247,12 @@ class _MainMenuPageState extends State<MainMenuPage> {
       } else if (item.route == '/logout') {
         _handleLogout();
       } else {
-        Navigator.pushReplacementNamed(context, '/sales-home');
+        // Неизвестный маршрут - переходим на домашнюю страницу из настроек
+        NavigationHelper.navigateHome(context);
         
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('${item.title} - работает через главную карту'),
+            content: Text('${item.title} - в разработке'),
             duration: const Duration(seconds: 2),
           ),
         );

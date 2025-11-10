@@ -1,3 +1,4 @@
+import 'package:fieldforce/app/domain/entities/home_page_option.dart';
 import 'package:fieldforce/app/services/update_service.dart';
 import 'package:fieldforce/app/services/user_preferences_service.dart';
 import 'package:fieldforce/features/shop/domain/entities/catalog_display_mode.dart';
@@ -17,12 +18,16 @@ class _SettingsPageState extends State<SettingsPage> {
       GetIt.instance<UserPreferencesService>();
 
   late CatalogDisplayMode _catalogMode;
+  late HomePageOption _homePageOption;
   late final Future<String> _versionLabelFuture;
 
   @override
   void initState() {
     super.initState();
     _catalogMode = _preferencesService.getCatalogDisplayMode();
+    _homePageOption = HomePageOption.fromRoute(
+      _preferencesService.getHomePageRoute(),
+    );
     _versionLabelFuture = _loadVersionLabel();
   }
 
@@ -57,6 +62,27 @@ class _SettingsPageState extends State<SettingsPage> {
     );
   }
 
+  Future<void> _onHomePageChanged(HomePageOption? option) async {
+    if (option == null || option == _homePageOption) return;
+
+    setState(() {
+      _homePageOption = option;
+    });
+
+    final messenger = ScaffoldMessenger.of(context);
+
+    await _preferencesService.setHomePageRoute(option.route);
+
+    if (!mounted) return;
+    
+    messenger.showSnackBar(
+      SnackBar(
+        content: Text('Домашняя страница: ${option.label}'),
+        duration: const Duration(seconds: 2),
+      ),
+    );
+  }
+
   void _handleCheckUpdates() {
     UpdateService.checkForUpdatesManually(context);
   }
@@ -70,6 +96,8 @@ class _SettingsPageState extends State<SettingsPage> {
       body: ListView(
         padding: const EdgeInsets.all(16),
         children: [
+          _buildHomePageCard(context),
+          const SizedBox(height: 12),
           _buildCatalogModeCard(context),
           const SizedBox(height: 12),
           _buildActionCard(
@@ -81,6 +109,75 @@ class _SettingsPageState extends State<SettingsPage> {
           const SizedBox(height: 20),
           _buildVersionFooter(context),
         ],
+      ),
+    );
+  }
+
+  Widget _buildHomePageCard(BuildContext context) {
+    final theme = Theme.of(context);
+
+    return Card(
+      shape: const RoundedRectangleBorder(),
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Icon(
+                  Icons.home,
+                  size: 20,
+                  color: theme.colorScheme.primary,
+                ),
+                const SizedBox(width: 8),
+                Text(
+                  'Домашняя страница',
+                  style: theme.textTheme.titleMedium?.copyWith(
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 8),
+            Text(
+              'Выберите страницу, которая будет открываться при нажатии кнопки "Домой".',
+              style: theme.textTheme.bodySmall?.copyWith(
+                color: theme.colorScheme.onSurface.withValues(alpha: 0.6),
+              ),
+            ),
+            const SizedBox(height: 16),
+            DropdownButtonFormField<HomePageOption>(
+              value: _homePageOption,
+              decoration: InputDecoration(
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                contentPadding: const EdgeInsets.symmetric(
+                  horizontal: 12,
+                  vertical: 8,
+                ),
+              ),
+              items: HomePageOption.values.map((option) {
+                return DropdownMenuItem<HomePageOption>(
+                  value: option,
+                  child: Row(
+                    children: [
+                      Icon(
+                        option.icon,
+                        size: 20,
+                        color: theme.colorScheme.primary,
+                      ),
+                      const SizedBox(width: 12),
+                      Text(option.label),
+                    ],
+                  ),
+                );
+              }).toList(),
+              onChanged: _onHomePageChanged,
+            ),
+          ],
+        ),
       ),
     );
   }

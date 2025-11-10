@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:get_it/get_it.dart';
+import 'package:fieldforce/app/helpers/navigation_helper.dart';
 import '../../../features/authentication/domain/usecases/get_current_session_usecase.dart';
 import '../../../features/authentication/domain/entities/session_state.dart';
 
@@ -42,9 +43,8 @@ class _SplashPageState extends State<SplashPage> {
                 Navigator.of(context).pushReplacementNamed('/login');
               },
               onFound: (userSession) {
-                // Есть security session - идем на главную
-                // Всю инициализацию сделаем там
-                Navigator.of(context).pushReplacementNamed('/sales-home');
+                // Есть security session - идем на домашнюю страницу из настроек
+                NavigationHelper.navigateHome(context, clearStack: true);
               },
             );
           },

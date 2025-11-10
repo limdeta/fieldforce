@@ -15,6 +15,7 @@ import 'package:fieldforce/features/shop/presentation/bloc/cart_bloc.dart';
 import 'package:fieldforce/features/shop/presentation/pages/product_detail_page.dart';
 import 'package:fieldforce/features/shop/presentation/widgets/product_catalog_card_widget.dart';
 import 'package:fieldforce/shared/widgets/cached_network_image_widget.dart';
+import 'package:fieldforce/shared/presentation/widgets/home_icon_button.dart';
 
 /// Страница списка продуктов для выбранной категории
 class CategoryProductsPage extends StatefulWidget {
@@ -301,17 +302,8 @@ class _CategoryProductsPageState extends State<CategoryProductsPage> {
             onPressed: () => Navigator.pushNamed(context, '/cart'),
             tooltip: 'Корзина',
           ),
-          // Кнопка домой
-          IconButton(
-            icon: const Icon(Icons.home),
-            onPressed: () {
-              Navigator.of(context).pushNamedAndRemoveUntil(
-                '/sales-home',
-                (route) => false,
-              );
-            },
-            tooltip: 'Домой',
-          ),
+          // Кнопка домой (скрывается автоматически если уже на домашней странице)
+          const HomeIconButton(),
         ],
       ),
       body: _buildBody(),

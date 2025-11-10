@@ -18,6 +18,7 @@ class UserPreferencesService {
   static const String _lastViewedTabKey = 'last_viewed_tab';
   static const String _catalogDisplayModeKey = 'catalog_display_mode';
   static const String _catalogSplitStateKey = 'catalog_split_state';
+  static const String _homePageRouteKey = 'home_page_route';
   
   SharedPreferences? _prefs;
   
@@ -180,7 +181,24 @@ class UserPreferencesService {
       _prefs!.remove(_lastViewedTabKey),
       _prefs!.remove(_catalogDisplayModeKey),
       _prefs!.remove(_catalogSplitStateKey),
+      _prefs!.remove(_homePageRouteKey),
     ]);
+  }
+
+  // ============================================================================
+  // ДОМАШНЯЯ СТРАНИЦА
+  // ============================================================================
+
+  /// Сохраняет маршрут домашней страницы
+  Future<void> setHomePageRoute(String route) async {
+    _ensureInitialized();
+    await _prefs!.setString(_homePageRouteKey, route);
+  }
+
+  /// Получает маршрут домашней страницы (по умолчанию '/menu')
+  String getHomePageRoute() {
+    _ensureInitialized();
+    return _prefs!.getString(_homePageRouteKey) ?? '/menu';
   }
 }
 

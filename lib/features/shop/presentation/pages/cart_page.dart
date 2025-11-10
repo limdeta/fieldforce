@@ -5,10 +5,10 @@ import 'package:fieldforce/features/shop/presentation/bloc/cart_bloc.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
-import 'package:fieldforce/features/shop/presentation/widgets/navigation_fab_widget.dart';
 import 'package:fieldforce/features/shop/presentation/widgets/cart_item_widget.dart';
 import 'package:fieldforce/features/shop/presentation/widgets/payment_method_selector.dart';
 import 'package:fieldforce/features/shop/presentation/widgets/delivery_date_selector.dart';
+import 'package:fieldforce/shared/presentation/widgets/home_icon_button.dart';
 import 'product_detail_page.dart';
 import 'package:fieldforce/features/shop/domain/entities/product_with_stock.dart';
 import 'package:fieldforce/features/shop/domain/entities/payment_kind.dart';
@@ -49,6 +49,8 @@ class _CartPageState extends State<CartPage> {
             onPressed: () => Navigator.pushNamed(context, '/orders'),
             tooltip: 'Мои заказы',
           ),
+          // Кнопка домой (скрывается автоматически если корзина - домашняя страница)
+          const HomeIconButton(),
         ],
       ),
       body: BlocBuilder<CartBloc, CartState>(
@@ -101,11 +103,6 @@ class _CartPageState extends State<CartPage> {
             return const Center(child: Text('Неизвестное состояние корзины'));
           },
         ),
-      floatingActionButton: NavigationFabWidget(
-        heroTagPrefix: 'cart',
-        showCart: false, // Мы уже в корзине
-        showHome: true,
-      ),
     );
   }
 

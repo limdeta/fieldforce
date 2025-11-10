@@ -1,5 +1,6 @@
 // lib/features/shop/presentation/widgets/navigation_fab_widget.dart
 
+import 'package:fieldforce/app/helpers/navigation_helper.dart';
 import 'package:flutter/material.dart';
 
 /// Виджет с плавающими кнопками навигации
@@ -51,11 +52,8 @@ class NavigationFabWidget extends StatelessWidget {
             child: FloatingActionButton(
               heroTag: "${heroTagPrefix ?? 'default'}_home",
               onPressed: onHomePressed ?? () {
-                // Переход на домашнюю страницу торгового представителя
-                Navigator.of(context).pushNamedAndRemoveUntil(
-                  '/sales-home',
-                  (route) => false, // Удаляем все предыдущие маршруты
-                );
+                // Переход на домашнюю страницу из настроек
+                NavigationHelper.navigateHome(context, clearStack: true);
               },
               backgroundColor: const Color.fromARGB(255, 73, 67, 160),
               foregroundColor: Colors.white,

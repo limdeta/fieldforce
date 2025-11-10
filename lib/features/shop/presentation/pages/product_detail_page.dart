@@ -5,10 +5,10 @@ import 'package:fieldforce/features/shop/domain/entities/product_with_stock.dart
 import 'package:fieldforce/features/shop/domain/entities/stock_item.dart';
 import 'package:fieldforce/features/shop/presentation/bloc/cart_bloc.dart';
 import 'package:fieldforce/features/shop/presentation/widgets/cart_control_widget.dart';
-import 'package:fieldforce/features/shop/presentation/widgets/navigation_fab_widget.dart';
 import 'package:fieldforce/features/shop/presentation/widgets/image_carousel_widget.dart';
 import 'package:fieldforce/features/shop/presentation/widgets/stock_item_selector_widget.dart';
 import 'package:fieldforce/shared/services/image_cache_service.dart';
+import 'package:fieldforce/shared/presentation/widgets/home_icon_button.dart';
 
 /// Страница с детальной информацией о продукте
 class ProductDetailPage extends StatefulWidget {
@@ -76,12 +76,18 @@ class _ProductDetailPageState extends State<ProductDetailPage> {
               icon: const Icon(Icons.arrow_back),
               onPressed: () => Navigator.of(context).pop(),
             ),
+            actions: [
+              // Кнопка корзины
+              IconButton(
+                icon: const Icon(Icons.shopping_cart),
+                onPressed: () => Navigator.pushNamed(context, '/cart'),
+                tooltip: 'Корзина',
+              ),
+              // Кнопка домой (скрывается автоматически если уже на домашней странице)
+              const HomeIconButton(),
+            ],
           ),
           body: _buildProductContent(context, widget.productWithStock),
-          floatingActionButton: const NavigationFabWidget(
-            onCartPressed: null,
-            onHomePressed: null,
-          ),
         ),
       );
   }

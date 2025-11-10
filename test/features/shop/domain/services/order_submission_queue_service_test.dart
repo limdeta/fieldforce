@@ -484,6 +484,11 @@ class TestProductRepository implements ProductRepository {
   }
 
   @override
+  Future<Either<Failure, List<Product>>> searchProductsWithFts(String query, {int? categoryId, int offset = 0, int limit = 20}) {
+    throw UnimplementedError();
+  }
+
+  @override
   Future<Either<Failure, void>> saveProducts(List<Product> products) {
     throw UnimplementedError();
   }

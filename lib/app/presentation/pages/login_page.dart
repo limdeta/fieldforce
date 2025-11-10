@@ -4,6 +4,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:logging/logging.dart';
 import 'package:fieldforce/app/di/service_locator.dart';
 import 'package:fieldforce/app/config/app_config.dart';
+import 'package:fieldforce/app/helpers/navigation_helper.dart';
 import 'package:fieldforce/features/authentication/domain/repositories/session_repository.dart';
 import 'package:fieldforce/app/services/app_session_service.dart';
 import 'package:fieldforce/app/services/user_initialization_service.dart';
@@ -207,20 +208,8 @@ class _LoginPageViewState extends State<LoginPageView> {
   }
 
   void _navigateByUserRole(BuildContext context, UserRole role) {
-    String targetRoute;
-    switch (role) {
-      case UserRole.admin:
-        targetRoute = '/sales-home';
-        break;
-      case UserRole.manager:
-        targetRoute = '/sales-home';
-        break;
-      case UserRole.user:
-        targetRoute = '/sales-home';
-        break;
-    }
-    
-    Navigator.of(context).pushReplacementNamed(targetRoute);
+    // Все роли переходят на домашнюю страницу из настроек
+    NavigationHelper.navigateHome(context, clearStack: true);
   }
 
   void _showError(String message) {

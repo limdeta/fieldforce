@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:fieldforce/shared/presentation/widgets/home_icon_button.dart';
 
 /// Страница акций (заглушка)
 class PromotionsPage extends StatelessWidget {
@@ -9,7 +10,6 @@ class PromotionsPage extends StatelessWidget {
     return Scaffold(
       appBar: AppBar(
         title: const Text('Акции'),
-
         foregroundColor: Colors.white,
         leading: IconButton(
           icon: const Icon(Icons.arrow_back),
@@ -17,6 +17,10 @@ class PromotionsPage extends StatelessWidget {
             Navigator.pushReplacementNamed(context, '/menu');
           },
         ),
+        actions: const [
+          // Кнопка домой (скрывается автоматически если уже на домашней странице)
+          HomeIconButton(),
+        ],
       ),
       body: const Center(
         child: Column(
@@ -45,12 +49,6 @@ class PromotionsPage extends StatelessWidget {
             ),
           ],
         ),
-      ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: () {
-          Navigator.pushReplacementNamed(context, '/sales-home');
-        },
-        child: const Icon(Icons.home),
       ),
     );
   }

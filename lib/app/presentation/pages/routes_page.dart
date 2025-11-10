@@ -1,5 +1,6 @@
 import 'package:fieldforce/app/domain/repositories/route_repository.dart';
 import 'package:fieldforce/app/domain/entities/route.dart' as domain;
+import 'package:fieldforce/app/helpers/navigation_helper.dart';
 import 'package:fieldforce/app/presentation/pages/route_detail_page.dart';
 import 'package:flutter/material.dart';
 import 'package:get_it/get_it.dart';
@@ -90,7 +91,7 @@ class _RoutesPageState extends State<RoutesPage> {
         leading: IconButton(
           icon: const Icon(Icons.arrow_back),
           onPressed: () {
-            Navigator.pushReplacementNamed(context, '/sales-home');
+            NavigationHelper.navigateHome(context);
           },
         ),
         actions: [
@@ -420,10 +421,10 @@ class _RoutesPageState extends State<RoutesPage> {
 
   void _openRouteOnMap(domain.Route route) {
     // Сохраняем выбранный маршрут в настройки
-    // и переходим на главную страницу, где он автоматически загрузится
+    // и переходим на карту, где он автоматически загрузится
     Navigator.pushReplacementNamed(
       context,
-      '/sales-home',
+      '/sales-home', // Всегда открываем карту для просмотра маршрута
       arguments: {'selectedRoute': route},
     );
   }

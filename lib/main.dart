@@ -31,6 +31,7 @@ import 'app/presentation/pages/settings_page.dart';
 import 'features/shop/presentation/pages/catalog_router_page.dart';
 import 'features/shop/presentation/pages/product_catalog_split_page.dart';
 import 'features/shop/presentation/pages/product_categories_page.dart';
+import 'features/shop/presentation/pages/product_search_page.dart';
 import 'features/shop/presentation/pages/orders_page.dart';
 import 'features/shop/presentation/pages/promotions_page.dart';
 
@@ -124,6 +125,7 @@ class FieldforceApp extends StatelessWidget {
             '/outlets': (context) => const TradingPointsListPage(),
             '/products/catalog': (context) => const CatalogRouterPage(),
             '/products/catalog-split': (context) => const ProductCatalogSplitPage(),
+            '/products/search': (context) => const ProductSearchPage(),
             '/products/categories': (context) => const ProductCategoriesPage(),
             '/products/promotions': (context) => const PromotionsPage(),
             '/cart': (context) => const CartPage(),

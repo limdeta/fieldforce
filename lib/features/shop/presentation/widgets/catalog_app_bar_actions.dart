@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:fieldforce/shared/presentation/widgets/home_icon_button.dart';
 
 /// Общие действия верхней панели каталога (домой, корзина, фильтр).
 ///
@@ -11,7 +12,6 @@ class CatalogAppBarActions extends StatelessWidget {
   final bool showHome;
   final VoidCallback? onCartPressed;
   final VoidCallback? onFilterPressed;
-  final VoidCallback? onHomePressed;
 
   const CatalogAppBarActions({
     super.key,
@@ -20,7 +20,6 @@ class CatalogAppBarActions extends StatelessWidget {
     this.showHome = true,
     this.onCartPressed,
     this.onFilterPressed,
-    this.onHomePressed,
   });
 
   @override
@@ -40,15 +39,9 @@ class CatalogAppBarActions extends StatelessWidget {
             tooltip: 'Фильтры',
             onPressed: onFilterPressed ?? () => showCatalogFilterPlaceholder(context),
           ),
+        // Умная кнопка домой - сама решает показываться или нет
         if (showHome)
-          IconButton(
-            icon: const Icon(Icons.home_outlined),
-            tooltip: 'Домой',
-            onPressed: onHomePressed ?? () => Navigator.of(context).pushNamedAndRemoveUntil(
-              '/sales-home',
-              (route) => false,
-            ),
-          ),
+          const HomeIconButton(),
         const SizedBox(width: 8),
       ],
     );
