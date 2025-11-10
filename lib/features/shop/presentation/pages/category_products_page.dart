@@ -12,7 +12,6 @@ import 'package:fieldforce/features/shop/domain/entities/stock_item.dart';
 import 'package:fieldforce/features/shop/domain/repositories/product_repository.dart';
 import 'package:fieldforce/features/shop/domain/usecases/search_products_usecase.dart';
 import 'package:fieldforce/features/shop/presentation/bloc/cart_bloc.dart';
-import 'package:fieldforce/features/shop/presentation/widgets/navigation_fab_widget.dart';
 import 'package:fieldforce/features/shop/presentation/pages/product_detail_page.dart';
 import 'package:fieldforce/features/shop/presentation/widgets/product_catalog_card_widget.dart';
 import 'package:fieldforce/shared/widgets/cached_network_image_widget.dart';
@@ -277,7 +276,7 @@ class _CategoryProductsPageState extends State<CategoryProductsPage> {
           // Показываем количество товаров в категории
           if (widget.category.count > 0)
             Padding(
-              padding: const EdgeInsets.only(right: 16.0),
+              padding: const EdgeInsets.only(right: 8.0),
               child: Center(
                 child: Container(
                   padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
@@ -296,10 +295,26 @@ class _CategoryProductsPageState extends State<CategoryProductsPage> {
                 ),
               ),
             ),
+          // Кнопка корзины
+          IconButton(
+            icon: const Icon(Icons.shopping_cart),
+            onPressed: () => Navigator.pushNamed(context, '/cart'),
+            tooltip: 'Корзина',
+          ),
+          // Кнопка домой
+          IconButton(
+            icon: const Icon(Icons.home),
+            onPressed: () {
+              Navigator.of(context).pushNamedAndRemoveUntil(
+                '/sales-home',
+                (route) => false,
+              );
+            },
+            tooltip: 'Домой',
+          ),
         ],
       ),
       body: _buildBody(),
-      floatingActionButton: const NavigationFabWidget(),
     );
   }
 
