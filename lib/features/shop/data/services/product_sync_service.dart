@@ -4,7 +4,9 @@ import 'dart:io';
 import 'dart:isolate';
 import 'package:http/io_client.dart';
 import 'package:logging/logging.dart';
+import 'package:get_it/get_it.dart';
 
+import '../../../../app/services/category_tree_cache_service.dart';
 import '../../../../shared/models/sync_config.dart';
 import '../../../../shared/models/sync_progress.dart';
 import '../../../../shared/models/sync_result.dart';
@@ -92,7 +94,12 @@ class ApiProductSyncService implements ProductSyncService {
         final stockSaveResult = await stockItemRepository.saveStockItems(allStockItems);
         stockSaveResult.fold(
           (failure) => throw Exception('Ошибка сохранения остатков: ${failure.message}'),
-          (_) => _logger.info('Stock items успешно сохранены (${allStockItems.length} записей)'),
+          (_) {
+            _logger.info('Stock items успешно сохранены (${allStockItems.length} записей)');
+            
+            // Фоновое прогревание кеша категорий после импорта остатков
+            _warmupCategoryCache();
+          },
         );
       } else {
         _logger.warning('Stock items отсутствуют для текущей партии продуктов');
@@ -190,6 +197,20 @@ class ApiProductSyncService implements ProductSyncService {
 
     } finally {
       client.close();
+    }
+  }
+
+  /// Фоновое прогревание кеша категорий
+  void _warmupCategoryCache() {
+    try {
+      if (GetIt.instance.isRegistered<CategoryTreeCacheService>()) {
+        final cacheService = GetIt.instance<CategoryTreeCacheService>();
+        cacheService.warmupCache().catchError((e) {
+          _logger.warning('Ошибка фонового прогрева кеша категорий: $e');
+        });
+      }
+    } catch (e) {
+      _logger.warning('Не удалось запустить прогрев кеша категорий: $e');
     }
   }
 }

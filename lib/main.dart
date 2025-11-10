@@ -11,6 +11,7 @@ import 'package:fieldforce/app/presentation/pages/splash_page.dart';
 import 'package:fieldforce/app/presentation/pages/login_page.dart';
 import 'package:fieldforce/app/presentation/widgets/dev_data_loading_overlay.dart';
 import 'package:fieldforce/features/navigation/tracking/domain/services/gps_data_manager.dart';
+import 'package:fieldforce/app/services/category_tree_cache_service.dart';
 import 'package:logging/logging.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:path/path.dart' as p;
@@ -86,6 +87,12 @@ void main() async {
 
     final orchestrator = GetIt.instance<DevFixtureOrchestrator>();
     await orchestrator.createFullDevDataset();
+    
+    // Фоновое прогревание кеша категорий после создания фикстур
+    _warmupCategoryCache();
+  } else {
+    // В prod режиме прогреваем кеш сразу после setup DI
+    _warmupCategoryCache();
   }
 
   // Инициализируем менеджер жизненного цикла для GPS трекинга
@@ -96,6 +103,22 @@ void main() async {
   await UpdateService.initialize();
 
   runApp(const FieldforceApp());
+}
+
+/// Фоновое прогревание кеша дерева категорий
+/// 
+/// Выполняется асинхронно (fire-and-forget) чтобы не блокировать старт приложения.
+/// Когда пользователь откроет каталог, данные уже будут готовы.
+void _warmupCategoryCache() {
+  // Импортируем сервис только здесь, чтобы избежать циклических зависимостей
+  final cacheService = GetIt.instance.get<CategoryTreeCacheService>();
+  
+  // Запускаем прогрев в фоне без ожидания
+  cacheService.warmupCache().then((_) {
+    debugPrint('✅ Фоновый прогрев кеша категорий завершён');
+  }).catchError((e) {
+    debugPrint('⚠️ Ошибка фонового прогрева кеша категорий: $e');
+  });
 }
 
 class FieldforceApp extends StatelessWidget {

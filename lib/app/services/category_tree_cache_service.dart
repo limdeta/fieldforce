@@ -95,6 +95,34 @@ class CategoryTreeCacheService {
     return getTreeForCurrentRegion(forceRefresh: true);
   }
 
+  /// Фоновое прогревание кеша категорий для текущего региона
+  /// 
+  /// В отличие от `getTreeForCurrentRegion()`, этот метод:
+  /// - Выполняется асинхронно (fire-and-forget)
+  /// - Не выбрасывает ошибки в UI
+  /// - Просто логирует результат
+  /// 
+  /// Использовать при старте приложения и после импорта остатков.
+  Future<void> warmupCache() async {
+    _logger.info('Начинаем фоновое прогревание кеша категорий...');
+    
+    try {
+      final result = await getTreeForCurrentRegion(forceRefresh: true);
+      
+      result.fold(
+        (failure) {
+          _logger.warning('Прогрев кеша категорий не удался: ${failure.message}');
+        },
+        (categories) {
+          final totalCount = categories.fold<int>(0, (sum, cat) => sum + cat.count);
+          _logger.info('Кеш категорий прогрет: ${categories.length} корневых категорий, $totalCount товаров с остатками');
+        },
+      );
+    } catch (e, st) {
+      _logger.warning('Исключение при прогреве кеша категорий', e, st);
+    }
+  }
+
   void invalidateRegion(String regionCode) {
     final normalizedRegion = regionCode.trim().toUpperCase();
     _cache.remove(normalizedRegion);
