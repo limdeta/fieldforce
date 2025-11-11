@@ -25,12 +25,16 @@ class SplitCategoryProductsPanel extends StatefulWidget {
   final Category? category;
   final Map<int, StockItem> selectedStockItems;
   final void Function(int productCode, StockItem stockItem) onStockItemChanged;
+  final bool isVertical; // Для определения safe area padding
+  final bool isTopPanel; // Для определения, применять ли top padding
 
   const SplitCategoryProductsPanel({
     super.key,
     required this.category,
     required this.selectedStockItems,
     required this.onStockItemChanged,
+    this.isVertical = true,
+    this.isTopPanel = true,
   });
 
   @override
@@ -57,7 +61,7 @@ class _SplitCategoryProductsPanelState extends State<SplitCategoryProductsPanel>
   int _currentOffset = 0;
   String? _error;
   final int _limit = 20;
-  final int _prefetchBatchSize = 8;
+  final int _prefetchBatchSize = 15; // Увеличено с 8 до 15 для упреждающей загрузки
   final Set<int> _prefetchedProductCodes = <int>{};
   late int? _currentCategoryId;
 
@@ -140,8 +144,9 @@ class _SplitCategoryProductsPanelState extends State<SplitCategoryProductsPanel>
       _stateStore.setProductScrollOffset(categoryId, _scrollController.offset);
     }
 
+    // Начинаем загрузку за 500px до конца для более агрессивного prefetch
     if (_scrollController.position.pixels >=
-        _scrollController.position.maxScrollExtent - 200) {
+        _scrollController.position.maxScrollExtent - 500) {
       if (!_isLoading && _hasMore) {
         _loadProducts(reset: false);
       }
@@ -367,6 +372,11 @@ class _SplitCategoryProductsPanelState extends State<SplitCategoryProductsPanel>
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final mediaQuery = MediaQuery.of(context);
+    
+    // Отступы для безопасной зоны - только для верхней панели в вертикальном режиме
+    final topPadding = (widget.isVertical && widget.isTopPanel) ? mediaQuery.padding.top : 0.0;
+    final bottomPadding = widget.isVertical ? 0.0 : mediaQuery.padding.bottom;
     
     // Определяем какой список показывать
     final bool showSearchResults = _productSearchController.text.trim().isNotEmpty;
@@ -374,44 +384,59 @@ class _SplitCategoryProductsPanelState extends State<SplitCategoryProductsPanel>
     
     return Column(
       children: [
-        // Поисковая строка для продуктов
+        // Компактная поисковая строка для продуктов с учётом safe area
         Container(
           color: theme.colorScheme.surface,
-          padding: const EdgeInsets.fromLTRB(12, 12, 12, 8),
+          padding: EdgeInsets.fromLTRB(
+            8,
+            6 + topPadding, // Добавляем отступ сверху в вертикальном режиме
+            8,
+            6,
+          ),
           child: TextField(
             controller: _productSearchController,
             onChanged: _onProductSearchChanged,
+            style: const TextStyle(fontSize: 14),
             decoration: InputDecoration(
-              hintText: 'Поиск по товарам',
-              prefixIcon: const Icon(Icons.search),
+              hintText: 'Поиск товаров',
+              hintStyle: const TextStyle(fontSize: 14),
+              prefixIcon: const Icon(Icons.search, size: 20),
+              prefixIconConstraints: const BoxConstraints(minWidth: 40),
               suffixIcon: _productSearchController.text.isNotEmpty
                   ? IconButton(
                       onPressed: () {
                         _productSearchController.clear();
                         _onProductSearchChanged('');
                       },
-                      icon: const Icon(Icons.clear),
+                      icon: const Icon(Icons.clear, size: 18),
+                      iconSize: 18,
+                      padding: const EdgeInsets.all(4),
+                      constraints: const BoxConstraints(),
                     )
                   : null,
-              filled: true,
-              fillColor: Colors.grey.shade100,
-              border: const OutlineInputBorder(
-                borderRadius: BorderRadius.zero,
-                borderSide: BorderSide.none,
+              isDense: true,
+              contentPadding: const EdgeInsets.symmetric(vertical: 8),
+              border: const UnderlineInputBorder(),
+              focusedBorder: UnderlineInputBorder(
+                borderSide: BorderSide(color: theme.colorScheme.primary, width: 2),
               ),
-              contentPadding: const EdgeInsets.symmetric(vertical: 10),
             ),
           ),
         ),
         // Контент
         Expanded(
-          child: _buildContent(context, displayProducts, showSearchResults),
+          child: _buildContent(context, displayProducts, showSearchResults, bottomPadding),
         ),
       ],
     );
   }
 
-  Widget _buildContent(BuildContext context, List<ProductWithStock> displayProducts, bool showSearchResults) {
+  Widget _buildContent(
+    BuildContext context, 
+    List<ProductWithStock> displayProducts, 
+    bool showSearchResults,
+    double bottomPadding,
+  ) {
     if (widget.category == null && !showSearchResults) {
       return _buildEmptyCategoryPlaceholder(context);
     }
@@ -443,7 +468,12 @@ class _SplitCategoryProductsPanelState extends State<SplitCategoryProductsPanel>
       onRefresh: _onRefresh,
       child: ListView.builder(
         controller: _scrollController,
-        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 12),
+        padding: EdgeInsets.fromLTRB(
+          4,
+          6,
+          4,
+          6 + bottomPadding, // Добавляем отступ снизу в горизонтальном режиме
+        ),
         physics: const AlwaysScrollableScrollPhysics(),
         itemCount: displayProducts.length + (_hasMore && !showSearchResults ? 1 : 0) + (_shouldShowHeader && !showSearchResults ? 1 : 0),
         itemBuilder: (context, index) {
@@ -472,17 +502,15 @@ class _SplitCategoryProductsPanelState extends State<SplitCategoryProductsPanel>
             _prefetchAheadOf(adjustedIndex);
           }
 
-          return Padding(
-            padding: const EdgeInsets.only(bottom: 12),
-            child: ProductCatalogCardWidget(
-              productWithStock: productWithStock,
-              selectedStockItem: widget.selectedStockItems[productWithStock.product.code],
-              onTap: () => _onProductTap(productWithStock),
-              onStockItemChanged: (stockItem) => widget.onStockItemChanged(
-                productWithStock.product.code,
-                stockItem,
-              ),
+          return ProductCatalogCardWidget(
+            productWithStock: productWithStock,
+            selectedStockItem: widget.selectedStockItems[productWithStock.product.code],
+            onTap: () => _onProductTap(productWithStock),
+            onStockItemChanged: (stockItem) => widget.onStockItemChanged(
+              productWithStock.product.code,
+              stockItem,
             ),
+            compact: true, // Компактный режим для сплит-экрана
           );
         },
       ),
@@ -526,27 +554,27 @@ class _SplitCategoryProductsPanelState extends State<SplitCategoryProductsPanel>
 
   Widget _buildCategoryHeader(BuildContext context, Category category) {
     return Padding(
-      padding: const EdgeInsets.fromLTRB(12, 4, 12, 12),
+      padding: const EdgeInsets.fromLTRB(6, 4, 6, 8),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
             category.name,
-            style: Theme.of(context).textTheme.titleLarge?.copyWith(
+            style: Theme.of(context).textTheme.titleMedium?.copyWith(
                   fontWeight: FontWeight.w600,
                 ),
           ),
-          const SizedBox(height: 4),
+          const SizedBox(height: 2),
           if (category.count > 0)
             Text(
-              'Товаров в категории: ${category.count}',
-              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+              'Товаров: ${category.count}',
+              style: Theme.of(context).textTheme.bodySmall?.copyWith(
                     color: Theme.of(context).colorScheme.primary,
                     fontWeight: FontWeight.w500,
                   ),
             ),
           if (_error != null) ...[
-            const SizedBox(height: 12),
+            const SizedBox(height: 6),
             _buildErrorBanner(context, _error!),
           ],
         ],
@@ -557,30 +585,35 @@ class _SplitCategoryProductsPanelState extends State<SplitCategoryProductsPanel>
   Widget _buildErrorBanner(BuildContext context, String message) {
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.all(12),
+      padding: const EdgeInsets.all(8),
       decoration: BoxDecoration(
         color: Theme.of(context).colorScheme.errorContainer,
-        borderRadius: BorderRadius.circular(8),
+        borderRadius: BorderRadius.circular(4),
       ),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Icon(
             Icons.error_outline,
+            size: 18,
             color: Theme.of(context).colorScheme.error,
           ),
-          const SizedBox(width: 8),
+          const SizedBox(width: 6),
           Expanded(
             child: Text(
               message,
-              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+              style: Theme.of(context).textTheme.bodySmall?.copyWith(
                     color: Theme.of(context).colorScheme.onErrorContainer,
                   ),
             ),
           ),
           TextButton(
             onPressed: () => _loadProducts(reset: true),
-            child: const Text('Повторить'),
+            style: TextButton.styleFrom(
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+              minimumSize: const Size(0, 28),
+            ),
+            child: const Text('Повторить', style: TextStyle(fontSize: 12)),
           ),
         ],
       ),

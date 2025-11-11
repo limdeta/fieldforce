@@ -8,6 +8,7 @@ import 'package:fieldforce/features/shop/domain/entities/stock_item.dart';
 import 'package:fieldforce/features/shop/presentation/state/catalog_split_state.dart';
 import 'package:fieldforce/features/shop/presentation/widgets/catalog_app_bar_actions.dart';
 import 'package:fieldforce/features/shop/presentation/widgets/split_category_products_panel.dart';
+import 'package:fieldforce/features/shop/presentation/widgets/split_quick_actions_panel.dart';
 
 /// Альтернативная страница каталога в формате сплит-экрана.
 class ProductCatalogSplitPage extends StatefulWidget {
@@ -41,6 +42,10 @@ class _ProductCatalogSplitPageState extends State<ProductCatalogSplitPage> {
   String? _categoriesError;
 
   final Map<int, StockItem> _selectedStockItems = <int, StockItem>{};
+  
+  // Состояния для анимации нажатия разделителей
+  bool _isHorizontalDividerPressed = false;
+  bool _isVerticalDividerPressed = false;
 
   @override
   void initState() {
@@ -327,68 +332,37 @@ class _ProductCatalogSplitPageState extends State<ProductCatalogSplitPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-        appBar: AppBar(
-          toolbarHeight: 50,
-          titleSpacing: 0,
-          title: Row(
-            mainAxisSize: MainAxisSize.max,
-            children: [
-              const Expanded(
-                child: Align(
-                  alignment: Alignment.centerLeft,
-                  child: Padding(
-                    padding: EdgeInsets.only(left: 4),
-                    child: Text('Каталог'),
-                  ),
-                ),
-              ),
-              SizedBox(
-                width: 56,
-                child: Center(
-                  child: CatalogFilterButton(
-                    onPressed: () => showCatalogFilterPlaceholder(context),
-                  ),
-                ),
-              ),
-            ],
-          ),
-          leading: IconButton(
-            icon: const Icon(Icons.arrow_back),
-            tooltip: 'Назад',
-            onPressed: () => Navigator.pushReplacementNamed(context, '/menu'),
-          ),
-          actions: const [
-            CatalogAppBarActions(showFilter: false),
-          ],
-        ),
-      body: LayoutBuilder(
-        builder: (context, constraints) {
-          final width = constraints.maxWidth;
-          final mediaQuery = MediaQuery.of(context);
-          final height = constraints.maxHeight.isFinite
-              ? constraints.maxHeight
-              : mediaQuery.size.height;
-          final isPortrait = mediaQuery.orientation == Orientation.portrait;
-          final bool useVerticalLayout = isPortrait || width < _compactWidthBreakpoint;
+      body: Stack(
+        children: [
+          // Основной контент без AppBar
+          LayoutBuilder(
+            builder: (context, constraints) {
+              final width = constraints.maxWidth;
+              final mediaQuery = MediaQuery.of(context);
+              final height = constraints.maxHeight.isFinite
+                  ? constraints.maxHeight
+                  : mediaQuery.size.height;
+              final isPortrait = mediaQuery.orientation == Orientation.portrait;
+              final bool useVerticalLayout = isPortrait || width < _compactWidthBreakpoint;
 
-          if (width <= 0) {
-            return const SizedBox.shrink();
-          }
+              if (width <= 0) {
+                return const SizedBox.shrink();
+              }
 
-          if (useVerticalLayout) {
-            final topFlex = (_verticalSplitRatio.clamp(_minSplitRatio, _maxSplitRatio) * 1000).round();
-            final bottomFlex = 1000 - topFlex;
+              if (useVerticalLayout) {
+                final topFlex = (_verticalSplitRatio.clamp(_minSplitRatio, _maxSplitRatio) * 1000).round();
+                final bottomFlex = 1000 - topFlex;
 
             return Column(
               children: [
                 Expanded(
                   flex: topFlex,
-                  child: _buildCategoryPanel(context, isVertical: true),
+                  child: _buildCategoryPanel(context, isVertical: true, isTopPanel: true),
                 ),
                 _buildVerticalDivider(height),
                 Expanded(
                   flex: bottomFlex,
-                  child: _buildProductsPanel(),
+                  child: _buildProductsPanel(isVertical: true, isTopPanel: false),
                 ),
               ],
             );
@@ -401,21 +375,27 @@ class _ProductCatalogSplitPageState extends State<ProductCatalogSplitPage> {
             children: [
               Expanded(
                 flex: leftFlex,
-                child: _buildCategoryPanel(context, isVertical: false),
+                child: _buildCategoryPanel(context, isVertical: false, isTopPanel: true),
               ),
               _buildHorizontalDivider(width),
               Expanded(
                 flex: rightFlex,
-                child: _buildProductsPanel(),
+                child: _buildProductsPanel(isVertical: false, isTopPanel: true),
               ),
             ],
           );
         },
       ),
+      // Плавающая панель быстрых действий
+      SplitQuickActionsPanel(
+        onFilterPressed: () => showCatalogFilterPlaceholder(context),
+      ),
+        ],
+      ),
     );
   }
 
-  Widget _buildCategoryPanel(BuildContext context, {required bool isVertical}) {
+  Widget _buildCategoryPanel(BuildContext context, {required bool isVertical, required bool isTopPanel}) {
     if (_isLoadingCategories) {
       return const Center(child: CircularProgressIndicator());
     }
@@ -425,35 +405,50 @@ class _ProductCatalogSplitPageState extends State<ProductCatalogSplitPage> {
     }
 
     final theme = Theme.of(context);
+    final mediaQuery = MediaQuery.of(context);
+    
+    // Отступы для безопасной зоны - только для верхней панели в вертикальном режиме
+    final topPadding = (isVertical && isTopPanel) ? mediaQuery.padding.top : 0.0;
+    final bottomPadding = isVertical ? 0.0 : mediaQuery.padding.bottom;
 
     return Column(
       children: [
-        // Поле поиска всегда видимо
+        // Компактное поле поиска категорий с учётом safe area
         Container(
           color: theme.colorScheme.surface,
-          padding: const EdgeInsets.fromLTRB(12, 12, 12, 8),
+          padding: EdgeInsets.fromLTRB(
+            8, 
+            6 + topPadding, // Добавляем отступ сверху в вертикальном режиме
+            8, 
+            6,
+          ),
           child: TextField(
             controller: _searchController,
             onChanged: _onSearchChanged,
+            style: const TextStyle(fontSize: 14),
             decoration: InputDecoration(
-              hintText: 'Поиск по категориям',
-              prefixIcon: const Icon(Icons.search),
+              hintText: 'Поиск категорий',
+              hintStyle: const TextStyle(fontSize: 14),
+              prefixIcon: const Icon(Icons.search, size: 20),
+              prefixIconConstraints: const BoxConstraints(minWidth: 40),
               suffixIcon: _searchController.text.isNotEmpty
                   ? IconButton(
                       onPressed: () {
                         _searchController.clear();
                         _onSearchChanged('');
                       },
-                      icon: const Icon(Icons.clear),
+                      icon: const Icon(Icons.clear, size: 18),
+                      iconSize: 18,
+                      padding: const EdgeInsets.all(4),
+                      constraints: const BoxConstraints(),
                     )
                   : null,
-              filled: true,
-              fillColor: Colors.grey.shade100,
-              border: const OutlineInputBorder(
-                borderRadius: BorderRadius.zero,
-                borderSide: BorderSide.none,
+              isDense: true,
+              contentPadding: const EdgeInsets.symmetric(vertical: 8),
+              border: const UnderlineInputBorder(),
+              focusedBorder: UnderlineInputBorder(
+                borderSide: BorderSide(color: theme.colorScheme.primary, width: 2),
               ),
-              contentPadding: const EdgeInsets.symmetric(vertical: 10),
             ),
           ),
         ),
@@ -465,7 +460,12 @@ class _ProductCatalogSplitPageState extends State<ProductCatalogSplitPage> {
                   onRefresh: () => _loadCategories(forceRefresh: true),
                   child: ListView(
                     controller: _categoryScrollController,
-                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+                    padding: EdgeInsets.fromLTRB(
+                      4,
+                      4,
+                      4,
+                      4 + bottomPadding, // Добавляем отступ снизу в горизонтальном режиме
+                    ),
                     physics: const AlwaysScrollableScrollPhysics(),
                     children: _filteredCategories
                         .map((category) => _buildCategoryCard(context, category, 0))
@@ -635,17 +635,28 @@ class _ProductCatalogSplitPageState extends State<ProductCatalogSplitPage> {
     );
   }
 
-  Widget _buildProductsPanel() {
+  Widget _buildProductsPanel({required bool isVertical, required bool isTopPanel}) {
     return SplitCategoryProductsPanel(
       category: _selectedCategory,
       selectedStockItems: _selectedStockItems,
       onStockItemChanged: _handleStockItemChange,
+      isVertical: isVertical,
+      isTopPanel: isTopPanel,
     );
   }
 
   Widget _buildHorizontalDivider(double availableWidth) {
     return GestureDetector(
       behavior: HitTestBehavior.opaque,
+      onPanStart: (_) {
+        setState(() => _isHorizontalDividerPressed = true);
+      },
+      onPanEnd: (_) {
+        setState(() => _isHorizontalDividerPressed = false);
+      },
+      onPanCancel: () {
+        setState(() => _isHorizontalDividerPressed = false);
+      },
       onPanUpdate: (details) {
         setState(() {
           final delta = details.delta.dx / availableWidth;
@@ -659,8 +670,38 @@ class _ProductCatalogSplitPageState extends State<ProductCatalogSplitPage> {
         child: Container(
           width: _dividerThickness,
           color: Colors.grey.shade200,
-          child: const Center(
-            child: Icon(Icons.drag_indicator, size: 18, color: Colors.grey),
+          child: Center(
+            child: AnimatedContainer(
+              duration: const Duration(milliseconds: 150),
+              curve: Curves.easeInOut,
+              width: _isHorizontalDividerPressed ? 26 : 28,
+              height: _isHorizontalDividerPressed ? 76 : 80,
+              decoration: BoxDecoration(
+                color: _isHorizontalDividerPressed ? Colors.grey.shade400 : Colors.grey.shade300,
+                borderRadius: BorderRadius.circular(14),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withValues(alpha: _isHorizontalDividerPressed ? 0.15 : 0.1),
+                    blurRadius: _isHorizontalDividerPressed ? 2 : 4,
+                    offset: Offset(0, _isHorizontalDividerPressed ? 1 : 2),
+                  ),
+                ],
+              ),
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: List.generate(
+                  5,
+                  (index) => Container(
+                    margin: const EdgeInsets.symmetric(vertical: 1.5, horizontal: 8),
+                    height: 3,
+                    decoration: BoxDecoration(
+                      color: _isHorizontalDividerPressed ? Colors.grey.shade600 : Colors.grey.shade500,
+                      borderRadius: BorderRadius.circular(1.5),
+                    ),
+                  ),
+                ),
+              ),
+            ),
           ),
         ),
       ),
@@ -670,6 +711,15 @@ class _ProductCatalogSplitPageState extends State<ProductCatalogSplitPage> {
   Widget _buildVerticalDivider(double availableHeight) {
     return GestureDetector(
       behavior: HitTestBehavior.opaque,
+      onPanStart: (_) {
+        setState(() => _isVerticalDividerPressed = true);
+      },
+      onPanEnd: (_) {
+        setState(() => _isVerticalDividerPressed = false);
+      },
+      onPanCancel: () {
+        setState(() => _isVerticalDividerPressed = false);
+      },
       onPanUpdate: (details) {
         final safeHeight = availableHeight <= 0 ? 1.0 : availableHeight;
         setState(() {
@@ -684,8 +734,38 @@ class _ProductCatalogSplitPageState extends State<ProductCatalogSplitPage> {
         child: Container(
           height: _dividerThickness,
           color: Colors.grey.shade200,
-          child: const Center(
-            child: Icon(Icons.drag_handle, size: 18, color: Colors.grey),
+          child: Center(
+            child: AnimatedContainer(
+              duration: const Duration(milliseconds: 150),
+              curve: Curves.easeInOut,
+              width: _isVerticalDividerPressed ? 76 : 80,
+              height: _isVerticalDividerPressed ? 26 : 28,
+              decoration: BoxDecoration(
+                color: _isVerticalDividerPressed ? Colors.grey.shade400 : Colors.grey.shade300,
+                borderRadius: BorderRadius.circular(14),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withValues(alpha: _isVerticalDividerPressed ? 0.15 : 0.1),
+                    blurRadius: _isVerticalDividerPressed ? 2 : 4,
+                    offset: Offset(0, _isVerticalDividerPressed ? 1 : 2),
+                  ),
+                ],
+              ),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: List.generate(
+                  5,
+                  (index) => Container(
+                    margin: const EdgeInsets.symmetric(horizontal: 1.5, vertical: 8),
+                    width: 3,
+                    decoration: BoxDecoration(
+                      color: _isVerticalDividerPressed ? Colors.grey.shade600 : Colors.grey.shade500,
+                      borderRadius: BorderRadius.circular(1.5),
+                    ),
+                  ),
+                ),
+              ),
+            ),
           ),
         ),
       ),

@@ -263,7 +263,8 @@ class CachedNetworkImageWidget extends StatelessWidget {
   /// Плейсхолдер для продуктов
   static Widget _buildProductPlaceholder(double? width, double? height) {
     // Для маленьких размеров показываем только индикатор
-    final isSmall = (width != null && width < 60) || (height != null && height < 60);
+    // 70px порог чтобы 60x60 считалось маленьким
+    final isSmall = (width != null && width <= 70) || (height != null && height <= 70);
     
     return Container(
       width: width,
@@ -279,8 +280,8 @@ class CachedNetworkImageWidget extends StatelessWidget {
       child: Center(
         child: isSmall 
           ? SizedBox(
-              width: math.min(width ?? 20, height ?? 20) * 0.5,
-              height: math.min(width ?? 20, height ?? 20) * 0.5,
+              width: math.min(width ?? 24, height ?? 24) * 0.5,
+              height: math.min(width ?? 24, height ?? 24) * 0.5,
               child: const CircularProgressIndicator(strokeWidth: 2),
             )
           : const Column(
@@ -298,7 +299,8 @@ class CachedNetworkImageWidget extends StatelessWidget {
   /// Виджет ошибки для продуктов
   static Widget _buildProductErrorWidget(double? width, double? height) {
     // Для маленьких размеров показываем только иконку
-    final isSmall = (width != null && width < 60) || (height != null && height < 60);
+    // 70px порог чтобы 60x60 считалось маленьким
+    final isSmall = (width != null && width <= 70) || (height != null && height <= 70);
     
     return Container(
       width: width,
@@ -362,7 +364,10 @@ class _LazyLoadImageWidgetState extends State<LazyLoadImageWidget> {
     return VisibilityDetector(
       key: ValueKey(widget.imageUrl),
       onVisibilityChanged: (info) {
-        if (info.visibleFraction > 0.1 && !_isVisible) {
+        // Загружаем когда видно хотя бы 1% И еще не загружали
+        // Используем низкий порог для упреждающей загрузки
+        // НЕ сбрасываем _isVisible когда элемент уходит - один раз загрузили, всегда показываем
+        if (info.visibleFraction > 0.01 && !_isVisible) {
           setState(() => _isVisible = true);
         }
       },
