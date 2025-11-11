@@ -3,10 +3,10 @@
 import 'package:fieldforce/app/theme/app_colors.dart';
 import 'package:fieldforce/features/shop/domain/entities/stock_item.dart';
 import 'package:fieldforce/features/shop/domain/repositories/stock_item_repository.dart';
+import 'package:fieldforce/features/shop/presentation/helpers/price_color_helper.dart';
 import 'package:flutter/material.dart';
 import 'package:get_it/get_it.dart';
 import 'package:logging/logging.dart';
-
 
 /// Универсальный селектор товаров для продукта
 /// 
@@ -91,8 +91,13 @@ class _StockItemSelectorWidgetState extends State<StockItemSelectorWidget> {
           // Автоматически выбираем первый StockItem если он не выбран
           if (widget.selectedStockItem == null && stockItems.isNotEmpty) {
             final firstStockItem = stockItems.first;
-            _logger.info('Автовыбор первого товара: склад=${firstStockItem.warehouseName}');
-            widget.onStockItemSelected(firstStockItem);
+            _logger.info('Автовыбор первого товара: склад=${firstStockItem.warehouseName}, остаток=${firstStockItem.stock}');
+            // Откладываем вызов колбека до следующего фрейма
+            WidgetsBinding.instance.addPostFrameCallback((_) {
+              if (mounted) {
+                widget.onStockItemSelected(firstStockItem);
+              }
+            });
           }
         },
       );
@@ -269,9 +274,7 @@ class _StockItemSelectorWidgetState extends State<StockItemSelectorWidget> {
                                       style: TextStyle(
                                         fontSize: widget.compact ? 12 : 14,
                                         fontWeight: widget.compact ? FontWeight.w500 : FontWeight.w500,
-                                        color: stockItem.offerPrice != null 
-                                          ? const Color.fromARGB(255, 54, 48, 48) 
-                                          : Colors.grey.shade700,
+                                        color: PriceColorHelper.getPriceColor(stockItem),
                                       ),
                                     ),
                                   ),

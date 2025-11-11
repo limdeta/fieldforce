@@ -21,6 +21,7 @@ class StockItemMapper {
       availablePrice: data.availablePrice,
       offerPrice: data.offerPrice,
       currency: data.currency,
+      priceType: data.priceType,
       promotionJson: data.promotionJson,
       createdAt: data.createdAt,
       updatedAt: data.updatedAt,
@@ -43,6 +44,7 @@ class StockItemMapper {
       availablePrice: stockItem.availablePrice != null ? Value(stockItem.availablePrice!) : const Value.absent(),
       offerPrice: stockItem.offerPrice != null ? Value(stockItem.offerPrice!) : const Value.absent(),
       currency: Value(stockItem.currency),
+      priceType: stockItem.priceType != null ? Value(stockItem.priceType!) : const Value.absent(),
       promotionJson: Value(stockItem.promotionJson),
       createdAt: Value(stockItem.createdAt),
       updatedAt: Value(DateTime.now()),
@@ -53,6 +55,10 @@ class StockItemMapper {
     return StockItemsCompanion(
       defaultPrice: update.defaultPrice != null ? Value(update.defaultPrice!) : const Value.absent(),
       offerPrice: update.offerPrice != null ? Value(update.offerPrice!) : const Value.absent(),
+      availablePrice: update.availablePrice != null ? Value(update.availablePrice!) : const Value.absent(),
+      priceType: update.priceType != null ? Value(update.priceType!) : const Value.absent(),
+      promotionJson: update.promotionJson != null ? Value(update.promotionJson!) : const Value.absent(),
+      discountValue: update.discountValue != null ? Value(update.discountValue!) : const Value.absent(),
       updatedAt: Value(DateTime.now()),
     );
   }

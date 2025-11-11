@@ -29,6 +29,9 @@ class StockItems extends Table {
   IntColumn get offerPrice => integer().nullable()();
   TextColumn get currency => text().withDefault(const Constant('RUB'))();
   
+  /// Тип цены: "regional_base", "differential_price", "promotion"
+  TextColumn get priceType => text().nullable()();
+  
   /// Промоакция (JSON для гибкости)
   TextColumn get promotionJson => text().nullable()();
   

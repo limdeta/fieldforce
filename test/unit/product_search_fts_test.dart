@@ -479,13 +479,13 @@ void main() {
       // Act - поиск "шампунь" только в категории 100
       final resultCat100 = await repository.searchProductsWithFts(
         'шампунь',
-        categoryId: 100,
+        categoryIds: [100],
       );
 
       // Act - поиск "шампунь" только в категории 200
       final resultCat200 = await repository.searchProductsWithFts(
         'шампунь',
-        categoryId: 200,
+        categoryIds: [200],
       );
 
       // Act - поиск "шампунь" везде (без категории)

@@ -5,6 +5,7 @@ import 'package:fieldforce/features/shop/domain/entities/product_with_stock.dart
 import 'package:fieldforce/features/shop/domain/entities/stock_item.dart';
 import 'package:fieldforce/features/shop/presentation/widgets/stock_item_cart_control_widget.dart';
 import 'package:fieldforce/features/shop/presentation/widgets/product_purchase_card_widget.dart';
+import 'package:fieldforce/features/shop/presentation/helpers/price_color_helper.dart';
 // image cache and selector are not used here; the ProductPurchaseCard handles image and selector
 
 /// Виджет карточки товара для каталога
@@ -39,6 +40,12 @@ class ProductCatalogCardWidget extends StatelessWidget {
       title: product.title,
       productCode: product.code.toString(),
       priceInKopecks: price,
+      priceColor: selectedStockItem != null 
+        ? PriceColorHelper.getPriceColor(selectedStockItem!)
+        : null,
+      priceBackgroundColor: selectedStockItem != null
+        ? PriceColorHelper.getPriceBackgroundColor(selectedStockItem!)
+        : null,
       onTap: onTap,
       selectedStockItem: selectedStockItem,
       onStockItemSelected: (stockItem) {

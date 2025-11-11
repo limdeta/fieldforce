@@ -34,7 +34,7 @@ class WarehouseSyncService {
   }) async {
     final url = '$_baseUrl/mobile-sync/warehouses';
     final queryParameters = <String, String>{
-      'forceRefresh': 'true',
+      'forceRefresh': 'false',
       'limit': '1000',
     };
     

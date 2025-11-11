@@ -154,7 +154,10 @@ void registerShopDependencies(GetIt getIt) {
       () => GetCurrentCartUseCase(getIt<OrderRepository>()),
     )
     ..registerLazySingleton<SearchProductsUseCase>(
-      () => SearchProductsUseCase(getIt<ProductRepository>()),
+      () => SearchProductsUseCase(
+        getIt<ProductRepository>(),
+        getIt<CategoryRepository>(),
+      ),
     )
     ..registerLazySingleton<UpdateCartItemUseCase>(
       () => UpdateCartItemUseCase(

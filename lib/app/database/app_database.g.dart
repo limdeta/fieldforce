@@ -9660,6 +9660,17 @@ class $StockItemsTable extends StockItems
     requiredDuringInsert: false,
     defaultValue: const Constant('RUB'),
   );
+  static const VerificationMeta _priceTypeMeta = const VerificationMeta(
+    'priceType',
+  );
+  @override
+  late final GeneratedColumn<String> priceType = GeneratedColumn<String>(
+    'price_type',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
   static const VerificationMeta _promotionJsonMeta = const VerificationMeta(
     'promotionJson',
   );
@@ -9711,6 +9722,7 @@ class $StockItemsTable extends StockItems
     availablePrice,
     offerPrice,
     currency,
+    priceType,
     promotionJson,
     createdAt,
     updatedAt,
@@ -9850,6 +9862,12 @@ class $StockItemsTable extends StockItems
         currency.isAcceptableOrUnknown(data['currency']!, _currencyMeta),
       );
     }
+    if (data.containsKey('price_type')) {
+      context.handle(
+        _priceTypeMeta,
+        priceType.isAcceptableOrUnknown(data['price_type']!, _priceTypeMeta),
+      );
+    }
     if (data.containsKey('promotion_json')) {
       context.handle(
         _promotionJsonMeta,
@@ -9940,6 +9958,10 @@ class $StockItemsTable extends StockItems
         DriftSqlType.string,
         data['${effectivePrefix}currency'],
       )!,
+      priceType: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}price_type'],
+      ),
       promotionJson: attachedDatabase.typeMapping.read(
         DriftSqlType.string,
         data['${effectivePrefix}promotion_json'],
@@ -9986,6 +10008,9 @@ class StockItemData extends DataClass implements Insertable<StockItemData> {
   final int? offerPrice;
   final String currency;
 
+  /// Тип цены: "regional_base", "differential_price", "promotion"
+  final String? priceType;
+
   /// Промоакция (JSON для гибкости)
   final String? promotionJson;
 
@@ -10007,6 +10032,7 @@ class StockItemData extends DataClass implements Insertable<StockItemData> {
     this.availablePrice,
     this.offerPrice,
     required this.currency,
+    this.priceType,
     this.promotionJson,
     required this.createdAt,
     required this.updatedAt,
@@ -10034,6 +10060,9 @@ class StockItemData extends DataClass implements Insertable<StockItemData> {
       map['offer_price'] = Variable<int>(offerPrice);
     }
     map['currency'] = Variable<String>(currency);
+    if (!nullToAbsent || priceType != null) {
+      map['price_type'] = Variable<String>(priceType);
+    }
     if (!nullToAbsent || promotionJson != null) {
       map['promotion_json'] = Variable<String>(promotionJson);
     }
@@ -10064,6 +10093,9 @@ class StockItemData extends DataClass implements Insertable<StockItemData> {
           ? const Value.absent()
           : Value(offerPrice),
       currency: Value(currency),
+      priceType: priceType == null && nullToAbsent
+          ? const Value.absent()
+          : Value(priceType),
       promotionJson: promotionJson == null && nullToAbsent
           ? const Value.absent()
           : Value(promotionJson),
@@ -10092,6 +10124,7 @@ class StockItemData extends DataClass implements Insertable<StockItemData> {
       availablePrice: serializer.fromJson<int?>(json['availablePrice']),
       offerPrice: serializer.fromJson<int?>(json['offerPrice']),
       currency: serializer.fromJson<String>(json['currency']),
+      priceType: serializer.fromJson<String?>(json['priceType']),
       promotionJson: serializer.fromJson<String?>(json['promotionJson']),
       createdAt: serializer.fromJson<DateTime>(json['createdAt']),
       updatedAt: serializer.fromJson<DateTime>(json['updatedAt']),
@@ -10115,6 +10148,7 @@ class StockItemData extends DataClass implements Insertable<StockItemData> {
       'availablePrice': serializer.toJson<int?>(availablePrice),
       'offerPrice': serializer.toJson<int?>(offerPrice),
       'currency': serializer.toJson<String>(currency),
+      'priceType': serializer.toJson<String?>(priceType),
       'promotionJson': serializer.toJson<String?>(promotionJson),
       'createdAt': serializer.toJson<DateTime>(createdAt),
       'updatedAt': serializer.toJson<DateTime>(updatedAt),
@@ -10136,6 +10170,7 @@ class StockItemData extends DataClass implements Insertable<StockItemData> {
     Value<int?> availablePrice = const Value.absent(),
     Value<int?> offerPrice = const Value.absent(),
     String? currency,
+    Value<String?> priceType = const Value.absent(),
     Value<String?> promotionJson = const Value.absent(),
     DateTime? createdAt,
     DateTime? updatedAt,
@@ -10156,6 +10191,7 @@ class StockItemData extends DataClass implements Insertable<StockItemData> {
         : this.availablePrice,
     offerPrice: offerPrice.present ? offerPrice.value : this.offerPrice,
     currency: currency ?? this.currency,
+    priceType: priceType.present ? priceType.value : this.priceType,
     promotionJson: promotionJson.present
         ? promotionJson.value
         : this.promotionJson,
@@ -10200,6 +10236,7 @@ class StockItemData extends DataClass implements Insertable<StockItemData> {
           ? data.offerPrice.value
           : this.offerPrice,
       currency: data.currency.present ? data.currency.value : this.currency,
+      priceType: data.priceType.present ? data.priceType.value : this.priceType,
       promotionJson: data.promotionJson.present
           ? data.promotionJson.value
           : this.promotionJson,
@@ -10225,6 +10262,7 @@ class StockItemData extends DataClass implements Insertable<StockItemData> {
           ..write('availablePrice: $availablePrice, ')
           ..write('offerPrice: $offerPrice, ')
           ..write('currency: $currency, ')
+          ..write('priceType: $priceType, ')
           ..write('promotionJson: $promotionJson, ')
           ..write('createdAt: $createdAt, ')
           ..write('updatedAt: $updatedAt')
@@ -10248,6 +10286,7 @@ class StockItemData extends DataClass implements Insertable<StockItemData> {
     availablePrice,
     offerPrice,
     currency,
+    priceType,
     promotionJson,
     createdAt,
     updatedAt,
@@ -10270,6 +10309,7 @@ class StockItemData extends DataClass implements Insertable<StockItemData> {
           other.availablePrice == this.availablePrice &&
           other.offerPrice == this.offerPrice &&
           other.currency == this.currency &&
+          other.priceType == this.priceType &&
           other.promotionJson == this.promotionJson &&
           other.createdAt == this.createdAt &&
           other.updatedAt == this.updatedAt);
@@ -10290,6 +10330,7 @@ class StockItemsCompanion extends UpdateCompanion<StockItemData> {
   final Value<int?> availablePrice;
   final Value<int?> offerPrice;
   final Value<String> currency;
+  final Value<String?> priceType;
   final Value<String?> promotionJson;
   final Value<DateTime> createdAt;
   final Value<DateTime> updatedAt;
@@ -10308,6 +10349,7 @@ class StockItemsCompanion extends UpdateCompanion<StockItemData> {
     this.availablePrice = const Value.absent(),
     this.offerPrice = const Value.absent(),
     this.currency = const Value.absent(),
+    this.priceType = const Value.absent(),
     this.promotionJson = const Value.absent(),
     this.createdAt = const Value.absent(),
     this.updatedAt = const Value.absent(),
@@ -10327,6 +10369,7 @@ class StockItemsCompanion extends UpdateCompanion<StockItemData> {
     this.availablePrice = const Value.absent(),
     this.offerPrice = const Value.absent(),
     this.currency = const Value.absent(),
+    this.priceType = const Value.absent(),
     this.promotionJson = const Value.absent(),
     this.createdAt = const Value.absent(),
     this.updatedAt = const Value.absent(),
@@ -10351,6 +10394,7 @@ class StockItemsCompanion extends UpdateCompanion<StockItemData> {
     Expression<int>? availablePrice,
     Expression<int>? offerPrice,
     Expression<String>? currency,
+    Expression<String>? priceType,
     Expression<String>? promotionJson,
     Expression<DateTime>? createdAt,
     Expression<DateTime>? updatedAt,
@@ -10370,6 +10414,7 @@ class StockItemsCompanion extends UpdateCompanion<StockItemData> {
       if (availablePrice != null) 'available_price': availablePrice,
       if (offerPrice != null) 'offer_price': offerPrice,
       if (currency != null) 'currency': currency,
+      if (priceType != null) 'price_type': priceType,
       if (promotionJson != null) 'promotion_json': promotionJson,
       if (createdAt != null) 'created_at': createdAt,
       if (updatedAt != null) 'updated_at': updatedAt,
@@ -10391,6 +10436,7 @@ class StockItemsCompanion extends UpdateCompanion<StockItemData> {
     Value<int?>? availablePrice,
     Value<int?>? offerPrice,
     Value<String>? currency,
+    Value<String?>? priceType,
     Value<String?>? promotionJson,
     Value<DateTime>? createdAt,
     Value<DateTime>? updatedAt,
@@ -10410,6 +10456,7 @@ class StockItemsCompanion extends UpdateCompanion<StockItemData> {
       availablePrice: availablePrice ?? this.availablePrice,
       offerPrice: offerPrice ?? this.offerPrice,
       currency: currency ?? this.currency,
+      priceType: priceType ?? this.priceType,
       promotionJson: promotionJson ?? this.promotionJson,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
@@ -10461,6 +10508,9 @@ class StockItemsCompanion extends UpdateCompanion<StockItemData> {
     if (currency.present) {
       map['currency'] = Variable<String>(currency.value);
     }
+    if (priceType.present) {
+      map['price_type'] = Variable<String>(priceType.value);
+    }
     if (promotionJson.present) {
       map['promotion_json'] = Variable<String>(promotionJson.value);
     }
@@ -10490,6 +10540,7 @@ class StockItemsCompanion extends UpdateCompanion<StockItemData> {
           ..write('availablePrice: $availablePrice, ')
           ..write('offerPrice: $offerPrice, ')
           ..write('currency: $currency, ')
+          ..write('priceType: $priceType, ')
           ..write('promotionJson: $promotionJson, ')
           ..write('createdAt: $createdAt, ')
           ..write('updatedAt: $updatedAt')
@@ -19607,6 +19658,7 @@ typedef $$StockItemsTableCreateCompanionBuilder =
       Value<int?> availablePrice,
       Value<int?> offerPrice,
       Value<String> currency,
+      Value<String?> priceType,
       Value<String?> promotionJson,
       Value<DateTime> createdAt,
       Value<DateTime> updatedAt,
@@ -19627,6 +19679,7 @@ typedef $$StockItemsTableUpdateCompanionBuilder =
       Value<int?> availablePrice,
       Value<int?> offerPrice,
       Value<String> currency,
+      Value<String?> priceType,
       Value<String?> promotionJson,
       Value<DateTime> createdAt,
       Value<DateTime> updatedAt,
@@ -19727,6 +19780,11 @@ class $$StockItemsTableFilterComposer
 
   ColumnFilters<String> get currency => $composableBuilder(
     column: $table.currency,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get priceType => $composableBuilder(
+    column: $table.priceType,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -19843,6 +19901,11 @@ class $$StockItemsTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<String> get priceType => $composableBuilder(
+    column: $table.priceType,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   ColumnOrderings<String> get promotionJson => $composableBuilder(
     column: $table.promotionJson,
     builder: (column) => ColumnOrderings(column),
@@ -19950,6 +20013,9 @@ class $$StockItemsTableAnnotationComposer
   GeneratedColumn<String> get currency =>
       $composableBuilder(column: $table.currency, builder: (column) => column);
 
+  GeneratedColumn<String> get priceType =>
+      $composableBuilder(column: $table.priceType, builder: (column) => column);
+
   GeneratedColumn<String> get promotionJson => $composableBuilder(
     column: $table.promotionJson,
     builder: (column) => column,
@@ -20027,6 +20093,7 @@ class $$StockItemsTableTableManager
                 Value<int?> availablePrice = const Value.absent(),
                 Value<int?> offerPrice = const Value.absent(),
                 Value<String> currency = const Value.absent(),
+                Value<String?> priceType = const Value.absent(),
                 Value<String?> promotionJson = const Value.absent(),
                 Value<DateTime> createdAt = const Value.absent(),
                 Value<DateTime> updatedAt = const Value.absent(),
@@ -20045,6 +20112,7 @@ class $$StockItemsTableTableManager
                 availablePrice: availablePrice,
                 offerPrice: offerPrice,
                 currency: currency,
+                priceType: priceType,
                 promotionJson: promotionJson,
                 createdAt: createdAt,
                 updatedAt: updatedAt,
@@ -20065,6 +20133,7 @@ class $$StockItemsTableTableManager
                 Value<int?> availablePrice = const Value.absent(),
                 Value<int?> offerPrice = const Value.absent(),
                 Value<String> currency = const Value.absent(),
+                Value<String?> priceType = const Value.absent(),
                 Value<String?> promotionJson = const Value.absent(),
                 Value<DateTime> createdAt = const Value.absent(),
                 Value<DateTime> updatedAt = const Value.absent(),
@@ -20083,6 +20152,7 @@ class $$StockItemsTableTableManager
                 availablePrice: availablePrice,
                 offerPrice: offerPrice,
                 currency: currency,
+                priceType: priceType,
                 promotionJson: promotionJson,
                 createdAt: createdAt,
                 updatedAt: updatedAt,

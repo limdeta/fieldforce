@@ -33,6 +33,10 @@ class StockItem extends Equatable {
   final int? offerPrice; // Акционная цена (может быть null)
   final String currency;
 
+  /// Тип цены: "regional_base", "differential_price", "promotion"
+  /// Определяет какая цена применяется для данной торговой точки
+  final String? priceType;
+
   /// Дополнительная информация о промоакции (JSON)
   final String? promotionJson;
 
@@ -55,6 +59,7 @@ class StockItem extends Equatable {
     this.availablePrice,
     this.offerPrice,
     required this.currency,
+    this.priceType,
     this.promotionJson,
     required this.createdAt,
     required this.updatedAt,
@@ -91,6 +96,7 @@ class StockItem extends Equatable {
     int? availablePrice,
     int? offerPrice,
     String? currency,
+    String? priceType,
     String? promotionJson,
     DateTime? createdAt,
     DateTime? updatedAt,
@@ -110,6 +116,7 @@ class StockItem extends Equatable {
       availablePrice: availablePrice ?? this.availablePrice,
       offerPrice: offerPrice ?? this.offerPrice,
       currency: currency ?? this.currency,
+      priceType: priceType ?? this.priceType,
       promotionJson: promotionJson ?? this.promotionJson,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
@@ -132,6 +139,7 @@ class StockItem extends Equatable {
         availablePrice,
         offerPrice,
         currency,
+        priceType,
         promotionJson,
         createdAt,
         updatedAt,
@@ -167,14 +175,31 @@ class PriceUpdate extends Equatable {
   final int warehouseId;
   final int? defaultPrice;
   final int? offerPrice;
+  final int? availablePrice;
+  final String? priceType;
+  final String? promotionJson;
+  final int? discountValue;
 
   const PriceUpdate({
     required this.productCode,
     required this.warehouseId,
     this.defaultPrice,
     this.offerPrice,
+    this.availablePrice,
+    this.priceType,
+    this.promotionJson,
+    this.discountValue,
   });
 
   @override
-  List<Object?> get props => [productCode, warehouseId, defaultPrice, offerPrice];
+  List<Object?> get props => [
+    productCode, 
+    warehouseId, 
+    defaultPrice, 
+    offerPrice, 
+    availablePrice,
+    priceType,
+    promotionJson,
+    discountValue,
+  ];
 }

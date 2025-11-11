@@ -19,6 +19,8 @@ class ProductPurchaseCard extends StatelessWidget {
   final void Function()? onAddToCart;
   final Widget? trailingControl;
   final VoidCallback? onTap;
+  final Color? priceColor; // Цвет цены на основе типа (promotion/differential_price)
+  final Color? priceBackgroundColor; // Фоновый цвет для цены
 
   const ProductPurchaseCard({
     super.key,
@@ -32,6 +34,8 @@ class ProductPurchaseCard extends StatelessWidget {
     this.onAddToCart,
     this.trailingControl,
     this.onTap,
+    this.priceColor,
+    this.priceBackgroundColor,
   });
 
   String _formatPrice(int priceInKopecks) {
@@ -103,13 +107,26 @@ class ProductPurchaseCard extends StatelessWidget {
 
                       const SizedBox(width: 8),
 
-                      // Price
-                      ConstrainedBox(
+                      // Price with background highlight
+                      Container(
+                        padding: priceBackgroundColor != null 
+                            ? const EdgeInsets.symmetric(horizontal: 6, vertical: 3)
+                            : EdgeInsets.zero,
+                        decoration: priceBackgroundColor != null
+                            ? BoxDecoration(
+                                color: priceBackgroundColor,
+                                borderRadius: BorderRadius.circular(4),
+                              )
+                            : null,
                         constraints: const BoxConstraints(minWidth: 60, maxWidth: 110),
                         child: Text(
                           '${_formatPrice(priceInKopecks)} ₽',
                           textAlign: TextAlign.right,
-                          style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
+                          style: TextStyle(
+                            fontSize: 14,
+                            fontWeight: FontWeight.w600,
+                            color: priceColor, // Применяем цвет на основе priceType
+                          ),
                         ),
                       ),
                     ],

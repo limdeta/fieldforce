@@ -411,7 +411,7 @@ class DriftProductRepository implements ProductRepository {
   @override
   Future<Either<Failure, List<Product>>> searchProductsWithFts(
     String query, {
-    int? categoryId,
+    List<int>? categoryIds,
     int offset = 0,
     int limit = 20,
   }) async {
@@ -423,12 +423,19 @@ class DriftProductRepository implements ProductRepository {
       final sanitizedQuery = _sanitizeFtsQuery(query);
       final lowerQuery = query.trim().toLowerCase();
       
-      // Строим условие для фильтрации по категории
+      // Строим условие для фильтрации по категориям
+      // Поддерживаем поиск в нескольких категориях для nested tree
       // categoriesInstock — это массив объектов [{id: 100, name: "..."}, ...]
-      // Извлекаем поле id из каждого объекта
-      final categoryFilter = categoryId != null 
-          ? 'AND EXISTS (SELECT 1 FROM json_each(json_extract(p.raw_json, \'\$.categoriesInstock\')) WHERE CAST(json_extract(value, \'\$.id\') AS INTEGER) = ?)'
-          : '';
+      String categoryFilter = '';
+      if (categoryIds != null && categoryIds.isNotEmpty) {
+        final placeholders = List.filled(categoryIds.length, '?').join(',');
+        categoryFilter = '''
+          AND EXISTS (
+            SELECT 1 FROM json_each(json_extract(p.raw_json, '\$.categoriesInstock'))
+            WHERE CAST(json_extract(value, '\$.id') AS INTEGER) IN ($placeholders)
+          )
+        ''';
+      }
       
       // FTS5 поиск с многоуровневым ранжированием
       final results = await _database.customSelect(
@@ -477,7 +484,7 @@ class DriftProductRepository implements ProductRepository {
           Variable.withString(lowerQuery),     // vendorCode contains
           Variable.withString(lowerQuery),     // brand contains
           Variable.withString(sanitizedQuery), // FTS MATCH query
-          if (categoryId != null) Variable.withInt(categoryId), // category filter
+          if (categoryIds != null) ...categoryIds.map((id) => Variable.withInt(id)), // category filters
           Variable.withInt(limit),
           Variable.withInt(offset),
         ],
@@ -489,7 +496,9 @@ class DriftProductRepository implements ProductRepository {
         return Product.fromJson(json);
       }).toList();
 
-      final categoryInfo = categoryId != null ? ' в категории $categoryId' : '';
+      final categoryInfo = categoryIds != null 
+          ? ' в категориях [${categoryIds.join(', ')}] (${categoryIds.length} шт)'
+          : '';
       _logger.fine('FTS поиск "$query"$categoryInfo: найдено ${productList.length} продуктов');
       return Right(productList);
       

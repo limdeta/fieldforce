@@ -2,8 +2,10 @@
 
 import 'package:fieldforce/shared/either.dart';
 import 'package:fieldforce/shared/failures.dart';
+import 'package:logging/logging.dart';
 import '../entities/product.dart';
 import '../repositories/product_repository.dart';
+import '../repositories/category_repository.dart';
 
 /// UseCase для полнотекстового поиска продуктов с FTS5
 /// 
@@ -22,15 +24,22 @@ import '../repositories/product_repository.dart';
 /// - 30: VendorCode совпадает
 /// - 20: Brand совпадает
 /// - 10: FTS полнотекстовое совпадение
+/// 
+/// При поиске в категории автоматически включает все дочерние категории (листья),
+/// т.к. продукты привязаны только к листовым категориям через categoriesInstock.
 class SearchProductsUseCase {
+  static final Logger _logger = Logger('SearchProductsUseCase');
+  
   final ProductRepository _productRepository;
+  final CategoryRepository _categoryRepository;
 
-  SearchProductsUseCase(this._productRepository);
+  SearchProductsUseCase(this._productRepository, this._categoryRepository);
 
   /// Выполняет поиск продуктов
   /// 
   /// [query] - поисковый запрос (минимум 1 символ)
   /// [categoryId] - опциональный ID категории для фильтрации (null = поиск везде)
+  ///                Если категория родительская, автоматически включаются все дочерние категории
   /// [offset] - смещение для пагинации (по умолчанию 0)
   /// [limit] - максимальное количество результатов (по умолчанию 20)
   /// 
@@ -46,10 +55,27 @@ class SearchProductsUseCase {
       return const Right([]);
     }
 
+    // Если категория указана, получаем все её дочерние категории (листья)
+    // т.к. продукты привязаны только к листовым категориям через categoriesInstock
+    List<int>? categoryIds;
+    if (categoryId != null) {
+      final descendantsResult = await _categoryRepository.getAllDescendants(categoryId);
+      
+      if (descendantsResult.isLeft()) {
+        _logger.warning('Не удалось получить потомков категории $categoryId, поиск только в ней');
+        categoryIds = [categoryId];
+      } else {
+        final descendants = descendantsResult.getOrElse(() => []);
+        // Включаем саму категорию + все дочерние
+        categoryIds = [categoryId, ...descendants.map((c) => c.id)];
+        _logger.fine('Поиск в категории $categoryId + ${descendants.length} потомков (всего ${categoryIds.length} категорий)');
+      }
+    }
+
     // Выполняем FTS поиск через репозиторий
     return await _productRepository.searchProductsWithFts(
       query,
-      categoryId: categoryId,
+      categoryIds: categoryIds,
       offset: offset,
       limit: limit,
     );

@@ -43,12 +43,13 @@ abstract class ProductRepository {
   /// Приоритеты: точное совпадение code/barcode > начало title > содержит title
   /// 
   /// [query] - поисковый запрос
-  /// [categoryId] - опциональный ID категории для фильтрации (null = поиск везде)
+  /// [categoryIds] - опциональный список ID категорий для фильтрации (null = поиск везде)
+  ///                 Поддерживает поиск в нескольких категориях одновременно (для nested tree)
   /// [offset] - смещение для пагинации
   /// [limit] - лимит результатов
   Future<Either<Failure, List<Product>>> searchProductsWithFts(
     String query, {
-    int? categoryId,
+    List<int>? categoryIds,
     int offset = 0,
     int limit = 20,
   });

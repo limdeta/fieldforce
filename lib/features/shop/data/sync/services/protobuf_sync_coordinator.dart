@@ -12,6 +12,7 @@ import '../repositories/protobuf_sync_repository.dart';
 import 'package:fieldforce/features/shop/domain/repositories/product_repository.dart';
 import 'package:fieldforce/features/shop/domain/repositories/stock_item_repository.dart';
 import 'package:fieldforce/features/shop/domain/repositories/warehouse_repository.dart';
+import 'package:fieldforce/features/shop/domain/entities/stock_item.dart';
 import 'regional_sync_service.dart';
 import 'stock_sync_service.dart';
 import 'outlet_pricing_sync_service.dart';
@@ -312,6 +313,32 @@ class ProtobufSyncCoordinator {
         final response = await _outletPricingSyncService.getOutletPrices(vendorId);
         final outletPricingCount = response.outletPricing.length;
         totalPrices += outletPricingCount;
+        
+        // Обработка и сохранение цен из OutletStockPricing
+        if (outletPricingCount > 0) {
+          final priceUpdates = <PriceUpdate>[];
+          
+          for (final pricing in response.outletPricing) {
+            final priceData = StockItemProtobufConverter.fromOutletPricing(pricing);
+            priceUpdates.add(PriceUpdate(
+              productCode: priceData['productCode'] as int,
+              warehouseId: priceData['warehouseId'] as int,
+              offerPrice: priceData['offerPrice'] as int?,
+              availablePrice: priceData['availablePrice'] as int?,
+              priceType: priceData['priceType'] as String?,
+              promotionJson: priceData['promotionJson'] as String?,
+              discountValue: priceData['discountValue'] as int?,
+            ));
+          }
+          
+          // Пакетное обновление цен в БД
+          final updateResult = await _stockItemRepository.batchUpdatePrices(priceUpdates);
+          updateResult.fold(
+            (failure) => _logger.warning('⚠️ Ошибка сохранения цен для точки $vendorId: ${failure.message}'),
+            (_) => _logger.fine('✅ Сохранено $outletPricingCount цен для точки $vendorId'),
+          );
+        }
+        
         perOutlet.add(<String, dynamic>{
           'outlet': vendorId,
           'status': 'success',

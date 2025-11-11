@@ -7,6 +7,7 @@ import 'package:fieldforce/features/shop/presentation/bloc/cart_bloc.dart';
 import 'package:fieldforce/features/shop/presentation/widgets/cart_control_widget.dart';
 import 'package:fieldforce/features/shop/presentation/widgets/image_carousel_widget.dart';
 import 'package:fieldforce/features/shop/presentation/widgets/stock_item_selector_widget.dart';
+import 'package:fieldforce/features/shop/presentation/helpers/price_color_helper.dart';
 import 'package:fieldforce/shared/services/image_cache_service.dart';
 import 'package:fieldforce/shared/presentation/widgets/home_icon_button.dart';
 
@@ -255,33 +256,35 @@ class _ProductDetailPageState extends State<ProductDetailPage> {
                 
                 const SizedBox(height: 8),
                 
-                // Статус остатков
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                  decoration: BoxDecoration(
-                    color: productWithStock.stockStatusColor.color.withValues(alpha: 0.1),
-                    border: Border.all(color: productWithStock.stockStatusColor.color),
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Icon(
-                        productWithStock.stockStatusColor.icon,
-                        size: 16,
-                        color: productWithStock.stockStatusColor.color,
-                      ),
-                      const SizedBox(width: 4),
-                      Text(
-                        productWithStock.stockStatusText,
-                        style: TextStyle(
+                // Статус остатков - показываем только если есть реальные данные
+                // (totalStock > 0 означает что данные загружены, == 0 это заглушка)
+                if (productWithStock.totalStock > 0)
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                    decoration: BoxDecoration(
+                      color: productWithStock.stockStatusColor.color.withValues(alpha: 0.1),
+                      border: Border.all(color: productWithStock.stockStatusColor.color),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(
+                          productWithStock.stockStatusColor.icon,
+                          size: 16,
                           color: productWithStock.stockStatusColor.color,
-                          fontWeight: FontWeight.w500,
                         ),
-                      ),
-                    ],
+                        const SizedBox(width: 4),
+                        Text(
+                          productWithStock.stockStatusText,
+                          style: TextStyle(
+                            color: productWithStock.stockStatusColor.color,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
-                ),
 
                 // Вес/упаковка
                 if (product.amountInPackage != null)
@@ -317,7 +320,8 @@ class _ProductDetailPageState extends State<ProductDetailPage> {
 
                 const SizedBox(height: 24),
 
-                if (widget.productWithStock.isAvailable) 
+                // Показываем управление корзиной только если склад выбран и есть остаток
+                if (_selectedStockItem != null && _selectedStockItem!.stock > 0) 
                   BlocBuilder<CartBloc, CartState>(
                     builder: (context, state) {
                       int currentQuantity = _lastKnownQuantity; 
@@ -350,8 +354,8 @@ class _ProductDetailPageState extends State<ProductDetailPage> {
                       );
                     },
                   )
-                else
-                  // Показываем сообщение для недоступных товаров
+                else if (_selectedStockItem != null && _selectedStockItem!.stock == 0)
+                  // Склад выбран, но товара нет
                   Container(
                     width: double.infinity,
                     padding: const EdgeInsets.all(16),
@@ -366,7 +370,7 @@ class _ProductDetailPageState extends State<ProductDetailPage> {
                         Icon(Icons.info_outline, color: Colors.grey[600]),
                         const SizedBox(width: 8),
                         Text(
-                          'Товар недоступен для заказа',
+                          'Нет на складе',
                           style: TextStyle(
                             color: Colors.grey[600],
                             fontWeight: FontWeight.w500,
@@ -374,7 +378,10 @@ class _ProductDetailPageState extends State<ProductDetailPage> {
                         ),
                       ],
                     ),
-                  ),
+                  )
+                else
+                  // Склад еще не выбран (загрузка)
+                  const SizedBox.shrink(),
 
                 const SizedBox(height: 32),
 
@@ -580,7 +587,7 @@ class _ProductDetailPageState extends State<ProductDetailPage> {
             '${(stockItem.offerPrice! / 100).toStringAsFixed(2)} ₽',
             style: Theme.of(context).textTheme.headlineMedium?.copyWith(
               fontWeight: FontWeight.bold,
-              color: Colors.red.shade700,
+              color: PriceColorHelper.getPriceColor(stockItem),
             ),
           ),
         ] else
@@ -589,7 +596,7 @@ class _ProductDetailPageState extends State<ProductDetailPage> {
             '${(stockItem.defaultPrice / 100).toStringAsFixed(2)} ₽',
             style: Theme.of(context).textTheme.headlineMedium?.copyWith(
               fontWeight: FontWeight.bold,
-              color: Colors.green.shade700,
+              color: PriceColorHelper.getPriceColor(stockItem),
             ),
           ),
       ],
