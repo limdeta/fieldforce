@@ -12,38 +12,40 @@ import 'package:fieldforce/features/navigation/tracking/domain/entities/track_sn
 import 'package:fieldforce/app/services/app_session_service.dart';
 
 /// Высокопроизводительный сервис GPS трекинга с буферизацией
-/// 
+///
 /// Новая архитектура:
 /// - GpsBuffer: буферизация точек в памяти
 /// - OptimizedTrackManager: управление треками с batch записью
 /// - Разделение UI и persistence слоёв
 /// - Оптимизация для real-time обновлений
-class LocationTrackingService implements LocationTrackingServiceBase  {
+class LocationTrackingService implements LocationTrackingServiceBase {
   static final Logger _logger = Logger('LocationTrackingService');
   final GpsDataManager _gpsDataManager;
   late final TrackManager _trackManager;
   final DeviceOrientationService _orientationService;
   // Optional injection point for tests: custom position stream provider
-  final Stream<Position> Function(LocationSettings settings)? _positionStreamProvider;
+  final Stream<Position> Function(LocationSettings settings)?
+  _positionStreamProvider;
   StreamSubscription<Position>? _positionSubscription;
-  StreamSubscription<UserTrack>? _trackUpdateSubscription; // Добавлено для подписки на TrackManager
+  StreamSubscription<UserTrack>?
+  _trackUpdateSubscription; // Добавлено для подписки на TrackManager
   StreamSubscription<double>? _orientationSubscription;
-  
-  final StreamController<Position> _positionController = 
+
+  final StreamController<Position> _positionController =
       StreamController<Position>.broadcast();
-      
-  final StreamController<bool> _trackingStateController = 
+
+  final StreamController<bool> _trackingStateController =
       StreamController<bool>.broadcast();
-      
-  final StreamController<bool> _pauseStateController = 
+
+  final StreamController<bool> _pauseStateController =
       StreamController<bool>.broadcast();
-      
+
   // Стрим для частых обновлений UI с полным состоянием трека (включая буфер)
-  final StreamController<UserTrack> _liveTrackUpdateController = 
+  final StreamController<UserTrack> _liveTrackUpdateController =
       StreamController<UserTrack>.broadcast();
   UserTrack? _lastEmittedTrack;
   CompactTrack? _lastLiveBuffer;
-  
+
   Position? _lastPosition;
   Position? _lastBroadcastPosition;
   bool _isActive = false;
@@ -57,12 +59,15 @@ class LocationTrackingService implements LocationTrackingServiceBase  {
     accuracy: LocationAccuracy.high,
     distanceFilter: 3, // минимальное расстояние между точками в метрах
   );
-  
+
   // Настройки фильтрации
   static const double _minAccuracy = 20.0;
-  static const double _maxSpeed = 150.0; // км/ч - максимальная разумная скорость
-  static const int _stationaryThreshold = 50; // количество статичных точек для паузы (увеличено чтобы не прерывать трекинг)
-  static const double _minDistanceMeters = 5.0; // минимальное расстояние между точками
+  static const double _maxSpeed =
+      150.0; // км/ч - максимальная разумная скорость
+  static const int _stationaryThreshold =
+      50; // количество статичных точек для паузы (увеличено чтобы не прерывать трекинг)
+  static const double _minDistanceMeters =
+      5.0; // минимальное расстояние между точками
   static const double _gpsHeadingSpeedThreshold = 1.5; // м/с (~5.4 км/ч)
   static const Duration _compassThrottle = Duration(milliseconds: 120);
   static const double _compassJitterThreshold = 0.3; // градусы
@@ -76,99 +81,132 @@ class LocationTrackingService implements LocationTrackingServiceBase  {
     this._gpsDataManager,
     this._trackManager,
     this._orientationService, {
-    Stream<Position> Function(LocationSettings settings)? positionStreamProvider,
+    Stream<Position> Function(LocationSettings settings)?
+    positionStreamProvider,
   }) : _positionStreamProvider = positionStreamProvider {
     _logger.fine('🏗️ LocationTrackingService: получили TrackManager из DI');
     _trackingStateController.add(false);
     _pauseStateController.add(false);
-    
+
     // КРИТИЧНО: Подписываемся на обновления от TrackManager и пересылаем их в UI
-    _trackUpdateSubscription = _trackManager.trackUpdateStream.listen((track) {
-      _logger.fine('🔄 LocationTrackingService: получено обновление от TrackManager');
-      _logger.fine('   📊 Трек ID: ${track.id}, сегментов: ${track.segments.length}, точек: ${track.totalPoints}');
-      _logger.fine('    Детали сегментов:');
-      for (int i = 0; i < track.segments.length; i++) {
-        final segment = track.segments[i];
-        _logger.fine('      segment[$i]: ${segment.pointCount} точек');
-      }
-      
+    _trackUpdateSubscription = _trackManager.trackUpdateStream.listen(
+      (track) {
+        _logger.fine(
+          '🔄 LocationTrackingService: получено обновление от TrackManager',
+        );
+        _logger.fine(
+          '   📊 Трек ID: ${track.id}, сегментов: ${track.segments.length}, точек: ${track.totalPoints}',
+        );
+        _logger.fine('    Детали сегментов:');
+        for (int i = 0; i < track.segments.length; i++) {
+          final segment = track.segments[i];
+          _logger.fine('      segment[$i]: ${segment.pointCount} точек');
+        }
+
         if (!_liveTrackUpdateController.isClosed) {
           _liveTrackUpdateController.add(track);
           _lastEmittedTrack = track;
           _logger.fine('✅ LocationTrackingService: трек переслан в UI стримы');
         } else {
-        _logger.warning('❌ LocationTrackingService: _liveTrackUpdateController закрыт!');
-      }
-    }, onError: (error) {
-      _logger.severe('❌ LocationTrackingService: ошибка в trackUpdateStream от TrackManager: $error');
-    });
+          _logger.warning(
+            '❌ LocationTrackingService: _liveTrackUpdateController закрыт!',
+          );
+        }
+      },
+      onError: (error) {
+        _logger.severe(
+          '❌ LocationTrackingService: ошибка в trackUpdateStream от TrackManager: $error',
+        );
+      },
+    );
 
     // Подписываемся на live buffer от TrackManager чтобы кешировать последний
     // сегмент буфера — это обеспечивает немедленную реплей-эмиссию для новых
     // подписчиков liveBufferStream.
-    _trackManager.liveBufferStream.listen((buffer) {
-      try {
-        _lastLiveBuffer = buffer;
-      } catch (e, st) {
-        _logger.warning('Ошибка при кешировании live buffer', e, st);
-      }
-    }, onError: (error) {
-      _logger.warning('Ошибка в liveBufferStream от TrackManager: $error');
-    });
+    _trackManager.liveBufferStream.listen(
+      (buffer) {
+        try {
+          _lastLiveBuffer = buffer;
+        } catch (e, st) {
+          _logger.warning('Ошибка при кешировании live buffer', e, st);
+        }
+      },
+      onError: (error) {
+        _logger.warning('Ошибка в liveBufferStream от TrackManager: $error');
+      },
+    );
   }
 
   /// Стримы для подписки на обновления
   @override
   Stream<Position> get positionStream => Stream<Position>.multi((controller) {
-        // replay last known position to late subscribers
-        final Position? lastForReplay = _lastBroadcastPosition ?? _lastPosition;
-        if (lastForReplay != null) controller.add(lastForReplay);
-        final sub = _positionController.stream.listen((p) {
-          controller.add(p);
-        }, onError: controller.addError, onDone: controller.close);
-        controller.onCancel = () {
-          sub.cancel();
-        };
-      });
+    // replay last known position to late subscribers
+    final Position? lastForReplay = _lastBroadcastPosition ?? _lastPosition;
+    if (lastForReplay != null) controller.add(lastForReplay);
+    final sub = _positionController.stream.listen(
+      (p) {
+        controller.add(p);
+      },
+      onError: controller.addError,
+      onDone: controller.close,
+    );
+    controller.onCancel = () {
+      sub.cancel();
+    };
+  });
 
   @override
   TrackSnapshot getCurrentSnapshot() {
     final persisted = _trackManager.currentTrackForUI;
     final live = _lastLiveBuffer;
     final pos = _lastBroadcastPosition ?? _lastPosition;
-    return TrackSnapshot(persistedTrack: persisted, liveBuffer: live, lastPosition: pos);
+    return TrackSnapshot(
+      persistedTrack: persisted,
+      liveBuffer: live,
+      lastPosition: pos,
+    );
   }
 
   @override
-  Stream<UserTrack> get trackUpdateStream => Stream<UserTrack>.multi((controller) {
+  Stream<UserTrack> get trackUpdateStream =>
+      Stream<UserTrack>.multi((controller) {
         // replay last emitted track to late subscribers
         if (_lastEmittedTrack != null) {
           controller.add(_lastEmittedTrack!);
         }
-        final sub = _liveTrackUpdateController.stream.listen((t) {
-          controller.add(t);
-        }, onError: controller.addError, onDone: controller.close);
+        final sub = _liveTrackUpdateController.stream.listen(
+          (t) {
+            controller.add(t);
+          },
+          onError: controller.addError,
+          onDone: controller.close,
+        );
         controller.onCancel = () {
           sub.cancel();
         };
       });
-  
+
   @override
-  Stream<CompactTrack> get liveBufferStream => Stream<CompactTrack>.multi((controller) {
+  Stream<CompactTrack> get liveBufferStream =>
+      Stream<CompactTrack>.multi((controller) {
         // replay last live buffer to late subscribers
         if (_lastLiveBuffer != null) controller.add(_lastLiveBuffer!);
-        final sub = _trackManager.liveBufferStream.listen((buffer) {
-          // cache latest live buffer for future subscribers
-          _lastLiveBuffer = buffer;
-          controller.add(buffer);
-        }, onError: controller.addError, onDone: controller.close);
+        final sub = _trackManager.liveBufferStream.listen(
+          (buffer) {
+            // cache latest live buffer for future subscribers
+            _lastLiveBuffer = buffer;
+            controller.add(buffer);
+          },
+          onError: controller.addError,
+          onDone: controller.close,
+        );
         controller.onCancel = () {
           sub.cancel();
         };
       });
   Stream<bool> get trackingStateStream => _trackingStateController.stream;
   Stream<bool> get pauseStateStream => _pauseStateController.stream;
-  
+
   /// Текущее состояние
   Stream<UserTrack?> get currentTrackStream => _trackManager.trackUpdateStream;
   @override
@@ -177,7 +215,7 @@ class LocationTrackingService implements LocationTrackingServiceBase  {
   bool get isTracking => _positionSubscription != null && _isActive;
   bool get isActive => _isActive;
   bool get isPaused => _positionSubscription != null && !_isActive;
-  
+
   /// Проверяет разрешения на геолокацию
   Future<bool> checkPermissions() async {
     try {
@@ -187,13 +225,15 @@ class LocationTrackingService implements LocationTrackingServiceBase  {
       return false;
     }
   }
-  
+
   /// Единый метод запуска трекинга - TrackManager сам определит нужно ли создавать новый трек или продолжать существующий
   @override
   Future<bool> startTracking(NavigationUser user) async {
     try {
-      _logger.info('🎯 Запуск трекинга для пользователя: ${user.fullName} (ID: ${user.id})');
-      
+      _logger.info(
+        '🎯 Запуск трекинга для пользователя: ${user.fullName} (ID: ${user.id})',
+      );
+
       if (isTracking) {
         _logger.warning('⚠️ Трекинг уже запущен, возвращаем false');
         return false;
@@ -215,18 +255,20 @@ class LocationTrackingService implements LocationTrackingServiceBase  {
         return false;
       }
       _logger.info('✅ TrackManager успешно запущен');
-      
+
       _isActive = true;
       _trackingStateController.add(true);
-      
+
       _lastPosition = null;
       _stationaryCount = 0;
-      
+
       // Устанавливаем последнюю позицию из трека если он существует
       final currentTrack = _trackManager.currentTrackForUI;
       if (currentTrack != null && currentTrack.isNotEmpty) {
         _setLastPositionFromTrack(currentTrack);
-        _logger.info('📍 Восстановлена последняя позиция из существующего трека');
+        _logger.info(
+          '📍 Восстановлена последняя позиция из существующего трека',
+        );
       }
 
       _logger.info('🛰️ Запускаем GPS источник данных...');
@@ -244,26 +286,42 @@ class LocationTrackingService implements LocationTrackingServiceBase  {
           ? _positionStreamProvider(_locationSettings)
           : _gpsDataManager.getPositionStream(settings: _locationSettings);
 
-      _positionSubscription = posStream.listen((pos) {
-        unawaited(_onPositionUpdate(pos));
-      }, onError: (error) async {
-        _logger.warning('⚠️ LocationTrackingService: позиционный стрим выдал ошибку, пытаемся сохранить буфер: $error');
-        try {
-          await _trackManager.flushBufferToCurrentTrack();
-          _logger.info('✅ Буфер успешно сохранён после ошибки стрима');
-        } catch (e, st) {
-          _logger.warning('❌ Ошибка при сохранении буфера после ошибки стрима', e, st);
-        }
-        _onPositionError(error);
-      }, onDone: () async {
-        _logger.info('ℹ️ LocationTrackingService: позиционный стрим завершился (onDone), сохраняем буфер');
-        try {
-          await _trackManager.flushBufferToCurrentTrack();
-          _logger.info('✅ Буфер успешно сохранён после завершения стрима');
-        } catch (e, st) {
-          _logger.warning('❌ Ошибка при сохранении буфера после завершения стрима', e, st);
-        }
-      });
+      _positionSubscription = posStream.listen(
+        (pos) {
+          unawaited(_onPositionUpdate(pos));
+        },
+        onError: (error) async {
+          _logger.warning(
+            '⚠️ LocationTrackingService: позиционный стрим выдал ошибку, пытаемся сохранить буфер: $error',
+          );
+          try {
+            await _trackManager.flushBufferToCurrentTrack();
+            _logger.info('✅ Буфер успешно сохранён после ошибки стрима');
+          } catch (e, st) {
+            _logger.warning(
+              '❌ Ошибка при сохранении буфера после ошибки стрима',
+              e,
+              st,
+            );
+          }
+          _onPositionError(error);
+        },
+        onDone: () async {
+          _logger.info(
+            'ℹ️ LocationTrackingService: позиционный стрим завершился (onDone), сохраняем буфер',
+          );
+          try {
+            await _trackManager.flushBufferToCurrentTrack();
+            _logger.info('✅ Буфер успешно сохранён после завершения стрима');
+          } catch (e, st) {
+            _logger.warning(
+              '❌ Ошибка при сохранении буфера после завершения стрима',
+              e,
+              st,
+            );
+          }
+        },
+      );
 
       final trackId = _trackManager.currentTrackForUI?.id;
       if (trackId != null) {
@@ -278,16 +336,15 @@ class LocationTrackingService implements LocationTrackingServiceBase  {
       } else {
         _logger.info('🆕 Трекинг запущен для нового пользователя');
       }
-      
+
       _logger.info('🎉 Трекинг успешно запущен!');
       return true;
-      
     } catch (e, st) {
       _logger.severe('💥 Ошибка запуска трекинга', e, st);
       return false;
     }
   }
-  
+
   /// Автоматический запуск трекинга - упрощенная версия, просто вызывает startTracking
   @override
   Future<bool> autoStartTracking({required NavigationUser user}) async {
@@ -317,12 +374,12 @@ class LocationTrackingService implements LocationTrackingServiceBase  {
 
       await _stopOrientationUpdates();
       _resetHeadingState();
-      
+      _gpsDataManager.stopGps();
+
       _isActive = false;
       _trackingStateController.add(false);
       _pauseStateController.add(false);
       return true;
-      
     } catch (e, st) {
       _logger.severe('Ошибка при остановке трекинга', e, st);
       return false;
@@ -344,7 +401,8 @@ class LocationTrackingService implements LocationTrackingServiceBase  {
 
       await _trackManager.pauseTracking();
 
-  await _stopOrientationUpdates();
+      await _stopOrientationUpdates();
+      _gpsDataManager.stopGps();
 
       _isActive = false;
       _pauseStateController.add(true);
@@ -356,20 +414,22 @@ class LocationTrackingService implements LocationTrackingServiceBase  {
     }
   }
 
-
   @override
   Future<bool> resumeTracking() async {
     try {
       if (!isPaused) {
         return false;
       }
-      
+
+      if (!_gpsDataManager.isNativeServiceRunning) {
+        await _gpsDataManager.startGps();
+      }
       await _trackManager.resumeTracking();
-  await _startOrientationUpdates();
-      
+      await _startOrientationUpdates();
+
       _isActive = true;
       _pauseStateController.add(false);
-      
+
       return true;
     } catch (e) {
       _logger.warning('Ошибка возобновления трекинга: $e');
@@ -383,15 +443,19 @@ class LocationTrackingService implements LocationTrackingServiceBase  {
     sub?.pause();
 
     try {
-      _logger.info('📍 LocationTrackingService.onPositionUpdate: ${position.latitude}, ${position.longitude} (точность: ${position.accuracy}m)');
+      _logger.info(
+        '📍 LocationTrackingService.onPositionUpdate: ${position.latitude}, ${position.longitude} (точность: ${position.accuracy}m)',
+      );
 
       if (!_isValidPosition(position)) {
-        _logger.warning('⚠️ Позиция отфильтрована как невалидная (точность: ${position.accuracy})');
+        _logger.warning(
+          '⚠️ Позиция отфильтрована как невалидная (точность: ${position.accuracy})',
+        );
         return;
       }
 
-  double fusedHeading = _fuseHeading(position);
-  Position corrected = _copyPositionWithHeading(position, fusedHeading);
+      double fusedHeading = _fuseHeading(position);
+      Position corrected = _copyPositionWithHeading(position, fusedHeading);
 
       final _SegmentBreakDecision? gapDecision = _detectSegmentBreak(corrected);
       if (gapDecision != null) {
@@ -410,7 +474,9 @@ class LocationTrackingService implements LocationTrackingServiceBase  {
             corrected.longitude,
           );
         }
-        _logger.fine('📏 Позиция пропущена по дистанции: ${distance.toStringAsFixed(1)}м < $_minDistanceMeters');
+        _logger.fine(
+          '📏 Позиция пропущена по дистанции: ${distance.toStringAsFixed(1)}м < $_minDistanceMeters',
+        );
 
         final Position uiPosition = _copyPositionWithHeading(
           _lastBroadcastPosition ?? corrected,
@@ -422,7 +488,9 @@ class LocationTrackingService implements LocationTrackingServiceBase  {
       }
 
       if (_isActive) {
-        _logger.info('📍 LocationTrackingService: передаем точку в TrackManager (_isActive=true)');
+        _logger.info(
+          '📍 LocationTrackingService: передаем точку в TrackManager (_isActive=true)',
+        );
         _trackManager.addGpsPoint(corrected);
         _logger.info('✅ Точка передана в TrackManager');
 
@@ -431,7 +499,9 @@ class LocationTrackingService implements LocationTrackingServiceBase  {
           _liveTrackUpdateController.add(currentTrack);
         }
       } else {
-        _logger.fine('⚠️ LocationTrackingService: трекинг неактивен (_isActive=false) - точка не сохранена');
+        _logger.fine(
+          '⚠️ LocationTrackingService: трекинг неактивен (_isActive=false) - точка не сохранена',
+        );
       }
 
       _checkStationaryState(corrected);
@@ -466,41 +536,43 @@ class LocationTrackingService implements LocationTrackingServiceBase  {
     if (speedKmh > _maxSpeed) {
       return false;
     }
-    
+
     return true;
   }
 
   bool _shouldRecordPosition(Position position) {
     if (_lastPosition == null) return true;
-    
+
     final distance = Geolocator.distanceBetween(
       _lastPosition!.latitude,
       _lastPosition!.longitude,
       position.latitude,
       position.longitude,
     );
-    
+
     return distance >= _minDistanceMeters;
   }
 
   void _checkStationaryState(Position position) {
     if (_lastPosition == null) return;
-    
+
     final distance = Geolocator.distanceBetween(
       _lastPosition!.latitude,
       _lastPosition!.longitude,
       position.latitude,
       position.longitude,
     );
-    
+
     if (distance < _minDistanceMeters) {
       _stationaryCount++;
     } else {
       _stationaryCount = 0;
     }
-    
+
     // Автоматическая пауза при длительной стационарности (только для реального GPS)
-    if (_stationaryCount >= _stationaryThreshold && _isActive && _gpsDataManager.currentMode == GpsMode.real) {
+    if (_stationaryCount >= _stationaryThreshold &&
+        _isActive &&
+        _gpsDataManager.currentMode == GpsMode.real) {
       pauseTracking();
     }
   }
@@ -546,17 +618,27 @@ class LocationTrackingService implements LocationTrackingServiceBase  {
       return;
     }
 
-    if (_isHeadingUsable(base.heading) && base.speed >= _gpsHeadingSpeedThreshold) {
+    if (_isHeadingUsable(base.heading) &&
+        base.speed >= _gpsHeadingSpeedThreshold) {
       return;
     }
 
     final now = DateTime.now();
-    if (_lastCompassUiEmission != null && now.difference(_lastCompassUiEmission!) < _compassThrottle) {
+    if (_lastCompassUiEmission != null &&
+        now.difference(_lastCompassUiEmission!) < _compassThrottle) {
       return;
     }
 
-    final double blended = _applyHeadingSmoothing(normalized, 0.25, enforceJitter: true);
-    final Position updated = _copyPositionWithHeading(base, blended, timestamp: now);
+    final double blended = _applyHeadingSmoothing(
+      normalized,
+      0.25,
+      enforceJitter: true,
+    );
+    final Position updated = _copyPositionWithHeading(
+      base,
+      blended,
+      timestamp: now,
+    );
     _broadcastPosition(updated);
     _lastCompassUiEmission = now;
   }
@@ -568,7 +650,11 @@ class LocationTrackingService implements LocationTrackingServiceBase  {
     }
   }
 
-  Position _copyPositionWithHeading(Position position, double heading, {DateTime? timestamp}) {
+  Position _copyPositionWithHeading(
+    Position position,
+    double heading, {
+    DateTime? timestamp,
+  }) {
     return Position(
       latitude: position.latitude,
       longitude: position.longitude,
@@ -586,7 +672,8 @@ class LocationTrackingService implements LocationTrackingServiceBase  {
   double _fuseHeading(Position position) {
     final bool gpsUsable = _isHeadingUsable(position.heading);
     final bool gpsReliable = _isGpsHeadingReliable(position);
-    final double? compassHeading = _orientationService.lastHeading ?? _lastCompassHeading;
+    final double? compassHeading =
+        _orientationService.lastHeading ?? _lastCompassHeading;
     final bool compassUsable = _isHeadingUsable(compassHeading);
 
     double candidate;
@@ -605,19 +692,28 @@ class LocationTrackingService implements LocationTrackingServiceBase  {
     return _applyHeadingSmoothing(candidate, gpsReliable ? 0.35 : 0.2);
   }
 
-  double _applyHeadingSmoothing(double candidate, double alpha, {bool enforceJitter = false}) {
+  double _applyHeadingSmoothing(
+    double candidate,
+    double alpha, {
+    bool enforceJitter = false,
+  }) {
     final double normalizedCandidate = normalizeHeading(candidate);
     if (_lastComputedHeading == null) {
       _lastComputedHeading = normalizedCandidate;
       return _lastComputedHeading!;
     }
 
-    final double delta = shortestHeadingDelta(normalizedCandidate, _lastComputedHeading!);
+    final double delta = shortestHeadingDelta(
+      normalizedCandidate,
+      _lastComputedHeading!,
+    );
     if (enforceJitter && delta.abs() < _compassJitterThreshold) {
       return _lastComputedHeading!;
     }
 
-    _lastComputedHeading = normalizeHeading(_lastComputedHeading! + delta * alpha);
+    _lastComputedHeading = normalizeHeading(
+      _lastComputedHeading! + delta * alpha,
+    );
     return _lastComputedHeading!;
   }
 
@@ -648,8 +744,8 @@ class LocationTrackingService implements LocationTrackingServiceBase  {
     final Position? previous = _lastBroadcastPosition ?? _lastPosition;
     if (previous == null) return null;
 
-  final DateTime previousTs = previous.timestamp;
-  final DateTime nextTs = nextPosition.timestamp;
+    final DateTime previousTs = previous.timestamp;
+    final DateTime nextTs = nextPosition.timestamp;
 
     Duration rawGap = nextTs.difference(previousTs);
     final bool gapNegative = rawGap.isNegative;
@@ -664,13 +760,19 @@ class LocationTrackingService implements LocationTrackingServiceBase  {
       nextPosition.longitude,
     );
 
-    final double seconds = rawGap.inMilliseconds > 0 ? rawGap.inMilliseconds / 1000.0 : 0.0;
+    final double seconds = rawGap.inMilliseconds > 0
+        ? rawGap.inMilliseconds / 1000.0
+        : 0.0;
     final double speed = seconds > 0 ? distance / seconds : double.infinity;
 
     final bool largeJump = distance >= _segmentGapDistanceMeters;
-    final bool longGap = rawGap >= _segmentGapDuration && distance >= _segmentGapDistanceForLongGap;
-    final bool teleportSpeed = speed > _maxTeleportSpeedMps && distance >= _segmentBreakMinDistance;
-    final bool timestampRegression = gapNegative && distance >= _segmentBreakMinDistance;
+    final bool longGap =
+        rawGap >= _segmentGapDuration &&
+        distance >= _segmentGapDistanceForLongGap;
+    final bool teleportSpeed =
+        speed > _maxTeleportSpeedMps && distance >= _segmentBreakMinDistance;
+    final bool timestampRegression =
+        gapNegative && distance >= _segmentBreakMinDistance;
 
     if (!largeJump && !longGap && !teleportSpeed && !timestampRegression) {
       return null;
@@ -696,7 +798,9 @@ class LocationTrackingService implements LocationTrackingServiceBase  {
   }
 
   Future<void> _handleSegmentBreak(_SegmentBreakDecision decision) async {
-    final double speedKmh = decision.speedMps.isFinite ? decision.speedMps * 3.6 : double.infinity;
+    final double speedKmh = decision.speedMps.isFinite
+        ? decision.speedMps * 3.6
+        : double.infinity;
     _logger.warning(
       '🧭 Segment break (${decision.reason}): gap=${decision.timeGap.inSeconds}s, '
       'distance=${decision.distanceMeters.toStringAsFixed(1)}м, '
@@ -706,11 +810,19 @@ class LocationTrackingService implements LocationTrackingServiceBase  {
     try {
       await _trackManager.breakCurrentSegment(reason: decision.reason);
     } catch (e, st) {
-      _logger.severe('Не удалось принудительно завершить сегмент в TrackManager', e, st);
+      _logger.severe(
+        'Не удалось принудительно завершить сегмент в TrackManager',
+        e,
+        st,
+      );
       try {
         _trackManager.clearLiveBuffer();
       } catch (inner, innerSt) {
-        _logger.warning('Не удалось очистить live buffer после ошибки breakCurrentSegment', inner, innerSt);
+        _logger.warning(
+          'Не удалось очистить live buffer после ошибки breakCurrentSegment',
+          inner,
+          innerSt,
+        );
       }
     } finally {
       _lastPosition = null;
@@ -719,7 +831,6 @@ class LocationTrackingService implements LocationTrackingServiceBase  {
       _stationaryCount = 0;
     }
   }
-
 
   void _setLastPositionFromTrack(UserTrack track) {
     if (track.segments.isEmpty) return;

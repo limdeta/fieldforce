@@ -15,6 +15,8 @@ import 'background_ingest_utils.dart';
 /// Clean GpsDataManager implementing the native Room contract.
 enum GpsMode { real, mock }
 
+enum GpsNativeStatus { started, stopped }
+
 class GpsTestConfig {
   final String? mockDataPath;
   final double speedMultiplier;
@@ -52,8 +54,13 @@ class GpsDataManager {
   GpsDataSource? _currentSource;
   GpsMode _currentMode = GpsMode.real;
 
-  static const MethodChannel _platformChannel = MethodChannel('fieldforce/background_location');
-  final StreamController<Position> _nativePositionController = StreamController<Position>.broadcast();
+  static const MethodChannel _platformChannel = MethodChannel(
+    'fieldforce/background_location',
+  );
+  final StreamController<Position> _nativePositionController =
+      StreamController<Position>.broadcast();
+  final StreamController<GpsNativeStatus> _nativeStatusController =
+      StreamController<GpsNativeStatus>.broadcast();
 
   static final GpsDataManager _instance = GpsDataManager._internal();
   factory GpsDataManager() => _instance;
@@ -70,8 +77,12 @@ class GpsDataManager {
           final args = Map<String, dynamic>.from(call.arguments as Map);
           final double lat = (args['latitude'] as num).toDouble();
           final double lon = (args['longitude'] as num).toDouble();
-          final double accuracy = args.containsKey('accuracy') ? (args['accuracy'] as num).toDouble() : 0.0;
-          final int timestamp = args.containsKey('timestamp') ? (args['timestamp'] as int) : DateTime.now().millisecondsSinceEpoch;
+          final double accuracy = args.containsKey('accuracy')
+              ? (args['accuracy'] as num).toDouble()
+              : 0.0;
+          final int timestamp = args.containsKey('timestamp')
+              ? (args['timestamp'] as int)
+              : DateTime.now().millisecondsSinceEpoch;
 
           final pos = Position(
             latitude: lat,
@@ -88,7 +99,10 @@ class GpsDataManager {
 
           _nativePositionController.add(pos);
         } else if (call.method == 'onStatus') {
-          _logger.info('GpsDataManager: native status=${call.arguments}');
+          final mappedStatus = _mapStatus(call.arguments?.toString());
+          if (mappedStatus != null) {
+            _applyNativeStatus(mappedStatus);
+          }
         }
       } catch (e, st) {
         _logger.warning('Error handling platform channel call', e, st);
@@ -98,10 +112,16 @@ class GpsDataManager {
 
   GpsMode get currentMode => _currentMode;
   GpsDataSource? get currentSource => _currentSource;
+  bool get isNativeServiceRunning => _nativeServiceStarted;
+  Stream<GpsNativeStatus> get nativeStatusStream =>
+      _nativeStatusController.stream;
 
-  Future<void> initialize({required GpsMode mode, GpsTestConfig testConfig = GpsTestConfig.defaultTest}) async {
+  Future<void> initialize({
+    required GpsMode mode,
+    GpsTestConfig testConfig = GpsTestConfig.defaultTest,
+  }) async {
     await _disposeCurrentSource();
-  _currentMode = mode;
+    _currentMode = mode;
 
     switch (mode) {
       case GpsMode.real:
@@ -113,8 +133,10 @@ class GpsDataManager {
           addGpsNoise: testConfig.addGpsNoise,
           baseAccuracy: testConfig.baseAccuracy,
         );
-        if (testConfig.mockDataPath != null) await mockSource.loadRoute(testConfig.mockDataPath!);
-        if (testConfig.startProgress != null) mockSource.setProgress(testConfig.startProgress!);
+        if (testConfig.mockDataPath != null)
+          await mockSource.loadRoute(testConfig.mockDataPath!);
+        if (testConfig.startProgress != null)
+          mockSource.setProgress(testConfig.startProgress!);
         _currentSource = mockSource;
         break;
     }
@@ -135,9 +157,18 @@ class GpsDataManager {
 
     return Stream<Position>.multi((controller) {
       final subs = <StreamSubscription<Position>>[];
-      subs.add(_currentSource!.getPositionStream(settings: settings).listen(controller.add, onError: controller.addError));
+      subs.add(
+        _currentSource!
+            .getPositionStream(settings: settings)
+            .listen(controller.add, onError: controller.addError),
+      );
       if (Platform.isAndroid) {
-        subs.add(_nativePositionController.stream.listen(controller.add, onError: controller.addError));
+        subs.add(
+          _nativePositionController.stream.listen(
+            controller.add,
+            onError: controller.addError,
+          ),
+        );
       }
       controller.onCancel = () {
         for (final s in subs) {
@@ -154,10 +185,14 @@ class GpsDataManager {
 
   // Native-backed Room PoC helpers
   /// Reads a batch from native Room and returns a list of maps representing points.
-  Future<List<Map<String, dynamic>>> readBatchFromNative({int limit = 200}) async {
+  Future<List<Map<String, dynamic>>> readBatchFromNative({
+    int limit = 200,
+  }) async {
     if (!Platform.isAndroid) return [];
     try {
-      final res = await _platformChannel.invokeMethod<List>('readBatch', {'limit': limit});
+      final res = await _platformChannel.invokeMethod<List>('readBatch', {
+        'limit': limit,
+      });
       if (res == null) return [];
       // Each element should be a Map coming from the platform channel
       final out = <Map<String, dynamic>>[];
@@ -179,7 +214,9 @@ class GpsDataManager {
   Future<bool> markProcessedOnNative(List<int> ids) async {
     if (!Platform.isAndroid) return false;
     try {
-      final res = await _platformChannel.invokeMethod<bool>('markProcessed', {'ids': ids});
+      final res = await _platformChannel.invokeMethod<bool>('markProcessed', {
+        'ids': ids,
+      });
       return res == true;
     } catch (e, st) {
       _logger.warning('markProcessedOnNative failed', e, st);
@@ -203,10 +240,11 @@ class GpsDataManager {
     if (rawIds.isEmpty) return 0;
 
     try {
-      final Map<String, dynamic> res = await compute<_BatchProcessInput, Map<String, dynamic>>(
-        _processBatchIsolate,
-        _BatchProcessInput(batch.map((e) => e).toList()),
-      );
+      final Map<String, dynamic> res =
+          await compute<_BatchProcessInput, Map<String, dynamic>>(
+            _processBatchIsolate,
+            _BatchProcessInput(batch.map((e) => e).toList()),
+          );
 
       final List<dynamic>? idsDyn = res['ids'] as List<dynamic>?;
       final List<dynamic>? pointsDyn = res['points'] as List<dynamic>?;
@@ -221,7 +259,8 @@ class GpsDataManager {
         if (pointsDyn == null || pointsDyn.isEmpty) {
           // Nothing to persist; ack ids to avoid reprocessing
           final ok = await markProcessedOnNative(ids);
-          if (!ok) _logger.warning('Failed to mark processed ids on native side');
+          if (!ok)
+            _logger.warning('Failed to mark processed ids on native side');
           return ids.length;
         }
 
@@ -238,29 +277,38 @@ class GpsDataManager {
 
         if (pts.isEmpty) {
           final ok = await markProcessedOnNative(ids);
-          if (!ok) _logger.warning('Failed to mark processed ids on native side');
+          if (!ok)
+            _logger.warning('Failed to mark processed ids on native side');
           return ids.length;
         }
 
         // Sort by timestamp ascending
-        pts.sort((a, b) => (a['timestamp'] as num).toInt().compareTo((b['timestamp'] as num).toInt()));
+        pts.sort(
+          (a, b) => (a['timestamp'] as num).toInt().compareTo(
+            (b['timestamp'] as num).toInt(),
+          ),
+        );
 
         // Используем общую логику разделения на сегменты (5 минут по умолчанию)
         final segments = splitIntoSegments(pts);
 
         if (segments.isEmpty) {
           final ok = await markProcessedOnNative(ids);
-          if (!ok) _logger.warning('Failed to mark processed ids on native side');
+          if (!ok)
+            _logger.warning('Failed to mark processed ids on native side');
           return ids.length;
         }
 
         final persisted = await trackManager.persistExternalSegments(segments);
         if (persisted) {
           final ok = await markProcessedOnNative(ids);
-          if (!ok) _logger.warning('Failed to mark processed ids on native side');
+          if (!ok)
+            _logger.warning('Failed to mark processed ids on native side');
           return ids.length;
         } else {
-          _logger.warning('persistExternalSegments failed - skipping native ack');
+          _logger.warning(
+            'persistExternalSegments failed - skipping native ack',
+          );
           return 0;
         }
       } catch (e, st) {
@@ -274,7 +322,10 @@ class GpsDataManager {
     }
   }
 
-  Future<int> drainNativeQueue({int maxBatches = 100, int batchSize = 200}) async {
+  Future<int> drainNativeQueue({
+    int maxBatches = 100,
+    int batchSize = 200,
+  }) async {
     var total = 0;
     for (var i = 0; i < maxBatches; i++) {
       final processed = await processOneBatchFromNative(limit: batchSize);
@@ -305,9 +356,13 @@ class GpsDataManager {
 
           final after = await Geolocator.checkPermission();
           final now = DateTime.now();
-          final recentlyRequested = _lastPermissionRequestAt != null && now.difference(_lastPermissionRequestAt!).inSeconds < 3;
+          final recentlyRequested =
+              _lastPermissionRequestAt != null &&
+              now.difference(_lastPermissionRequestAt!).inSeconds < 3;
 
-          if (after != LocationPermission.always && !_permissionRequestInProgress && !recentlyRequested) {
+          if (after != LocationPermission.always &&
+              !_permissionRequestInProgress &&
+              !recentlyRequested) {
             _permissionRequestInProgress = true;
             _lastPermissionRequestAt = DateTime.now();
             try {
@@ -320,11 +375,18 @@ class GpsDataManager {
           final finalPerm = await Geolocator.checkPermission();
           _hasBackgroundPermission = finalPerm == LocationPermission.always;
           if (_hasBackgroundPermission && !_nativeServiceStarted) {
-            await _platformChannel.invokeMethod('startService', {'minDistance': 5.0, 'intervalMillis': 15000});
+            await _platformChannel.invokeMethod('startService', {
+              'minDistance': 5.0,
+              'intervalMillis': 15000,
+            });
             _nativeServiceStarted = true;
           }
         } catch (e, st) {
-          _logger.warning('startGps: error while requesting permissions/startService', e, st);
+          _logger.warning(
+            'startGps: error while requesting permissions/startService',
+            e,
+            st,
+          );
         }
       }
 
@@ -348,7 +410,31 @@ class GpsDataManager {
     } finally {
       _nativeServiceStarted = false;
       _hasBackgroundPermission = false;
+      _notifyNativeStatus(GpsNativeStatus.stopped);
     }
+  }
+
+  GpsNativeStatus? _mapStatus(String? raw) {
+    switch (raw) {
+      case 'started':
+        return GpsNativeStatus.started;
+      case 'stopped':
+        return GpsNativeStatus.stopped;
+      default:
+        return null;
+    }
+  }
+
+  void _applyNativeStatus(GpsNativeStatus status) {
+    _nativeServiceStarted = status == GpsNativeStatus.started;
+    _notifyNativeStatus(status);
+  }
+
+  void _notifyNativeStatus(GpsNativeStatus status) {
+    if (!_nativeStatusController.isClosed) {
+      _nativeStatusController.add(status);
+    }
+    _logger.info('GpsDataManager: native status=${status.name}');
   }
 }
 
@@ -367,8 +453,12 @@ Map<String, dynamic> _processBatchIsolate(_BatchProcessInput input) {
       final id = (m['id'] as num).toInt();
       final lat = (m['latitude'] as num).toDouble();
       final lon = (m['longitude'] as num).toDouble();
-      final acc = m.containsKey('accuracy') ? (m['accuracy'] as num).toDouble() : 0.0;
-      final timestamp = m.containsKey('timestamp') ? (m['timestamp'] as num).toInt() : DateTime.now().millisecondsSinceEpoch;
+      final acc = m.containsKey('accuracy')
+          ? (m['accuracy'] as num).toDouble()
+          : 0.0;
+      final timestamp = m.containsKey('timestamp')
+          ? (m['timestamp'] as num).toInt()
+          : DateTime.now().millisecondsSinceEpoch;
 
       ids.add(id);
       points.add({
@@ -383,9 +473,5 @@ Map<String, dynamic> _processBatchIsolate(_BatchProcessInput input) {
     }
   }
 
-  return {
-    'ids': ids,
-    'points': points,
-  };
+  return {'ids': ids, 'points': points};
 }
-

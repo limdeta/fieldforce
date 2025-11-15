@@ -3,16 +3,26 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:logging/logging.dart';
 import 'package:fieldforce/features/navigation/tracking/domain/services/location_tracking_service_base.dart';
 import 'package:fieldforce/features/navigation/tracking/domain/entities/navigation_user.dart';
+import 'package:fieldforce/features/navigation/tracking/domain/services/gps_data_manager.dart';
 import 'package:get_it/get_it.dart';
 
 // События для управления трекингом
 abstract class TrackingEvent {}
+
 class TrackingTogglePressed extends TrackingEvent {}
+
 class TrackingStart extends TrackingEvent {
   final NavigationUser user;
   TrackingStart(this.user);
 }
+
 class TrackingCheckStatus extends TrackingEvent {}
+
+class TrackingNativeStatusChanged extends TrackingEvent {
+  final GpsNativeStatus status;
+  TrackingNativeStatusChanged(this.status);
+}
+
 class TrackingPositionUpdated extends TrackingEvent {
   final double latitude;
   final double longitude;
@@ -22,37 +32,56 @@ class TrackingPositionUpdated extends TrackingEvent {
 
 // Состояния трекинга
 abstract class TrackingState {}
+
 class TrackingOff extends TrackingState {}
+
 class TrackingStarting extends TrackingState {}
+
 class TrackingOn extends TrackingState {
   final double? latitude;
   final double? longitude;
   final double? bearing;
-  
+
   TrackingOn({this.latitude, this.longitude, this.bearing});
 }
+
 class TrackingNoUser extends TrackingState {}
 
 /// BLoC для управления трекингом как единым процессом
 /// NavigationUser должен передаваться извне через события.
 class TrackingBloc extends Bloc<TrackingEvent, TrackingState> {
   final LocationTrackingServiceBase _trackingService;
+  final GpsDataManager _gpsDataManager;
   NavigationUser? _currentUser;
   StreamSubscription? _positionSubscription;
+  StreamSubscription<GpsNativeStatus>? _nativeStatusSubscription;
   static final Logger _logger = Logger('TrackingBloc');
-  
+
   // Последняя известная позиция пользователя
   double? _lastLatitude;
   double? _lastLongitude;
   double? _lastBearing;
 
-  TrackingBloc()
-    : _trackingService = GetIt.instance<LocationTrackingServiceBase>(),
-      super(TrackingNoUser()) {
+  bool _nativeServiceRunning = false;
+
+  TrackingBloc({
+    LocationTrackingServiceBase? trackingService,
+    GpsDataManager? gpsDataManager,
+  }) : _trackingService =
+           trackingService ?? GetIt.instance<LocationTrackingServiceBase>(),
+       _gpsDataManager = gpsDataManager ?? GetIt.instance<GpsDataManager>(),
+       super(TrackingNoUser()) {
+    _nativeServiceRunning = _gpsDataManager.isNativeServiceRunning;
+
+    _nativeStatusSubscription = _gpsDataManager.nativeStatusStream.listen(
+      (status) => add(TrackingNativeStatusChanged(status)),
+    );
 
     //  регистрируем все обработчики событий
     on<TrackingTogglePressed>((event, emit) async {
-      _logger.info('TrackingTogglePressed received - current state=${state.runtimeType}');
+      _logger.info(
+        'TrackingTogglePressed received - current state=${state.runtimeType}',
+      );
       if (_currentUser == null) {
         emit(TrackingNoUser());
         return;
@@ -72,24 +101,34 @@ class TrackingBloc extends Bloc<TrackingEvent, TrackingState> {
 
     on<TrackingPositionUpdated>((event, emit) {
       if (state is TrackingOn) {
-        emit(TrackingOn(latitude: event.latitude, longitude: event.longitude, bearing: event.bearing));
+        emit(
+          TrackingOn(
+            latitude: event.latitude,
+            longitude: event.longitude,
+            bearing: event.bearing,
+          ),
+        );
       }
     });
 
     on<TrackingCheckStatus>((event, emit) {
-      // Синхронизируем состояние с трекинг сервисом
-      if (_trackingService.isTracking) {
-        emit(TrackingOn(latitude: _lastLatitude, longitude: _lastLongitude, bearing: _lastBearing));
-      } else if (_currentUser != null) {
-        // ИСПРАВЛЕНО: НЕ автовосстанавливаем трекинг, только показываем правильное состояние
-        emit(TrackingOff());
-      } else {
-        emit(TrackingNoUser());
-      }
+      _syncStateWithTracking(emit);
+    });
+
+    on<TrackingNativeStatusChanged>((event, emit) {
+      _nativeServiceRunning = event.status == GpsNativeStatus.started;
+      _syncStateWithTracking(emit);
     });
 
     // после регистрации обработчиков проверяем текущий статус
     add(TrackingCheckStatus());
+  }
+
+  @override
+  Future<void> close() {
+    _positionSubscription?.cancel();
+    _nativeStatusSubscription?.cancel();
+    return super.close();
   }
 
   Future<void> _startTracking(Emitter<TrackingState> emit) async {
@@ -113,7 +152,13 @@ class TrackingBloc extends Bloc<TrackingEvent, TrackingState> {
       if (success || _trackingService.isTracking) {
         // Подписываемся на поток позиций для отслеживания текущего положения
         _setupPositionSubscription();
-        emit(TrackingOn(latitude: _lastLatitude, longitude: _lastLongitude, bearing: _lastBearing));
+        emit(
+          TrackingOn(
+            latitude: _lastLatitude,
+            longitude: _lastLongitude,
+            bearing: _lastBearing,
+          ),
+        );
       } else {
         emit(TrackingOff());
       }
@@ -155,17 +200,23 @@ class TrackingBloc extends Bloc<TrackingEvent, TrackingState> {
   /// Настроить подписку на поток позиций
   void _setupPositionSubscription() {
     _positionSubscription?.cancel();
-    
+
     try {
-        _positionSubscription = _trackingService.positionStream.listen(
+      _positionSubscription = _trackingService.positionStream.listen(
         (position) {
           // Сохраняем последнюю позицию
           _lastLatitude = position.latitude;
           _lastLongitude = position.longitude;
           _lastBearing = position.heading;
-          
+
           // Отправляем событие обновления позиции
-          add(TrackingPositionUpdated(position.latitude, position.longitude, position.heading));
+          add(
+            TrackingPositionUpdated(
+              position.latitude,
+              position.longitude,
+              position.heading,
+            ),
+          );
         },
         onError: (error) {
           // Ошибки обрабатываются внутри TrackingService
@@ -182,5 +233,21 @@ class TrackingBloc extends Bloc<TrackingEvent, TrackingState> {
   /// Получить текущую позицию пользователя
   (double?, double?, double?) getCurrentPosition() {
     return (_lastLatitude, _lastLongitude, _lastBearing);
+  }
+
+  void _syncStateWithTracking(Emitter<TrackingState> emit) {
+    if (_trackingService.isTracking || _nativeServiceRunning) {
+      emit(
+        TrackingOn(
+          latitude: _lastLatitude,
+          longitude: _lastLongitude,
+          bearing: _lastBearing,
+        ),
+      );
+    } else if (_currentUser != null) {
+      emit(TrackingOff());
+    } else {
+      emit(TrackingNoUser());
+    }
   }
 }

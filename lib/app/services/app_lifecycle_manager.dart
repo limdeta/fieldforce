@@ -12,10 +12,9 @@ import 'package:fieldforce/features/navigation/tracking/domain/services/gps_data
 
 /// Менеджер жизненного цикла приложения для GPS трекинга
 class AppLifecycleManager with WidgetsBindingObserver {
-
   final LocationTrackingServiceBase _trackingService;
   final GetCurrentAppSessionUseCase _sessionUsecase;
-  
+
   bool _isInitialized = false;
   bool _wasTrackingBeforePause = false;
   DateTime? lastResumeAt;
@@ -25,12 +24,14 @@ class AppLifecycleManager with WidgetsBindingObserver {
   AppLifecycleManager({
     LocationTrackingServiceBase? trackingService,
     GetCurrentAppSessionUseCase? sessionUsecase,
-  }) : _trackingService = trackingService ?? GetIt.instance<LocationTrackingServiceBase>(),
-       _sessionUsecase = sessionUsecase ?? GetIt.instance<GetCurrentAppSessionUseCase>();
+  }) : _trackingService =
+           trackingService ?? GetIt.instance<LocationTrackingServiceBase>(),
+       _sessionUsecase =
+           sessionUsecase ?? GetIt.instance<GetCurrentAppSessionUseCase>();
 
   Future<void> initialize() async {
     if (_isInitialized) return;
-    
+
     WidgetsBinding.instance.addObserver(this);
     await _restoreActiveTrackingIfNeeded();
     _isInitialized = true;
@@ -46,7 +47,7 @@ class AppLifecycleManager with WidgetsBindingObserver {
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
     super.didChangeAppLifecycleState(state);
-    
+
     switch (state) {
       case AppLifecycleState.resumed:
         _onAppResumed();
@@ -71,7 +72,7 @@ class AppLifecycleManager with WidgetsBindingObserver {
     if (_wasTrackingBeforePause && !_trackingService.isTracking) {
       await _restoreActiveTrackingIfNeeded();
     }
-    
+
     _wasTrackingBeforePause = false;
 
     // При восстановлении приложения делаем автоматический re-check прав GPS
@@ -89,14 +90,15 @@ class AppLifecycleManager with WidgetsBindingObserver {
         }
         final now = DateTime.now();
         final last = _lastGpsRecheckAt;
-        if (GetIt.instance.isRegistered<GpsDataManager>() && (last == null || now.difference(last) > _gpsRecheckCooldown)) {
+        if (GetIt.instance.isRegistered<GpsDataManager>() &&
+            (last == null || now.difference(last) > _gpsRecheckCooldown)) {
           _lastGpsRecheckAt = now;
           try {
             final gpsManager = GetIt.instance.get<GpsDataManager>();
             try {
-              await gpsManager.startGps();
+              await gpsManager.checkPermissions();
             } catch (e) {
-              _log('Ошибка при вызове GpsDataManager.startGps(): $e');
+              _log('Ошибка при проверке прав GPS: $e');
             }
           } catch (e) {
             _log('Ошибка при попытке получить GpsDataManager из DI: $e');
@@ -112,9 +114,9 @@ class AppLifecycleManager with WidgetsBindingObserver {
 
   Future<void> _onAppPaused() async {
     _log('Приложение свернуто');
-    
+
     _wasTrackingBeforePause = _trackingService.isTracking;
-    
+
     if (_trackingService.isTracking) {
       _log('Трекинг продолжается в фоновом режиме');
     }
@@ -122,7 +124,7 @@ class AppLifecycleManager with WidgetsBindingObserver {
 
   Future<void> _onAppDetached() async {
     _log('Приложение закрывается');
-    
+
     if (_trackingService.isTracking) {
       _log('Завершаем активный трек при закрытии приложения');
       await _trackingService.stopTracking();
@@ -154,7 +156,9 @@ class AppLifecycleManager with WidgetsBindingObserver {
                   },
                   (appSession) async {
                     if (appSession == null) {
-                      _log('AppSession не найдена, пропускаем восстановление трекинга');
+                      _log(
+                        'AppSession не найдена, пропускаем восстановление трекинга',
+                      );
                       return;
                     }
 
@@ -162,7 +166,9 @@ class AppLifecycleManager with WidgetsBindingObserver {
 
                     // Если сервис трекинга уже активен — синхронизируем BLoC
                     if (_trackingService.isTracking) {
-                      _log('TrackingService уже активен - синхронизируем состояние');
+                      _log(
+                        'TrackingService уже активен - синхронизируем состояние',
+                      );
                       try {
                         if (GetIt.instance.isRegistered<TrackingBloc>()) {
                           final trackingBloc = GetIt.instance<TrackingBloc>();
@@ -170,11 +176,16 @@ class AppLifecycleManager with WidgetsBindingObserver {
                           trackingBloc.add(TrackingCheckStatus());
                         }
                         if (GetIt.instance.isRegistered<UserTracksBloc>()) {
-                          final userTracksBloc = GetIt.instance<UserTracksBloc>();
-                          userTracksBloc.add(LoadUserTracksEvent(user, showActiveTrack: true));
+                          final userTracksBloc =
+                              GetIt.instance<UserTracksBloc>();
+                          userTracksBloc.add(
+                            LoadUserTracksEvent(user, showActiveTrack: true),
+                          );
                         }
                       } catch (e) {
-                        _log('Ошибка синхронизации BLoC при активном трекинге: $e');
+                        _log(
+                          'Ошибка синхронизации BLoC при активном трекинге: $e',
+                        );
                       }
 
                       return;
@@ -183,7 +194,9 @@ class AppLifecycleManager with WidgetsBindingObserver {
                     // Если трек уже существует в сервисе (например, был создан до паузы), синхронизируем BLoC'ы
                     final currentTrack = _trackingService.currentTrack;
                     if (currentTrack != null) {
-                      _log('Найден существующий трек в сервисе (ID: ${currentTrack.id}) - синхронизируем состояние без автозапуска');
+                      _log(
+                        'Найден существующий трек в сервисе (ID: ${currentTrack.id}) - синхронизируем состояние без автозапуска',
+                      );
 
                       try {
                         if (GetIt.instance.isRegistered<TrackingBloc>()) {
@@ -192,18 +205,25 @@ class AppLifecycleManager with WidgetsBindingObserver {
                           trackingBloc.add(TrackingCheckStatus());
                         }
                         if (GetIt.instance.isRegistered<UserTracksBloc>()) {
-                          final userTracksBloc = GetIt.instance<UserTracksBloc>();
-                          userTracksBloc.add(LoadUserTracksEvent(user, showActiveTrack: true));
+                          final userTracksBloc =
+                              GetIt.instance<UserTracksBloc>();
+                          userTracksBloc.add(
+                            LoadUserTracksEvent(user, showActiveTrack: true),
+                          );
                         }
                       } catch (e) {
-                        _log('Ошибка синхронизации BLoC после обнаружения трека: $e');
+                        _log(
+                          'Ошибка синхронизации BLoC после обнаружения трека: $e',
+                        );
                       }
 
                       return;
                     }
 
                     // Если ничего не найдено — не автозапускаем трекинг, оставляем управление пользователю через кнопку
-                    _log('Трек не обнаружен и автозапуск отключён в lifecycle manager — ничего не делаем');
+                    _log(
+                      'Трек не обнаружен и автозапуск отключён в lifecycle manager — ничего не делаем',
+                    );
                   },
                 );
               } catch (e) {
@@ -274,7 +294,9 @@ class AppLifecycleManager with WidgetsBindingObserver {
               return false;
             },
             onFound: (userSession) async {
-              _log('Проверка автостарта для пользователя: ${userSession.externalId}');
+              _log(
+                'Проверка автостарта для пользователя: ${userSession.externalId}',
+              );
               return false;
             },
           );

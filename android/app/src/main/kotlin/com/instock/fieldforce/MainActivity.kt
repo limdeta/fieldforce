@@ -17,14 +17,16 @@ class MainActivity : FlutterActivity() {
 			val db = BgGpsDatabase.getInstance(applicationContext)
 			val dbExecutor = Executors.newSingleThreadExecutor()
 
-		MethodChannel(flutterEngine.dartExecutor.binaryMessenger, CHANNEL).setMethodCallHandler { call, result ->
+		val channel = MethodChannel(flutterEngine.dartExecutor.binaryMessenger, CHANNEL)
+		BackgroundLocationBridge.methodChannel = channel
+		channel.setMethodCallHandler { call, result ->
 			when (call.method) {
 				"startService" -> {
 					val minDistance = (call.argument<Double>("minDistance") ?: 5.0)
 					val interval = (call.argument<Int>("intervalMillis") ?: 15000)
 					val priority = (call.argument<String>("priority") ?: "balanced")
 					
-					val intent = Intent(this, LocationForegroundService::class.java)
+					val intent = Intent(this, OptimizedLocationForegroundService::class.java)
 					intent.putExtra("minDistance", minDistance.toFloat())
 					intent.putExtra("intervalMillis", interval.toLong())
 					intent.putExtra("priority", priority)
@@ -37,7 +39,7 @@ class MainActivity : FlutterActivity() {
 					result.success(true)
 				}
 				"stopService" -> {
-					val intent = Intent(this, LocationForegroundService::class.java)
+					val intent = Intent(this, OptimizedLocationForegroundService::class.java)
 					stopService(intent)
 					result.success(true)
 				}

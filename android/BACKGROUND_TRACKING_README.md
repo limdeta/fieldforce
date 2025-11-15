@@ -3,9 +3,9 @@ Android background tracking plan (developer notes)
 Goal: Support reliable low-battery background GPS updates by running a native ForegroundService that forwards location updates to Flutter via MethodChannel.
 
 High level:
-- Implement a Kotlin ForegroundService at: android/app/src/main/kotlin/com/yourcompany/fieldforce/LocationForegroundService.kt
+- Implement a Kotlin ForegroundService at: android/app/src/main/kotlin/com/instock/fieldforce/OptimizedLocationForegroundService.kt
 - Manifest: a service entry has already been added for
-  com.yourcompany.fieldforce.LocationForegroundService (foregroundServiceType="location").
+  com.instock.fieldforce.OptimizedLocationForegroundService (foregroundServiceType="location").
 - Permissions added: ACCESS_BACKGROUND_LOCATION, FOREGROUND_SERVICE.
 
 MethodChannel contract (native -> Flutter):
@@ -18,7 +18,7 @@ MethodChannel contract (native -> Flutter):
 Kotlin notes:
 - Use FusedLocationProviderClient (com.google.android.gms:play-services-location).
 - Create NotificationChannel and a persistent notification with actions (pause/stop) so the service is less likely to be killed.
-- Use startForeground with Notification and startSticky semantics as appropriate.
+- Use startForeground with Notification and ensure the service only runs while tracking is active.
 - Use ActivityRecognition (optional) to detect motion vs stationary and adjust LocationRequest priorities.
 
 Flutter wiring:

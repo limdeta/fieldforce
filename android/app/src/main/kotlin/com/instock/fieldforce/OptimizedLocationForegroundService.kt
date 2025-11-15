@@ -72,6 +72,8 @@ class OptimizedLocationForegroundService : Service() {
                 }
             }
         }
+
+        BackgroundLocationBridge.sendStatus("started")
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
@@ -96,7 +98,7 @@ class OptimizedLocationForegroundService : Service() {
         startForeground(NOTIF_ID, notification)
 
         startLocationUpdates()
-        return START_STICKY
+        return START_NOT_STICKY
     }
 
     private fun persistLocationToDb(loc: Location) {
@@ -167,6 +169,7 @@ class OptimizedLocationForegroundService : Service() {
             Log.w(TAG, "Executor shutdown interrupted", e)
         }
         
+        BackgroundLocationBridge.sendStatus("stopped")
         super.onDestroy()
     }
 

@@ -54,10 +54,9 @@
                 android:resource="@xml/app_installer_paths" />
         </provider>
 
-        <!-- Placeholder for native foreground service that will provide background GPS updates. -->
-        <!-- Implement service class in Kotlin at: com.yourcompany.fieldforce.LocationForegroundService -->
+        <!-- Foreground service providing background GPS updates -->
         <service
-            android:name="com.instock.fieldforce.LocationForegroundService"
+            android:name="com.instock.fieldforce.OptimizedLocationForegroundService"
             android:exported="false"
             android:foregroundServiceType="location" />
     </application>
