@@ -4,89 +4,16 @@ import 'package:drift/drift.dart' show DatabaseConnection, Value;
 import 'package:drift/native.dart';
 import 'package:fieldforce/app/database/app_database.dart';
 import 'package:fieldforce/app/database/repositories/product_repository_drift.dart';
-import 'package:fieldforce/features/shop/domain/entities/category.dart' as domain;
-import 'package:fieldforce/features/shop/domain/repositories/category_repository.dart';
+import 'package:fieldforce/app/services/warehouse_filter_service.dart';
+import 'package:fieldforce/features/shop/domain/entities/product_query.dart';
+import 'package:fieldforce/features/shop/domain/entities/product_query_result.dart';
+import 'package:fieldforce/features/shop/domain/entities/product_with_stock.dart';
+import 'package:fieldforce/features/shop/domain/entities/warehouse.dart';
+import 'package:fieldforce/features/shop/domain/repositories/warehouse_repository.dart';
 import 'package:fieldforce/shared/either.dart';
 import 'package:fieldforce/shared/failures.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:get_it/get_it.dart';
-
-class _FakeCategoryRepository implements CategoryRepository {
-  final Map<int, domain.Category> _categories;
-  final Map<int, List<domain.Category>> _descendants;
-  final Map<int, List<domain.Category>> _ancestors;
-
-  _FakeCategoryRepository({
-    required List<domain.Category> categories,
-    Map<int, List<domain.Category>>? descendants,
-    Map<int, List<domain.Category>>? ancestors,
-  })  : _categories = {for (final c in categories) c.id: c},
-        _descendants = descendants ?? const {},
-        _ancestors = ancestors ?? const {};
-
-  @override
-  Future<Either<Failure, List<domain.Category>>> getAllCategories() async {
-    return Right(_categories.values.toList());
-  }
-
-  @override
-  Future<Either<Failure, domain.Category?>> getCategoryById(int id) async {
-    return Right(_categories[id]);
-  }
-
-  @override
-  Future<Either<Failure, void>> saveCategories(List<domain.Category> categories) async {
-    return const Right(null);
-  }
-
-  @override
-  Future<Either<Failure, void>> updateCategory(domain.Category category) async {
-    return const Right(null);
-  }
-
-  @override
-  Future<Either<Failure, void>> deleteCategory(int id) async {
-    return const Right(null);
-  }
-
-  @override
-  Future<Either<Failure, List<domain.Category>>> searchCategories(String query) async {
-    return const Right([]);
-  }
-
-  @override
-  Future<Either<Failure, List<domain.Category>>> getSubcategories(int parentId) async {
-    return const Right([]);
-  }
-
-  @override
-  Future<Either<Failure, List<domain.Category>>> getAllDescendants(int categoryId) async {
-    return Right(List<domain.Category>.from(_descendants[categoryId] ?? const []));
-  }
-
-  @override
-  Future<Either<Failure, List<domain.Category>>> getAllAncestors(int categoryId) async {
-    return Right(List<domain.Category>.from(_ancestors[categoryId] ?? const []));
-  }
-
-  @override
-  Future<Either<Failure, void>> updateCategoryCounts() async {
-    return const Right(null);
-  }
-
-  @override
-  Future<Either<Failure, void>> updateCategoryCountsWithCategories(List<domain.Category> categories) async {
-    return const Right(null);
-  }
-
-  @override
-  Future<Either<Failure, void>> updateCategoryCountsForRegion(
-    List<domain.Category> categories,
-    String regionCode,
-  ) async {
-    return const Right(null);
-  }
-}
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
@@ -101,42 +28,8 @@ void main() {
       DatabaseConnection(NativeDatabase.memory()),
     );
     getIt.registerSingleton<AppDatabase>(database);
-
-    final childCategory = domain.Category(
-      id: 99,
-      name: 'Child',
-      lft: 0,
-      lvl: 2,
-      rgt: 0,
-      description: null,
-      query: null,
-      count: 0,
-      children: [],
-    );
-    final parentCategory = domain.Category(
-      id: 94,
-      name: 'Parent',
-      lft: 0,
-      lvl: 1,
-      rgt: 0,
-      description: null,
-      query: null,
-      count: 0,
-      children: [childCategory],
-    );
-
-    getIt.registerSingleton<CategoryRepository>(
-      _FakeCategoryRepository(
-        categories: [parentCategory, childCategory],
-        descendants: {
-          94: [childCategory],
-          99: const [],
-        },
-        ancestors: {
-          99: [parentCategory],
-          94: const [],
-        },
-      ),
+    getIt.registerSingleton<WarehouseFilterService>(
+      _WarehouseFilterServiceStub(),
     );
 
     repository = DriftProductRepository();
@@ -221,15 +114,19 @@ void main() {
   });
 
   test('returns products for descendant categories', () async {
-    final result = await repository.getProductsWithStockByCategoryPaginated(
-      94,
-      vendorId: 'VENDOR-1',
+    final query = ProductQuery(
+      baseCategoryId: 94,
+      scopedCategoryIds: const [94, 99],
     );
 
+    final result = await repository.getProducts(query);
+
     expect(result.isRight(), isTrue);
-    final products = result.getOrElse(() => []);
-    expect(products, isNotEmpty);
-    expect(products.first.product.code, 170094);
+    final products = result.getOrElse(
+      () => ProductQueryResult<ProductWithStock>.empty(query),
+    );
+    expect(products.items, isNotEmpty);
+    expect(products.items.first.product.code, 170094);
   });
 
   test('filters out products without positive stock', () async {
@@ -306,22 +203,96 @@ void main() {
       ),
     );
 
-    final result = await repository.getProductsWithStockByCategoryPaginated(94);
+    final query = ProductQuery(
+      baseCategoryId: 94,
+      scopedCategoryIds: const [94, 99],
+    );
+
+    final result = await repository.getProducts(query);
 
     expect(result.isRight(), isTrue);
-    final products = result.getOrElse(() => []);
-    expect(products, hasLength(1));
-    expect(products.first.product.code, 170094);
+    final products = result.getOrElse(
+      () => ProductQueryResult<ProductWithStock>.empty(query),
+    );
+    expect(products.items, hasLength(1));
+    expect(products.items.first.product.code, 170094);
   });
 
   test('returns empty list for vendor without stock', () async {
-    final result = await repository.getProductsWithStockByCategoryPaginated(
-      94,
-      vendorId: 'UNKNOWN_VENDOR',
+    final query = ProductQuery(
+      baseCategoryId: 94,
+      scopedCategoryIds: const [94, 99],
+      allowedProductCodes: const [999999],
     );
 
+    final result = await repository.getProducts(query);
+
     expect(result.isRight(), isTrue);
-    final products = result.getOrElse(() => []);
-    expect(products, isEmpty);
+    final products = result.getOrElse(
+      () => ProductQueryResult<ProductWithStock>.empty(query),
+    );
+    expect(products.items, isEmpty);
   });
+
+  test('returns products when only allowed codes provided', () async {
+    final query = const ProductQuery(
+      allowedProductCodes: [170094],
+      requireStock: false,
+      limit: 20,
+      offset: 0,
+    );
+
+    final result = await repository.getProducts(query);
+
+    expect(result.isRight(), isTrue);
+    final products = result.getOrElse(
+      () => ProductQueryResult<ProductWithStock>.empty(query),
+    );
+    expect(products.items, hasLength(1));
+    expect(products.items.first.product.code, 170094);
+  });
+}
+
+class _WarehouseFilterServiceStub extends WarehouseFilterService {
+  _WarehouseFilterServiceStub() : super(warehouseRepository: _FakeWarehouseRepository());
+
+  @override
+  Future<WarehouseFilterResult> resolveForCurrentSession({bool bypassInDev = true}) async {
+    return WarehouseFilterResult(
+      regionCode: 'TEST',
+      warehouses: [
+        Warehouse(
+          id: 1,
+          name: 'Test Warehouse',
+          vendorId: 'VENDOR-1',
+          regionCode: 'TEST',
+          createdAt: DateTime(2023, 1, 1),
+          updatedAt: DateTime(2023, 1, 1),
+        ),
+      ],
+    );
+  }
+}
+
+class _FakeWarehouseRepository implements WarehouseRepository {
+  @override
+  Future<Either<Failure, void>> clearWarehouses() async => const Right(null);
+
+  @override
+  Future<Either<Failure, void>> clearWarehousesByRegion(String regionCode) async => const Right(null);
+
+  @override
+  Future<Either<Failure, List<Warehouse>>> getAllWarehouses() async => const Right(<Warehouse>[]);
+
+  @override
+  Future<Either<Failure, Warehouse?>> getWarehouseById(int id) async => const Right(null);
+
+  @override
+  Future<Either<Failure, Warehouse?>> getWarehouseByVendorId(String vendorId) async => const Right(null);
+
+  @override
+  Future<Either<Failure, List<Warehouse>>> getWarehousesByRegion(String regionCode) async => const Right(<Warehouse>[]);
+
+  @override
+  Future<Either<Failure, void>> saveWarehouses(List<Warehouse> warehouses) async => const Right(null);
 }

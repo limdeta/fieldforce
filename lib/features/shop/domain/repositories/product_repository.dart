@@ -3,6 +3,8 @@
 import 'package:fieldforce/shared/either.dart';
 import 'package:fieldforce/shared/failures.dart';
 import '../entities/product.dart';
+import '../entities/product_query.dart';
+import '../entities/product_query_result.dart';
 import '../entities/product_with_stock.dart';
 
 abstract class ProductRepository {
@@ -21,22 +23,9 @@ abstract class ProductRepository {
   /// Получить продукт с информацией о складских остатках по коду товара
   Future<Either<Failure, ProductWithStock?>> getProductWithStockByCode(int code, String vendorId);
 
-  /// Получить продукты по категории с пагинацией
-  Future<Either<Failure, List<Product>>> getProductsByCategoryPaginated(int categoryId, {int offset = 0, int limit = 20});
-
-  /// Получить продукты по категории с информацией об остатках
-  Future<Either<Failure, List<ProductWithStock>>> getProductsWithStockByCategoryPaginated(
-    int categoryId, {
-    String? vendorId,
-    int offset = 0,
-    int limit = 20,
-  });
-
-  /// Получить продукты по типу с пагинацией
-  Future<Either<Failure, List<Product>>> getProductsByTypePaginated(int typeId, {int offset = 0, int limit = 20});
-
-  /// Поиск продуктов с пагинацией
-  Future<Either<Failure, List<Product>>> searchProductsPaginated(String query, {int offset = 0, int limit = 20});
+  /// Универсальный вход для каталога/поиска. Поддерживает те же фильтры,
+  /// что и backend FilterService, и возвращает пагинацию вместе с данными.
+  Future<Either<Failure, ProductQueryResult<ProductWithStock>>> getProducts(ProductQuery query);
 
   /// Полнотекстовый поиск продуктов с FTS5 и ранжированием
   /// Поддерживает поиск по: title, code, barcode, vendorCode, brand
@@ -52,6 +41,7 @@ abstract class ProductRepository {
     List<int>? categoryIds,
     int offset = 0,
     int limit = 20,
+    List<int>? allowedProductCodes,
   });
 
   /// Сохранить продукты

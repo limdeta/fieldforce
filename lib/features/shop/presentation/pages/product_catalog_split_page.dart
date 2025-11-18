@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:get_it/get_it.dart';
 import 'package:logging/logging.dart';
 
@@ -9,6 +10,9 @@ import 'package:fieldforce/features/shop/presentation/state/catalog_split_state.
 import 'package:fieldforce/features/shop/presentation/widgets/catalog_app_bar_actions.dart';
 import 'package:fieldforce/features/shop/presentation/widgets/split_category_products_panel.dart';
 import 'package:fieldforce/features/shop/presentation/widgets/split_quick_actions_panel.dart';
+import 'package:fieldforce/features/shop/presentation/bloc/facet_filter_bloc.dart';
+import 'package:fieldforce/features/shop/presentation/bloc/facet_filter_state.dart';
+import 'package:fieldforce/features/shop/presentation/widgets/facet_filter_scope.dart';
 
 /// Альтернативная страница каталога в формате сплит-экрана.
 class ProductCatalogSplitPage extends StatefulWidget {
@@ -24,6 +28,7 @@ class _ProductCatalogSplitPageState extends State<ProductCatalogSplitPage> {
   final CategoryTreeCacheService _categoryTreeCacheService =
       GetIt.instance<CategoryTreeCacheService>();
   final CatalogSplitStateStore _stateStore = CatalogSplitStateStore.instance;
+  List<int>? _activeFacetProductCodes;
 
   late double _horizontalSplitRatio;
   late double _verticalSplitRatio;
@@ -80,6 +85,25 @@ class _ProductCatalogSplitPageState extends State<ProductCatalogSplitPage> {
     _categoryScrollController.dispose();
     _searchController.dispose();
     super.dispose();
+  }
+
+  void _onFacetCodesChanged(List<int>? codes) {
+    if (_areCodeListsEqual(_activeFacetProductCodes, codes)) {
+      return;
+    }
+    setState(() {
+      _activeFacetProductCodes = codes;
+    });
+  }
+
+  bool _areCodeListsEqual(List<int>? a, List<int>? b) {
+    if (identical(a, b)) return true;
+    if (a == null || b == null) return a == null && b == null;
+    if (a.length != b.length) return false;
+    for (var i = 0; i < a.length; i++) {
+      if (a[i] != b[i]) return false;
+    }
+    return true;
   }
 
   void _onCategoryScroll() {
@@ -331,11 +355,22 @@ class _ProductCatalogSplitPageState extends State<ProductCatalogSplitPage> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      body: Stack(
-        children: [
-          // Основной контент без AppBar
-          LayoutBuilder(
+    return FacetFilterScope(
+      categoryId: _selectedCategoryId,
+      child: BlocListener<FacetFilterBloc, FacetFilterState>(
+        listenWhen: (previous, current) =>
+            !_areCodeListsEqual(
+              previous.appliedFilter.restrictedProductCodes,
+              current.appliedFilter.restrictedProductCodes,
+            ),
+        listener: (context, state) => _onFacetCodesChanged(
+          state.appliedFilter.restrictedProductCodes,
+        ),
+        child: Scaffold(
+          body: Stack(
+            children: [
+              // Основной контент без AppBar
+              LayoutBuilder(
             builder: (context, constraints) {
               final width = constraints.maxWidth;
               final mediaQuery = MediaQuery.of(context);
@@ -387,10 +422,21 @@ class _ProductCatalogSplitPageState extends State<ProductCatalogSplitPage> {
         },
       ),
       // Плавающая панель быстрых действий
-      SplitQuickActionsPanel(
-        onFilterPressed: () => showCatalogFilterPlaceholder(context),
-      ),
-        ],
+          Builder(
+            builder: (quickActionsContext) {
+              return SplitQuickActionsPanel(
+                categoryId: _selectedCategoryId,
+                onFilterPressed: () => showCatalogFilters(
+                  quickActionsContext,
+                  categoryId: _selectedCategoryId,
+                  blocOverride: FacetFilterScope.maybeBlocOf(quickActionsContext),
+                ),
+              );
+            },
+          ),
+            ],
+          ),
+        ),
       ),
     );
   }
@@ -642,6 +688,7 @@ class _ProductCatalogSplitPageState extends State<ProductCatalogSplitPage> {
       onStockItemChanged: _handleStockItemChange,
       isVertical: isVertical,
       isTopPanel: isTopPanel,
+      allowedProductCodes: _activeFacetProductCodes,
     );
   }
 

@@ -20,6 +20,7 @@ import 'tables/app_user_table.dart';
 import 'tables/work_day_table.dart';
 import 'tables/category_table.dart';
 import 'tables/product_table.dart';
+import 'tables/product_facet_table.dart';
 import 'tables/order_table.dart';
 import 'tables/order_line_table.dart';
 import 'tables/stock_item_table.dart';
@@ -27,6 +28,7 @@ import 'tables/warehouse_table.dart';
 import 'tables/order_job_table.dart';
 import 'tables/sync_log_table.dart';
 import 'migrations/migration_v2_fts5.dart';
+import 'migrations/migration_v3_facets.dart';
 
 part 'app_database.g.dart';
 
@@ -53,6 +55,8 @@ final Logger _dbLogger = Logger('AppDatabase');
   OrderJobs,
   Warehouses,
   SyncLogs,
+  ProductFacets,
+  ProductCategoryFacets,
 ])
 class AppDatabase extends _$AppDatabase {
   AppDatabase() : super(_openConnection('app_database.db'));
@@ -62,7 +66,7 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase.forTesting(DatabaseConnection super.connection);
 
   @override
-  int get schemaVersion => 2; // Увеличиваем версию для FTS5
+  int get schemaVersion => 3; // Увеличиваем версию для фасетных таблиц
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -73,6 +77,9 @@ class AppDatabase extends _$AppDatabase {
       // Создаём FTS5 таблицу и триггеры (миграция v2)
       await MigrationV2Fts5.createFtsTable(this);
       await MigrationV2Fts5.createFtsTriggers(this);
+
+      // Создаём вспомогательные таблицы для фасетного поиска (v3)
+      await MigrationV3Facets.rebuildFacets(this);
       
       // Включаем foreign key constraints
       await customStatement('PRAGMA foreign_keys = ON');
@@ -84,6 +91,13 @@ class AppDatabase extends _$AppDatabase {
       // Миграция v1 -> v2: добавление FTS5 для поиска продуктов
       if (from < 2 && to >= 2) {
         await MigrationV2Fts5.migrate(this);
+      }
+
+      // Миграция v2 -> v3: создаём таблицы фасетов и заполняем
+      if (from < 3 && to >= 3) {
+        await m.createTable(productFacets);
+        await m.createTable(productCategoryFacets);
+        await MigrationV3Facets.rebuildFacets(this);
       }
       
       _dbLogger.info('✅ БД обновлена до версии $to');

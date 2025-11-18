@@ -1,11 +1,14 @@
 // lib/features/shop/domain/usecases/search_products_usecase.dart
 
+import 'package:fieldforce/features/shop/domain/entities/category.dart';
+import 'package:fieldforce/features/shop/domain/entities/product_query.dart';
+import 'package:fieldforce/features/shop/domain/entities/product_query_result.dart';
+import 'package:fieldforce/features/shop/domain/entities/product_with_stock.dart';
+import 'package:fieldforce/features/shop/domain/repositories/category_repository.dart';
+import 'package:fieldforce/features/shop/domain/repositories/product_repository.dart';
 import 'package:fieldforce/shared/either.dart';
 import 'package:fieldforce/shared/failures.dart';
 import 'package:logging/logging.dart';
-import '../entities/product.dart';
-import '../repositories/product_repository.dart';
-import '../repositories/category_repository.dart';
 
 /// UseCase для полнотекстового поиска продуктов с FTS5
 /// 
@@ -35,49 +38,43 @@ class SearchProductsUseCase {
 
   SearchProductsUseCase(this._productRepository, this._categoryRepository);
 
-  /// Выполняет поиск продуктов
-  /// 
-  /// [query] - поисковый запрос (минимум 1 символ)
-  /// [categoryId] - опциональный ID категории для фильтрации (null = поиск везде)
-  ///                Если категория родительская, автоматически включаются все дочерние категории
-  /// [offset] - смещение для пагинации (по умолчанию 0)
-  /// [limit] - максимальное количество результатов (по умолчанию 20)
-  /// 
-  /// Возвращает список продуктов отсортированных по релевантности
-  Future<Either<Failure, List<Product>>> call({
-    required String query,
-    int? categoryId,
-    int offset = 0,
-    int limit = 20,
-  }) async {
-    // Проверка валидности запроса
-    if (query.trim().isEmpty) {
-      return const Right([]);
+  /// Выполняет поиск продуктов c использованием единого pipeline `ProductQuery`.
+  Future<Either<Failure, ProductQueryResult<ProductWithStock>>> call(
+    ProductQuery query,
+  ) async {
+    final bool hasFacetRestrictions = query.allowedProductCodes != null ||
+        query.brandIds.isNotEmpty ||
+        query.manufacturerIds.isNotEmpty ||
+        query.seriesIds.isNotEmpty ||
+        query.productTypeIds.isNotEmpty ||
+        query.priceCategoryIds.isNotEmpty ||
+        query.onlyNovelty ||
+        query.onlyPopular;
+
+    if (!query.hasSearchText && !hasFacetRestrictions) {
+      return Right(ProductQueryResult<ProductWithStock>.empty(query));
     }
 
-    // Если категория указана, получаем все её дочерние категории (листья)
-    // т.к. продукты привязаны только к листовым категориям через categoriesInstock
-    List<int>? categoryIds;
-    if (categoryId != null) {
-      final descendantsResult = await _categoryRepository.getAllDescendants(categoryId);
-      
-      if (descendantsResult.isLeft()) {
-        _logger.warning('Не удалось получить потомков категории $categoryId, поиск только в ней');
-        categoryIds = [categoryId];
-      } else {
-        final descendants = descendantsResult.getOrElse(() => []);
-        // Включаем саму категорию + все дочерние
-        categoryIds = [categoryId, ...descendants.map((c) => c.id)];
-        _logger.fine('Поиск в категории $categoryId + ${descendants.length} потомков (всего ${categoryIds.length} категорий)');
-      }
+    final normalized = await _expandCategoryScope(query.copyWith(requireStock: false));
+    return _productRepository.getProducts(normalized);
+  }
+
+  Future<ProductQuery> _expandCategoryScope(ProductQuery query) async {
+    if (query.scopedCategoryIds.isNotEmpty || query.baseCategoryId == null) {
+      return query;
     }
 
-    // Выполняем FTS поиск через репозиторий
-    return await _productRepository.searchProductsWithFts(
-      query,
-      categoryIds: categoryIds,
-      offset: offset,
-      limit: limit,
-    );
+    final descendantsResult = await _categoryRepository.getAllDescendants(query.baseCategoryId!);
+
+    if (descendantsResult.isLeft()) {
+      _logger.warning('Не удалось получить потомков категории ${query.baseCategoryId}, поиск только в ней');
+      return query.copyWith(scopedCategoryIds: <int>[query.baseCategoryId!]);
+    }
+
+    final descendants = descendantsResult.getOrElse(() => <Category>[]);
+    final scoped = <int>{query.baseCategoryId!};
+    scoped.addAll(descendants.map((c) => c.id));
+    _logger.fine('Поиск в категории ${query.baseCategoryId} + ${descendants.length} потомков (всего ${scoped.length} категорий)');
+    return query.copyWith(scopedCategoryIds: scoped.toList(growable: false));
   }
 }

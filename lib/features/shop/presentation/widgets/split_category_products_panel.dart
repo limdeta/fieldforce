@@ -3,13 +3,17 @@ import 'dart:math' as math;
 
 import 'package:fieldforce/app/services/warehouse_filter_service.dart';
 import 'package:fieldforce/features/shop/domain/entities/category.dart';
+import 'package:fieldforce/features/shop/domain/entities/product_query.dart';
+import 'package:fieldforce/features/shop/domain/entities/product_query_result.dart';
 import 'package:fieldforce/features/shop/domain/entities/product_with_stock.dart';
 import 'package:fieldforce/features/shop/domain/entities/stock_item.dart';
-import 'package:fieldforce/features/shop/domain/repositories/product_repository.dart';
+import 'package:fieldforce/features/shop/domain/services/product_query_builder.dart';
+import 'package:fieldforce/features/shop/domain/usecases/get_category_products_usecase.dart';
 import 'package:fieldforce/features/shop/domain/usecases/search_products_usecase.dart';
 import 'package:fieldforce/features/shop/presentation/bloc/cart_bloc.dart';
 import 'package:fieldforce/features/shop/presentation/pages/product_detail_page.dart';
 import 'package:fieldforce/features/shop/presentation/state/catalog_split_state.dart';
+import 'package:fieldforce/features/shop/presentation/widgets/facet_filter_summary_bar.dart';
 import 'package:fieldforce/features/shop/presentation/widgets/product_catalog_card_widget.dart';
 import 'package:fieldforce/shared/widgets/cached_network_image_widget.dart';
 import 'package:flutter/material.dart';
@@ -27,6 +31,7 @@ class SplitCategoryProductsPanel extends StatefulWidget {
   final void Function(int productCode, StockItem stockItem) onStockItemChanged;
   final bool isVertical; // Для определения safe area padding
   final bool isTopPanel; // Для определения, применять ли top padding
+  final List<int>? allowedProductCodes;
 
   const SplitCategoryProductsPanel({
     super.key,
@@ -35,6 +40,7 @@ class SplitCategoryProductsPanel extends StatefulWidget {
     required this.onStockItemChanged,
     this.isVertical = true,
     this.isTopPanel = true,
+    this.allowedProductCodes,
   });
 
   @override
@@ -44,8 +50,10 @@ class SplitCategoryProductsPanel extends StatefulWidget {
 class _SplitCategoryProductsPanelState extends State<SplitCategoryProductsPanel> {
   static final Logger _logger = Logger('SplitCategoryProductsPanel');
 
-  final ProductRepository _productRepository = GetIt.instance<ProductRepository>();
   final SearchProductsUseCase _searchProductsUseCase = GetIt.instance<SearchProductsUseCase>();
+  final GetCategoryProductsUseCase _getCategoryProductsUseCase =
+      GetIt.instance<GetCategoryProductsUseCase>();
+  final ProductQueryBuilder _productQueryBuilder = GetIt.instance<ProductQueryBuilder>();
   final WarehouseFilterService _warehouseFilterService = GetIt.instance<WarehouseFilterService>();
   final CatalogSplitStateStore _stateStore = CatalogSplitStateStore.instance;
 
@@ -64,11 +72,15 @@ class _SplitCategoryProductsPanelState extends State<SplitCategoryProductsPanel>
   final int _prefetchBatchSize = 15; // Увеличено с 8 до 15 для упреждающей загрузки
   final Set<int> _prefetchedProductCodes = <int>{};
   late int? _currentCategoryId;
+  List<int>? _allowedProductCodes;
+  ProductQuery? _baseProductQuery;
 
   @override
   void initState() {
     super.initState();
     _currentCategoryId = widget.category?.id;
+    _allowedProductCodes = widget.allowedProductCodes;
+    _rebuildBaseQuery();
 
     _scrollController.addListener(_onScroll);
 
@@ -88,7 +100,19 @@ class _SplitCategoryProductsPanelState extends State<SplitCategoryProductsPanel>
     if (newCategoryId != _currentCategoryId) {
       _currentCategoryId = newCategoryId;
       _prefetchedProductCodes.clear();
+      _rebuildBaseQuery();
       _restoreState();
+      return;
+    }
+
+    if (!_areCodeListsEqual(widget.allowedProductCodes, _allowedProductCodes)) {
+      _allowedProductCodes = widget.allowedProductCodes;
+      _rebuildBaseQuery();
+      if (_currentCategoryId != null) {
+        _stateStore.categoryProductsCache.remove(_currentCategoryId);
+        _stateStore.removeProductScrollOffset(_currentCategoryId!);
+      }
+      _loadProducts(reset: true);
     }
   }
 
@@ -105,6 +129,7 @@ class _SplitCategoryProductsPanelState extends State<SplitCategoryProductsPanel>
     final categoryId = _currentCategoryId;
 
     if (categoryId == null) {
+      _baseProductQuery = null;
       setState(() {
         _products = <ProductWithStock>[];
         _isLoading = false;
@@ -114,6 +139,8 @@ class _SplitCategoryProductsPanelState extends State<SplitCategoryProductsPanel>
       });
       return;
     }
+
+    _rebuildBaseQuery();
 
     final cached = _stateStore.categoryProductsCache[categoryId];
     if (cached != null) {
@@ -136,6 +163,22 @@ class _SplitCategoryProductsPanelState extends State<SplitCategoryProductsPanel>
     }
 
     _loadProducts(reset: true);
+  }
+
+  void _rebuildBaseQuery() {
+    final categoryId = _currentCategoryId;
+    if (categoryId == null) {
+      _baseProductQuery = null;
+      return;
+    }
+
+    _baseProductQuery = _productQueryBuilder.forCategory(
+      categoryId: categoryId,
+      limit: _limit,
+      allowedProductCodes: _allowedProductCodes == null
+          ? null
+          : List<int>.from(_allowedProductCodes!),
+    );
   }
 
   void _onScroll() {
@@ -180,8 +223,14 @@ class _SplitCategoryProductsPanelState extends State<SplitCategoryProductsPanel>
     });
     
     _logger.info('🔍 Поиск продуктов: "$query"');
-    
-    final result = await _searchProductsUseCase(query: query, limit: 50);
+    final searchQuery = _productQueryBuilder.forSearch(
+      searchText: query,
+      categoryId: widget.category?.id,
+      allowedProductCodes: _allowedProductCodes,
+      limit: 50,
+    );
+
+    final result = await _searchProductsUseCase(searchQuery);
     
     if (!mounted) return;
     
@@ -192,23 +241,13 @@ class _SplitCategoryProductsPanelState extends State<SplitCategoryProductsPanel>
           _isSearching = false;
         });
       },
-      (products) {
-        _logger.info('✅ Найдено ${products.length} продуктов');
-        
-        // Преобразуем Product в ProductWithStock без остатков
-        // (остатки подгрузятся при открытии карточки товара)
-        final productsWithStock = products.map((product) => ProductWithStock(
-          product: product,
-          totalStock: 0,
-          maxPrice: 0,
-          minPrice: 0,
-          hasDiscounts: false,
-        )).toList();
-        
+      (productsResult) {
+        _logger.info('✅ Найдено ${productsResult.items.length} продуктов');
+
         if (!mounted) return;
-        
+
         setState(() {
-          _searchResults = productsWithStock;
+          _searchResults = productsResult.items;
           _isSearching = false;
         });
       },
@@ -261,11 +300,27 @@ class _SplitCategoryProductsPanelState extends State<SplitCategoryProductsPanel>
       _logger.warning('⚠️ Split: фильтр складов завершился с ошибкой: ${filterResult.failure!.message}');
     }
 
-    final result = await _productRepository.getProductsWithStockByCategoryPaginated(
-      categoryId,
+    _baseProductQuery ??= _productQueryBuilder.forCategory(
+      categoryId: categoryId,
+      limit: _limit,
+      allowedProductCodes: _allowedProductCodes,
+    );
+
+    final baseQuery = _baseProductQuery;
+    if (baseQuery == null) {
+      setState(() {
+        _isLoading = false;
+        _error = 'Категория не выбрана';
+      });
+      return;
+    }
+
+    final pageQuery = baseQuery.copyWith(
       offset: reset ? 0 : _currentOffset,
       limit: _limit,
     );
+
+    final result = await _getCategoryProductsUseCase(pageQuery);
 
     if (!mounted) {
       _logger.warning('⚠️ Split: компонент уже размонтирован, прерываем обработку');
@@ -282,19 +337,19 @@ class _SplitCategoryProductsPanelState extends State<SplitCategoryProductsPanel>
       return;
     }
 
-    final newProducts = result.getOrElse(() => <ProductWithStock>[]);
+    final queryResult = result.getOrElse(() => ProductQueryResult<ProductWithStock>.empty(pageQuery));
+    final newProducts = queryResult.items;
     final previousLength = _products.length;
 
     setState(() {
       _isLoading = false;
       if (reset) {
         _products = newProducts;
-        _currentOffset = newProducts.length;
       } else {
         _products.addAll(newProducts);
-        _currentOffset += newProducts.length;
       }
-      _hasMore = newProducts.length == _limit;
+      _currentOffset = queryResult.nextOffset;
+      _hasMore = queryResult.hasMore;
     });
 
     _persistProductsState();
@@ -422,6 +477,9 @@ class _SplitCategoryProductsPanelState extends State<SplitCategoryProductsPanel>
               ),
             ),
           ),
+        ),
+        const FacetFilterSummaryBar(
+          padding: EdgeInsets.symmetric(horizontal: 12, vertical: 6),
         ),
         // Контент
         Expanded(
@@ -728,5 +786,15 @@ class _SplitCategoryProductsPanelState extends State<SplitCategoryProductsPanel>
     final end = math.min(_products.length, nextIndex + _prefetchBatchSize);
     final slice = _products.sublist(nextIndex, end);
     _schedulePrefetchForProducts(slice);
+  }
+
+  bool _areCodeListsEqual(List<int>? a, List<int>? b) {
+    if (identical(a, b)) return true;
+    if (a == null || b == null) return false;
+    if (a.length != b.length) return false;
+    for (var i = 0; i < a.length; i++) {
+      if (a[i] != b[i]) return false;
+    }
+    return true;
   }
 }

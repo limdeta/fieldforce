@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:fieldforce/features/shop/presentation/bloc/cart_bloc.dart';
+import 'package:fieldforce/features/shop/presentation/widgets/catalog_app_bar_actions.dart';
 
 /// Компактная плавающая панель быстрых действий для сплит-режима каталога.
 /// 
@@ -10,12 +11,14 @@ class SplitQuickActionsPanel extends StatefulWidget {
   final VoidCallback? onHomePressed;
   final VoidCallback? onCartPressed;
   final VoidCallback? onFilterPressed;
+  final int? categoryId;
 
   const SplitQuickActionsPanel({
     super.key,
     this.onHomePressed,
     this.onCartPressed,
     this.onFilterPressed,
+    this.categoryId,
   });
 
   @override
@@ -112,7 +115,10 @@ class _SplitQuickActionsPanelState extends State<SplitQuickActionsPanel>
                     _buildActionButton(
                       icon: Icons.filter_list,
                       tooltip: 'Фильтры',
-                      onPressed: widget.onFilterPressed,
+                      onPressed: widget.onFilterPressed ?? () => showCatalogFilters(
+                        context,
+                        categoryId: widget.categoryId,
+                      ),
                     ),
                     const SizedBox(width: 4),
                   ],

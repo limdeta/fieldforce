@@ -3,10 +3,12 @@
 import 'dart:convert';
 import 'package:fieldforce/app/database/app_database.dart';
 import 'package:fieldforce/app/database/mappers/product_mapper.dart';
+import 'package:fieldforce/app/database/mappers/product_facet_mapper.dart';
 import 'package:fieldforce/app/services/warehouse_filter_service.dart';
 import 'package:fieldforce/features/shop/domain/entities/product.dart';
+import 'package:fieldforce/features/shop/domain/entities/product_query.dart';
+import 'package:fieldforce/features/shop/domain/entities/product_query_result.dart';
 import 'package:fieldforce/features/shop/domain/entities/product_with_stock.dart';
-import 'package:fieldforce/features/shop/domain/repositories/category_repository.dart';
 import 'package:fieldforce/features/shop/domain/repositories/product_repository.dart';
 import 'package:fieldforce/shared/either.dart';
 import 'package:fieldforce/shared/failures.dart';
@@ -133,279 +135,296 @@ class DriftProductRepository implements ProductRepository {
   }
 
   @override
-  Future<Either<Failure, List<Product>>> getProductsByCategoryPaginated(int categoryId, {int offset = 0, int limit = 20}) async {
+  Future<Either<Failure, ProductQueryResult<ProductWithStock>>> getProducts(
+    ProductQuery query,
+  ) async {
     try {
-      // Получаем все категории в иерархии (родитель + все потомки)
-      final categoryRepository = GetIt.instance<CategoryRepository>();
-      final descendantsResult = await categoryRepository.getAllDescendants(categoryId);
-
-      if (descendantsResult.isLeft()) {
-        return Left(DatabaseFailure('Ошибка получения иерархии категорий'));
+      if (query.limit <= 0) {
+        _logger.fine('ProductQuery с limit<=0 — возвращаем пустой результат');
+        return Right(ProductQueryResult<ProductWithStock>.empty(query));
       }
 
-      final descendants = descendantsResult.getOrElse(() => []);
-
-      // Создаем множество всех релевантных ID категорий
-      final relevantCategoryIds = {categoryId};
-      relevantCategoryIds.addAll(descendants.map((c) => c.id));
-      // НЕ добавляем родительские категории - это приводит к показу нерелевантных товаров
-      // relevantCategoryIds.addAll(ancestors.map((c) => c.id));
-
-      _logger.fine('Поиск товаров по категориям (только categoriesInstock): $relevantCategoryIds');
-
-      // НЕ используем categoryId - это legacy поле! Ищем ТОЛЬКО по categoriesInstock
-      final allEntities = await _database.select(_database.products).get();
-      final matchingProducts = <ProductData>[];
-
-      for (final entity in allEntities) {
-        try {
-          final productJson = jsonDecode(entity.rawJson) as Map<String, dynamic>;
-          final categoriesInstock = productJson['categoriesInstock'] as List<dynamic>? ?? [];
-
-          final hasRelevantCategory = categoriesInstock.any((cat) {
-            final catMap = cat as Map<String, dynamic>;
-            final catId = catMap['id'] as int;
-            return relevantCategoryIds.contains(catId);
-          });
-
-          if (hasRelevantCategory) {
-            matchingProducts.add(entity);
-          }
-        } catch (e) {
-          // Игнорируем ошибки парсинга отдельных продуктов
-          _logger.warning('Ошибка парсинга categoriesInstock для продукта ${entity.code}: $e');
-          continue;
-        }
+      if (query.allowedProductCodes != null && query.allowedProductCodes!.isEmpty) {
+        _logger.fine('ProductQuery ограничен пустым набором allowedProductCodes — пустой результат');
+        return Right(ProductQueryResult<ProductWithStock>.empty(query));
       }
 
-      final paginatedEntities = matchingProducts.skip(offset).take(limit).toList();
-
-      final products = paginatedEntities.map((entity) {
-        final productJson = jsonDecode(entity.rawJson) as Map<String, dynamic>;
-        final product = Product.fromJson(productJson);
-        return product;
-      }).toList();
-
-      return Right(products);
-    } catch (e) {
-      return Left(DatabaseFailure('Ошибка получения продуктов по категории с пагинацией: $e'));
-    }
-  }
-
-  @override
-  Future<Either<Failure, List<ProductWithStock>>> getProductsWithStockByCategoryPaginated(
-    int categoryId, {
-    String? vendorId,
-    int offset = 0,
-    int limit = 20,
-  }) async {
-    try {
-      _logger.info('getProductsWithStockByCategoryPaginated: categoryId=$categoryId, vendorId=${vendorId ?? 'ALL'}, offset=$offset, limit=$limit');
-      
-      // Получаем иерархию категорий как в обычном методе
-      final categoryRepository = GetIt.instance<CategoryRepository>();
-      final descendantsResult = await categoryRepository.getAllDescendants(categoryId);
-
-      if (descendantsResult.isLeft()) {
-        return Left(DatabaseFailure('Ошибка получения иерархии категорий'));
+      if (query.hasSearchText) {
+        return _runSearchQuery(query);
       }
 
-      final descendants = descendantsResult.getOrElse(() => []);
-      final relevantCategoryIds = {categoryId};
-      relevantCategoryIds.addAll(descendants.map((c) => c.id));
-      // НЕ добавляем родительские категории - это приводит к показу нерелевантных товаров
-      // relevantCategoryIds.addAll(ancestors.map((c) => c.id));
+      final scope = _resolveCategoryScope(query);
+      final hasAllowedCodes = query.allowedProductCodes != null;
+      final filterByCategory = scope.isNotEmpty;
 
-      _logger.info('Relevant category IDs: $relevantCategoryIds');
-      _logger.info('  - Descendants: ${descendants.map((c) => '${c.id}:${c.name}').join(', ')}');
-      
-      // НЕ используем categoryId - это legacy поле! Используем только categoriesInstock
-      final allProductEntities = await (_database.select(_database.products)).get();
-      
-      _logger.info('Всего продуктов в БД: ${allProductEntities.length}');
-      
-      final matchingProductsMap = <int, ProductData>{};
-      
-      // Ищем товары ТОЛЬКО по categoriesInstock (актуальные данные)
-      for (final productEntity in allProductEntities) {
-        try {
-          final productJson = jsonDecode(productEntity.rawJson) as Map<String, dynamic>;
-          final categoriesInstock = productJson['categoriesInstock'] as List<dynamic>? ?? [];
-          
-          // Проверяем есть ли пересечение с нужными категориями
-          final productCategoryIds = categoriesInstock
-              .cast<Map<String, dynamic>>()
-              .map((cat) => cat['id'] as int?)
-              .where((id) => id != null)
-              .cast<int>()
-              .toSet();
-          
-          if (productCategoryIds.intersection(relevantCategoryIds).isNotEmpty) {
-            matchingProductsMap[productEntity.code] = productEntity;
-            _logger.fine('Продукт ${productEntity.code} найден через categoriesInstock: ${productCategoryIds.intersection(relevantCategoryIds)}');
-          }
-        } catch (e) {
-          _logger.warning('Ошибка парсинга categoriesInstock для продукта ${productEntity.code}: $e');
-        }
+      if (!filterByCategory && !hasAllowedCodes) {
+        _logger.fine('ProductQuery без категории и allowedProductCodes — возвращаем пустой результат');
+        return Right(ProductQueryResult<ProductWithStock>.empty(query));
       }
 
-      final matchingProducts = matchingProductsMap.values.toList();
-  _logger.info('🔍 Продукты в категориях $relevantCategoryIds: ${matchingProducts.length} найдено');
-
-      if (matchingProducts.isNotEmpty) {
-        final sampleProducts = matchingProducts.take(3).map((p) => 'code=${p.code}, title=${p.title}').join('; ');
-        _logger.info('Примеры продуктов: $sampleProducts');
-      }
-
+      final matchingProducts = await _loadProductsForScope(
+        scope,
+        query,
+        filterByCategory: filterByCategory,
+      );
       if (matchingProducts.isEmpty) {
-        _logger.info('Возвращаем 0 ProductWithStock для категории $categoryId (нет продуктов)');
-        return Right([]);
+        return Right(ProductQueryResult<ProductWithStock>.empty(query));
       }
 
-      final sortedProducts = List<ProductData>.from(matchingProducts)
-        ..sort((a, b) => a.title.compareTo(b.title));
-
-      if (sortedProducts.isEmpty) {
-        _logger.info('✅ После сортировки нет продуктов для категории $categoryId');
-        return Right([]);
+      if (query.requireStock) {
+        final result = await _buildResultWithStock(matchingProducts, query);
+        return Right(result);
       }
 
-      final productCodes = sortedProducts.map((p) => p.code).toList();
+      final result = _buildResultWithoutStock(matchingProducts, query);
+      return Right(result);
+    } catch (e, stackTrace) {
+      _logger.severe('Ошибка выполнения ProductQuery: $query', e, stackTrace);
+      return Left(DatabaseFailure('Ошибка выполнения ProductQuery: $e'));
+    }
+  }
 
-  final filterResult = await _warehouseFilterService.resolveForCurrentSession(bypassInDev: false);
-      List<int>? allowedWarehouseIds;
+  Future<Either<Failure, ProductQueryResult<ProductWithStock>>> _runSearchQuery(
+    ProductQuery query,
+  ) async {
+    final searchResult = await searchProductsWithFts(
+      query.searchText ?? '',
+      categoryIds: query.scopedCategoryIds.isEmpty ? null : query.scopedCategoryIds,
+      offset: _safeOffset(query),
+      limit: query.limit,
+      allowedProductCodes: query.allowedProductCodes,
+    );
 
-      if (filterResult.devBypass) {
-        _logger.fine('getProductsWithStockByCategoryPaginated: dev режим — пропускаем фильтрацию складов');
-      } else if (filterResult.failure != null) {
-        _logger.warning(
-          'getProductsWithStockByCategoryPaginated: ошибка фильтра складов: ${filterResult.failure!.message}. Продолжаем без фильтрации.',
+    return searchResult.fold(
+      (failure) => Left(failure),
+      (products) {
+        final items = products
+            .map(
+              (product) => ProductWithStock(
+                product: product,
+                totalStock: 0,
+                maxPrice: 0,
+                minPrice: 0,
+                hasDiscounts: false,
+              ),
+            )
+            .toList(growable: false);
+
+        final hasMore = products.length == query.limit;
+
+        return Right(
+          ProductQueryResult<ProductWithStock>(
+            items: items,
+            hasMore: hasMore,
+            offset: query.offset,
+            limit: query.limit,
+            appliedQuery: query,
+          ),
         );
-      } else if (!filterResult.hasWarehouses) {
-        _logger.warning(
-          'getProductsWithStockByCategoryPaginated: для региона ${filterResult.regionCode} не найдено складов. Возвращаем пустой список.',
-        );
-        return Right([]);
-      } else {
-        final warehouses = filterResult.warehouseIds;
-        allowedWarehouseIds = warehouses;
-        _logger.fine('Применяем фильтр по складам (${warehouses.length}) для региона ${filterResult.regionCode}');
+      },
+    );
+  }
+
+  Set<int> _resolveCategoryScope(ProductQuery query) {
+    if (query.scopedCategoryIds.isNotEmpty) {
+      return query.scopedCategoryIds.toSet();
+    }
+    if (query.baseCategoryId != null) {
+      return {query.baseCategoryId!};
+    }
+    return const <int>{};
+  }
+
+  Future<List<ProductData>> _loadProductsForScope(
+    Set<int> scopeCategoryIds,
+    ProductQuery query, {
+    required bool filterByCategory,
+  }) async {
+    final bool applyCategoryFilter = filterByCategory && scopeCategoryIds.isNotEmpty;
+    final allProductEntities = await _database.select(_database.products).get();
+    final allowedCodes = query.allowedProductCodes?.toSet();
+    final matchingProducts = <int, ProductData>{};
+
+    for (final entity in allProductEntities) {
+      if (allowedCodes != null && !allowedCodes.contains(entity.code)) {
+        continue;
       }
 
-      final stockQuery = _database.select(_database.stockItems)
-        ..where((tbl) => tbl.productCode.isIn(productCodes))
-        ..where((tbl) => tbl.stock.isBiggerThanValue(0));
+      try {
+        final productJson = jsonDecode(entity.rawJson) as Map<String, dynamic>;
+        final categoriesInstock =
+            productJson['categoriesInstock'] as List<dynamic>? ?? const <dynamic>[];
+        final productCategoryIds = categoriesInstock
+            .cast<Map<String, dynamic>>()
+            .map((cat) => cat['id'] as int?)
+            .whereType<int>()
+            .toSet();
 
-      if (vendorId != null) {
-        stockQuery.where((tbl) => tbl.warehouseVendorId.equals(vendorId));
-      }
-
-      if (allowedWarehouseIds != null) {
-        stockQuery.where((tbl) => tbl.warehouseId.isIn(allowedWarehouseIds!));
-      }
-
-      final stockEntities = await stockQuery.get();
-      _logger.info('Найдено ${stockEntities.length} stock_items (stock>0) для выбранных продуктов (vendor=${vendorId ?? 'ALL'})');
-
-      final stockByProduct = <int, List<StockItemData>>{};
-      for (final entity in stockEntities) {
-        stockByProduct.putIfAbsent(entity.productCode, () => []).add(entity);
-      }
-
-    final availableProducts = sortedProducts
-        .where((product) => (stockByProduct[product.code]?.isNotEmpty ?? false))
-        .toList();
-
-      _logger.info('После фильтрации по остаткам: ${availableProducts.length} из ${sortedProducts.length} продуктов');
-
-      if (availableProducts.isEmpty) {
-        _logger.info('Возвращаем 0 ProductWithStock для категории $categoryId (нет продуктов с остатками)');
-        return Right([]);
-      }
-
-      final paginatedAvailableProducts = availableProducts.skip(offset).take(limit).toList();
-      _logger.info('После пагинации: ${paginatedAvailableProducts.length} продуктов (offset=$offset, limit=$limit)');
-
-      if (paginatedAvailableProducts.isEmpty) {
-        _logger.info('Возвращаем 0 ProductWithStock для категории $categoryId (пагинация)');
-        return Right([]);
-      }
-
-      final productWithStockList = <ProductWithStock>[];
-
-      for (final productEntity in paginatedAvailableProducts) {
-        final productJson = jsonDecode(productEntity.rawJson) as Map<String, dynamic>;
-        final product = Product.fromJson(productJson);
-        final stockItems = stockByProduct[productEntity.code] ?? <StockItemData>[];
-
-        if (stockItems.isEmpty) {
-          _logger.fine('Пропускаем продукт ${productEntity.code} — нет доступных stockItems после фильтрации');
+        if (applyCategoryFilter && productCategoryIds.intersection(scopeCategoryIds).isEmpty) {
           continue;
         }
 
-        final totalStock = stockItems.fold<int>(0, (sum, item) => sum + item.stock);
-        final prices = stockItems
-            .map((item) => item.defaultPrice)
-            .where((price) => price > 0)
-            .toList();
-        final hasDiscounts = stockItems.any((item) =>
-            item.offerPrice != null && item.offerPrice! > 0 && item.offerPrice! < item.defaultPrice);
-
-        final minPrice = prices.isEmpty ? 0 : prices.reduce((a, b) => a < b ? a : b);
-        final maxPrice = prices.isEmpty ? 0 : prices.reduce((a, b) => a > b ? a : b);
-
-        productWithStockList.add(ProductWithStock(
-          product: product,
-          totalStock: totalStock,
-          maxPrice: maxPrice,
-          minPrice: minPrice,
-          hasDiscounts: hasDiscounts,
-        ));
+        matchingProducts[entity.code] = entity;
+      } catch (error) {
+        _logger.warning(
+          'Ошибка парсинга categoriesInstock для продукта ${entity.code}: $error',
+        );
       }
-
-      _logger.info('✅ Возвращаем ${productWithStockList.length} ProductWithStock с остатками для категории $categoryId');
-      return Right(productWithStockList);
-    } catch (e) {
-      return Left(DatabaseFailure('Ошибка получения продуктов с остатками: $e'));
     }
+
+    final sortedProducts = matchingProducts.values.toList()
+      ..sort((a, b) => a.title.compareTo(b.title));
+    return sortedProducts;
   }
 
-  @override
-  Future<Either<Failure, List<Product>>> getProductsByTypePaginated(int typeId, {int offset = 0, int limit = 20}) async {
-    try {
-      final entities = await (_database.select(_database.products)
-        ..where((tbl) => tbl.typeId.equals(typeId))
-        ..limit(limit, offset: offset)
-      ).get();
-
-      final products = entities.map((entity) {
-        final productJson = jsonDecode(entity.rawJson) as Map<String, dynamic>;
-        return Product.fromJson(productJson);
-      }).toList();
-
-      return Right(products);
-    } catch (e) {
-      return Left(DatabaseFailure('Ошибка получения продуктов по типу с пагинацией: $e'));
+  ProductQueryResult<ProductWithStock> _buildResultWithoutStock(
+    List<ProductData> products,
+    ProductQuery query,
+  ) {
+    final paginated = _applyPagination(products, query);
+    if (paginated.isEmpty) {
+      return ProductQueryResult<ProductWithStock>.empty(query);
     }
+
+    final items = paginated.map((entity) {
+      final productJson = jsonDecode(entity.rawJson) as Map<String, dynamic>;
+      final product = Product.fromJson(productJson);
+      return ProductWithStock(
+        product: product,
+        totalStock: 0,
+        maxPrice: 0,
+        minPrice: 0,
+        hasDiscounts: false,
+      );
+    }).toList(growable: false);
+
+    final hasMore = _hasMore(products.length, query, items.length);
+
+    return ProductQueryResult<ProductWithStock>(
+      items: items,
+      hasMore: hasMore,
+      offset: query.offset,
+      limit: query.limit,
+      appliedQuery: query,
+    );
   }
 
-  @override
-  Future<Either<Failure, List<Product>>> searchProductsPaginated(String query, {int offset = 0, int limit = 20}) async {
-    try {
-      final entities = await (_database.select(_database.products)
-        ..where((tbl) => tbl.title.contains(query))
-        ..limit(limit, offset: offset)
-      ).get();
-
-      final products = entities.map((entity) {
-        final productJson = jsonDecode(entity.rawJson) as Map<String, dynamic>;
-        return Product.fromJson(productJson);
-      }).toList();
-
-      return Right(products);
-    } catch (e) {
-      return Left(DatabaseFailure('Ошибка поиска продуктов с пагинацией: $e'));
+  Future<ProductQueryResult<ProductWithStock>> _buildResultWithStock(
+    List<ProductData> products,
+    ProductQuery query,
+  ) async {
+    if (products.isEmpty) {
+      return ProductQueryResult<ProductWithStock>.empty(query);
     }
+
+    final filterResult = await _warehouseFilterService.resolveForCurrentSession(
+      bypassInDev: false,
+    );
+    List<int>? allowedWarehouseIds;
+
+    if (filterResult.devBypass) {
+      _logger.fine('ProductQuery: dev режим — пропускаем фильтрацию складов');
+    } else if (filterResult.failure != null) {
+      _logger.warning(
+        'ProductQuery: ошибка фильтра складов: ${filterResult.failure!.message}. Продолжаем без фильтрации.',
+      );
+    } else if (!filterResult.hasWarehouses) {
+      _logger.warning(
+        'ProductQuery: для региона ${filterResult.regionCode} не найдено складов. Возвращаем пустой результат.',
+      );
+      return ProductQueryResult<ProductWithStock>.empty(query);
+    } else {
+      allowedWarehouseIds = filterResult.warehouseIds;
+      _logger.fine(
+        'ProductQuery: применяем фильтр по ${allowedWarehouseIds.length} складам для региона ${filterResult.regionCode}',
+      );
+    }
+
+    final productCodes = products.map((p) => p.code).toList(growable: false);
+    final stockQuery = _database.select(_database.stockItems)
+      ..where((tbl) => tbl.productCode.isIn(productCodes))
+      ..where((tbl) => tbl.stock.isBiggerThanValue(0));
+
+    if (allowedWarehouseIds != null) {
+      stockQuery.where((tbl) => tbl.warehouseId.isIn(allowedWarehouseIds!));
+    }
+
+    final stockEntities = await stockQuery.get();
+    final stockByProduct = <int, List<StockItemData>>{};
+    for (final entity in stockEntities) {
+      stockByProduct.putIfAbsent(entity.productCode, () => <StockItemData>[])
+          .add(entity);
+    }
+
+    final availableProducts = products
+        .where((product) => (stockByProduct[product.code]?.isNotEmpty ?? false))
+        .toList(growable: false);
+
+    if (availableProducts.isEmpty) {
+      return ProductQueryResult<ProductWithStock>.empty(query);
+    }
+
+    final paginated = _applyPagination(availableProducts, query);
+    if (paginated.isEmpty) {
+      return ProductQueryResult<ProductWithStock>.empty(query);
+    }
+
+    final items = paginated.map((productEntity) {
+      final productJson = jsonDecode(productEntity.rawJson) as Map<String, dynamic>;
+      final product = Product.fromJson(productJson);
+      final stockItems = stockByProduct[productEntity.code] ?? const <StockItemData>[];
+
+      final totalStock = stockItems.fold<int>(0, (sum, item) => sum + item.stock);
+      final prices = stockItems
+          .map((item) => item.defaultPrice)
+          .where((price) => price > 0)
+          .toList(growable: false);
+      final hasDiscounts = stockItems.any(
+        (item) =>
+            item.offerPrice != null && item.offerPrice! > 0 && item.offerPrice! < item.defaultPrice,
+      );
+
+      final minPrice = prices.isEmpty ? 0 : prices.reduce((a, b) => a < b ? a : b);
+      final maxPrice = prices.isEmpty ? 0 : prices.reduce((a, b) => a > b ? a : b);
+
+      return ProductWithStock(
+        product: product,
+        totalStock: totalStock,
+        maxPrice: maxPrice,
+        minPrice: minPrice,
+        hasDiscounts: hasDiscounts,
+      );
+    }).toList(growable: false);
+
+    final hasMore = _hasMore(availableProducts.length, query, items.length);
+
+    return ProductQueryResult<ProductWithStock>(
+      items: items,
+      hasMore: hasMore,
+      offset: query.offset,
+      limit: query.limit,
+      appliedQuery: query,
+    );
+  }
+
+  List<ProductData> _applyPagination(List<ProductData> products, ProductQuery query) {
+    final offset = _safeOffset(query);
+    if (query.limit <= 0 || offset >= products.length) {
+      return const <ProductData>[];
+    }
+
+    return products.skip(offset).take(query.limit).toList(growable: false);
+  }
+
+  int _safeOffset(ProductQuery query) => query.offset < 0 ? 0 : query.offset;
+
+  bool _hasMore(int totalItems, ProductQuery query, int returnedItems) {
+    if (returnedItems == 0) {
+      return false;
+    }
+    final offset = _safeOffset(query);
+    final consumed = offset + returnedItems;
+    return consumed < totalItems;
   }
 
   @override
@@ -414,18 +433,20 @@ class DriftProductRepository implements ProductRepository {
     List<int>? categoryIds,
     int offset = 0,
     int limit = 20,
+    List<int>? allowedProductCodes,
   }) async {
     try {
       if (query.trim().isEmpty) {
         return const Right([]);
       }
 
+      if (allowedProductCodes != null && allowedProductCodes.isEmpty) {
+        return const Right([]);
+      }
+
       final sanitizedQuery = _sanitizeFtsQuery(query);
       final lowerQuery = query.trim().toLowerCase();
-      
-      // Строим условие для фильтрации по категориям
-      // Поддерживаем поиск в нескольких категориях для nested tree
-      // categoriesInstock — это массив объектов [{id: 100, name: "..."}, ...]
+
       String categoryFilter = '';
       if (categoryIds != null && categoryIds.isNotEmpty) {
         final placeholders = List.filled(categoryIds.length, '?').join(',');
@@ -436,55 +457,49 @@ class DriftProductRepository implements ProductRepository {
           )
         ''';
       }
-      
-      // FTS5 поиск с многоуровневым ранжированием
+
+      String allowedFilter = '';
+      if (allowedProductCodes != null && allowedProductCodes.isNotEmpty) {
+        final placeholders = List.filled(allowedProductCodes.length, '?').join(',');
+        allowedFilter = ' AND p.code IN ($placeholders)';
+      }
+
       final results = await _database.customSelect(
         '''
         SELECT 
           p.code,
           p.raw_json,
-          -- Расчёт релевантности по приоритетам
           CASE
-            -- Приоритет 1000: Точное совпадение code
             WHEN CAST(p.code AS TEXT) = ? THEN 1000
-            
-            -- Приоритет 1000: Точное совпадение любого barcode
             WHEN EXISTS (
               SELECT 1 FROM json_each(json_extract(p.raw_json, '\$.barcodes'))
               WHERE value = ?
             ) THEN 1000
-            
-            -- Приоритет 100: Title начинается с запроса (без учёта регистра)
             WHEN lower(p.title) LIKE ? || '%' THEN 100
-            
-            -- Приоритет 50: Title содержит запрос
             WHEN lower(p.title) LIKE '%' || ? || '%' THEN 50
-            
-            -- Приоритет 30: VendorCode содержит запрос
             WHEN lower(COALESCE(json_extract(p.raw_json, '\$.vendorCode'), '')) LIKE '%' || ? || '%' THEN 30
-            
-            -- Приоритет 20: Brand name содержит запрос
             WHEN lower(COALESCE(json_extract(p.raw_json, '\$.brand.name'), '')) LIKE '%' || ? || '%' THEN 20
-            
-            -- Приоритет 10: FTS match (BM25 ранжирование)
             ELSE CAST(bm25(products_fts) * -10 AS INTEGER)
           END as relevance
         FROM products p
         INNER JOIN products_fts fts ON p.code = fts.product_code
         WHERE products_fts MATCH ?
         $categoryFilter
+        $allowedFilter
         ORDER BY relevance DESC, p.title ASC
         LIMIT ? OFFSET ?
         ''',
         variables: [
-          Variable.withString(lowerQuery),     // code exact match
-          Variable.withString(query),          // barcode exact match
-          Variable.withString(lowerQuery),     // title starts with
-          Variable.withString(lowerQuery),     // title contains
-          Variable.withString(lowerQuery),     // vendorCode contains
-          Variable.withString(lowerQuery),     // brand contains
-          Variable.withString(sanitizedQuery), // FTS MATCH query
-          if (categoryIds != null) ...categoryIds.map((id) => Variable.withInt(id)), // category filters
+          Variable.withString(lowerQuery),
+          Variable.withString(query),
+          Variable.withString(lowerQuery),
+          Variable.withString(lowerQuery),
+          Variable.withString(lowerQuery),
+          Variable.withString(lowerQuery),
+          Variable.withString(sanitizedQuery),
+          if (categoryIds != null) ...categoryIds.map((id) => Variable.withInt(id)),
+          if (allowedProductCodes != null)
+            ...allowedProductCodes.map((code) => Variable.withInt(code)),
           Variable.withInt(limit),
           Variable.withInt(offset),
         ],
@@ -496,12 +511,14 @@ class DriftProductRepository implements ProductRepository {
         return Product.fromJson(json);
       }).toList();
 
-      final categoryInfo = categoryIds != null 
+      final categoryInfo = categoryIds != null
           ? ' в категориях [${categoryIds.join(', ')}] (${categoryIds.length} шт)'
           : '';
-      _logger.fine('FTS поиск "$query"$categoryInfo: найдено ${productList.length} продуктов');
+      final allowedInfo = allowedProductCodes != null
+          ? ' по ${allowedProductCodes.length} кодам'
+          : '';
+      _logger.fine('FTS поиск "$query"$categoryInfo$allowedInfo: найдено ${productList.length} продуктов');
       return Right(productList);
-      
     } catch (e, stackTrace) {
       _logger.severe('Ошибка FTS поиска продуктов', e, stackTrace);
       return Left(DatabaseFailure('Ошибка поиска: $e'));
@@ -567,6 +584,8 @@ class DriftProductRepository implements ProductRepository {
       // Создаем новый продукт
       await _database.into(_database.products).insert(companion);
     }
+
+    await _upsertFacetData(product);
   }
 
   @override
@@ -592,6 +611,8 @@ class DriftProductRepository implements ProductRepository {
         ..where((tbl) => tbl.code.equals(product.code))
       ).write(companion);
 
+      await _upsertFacetData(product);
+
       return const Right(null);
     } catch (e) {
       return Left(DatabaseFailure('Ошибка обновления продукта: $e'));
@@ -604,6 +625,14 @@ class DriftProductRepository implements ProductRepository {
       await (_database.delete(_database.products)
         ..where((tbl) => tbl.code.equals(code))
       ).go();
+
+      await (_database.delete(_database.productFacets)
+        ..where((tbl) => tbl.productCode.equals(code))
+      ).go();
+
+      await (_database.delete(_database.productCategoryFacets)
+        ..where((tbl) => tbl.productCode.equals(code))
+      ).go();
       return const Right(null);
     } catch (e) {
       return Left(DatabaseFailure('Ошибка удаления продукта: $e'));
@@ -614,6 +643,8 @@ class DriftProductRepository implements ProductRepository {
   Future<Either<Failure, void>> deleteAllProducts() async {
     try {
       await _database.delete(_database.products).go();
+      await _database.delete(_database.productFacets).go();
+      await _database.delete(_database.productCategoryFacets).go();
       return const Right(null);
     } catch (e) {
       return Left(DatabaseFailure('Ошибка удаления всех продуктов: $e'));
@@ -716,5 +747,26 @@ class DriftProductRepository implements ProductRepository {
     } catch (e) {
       return Left(DatabaseFailure('Ошибка получения количества продуктов в категории: $e'));
     }
+  }
+
+  Future<void> _upsertFacetData(Product product) async {
+    final facetCompanion = ProductFacetMapper.toFacetCompanion(product);
+    await _database.into(_database.productFacets).insertOnConflictUpdate(facetCompanion);
+
+    await (_database.delete(_database.productCategoryFacets)
+          ..where((tbl) => tbl.productCode.equals(product.code)))
+        .go();
+
+    final categoryCompanions = ProductFacetMapper.toCategoryCompanions(product);
+    if (categoryCompanions.isEmpty) {
+      return;
+    }
+
+    await _database.batch((batch) {
+      batch.insertAll(
+        _database.productCategoryFacets,
+        categoryCompanions,
+      );
+    });
   }
 }

@@ -9,10 +9,18 @@ import 'package:fieldforce/app/services/warehouse_filter_service.dart';
 import 'package:fieldforce/features/shop/domain/entities/category.dart';
 import 'package:fieldforce/features/shop/domain/entities/product_with_stock.dart';
 import 'package:fieldforce/features/shop/domain/entities/stock_item.dart';
-import 'package:fieldforce/features/shop/domain/repositories/product_repository.dart';
+import 'package:fieldforce/features/shop/domain/entities/product_query.dart';
+import 'package:fieldforce/features/shop/domain/entities/product_query_result.dart';
+import 'package:fieldforce/features/shop/domain/services/product_query_builder.dart';
+import 'package:fieldforce/features/shop/domain/usecases/get_category_products_usecase.dart';
 import 'package:fieldforce/features/shop/domain/usecases/search_products_usecase.dart';
 import 'package:fieldforce/features/shop/presentation/bloc/cart_bloc.dart';
+import 'package:fieldforce/features/shop/presentation/bloc/facet_filter_bloc.dart';
+import 'package:fieldforce/features/shop/presentation/bloc/facet_filter_state.dart';
 import 'package:fieldforce/features/shop/presentation/pages/product_detail_page.dart';
+import 'package:fieldforce/features/shop/presentation/widgets/catalog_app_bar_actions.dart';
+import 'package:fieldforce/features/shop/presentation/widgets/facet_filter_scope.dart';
+import 'package:fieldforce/features/shop/presentation/widgets/facet_filter_summary_bar.dart';
 import 'package:fieldforce/features/shop/presentation/widgets/product_catalog_card_widget.dart';
 import 'package:fieldforce/shared/widgets/cached_network_image_widget.dart';
 import 'package:fieldforce/shared/presentation/widgets/home_icon_button.dart';
@@ -32,8 +40,10 @@ class CategoryProductsPage extends StatefulWidget {
 
 class _CategoryProductsPageState extends State<CategoryProductsPage> {
   static final Logger _logger = Logger('CategoryProductsPage');
-  final ProductRepository _productRepository = GetIt.instance<ProductRepository>();
   final SearchProductsUseCase _searchProductsUseCase = GetIt.instance<SearchProductsUseCase>();
+  final GetCategoryProductsUseCase _getCategoryProductsUseCase =
+      GetIt.instance<GetCategoryProductsUseCase>();
+  final ProductQueryBuilder _productQueryBuilder = GetIt.instance<ProductQueryBuilder>();
   final WarehouseFilterService _warehouseFilterService = GetIt.instance<WarehouseFilterService>();
 
   final TextEditingController _searchController = TextEditingController();
@@ -50,6 +60,8 @@ class _CategoryProductsPageState extends State<CategoryProductsPage> {
   final int _limit = 20;
   final int _prefetchBatchSize = 8;
   final Set<int> _prefetchedProductCodes = <int>{};
+  List<int>? _allowedProductCodes;
+  late ProductQuery _baseProductQuery;
 
   
   // Отслеживаем выбранные StockItem для каждого продукта
@@ -58,6 +70,11 @@ class _CategoryProductsPageState extends State<CategoryProductsPage> {
   @override
   void initState() {
     super.initState();
+    _baseProductQuery = _productQueryBuilder.forCategory(
+      categoryId: widget.category.id,
+      limit: _limit,
+      allowedProductCodes: _allowedProductCodes,
+    );
     _loadProducts();
     _scrollController.addListener(_onScroll);
     
@@ -73,6 +90,31 @@ class _CategoryProductsPageState extends State<CategoryProductsPage> {
     _scrollController.dispose();
     _searchController.dispose();
     super.dispose();
+  }
+
+  void _onAllowedProductCodesChanged(List<int>? codes) {
+    if (_areCodeListsEqual(_allowedProductCodes, codes)) {
+      return;
+    }
+    _allowedProductCodes = codes;
+    if (codes == null) {
+      _baseProductQuery = _baseProductQuery.copyWith(clearAllowedProductCodes: true);
+    } else {
+      _baseProductQuery = _baseProductQuery.copyWith(
+        allowedProductCodes: List<int>.from(codes),
+      );
+    }
+    _loadProducts();
+  }
+
+  bool _areCodeListsEqual(List<int>? a, List<int>? b) {
+    if (identical(a, b)) return true;
+    if (a == null || b == null) return a == null && b == null;
+    if (a.length != b.length) return false;
+    for (var i = 0; i < a.length; i++) {
+      if (a[i] != b[i]) return false;
+    }
+    return true;
   }
 
   void _onScroll() {
@@ -108,12 +150,14 @@ class _CategoryProductsPageState extends State<CategoryProductsPage> {
     });
     
     _logger.info('🔍 Поиск продуктов: "$query"');
-    
-    final result = await _searchProductsUseCase(
-      query: query,
+    final searchQuery = _productQueryBuilder.forSearch(
+      searchText: query,
       categoryId: widget.category.id,
+      allowedProductCodes: _allowedProductCodes,
       limit: 50,
     );
+
+    final result = await _searchProductsUseCase(searchQuery);
     
     if (!mounted) return;
     
@@ -124,21 +168,13 @@ class _CategoryProductsPageState extends State<CategoryProductsPage> {
           _isSearching = false;
         });
       },
-      (products) {
-        _logger.info('✅ Найдено ${products.length} продуктов');
-        
-        final productsWithStock = products.map((product) => ProductWithStock(
-          product: product,
-          totalStock: 0,
-          maxPrice: 0,
-          minPrice: 0,
-          hasDiscounts: false,
-        )).toList();
-        
+      (productsResult) {
+        _logger.info('✅ Найдено ${productsResult.items.length} продуктов');
+
         if (!mounted) return;
-        
+
         setState(() {
-          _searchResults = productsWithStock;
+          _searchResults = productsResult.items;
           _isSearching = false;
         });
       },
@@ -187,11 +223,12 @@ class _CategoryProductsPageState extends State<CategoryProductsPage> {
     
     // Используем ProductWithStock для отображения остатков
     // В соответствии с архитектурой StockItem-centered
-    final result = await _productRepository.getProductsWithStockByCategoryPaginated(
-      widget.category.id,
+    final pageQuery = _baseProductQuery.copyWith(
       offset: _currentOffset,
       limit: _limit,
     );
+
+    final result = await _getCategoryProductsUseCase(pageQuery);
 
     if (!mounted) {
       _logger.warning('⚠️ _loadProductsInternal: компонент не смонтирован, прерываем');
@@ -207,7 +244,8 @@ class _CategoryProductsPageState extends State<CategoryProductsPage> {
       return;
     }
 
-    final newProducts = result.getOrElse(() => []);
+    final queryResult = result.getOrElse(() => ProductQueryResult<ProductWithStock>.empty(pageQuery));
+    final newProducts = List<ProductWithStock>.from(queryResult.items);
     final int previousLength = _products.length;
     
     setState(() {
@@ -219,8 +257,8 @@ class _CategoryProductsPageState extends State<CategoryProductsPage> {
         _products.addAll(newProducts);
       }
       
-      _hasMore = newProducts.length == _limit;
-      _currentOffset += newProducts.length;
+      _hasMore = queryResult.hasMore;
+      _currentOffset = queryResult.nextOffset;
       
       _logger.fine('Загружено ${newProducts.length} продуктов для категории "${widget.category.name}" (всего: ${_products.length})');
     });
@@ -261,8 +299,19 @@ class _CategoryProductsPageState extends State<CategoryProductsPage> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
+    return FacetFilterScope(
+      categoryId: widget.category.id,
+      child: BlocListener<FacetFilterBloc, FacetFilterState>(
+        listenWhen: (previous, current) =>
+            !_areCodeListsEqual(
+              previous.appliedFilter.restrictedProductCodes,
+              current.appliedFilter.restrictedProductCodes,
+            ),
+        listener: (context, state) => _onAllowedProductCodesChanged(
+          state.appliedFilter.restrictedProductCodes,
+        ),
+        child: Scaffold(
+          appBar: AppBar(
         title: Text(
           widget.category.name,
           style: const TextStyle(
@@ -296,6 +345,18 @@ class _CategoryProductsPageState extends State<CategoryProductsPage> {
                 ),
               ),
             ),
+            Builder(
+              builder: (buttonContext) {
+                return CatalogFilterButton(
+                  categoryId: widget.category.id,
+                  onPressed: () => showCatalogFilters(
+                    buttonContext,
+                    categoryId: widget.category.id,
+                    blocOverride: FacetFilterScope.maybeBlocOf(buttonContext),
+                  ),
+                );
+              },
+            ),
           // Кнопка корзины
           IconButton(
             icon: const Icon(Icons.shopping_cart),
@@ -306,7 +367,9 @@ class _CategoryProductsPageState extends State<CategoryProductsPage> {
           const HomeIconButton(),
         ],
       ),
-      body: _buildBody(),
+          body: _buildBody(),
+        ),
+      ),
     );
   }
 
@@ -346,6 +409,7 @@ class _CategoryProductsPageState extends State<CategoryProductsPage> {
             ),
           ),
         ),
+        const FacetFilterSummaryBar(),
         // Контент
         Expanded(
           child: _buildContent(displayProducts, showSearchResults),

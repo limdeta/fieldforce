@@ -1,6 +1,7 @@
 import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:fieldforce/app/config/app_config.dart';
 import 'package:fieldforce/app/database/app_database.dart';
+import 'package:fieldforce/app/database/repositories/facet_repository_drift.dart';
 import 'package:fieldforce/app/database/repositories/stock_item_repository_drift.dart';
 import 'package:fieldforce/app/database/repositories/warehouse_repository_drift.dart';
 import 'package:fieldforce/app/jobs/job_queue_repository.dart';
@@ -25,6 +26,7 @@ import 'package:fieldforce/features/shop/data/services/isolate_sync_manager.dart
 import 'package:fieldforce/features/shop/data/services/product_sync_service_impl.dart';
 import 'package:fieldforce/features/shop/domain/repositories/category_repository.dart';
 import 'package:fieldforce/features/shop/domain/repositories/employee_repository.dart';
+import 'package:fieldforce/features/shop/domain/repositories/facet_repository.dart';
 import 'package:fieldforce/features/shop/domain/repositories/order_repository.dart';
 import 'package:fieldforce/features/shop/domain/repositories/product_repository.dart';
 import 'package:fieldforce/features/shop/domain/repositories/stock_item_repository.dart';
@@ -34,11 +36,14 @@ import 'package:fieldforce/features/shop/domain/services/order_api_service.dart'
 import 'package:fieldforce/features/shop/domain/services/order_submission_queue_service.dart';
 import 'package:fieldforce/features/shop/domain/services/order_submission_queue_trigger.dart';
 import 'package:fieldforce/features/shop/domain/services/order_submission_service.dart';
+import 'package:fieldforce/features/shop/domain/services/product_query_builder.dart';
 import 'package:fieldforce/features/shop/domain/usecases/add_product_to_order_usecase.dart';
 import 'package:fieldforce/features/shop/domain/usecases/clear_cart_usecase.dart';
 import 'package:fieldforce/features/shop/domain/usecases/create_order_usecase.dart';
 import 'package:fieldforce/features/shop/domain/usecases/create_employee_usecase.dart';
 import 'package:fieldforce/features/shop/domain/usecases/get_current_cart_usecase.dart';
+import 'package:fieldforce/features/shop/domain/usecases/get_facets_usecase.dart';
+import 'package:fieldforce/features/shop/domain/usecases/get_category_products_usecase.dart';
 import 'package:fieldforce/features/shop/domain/usecases/search_products_usecase.dart';
 import 'package:fieldforce/features/shop/domain/usecases/get_order_by_id_usecase.dart';
 import 'package:fieldforce/features/shop/domain/usecases/get_orders_usecase.dart';
@@ -47,6 +52,7 @@ import 'package:fieldforce/features/shop/domain/usecases/get_employee_trading_po
 import 'package:fieldforce/features/shop/domain/usecases/perform_protobuf_sync_usecase.dart';
 import 'package:fieldforce/features/shop/domain/usecases/remove_from_cart_usecase.dart';
 import 'package:fieldforce/features/shop/domain/usecases/retry_order_submission_usecase.dart';
+import 'package:fieldforce/features/shop/domain/usecases/resolve_facet_product_codes_usecase.dart';
 import 'package:fieldforce/features/shop/domain/usecases/submit_order_usecase.dart';
 import 'package:fieldforce/features/shop/domain/usecases/sync_categories_usecase.dart';
 import 'package:fieldforce/features/shop/domain/usecases/sync_outlet_prices_usecase.dart';
@@ -60,6 +66,7 @@ import 'package:fieldforce/features/shop/domain/usecases/update_cart_usecase.dar
 import 'package:fieldforce/features/shop/domain/usecases/update_order_state_usecase.dart';
 import 'package:fieldforce/features/shop/presentation/bloc/cart_bloc.dart';
 import 'package:fieldforce/features/shop/presentation/bloc/orders_bloc.dart';
+import 'package:fieldforce/features/shop/presentation/bloc/facet_filter_bloc.dart';
 import 'package:get_it/get_it.dart';
 
 void registerShopDependencies(GetIt getIt) {
@@ -73,11 +80,17 @@ void registerShopDependencies(GetIt getIt) {
     ..registerLazySingleton<WarehouseRepository>(
       () => DriftWarehouseRepository(),
     )
+    ..registerLazySingleton<FacetRepository>(
+      () => DriftFacetRepository(),
+    )
     ..registerLazySingleton<WarehouseFilterService>(
       () => WarehouseFilterService(warehouseRepository: getIt<WarehouseRepository>()),
     )
     ..registerLazySingleton<CategoryTreeCacheService>(
       () => CategoryTreeCacheService(),
+    )
+    ..registerLazySingleton<ProductQueryBuilder>(
+      () => const ProductQueryBuilder(),
     )
     ..registerLazySingleton<JobQueueRepository<OrderSubmissionJob>>(
       () => OrderJobRepositoryImpl(getIt<AppDatabase>()),
@@ -158,6 +171,18 @@ void registerShopDependencies(GetIt getIt) {
         getIt<ProductRepository>(),
         getIt<CategoryRepository>(),
       ),
+    )
+    ..registerLazySingleton<GetCategoryProductsUseCase>(
+      () => GetCategoryProductsUseCase(
+        getIt<ProductRepository>(),
+        getIt<CategoryRepository>(),
+      ),
+    )
+    ..registerLazySingleton<GetFacetsUseCase>(
+      () => GetFacetsUseCase(getIt<FacetRepository>()),
+    )
+    ..registerLazySingleton<ResolveFacetProductCodesUseCase>(
+      () => ResolveFacetProductCodesUseCase(getIt<FacetRepository>()),
     )
     ..registerLazySingleton<UpdateCartItemUseCase>(
       () => UpdateCartItemUseCase(
@@ -256,6 +281,13 @@ void registerShopDependencies(GetIt getIt) {
         updateCartUseCase: getIt<UpdateCartUseCase>(),
         clearCartUseCase: getIt<ClearCartUseCase>(),
         submitOrderUseCase: getIt<SubmitOrderUseCase>(),
+      ),
+    )
+    ..registerFactory<FacetFilterBloc>(
+      () => FacetFilterBloc(
+        getFacetsUseCase: getIt<GetFacetsUseCase>(),
+        resolveFacetProductCodesUseCase: getIt<ResolveFacetProductCodesUseCase>(),
+        categoryRepository: getIt<CategoryRepository>(),
       ),
     )
     ..registerFactory<OrdersBloc>(

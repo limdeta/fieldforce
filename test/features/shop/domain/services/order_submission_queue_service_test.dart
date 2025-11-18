@@ -16,6 +16,8 @@ import 'package:fieldforce/features/shop/domain/entities/order_line.dart';
 import 'package:fieldforce/features/shop/domain/entities/order_state.dart';
 import 'package:fieldforce/features/shop/domain/entities/payment_kind.dart';
 import 'package:fieldforce/features/shop/domain/entities/product.dart';
+import 'package:fieldforce/features/shop/domain/entities/product_query.dart';
+import 'package:fieldforce/features/shop/domain/entities/product_query_result.dart';
 import 'package:fieldforce/features/shop/domain/entities/product_with_stock.dart';
 import 'package:fieldforce/features/shop/domain/entities/stock_item.dart';
 import 'package:fieldforce/features/shop/domain/entities/trading_point.dart';
@@ -464,27 +466,18 @@ class TestProductRepository implements ProductRepository {
   }
 
   @override
-  Future<Either<Failure, List<Product>>> getProductsByCategoryPaginated(int categoryId, {int offset = 0, int limit = 20}) {
+  Future<Either<Failure, ProductQueryResult<ProductWithStock>>> getProducts(ProductQuery query) {
     throw UnimplementedError();
   }
 
   @override
-  Future<Either<Failure, List<ProductWithStock>>> getProductsWithStockByCategoryPaginated(int categoryId, {String? vendorId, int offset = 0, int limit = 20}) {
-    throw UnimplementedError();
-  }
-
-  @override
-  Future<Either<Failure, List<Product>>> getProductsByTypePaginated(int typeId, {int offset = 0, int limit = 20}) {
-    throw UnimplementedError();
-  }
-
-  @override
-  Future<Either<Failure, List<Product>>> searchProductsPaginated(String query, {int offset = 0, int limit = 20}) {
-    throw UnimplementedError();
-  }
-
-  @override
-  Future<Either<Failure, List<Product>>> searchProductsWithFts(String query, {List<int>? categoryIds, int offset = 0, int limit = 20}) {
+  Future<Either<Failure, List<Product>>> searchProductsWithFts(
+    String query, {
+    List<int>? categoryIds,
+    int offset = 0,
+    int limit = 20,
+    List<int>? allowedProductCodes,
+  }) {
     throw UnimplementedError();
   }
 

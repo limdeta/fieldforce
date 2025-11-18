@@ -12251,6 +12251,1315 @@ class SyncLogsCompanion extends UpdateCompanion<SyncLogRow> {
   }
 }
 
+class $ProductFacetsTable extends ProductFacets
+    with TableInfo<$ProductFacetsTable, ProductFacetData> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $ProductFacetsTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _productCodeMeta = const VerificationMeta(
+    'productCode',
+  );
+  @override
+  late final GeneratedColumn<int> productCode = GeneratedColumn<int>(
+    'product_code',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'REFERENCES products (code) ON DELETE CASCADE',
+    ),
+  );
+  static const VerificationMeta _brandIdMeta = const VerificationMeta(
+    'brandId',
+  );
+  @override
+  late final GeneratedColumn<int> brandId = GeneratedColumn<int>(
+    'brand_id',
+    aliasedName,
+    true,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _brandNameMeta = const VerificationMeta(
+    'brandName',
+  );
+  @override
+  late final GeneratedColumn<String> brandName = GeneratedColumn<String>(
+    'brand_name',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _brandSearchPriorityMeta =
+      const VerificationMeta('brandSearchPriority');
+  @override
+  late final GeneratedColumn<int> brandSearchPriority = GeneratedColumn<int>(
+    'brand_search_priority',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(0),
+  );
+  static const VerificationMeta _manufacturerIdMeta = const VerificationMeta(
+    'manufacturerId',
+  );
+  @override
+  late final GeneratedColumn<int> manufacturerId = GeneratedColumn<int>(
+    'manufacturer_id',
+    aliasedName,
+    true,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _manufacturerNameMeta = const VerificationMeta(
+    'manufacturerName',
+  );
+  @override
+  late final GeneratedColumn<String> manufacturerName = GeneratedColumn<String>(
+    'manufacturer_name',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _seriesIdMeta = const VerificationMeta(
+    'seriesId',
+  );
+  @override
+  late final GeneratedColumn<int> seriesId = GeneratedColumn<int>(
+    'series_id',
+    aliasedName,
+    true,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _seriesNameMeta = const VerificationMeta(
+    'seriesName',
+  );
+  @override
+  late final GeneratedColumn<String> seriesName = GeneratedColumn<String>(
+    'series_name',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _typeIdMeta = const VerificationMeta('typeId');
+  @override
+  late final GeneratedColumn<int> typeId = GeneratedColumn<int>(
+    'type_id',
+    aliasedName,
+    true,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _typeNameMeta = const VerificationMeta(
+    'typeName',
+  );
+  @override
+  late final GeneratedColumn<String> typeName = GeneratedColumn<String>(
+    'type_name',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _priceListCategoryIdMeta =
+      const VerificationMeta('priceListCategoryId');
+  @override
+  late final GeneratedColumn<int> priceListCategoryId = GeneratedColumn<int>(
+    'price_list_category_id',
+    aliasedName,
+    true,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _noveltyMeta = const VerificationMeta(
+    'novelty',
+  );
+  @override
+  late final GeneratedColumn<bool> novelty = GeneratedColumn<bool>(
+    'novelty',
+    aliasedName,
+    false,
+    type: DriftSqlType.bool,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'CHECK ("novelty" IN (0, 1))',
+    ),
+    defaultValue: const Constant(false),
+  );
+  static const VerificationMeta _popularMeta = const VerificationMeta(
+    'popular',
+  );
+  @override
+  late final GeneratedColumn<bool> popular = GeneratedColumn<bool>(
+    'popular',
+    aliasedName,
+    false,
+    type: DriftSqlType.bool,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'CHECK ("popular" IN (0, 1))',
+    ),
+    defaultValue: const Constant(false),
+  );
+  static const VerificationMeta _canBuyMeta = const VerificationMeta('canBuy');
+  @override
+  late final GeneratedColumn<bool> canBuy = GeneratedColumn<bool>(
+    'can_buy',
+    aliasedName,
+    false,
+    type: DriftSqlType.bool,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'CHECK ("can_buy" IN (0, 1))',
+    ),
+    defaultValue: const Constant(true),
+  );
+  static const VerificationMeta _createdAtMeta = const VerificationMeta(
+    'createdAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> createdAt = GeneratedColumn<DateTime>(
+    'created_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: false,
+    defaultValue: currentDateAndTime,
+  );
+  static const VerificationMeta _updatedAtMeta = const VerificationMeta(
+    'updatedAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> updatedAt = GeneratedColumn<DateTime>(
+    'updated_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: false,
+    defaultValue: currentDateAndTime,
+  );
+  @override
+  List<GeneratedColumn> get $columns => [
+    productCode,
+    brandId,
+    brandName,
+    brandSearchPriority,
+    manufacturerId,
+    manufacturerName,
+    seriesId,
+    seriesName,
+    typeId,
+    typeName,
+    priceListCategoryId,
+    novelty,
+    popular,
+    canBuy,
+    createdAt,
+    updatedAt,
+  ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'product_facets';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<ProductFacetData> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('product_code')) {
+      context.handle(
+        _productCodeMeta,
+        productCode.isAcceptableOrUnknown(
+          data['product_code']!,
+          _productCodeMeta,
+        ),
+      );
+    }
+    if (data.containsKey('brand_id')) {
+      context.handle(
+        _brandIdMeta,
+        brandId.isAcceptableOrUnknown(data['brand_id']!, _brandIdMeta),
+      );
+    }
+    if (data.containsKey('brand_name')) {
+      context.handle(
+        _brandNameMeta,
+        brandName.isAcceptableOrUnknown(data['brand_name']!, _brandNameMeta),
+      );
+    }
+    if (data.containsKey('brand_search_priority')) {
+      context.handle(
+        _brandSearchPriorityMeta,
+        brandSearchPriority.isAcceptableOrUnknown(
+          data['brand_search_priority']!,
+          _brandSearchPriorityMeta,
+        ),
+      );
+    }
+    if (data.containsKey('manufacturer_id')) {
+      context.handle(
+        _manufacturerIdMeta,
+        manufacturerId.isAcceptableOrUnknown(
+          data['manufacturer_id']!,
+          _manufacturerIdMeta,
+        ),
+      );
+    }
+    if (data.containsKey('manufacturer_name')) {
+      context.handle(
+        _manufacturerNameMeta,
+        manufacturerName.isAcceptableOrUnknown(
+          data['manufacturer_name']!,
+          _manufacturerNameMeta,
+        ),
+      );
+    }
+    if (data.containsKey('series_id')) {
+      context.handle(
+        _seriesIdMeta,
+        seriesId.isAcceptableOrUnknown(data['series_id']!, _seriesIdMeta),
+      );
+    }
+    if (data.containsKey('series_name')) {
+      context.handle(
+        _seriesNameMeta,
+        seriesName.isAcceptableOrUnknown(data['series_name']!, _seriesNameMeta),
+      );
+    }
+    if (data.containsKey('type_id')) {
+      context.handle(
+        _typeIdMeta,
+        typeId.isAcceptableOrUnknown(data['type_id']!, _typeIdMeta),
+      );
+    }
+    if (data.containsKey('type_name')) {
+      context.handle(
+        _typeNameMeta,
+        typeName.isAcceptableOrUnknown(data['type_name']!, _typeNameMeta),
+      );
+    }
+    if (data.containsKey('price_list_category_id')) {
+      context.handle(
+        _priceListCategoryIdMeta,
+        priceListCategoryId.isAcceptableOrUnknown(
+          data['price_list_category_id']!,
+          _priceListCategoryIdMeta,
+        ),
+      );
+    }
+    if (data.containsKey('novelty')) {
+      context.handle(
+        _noveltyMeta,
+        novelty.isAcceptableOrUnknown(data['novelty']!, _noveltyMeta),
+      );
+    }
+    if (data.containsKey('popular')) {
+      context.handle(
+        _popularMeta,
+        popular.isAcceptableOrUnknown(data['popular']!, _popularMeta),
+      );
+    }
+    if (data.containsKey('can_buy')) {
+      context.handle(
+        _canBuyMeta,
+        canBuy.isAcceptableOrUnknown(data['can_buy']!, _canBuyMeta),
+      );
+    }
+    if (data.containsKey('created_at')) {
+      context.handle(
+        _createdAtMeta,
+        createdAt.isAcceptableOrUnknown(data['created_at']!, _createdAtMeta),
+      );
+    }
+    if (data.containsKey('updated_at')) {
+      context.handle(
+        _updatedAtMeta,
+        updatedAt.isAcceptableOrUnknown(data['updated_at']!, _updatedAtMeta),
+      );
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {productCode};
+  @override
+  ProductFacetData map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return ProductFacetData(
+      productCode: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}product_code'],
+      )!,
+      brandId: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}brand_id'],
+      ),
+      brandName: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}brand_name'],
+      ),
+      brandSearchPriority: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}brand_search_priority'],
+      )!,
+      manufacturerId: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}manufacturer_id'],
+      ),
+      manufacturerName: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}manufacturer_name'],
+      ),
+      seriesId: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}series_id'],
+      ),
+      seriesName: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}series_name'],
+      ),
+      typeId: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}type_id'],
+      ),
+      typeName: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}type_name'],
+      ),
+      priceListCategoryId: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}price_list_category_id'],
+      ),
+      novelty: attachedDatabase.typeMapping.read(
+        DriftSqlType.bool,
+        data['${effectivePrefix}novelty'],
+      )!,
+      popular: attachedDatabase.typeMapping.read(
+        DriftSqlType.bool,
+        data['${effectivePrefix}popular'],
+      )!,
+      canBuy: attachedDatabase.typeMapping.read(
+        DriftSqlType.bool,
+        data['${effectivePrefix}can_buy'],
+      )!,
+      createdAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}created_at'],
+      )!,
+      updatedAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}updated_at'],
+      )!,
+    );
+  }
+
+  @override
+  $ProductFacetsTable createAlias(String alias) {
+    return $ProductFacetsTable(attachedDatabase, alias);
+  }
+}
+
+class ProductFacetData extends DataClass
+    implements Insertable<ProductFacetData> {
+  final int productCode;
+  final int? brandId;
+  final String? brandName;
+  final int brandSearchPriority;
+  final int? manufacturerId;
+  final String? manufacturerName;
+  final int? seriesId;
+  final String? seriesName;
+  final int? typeId;
+  final String? typeName;
+  final int? priceListCategoryId;
+  final bool novelty;
+  final bool popular;
+  final bool canBuy;
+  final DateTime createdAt;
+  final DateTime updatedAt;
+  const ProductFacetData({
+    required this.productCode,
+    this.brandId,
+    this.brandName,
+    required this.brandSearchPriority,
+    this.manufacturerId,
+    this.manufacturerName,
+    this.seriesId,
+    this.seriesName,
+    this.typeId,
+    this.typeName,
+    this.priceListCategoryId,
+    required this.novelty,
+    required this.popular,
+    required this.canBuy,
+    required this.createdAt,
+    required this.updatedAt,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['product_code'] = Variable<int>(productCode);
+    if (!nullToAbsent || brandId != null) {
+      map['brand_id'] = Variable<int>(brandId);
+    }
+    if (!nullToAbsent || brandName != null) {
+      map['brand_name'] = Variable<String>(brandName);
+    }
+    map['brand_search_priority'] = Variable<int>(brandSearchPriority);
+    if (!nullToAbsent || manufacturerId != null) {
+      map['manufacturer_id'] = Variable<int>(manufacturerId);
+    }
+    if (!nullToAbsent || manufacturerName != null) {
+      map['manufacturer_name'] = Variable<String>(manufacturerName);
+    }
+    if (!nullToAbsent || seriesId != null) {
+      map['series_id'] = Variable<int>(seriesId);
+    }
+    if (!nullToAbsent || seriesName != null) {
+      map['series_name'] = Variable<String>(seriesName);
+    }
+    if (!nullToAbsent || typeId != null) {
+      map['type_id'] = Variable<int>(typeId);
+    }
+    if (!nullToAbsent || typeName != null) {
+      map['type_name'] = Variable<String>(typeName);
+    }
+    if (!nullToAbsent || priceListCategoryId != null) {
+      map['price_list_category_id'] = Variable<int>(priceListCategoryId);
+    }
+    map['novelty'] = Variable<bool>(novelty);
+    map['popular'] = Variable<bool>(popular);
+    map['can_buy'] = Variable<bool>(canBuy);
+    map['created_at'] = Variable<DateTime>(createdAt);
+    map['updated_at'] = Variable<DateTime>(updatedAt);
+    return map;
+  }
+
+  ProductFacetsCompanion toCompanion(bool nullToAbsent) {
+    return ProductFacetsCompanion(
+      productCode: Value(productCode),
+      brandId: brandId == null && nullToAbsent
+          ? const Value.absent()
+          : Value(brandId),
+      brandName: brandName == null && nullToAbsent
+          ? const Value.absent()
+          : Value(brandName),
+      brandSearchPriority: Value(brandSearchPriority),
+      manufacturerId: manufacturerId == null && nullToAbsent
+          ? const Value.absent()
+          : Value(manufacturerId),
+      manufacturerName: manufacturerName == null && nullToAbsent
+          ? const Value.absent()
+          : Value(manufacturerName),
+      seriesId: seriesId == null && nullToAbsent
+          ? const Value.absent()
+          : Value(seriesId),
+      seriesName: seriesName == null && nullToAbsent
+          ? const Value.absent()
+          : Value(seriesName),
+      typeId: typeId == null && nullToAbsent
+          ? const Value.absent()
+          : Value(typeId),
+      typeName: typeName == null && nullToAbsent
+          ? const Value.absent()
+          : Value(typeName),
+      priceListCategoryId: priceListCategoryId == null && nullToAbsent
+          ? const Value.absent()
+          : Value(priceListCategoryId),
+      novelty: Value(novelty),
+      popular: Value(popular),
+      canBuy: Value(canBuy),
+      createdAt: Value(createdAt),
+      updatedAt: Value(updatedAt),
+    );
+  }
+
+  factory ProductFacetData.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return ProductFacetData(
+      productCode: serializer.fromJson<int>(json['productCode']),
+      brandId: serializer.fromJson<int?>(json['brandId']),
+      brandName: serializer.fromJson<String?>(json['brandName']),
+      brandSearchPriority: serializer.fromJson<int>(
+        json['brandSearchPriority'],
+      ),
+      manufacturerId: serializer.fromJson<int?>(json['manufacturerId']),
+      manufacturerName: serializer.fromJson<String?>(json['manufacturerName']),
+      seriesId: serializer.fromJson<int?>(json['seriesId']),
+      seriesName: serializer.fromJson<String?>(json['seriesName']),
+      typeId: serializer.fromJson<int?>(json['typeId']),
+      typeName: serializer.fromJson<String?>(json['typeName']),
+      priceListCategoryId: serializer.fromJson<int?>(
+        json['priceListCategoryId'],
+      ),
+      novelty: serializer.fromJson<bool>(json['novelty']),
+      popular: serializer.fromJson<bool>(json['popular']),
+      canBuy: serializer.fromJson<bool>(json['canBuy']),
+      createdAt: serializer.fromJson<DateTime>(json['createdAt']),
+      updatedAt: serializer.fromJson<DateTime>(json['updatedAt']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'productCode': serializer.toJson<int>(productCode),
+      'brandId': serializer.toJson<int?>(brandId),
+      'brandName': serializer.toJson<String?>(brandName),
+      'brandSearchPriority': serializer.toJson<int>(brandSearchPriority),
+      'manufacturerId': serializer.toJson<int?>(manufacturerId),
+      'manufacturerName': serializer.toJson<String?>(manufacturerName),
+      'seriesId': serializer.toJson<int?>(seriesId),
+      'seriesName': serializer.toJson<String?>(seriesName),
+      'typeId': serializer.toJson<int?>(typeId),
+      'typeName': serializer.toJson<String?>(typeName),
+      'priceListCategoryId': serializer.toJson<int?>(priceListCategoryId),
+      'novelty': serializer.toJson<bool>(novelty),
+      'popular': serializer.toJson<bool>(popular),
+      'canBuy': serializer.toJson<bool>(canBuy),
+      'createdAt': serializer.toJson<DateTime>(createdAt),
+      'updatedAt': serializer.toJson<DateTime>(updatedAt),
+    };
+  }
+
+  ProductFacetData copyWith({
+    int? productCode,
+    Value<int?> brandId = const Value.absent(),
+    Value<String?> brandName = const Value.absent(),
+    int? brandSearchPriority,
+    Value<int?> manufacturerId = const Value.absent(),
+    Value<String?> manufacturerName = const Value.absent(),
+    Value<int?> seriesId = const Value.absent(),
+    Value<String?> seriesName = const Value.absent(),
+    Value<int?> typeId = const Value.absent(),
+    Value<String?> typeName = const Value.absent(),
+    Value<int?> priceListCategoryId = const Value.absent(),
+    bool? novelty,
+    bool? popular,
+    bool? canBuy,
+    DateTime? createdAt,
+    DateTime? updatedAt,
+  }) => ProductFacetData(
+    productCode: productCode ?? this.productCode,
+    brandId: brandId.present ? brandId.value : this.brandId,
+    brandName: brandName.present ? brandName.value : this.brandName,
+    brandSearchPriority: brandSearchPriority ?? this.brandSearchPriority,
+    manufacturerId: manufacturerId.present
+        ? manufacturerId.value
+        : this.manufacturerId,
+    manufacturerName: manufacturerName.present
+        ? manufacturerName.value
+        : this.manufacturerName,
+    seriesId: seriesId.present ? seriesId.value : this.seriesId,
+    seriesName: seriesName.present ? seriesName.value : this.seriesName,
+    typeId: typeId.present ? typeId.value : this.typeId,
+    typeName: typeName.present ? typeName.value : this.typeName,
+    priceListCategoryId: priceListCategoryId.present
+        ? priceListCategoryId.value
+        : this.priceListCategoryId,
+    novelty: novelty ?? this.novelty,
+    popular: popular ?? this.popular,
+    canBuy: canBuy ?? this.canBuy,
+    createdAt: createdAt ?? this.createdAt,
+    updatedAt: updatedAt ?? this.updatedAt,
+  );
+  ProductFacetData copyWithCompanion(ProductFacetsCompanion data) {
+    return ProductFacetData(
+      productCode: data.productCode.present
+          ? data.productCode.value
+          : this.productCode,
+      brandId: data.brandId.present ? data.brandId.value : this.brandId,
+      brandName: data.brandName.present ? data.brandName.value : this.brandName,
+      brandSearchPriority: data.brandSearchPriority.present
+          ? data.brandSearchPriority.value
+          : this.brandSearchPriority,
+      manufacturerId: data.manufacturerId.present
+          ? data.manufacturerId.value
+          : this.manufacturerId,
+      manufacturerName: data.manufacturerName.present
+          ? data.manufacturerName.value
+          : this.manufacturerName,
+      seriesId: data.seriesId.present ? data.seriesId.value : this.seriesId,
+      seriesName: data.seriesName.present
+          ? data.seriesName.value
+          : this.seriesName,
+      typeId: data.typeId.present ? data.typeId.value : this.typeId,
+      typeName: data.typeName.present ? data.typeName.value : this.typeName,
+      priceListCategoryId: data.priceListCategoryId.present
+          ? data.priceListCategoryId.value
+          : this.priceListCategoryId,
+      novelty: data.novelty.present ? data.novelty.value : this.novelty,
+      popular: data.popular.present ? data.popular.value : this.popular,
+      canBuy: data.canBuy.present ? data.canBuy.value : this.canBuy,
+      createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
+      updatedAt: data.updatedAt.present ? data.updatedAt.value : this.updatedAt,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('ProductFacetData(')
+          ..write('productCode: $productCode, ')
+          ..write('brandId: $brandId, ')
+          ..write('brandName: $brandName, ')
+          ..write('brandSearchPriority: $brandSearchPriority, ')
+          ..write('manufacturerId: $manufacturerId, ')
+          ..write('manufacturerName: $manufacturerName, ')
+          ..write('seriesId: $seriesId, ')
+          ..write('seriesName: $seriesName, ')
+          ..write('typeId: $typeId, ')
+          ..write('typeName: $typeName, ')
+          ..write('priceListCategoryId: $priceListCategoryId, ')
+          ..write('novelty: $novelty, ')
+          ..write('popular: $popular, ')
+          ..write('canBuy: $canBuy, ')
+          ..write('createdAt: $createdAt, ')
+          ..write('updatedAt: $updatedAt')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(
+    productCode,
+    brandId,
+    brandName,
+    brandSearchPriority,
+    manufacturerId,
+    manufacturerName,
+    seriesId,
+    seriesName,
+    typeId,
+    typeName,
+    priceListCategoryId,
+    novelty,
+    popular,
+    canBuy,
+    createdAt,
+    updatedAt,
+  );
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is ProductFacetData &&
+          other.productCode == this.productCode &&
+          other.brandId == this.brandId &&
+          other.brandName == this.brandName &&
+          other.brandSearchPriority == this.brandSearchPriority &&
+          other.manufacturerId == this.manufacturerId &&
+          other.manufacturerName == this.manufacturerName &&
+          other.seriesId == this.seriesId &&
+          other.seriesName == this.seriesName &&
+          other.typeId == this.typeId &&
+          other.typeName == this.typeName &&
+          other.priceListCategoryId == this.priceListCategoryId &&
+          other.novelty == this.novelty &&
+          other.popular == this.popular &&
+          other.canBuy == this.canBuy &&
+          other.createdAt == this.createdAt &&
+          other.updatedAt == this.updatedAt);
+}
+
+class ProductFacetsCompanion extends UpdateCompanion<ProductFacetData> {
+  final Value<int> productCode;
+  final Value<int?> brandId;
+  final Value<String?> brandName;
+  final Value<int> brandSearchPriority;
+  final Value<int?> manufacturerId;
+  final Value<String?> manufacturerName;
+  final Value<int?> seriesId;
+  final Value<String?> seriesName;
+  final Value<int?> typeId;
+  final Value<String?> typeName;
+  final Value<int?> priceListCategoryId;
+  final Value<bool> novelty;
+  final Value<bool> popular;
+  final Value<bool> canBuy;
+  final Value<DateTime> createdAt;
+  final Value<DateTime> updatedAt;
+  const ProductFacetsCompanion({
+    this.productCode = const Value.absent(),
+    this.brandId = const Value.absent(),
+    this.brandName = const Value.absent(),
+    this.brandSearchPriority = const Value.absent(),
+    this.manufacturerId = const Value.absent(),
+    this.manufacturerName = const Value.absent(),
+    this.seriesId = const Value.absent(),
+    this.seriesName = const Value.absent(),
+    this.typeId = const Value.absent(),
+    this.typeName = const Value.absent(),
+    this.priceListCategoryId = const Value.absent(),
+    this.novelty = const Value.absent(),
+    this.popular = const Value.absent(),
+    this.canBuy = const Value.absent(),
+    this.createdAt = const Value.absent(),
+    this.updatedAt = const Value.absent(),
+  });
+  ProductFacetsCompanion.insert({
+    this.productCode = const Value.absent(),
+    this.brandId = const Value.absent(),
+    this.brandName = const Value.absent(),
+    this.brandSearchPriority = const Value.absent(),
+    this.manufacturerId = const Value.absent(),
+    this.manufacturerName = const Value.absent(),
+    this.seriesId = const Value.absent(),
+    this.seriesName = const Value.absent(),
+    this.typeId = const Value.absent(),
+    this.typeName = const Value.absent(),
+    this.priceListCategoryId = const Value.absent(),
+    this.novelty = const Value.absent(),
+    this.popular = const Value.absent(),
+    this.canBuy = const Value.absent(),
+    this.createdAt = const Value.absent(),
+    this.updatedAt = const Value.absent(),
+  });
+  static Insertable<ProductFacetData> custom({
+    Expression<int>? productCode,
+    Expression<int>? brandId,
+    Expression<String>? brandName,
+    Expression<int>? brandSearchPriority,
+    Expression<int>? manufacturerId,
+    Expression<String>? manufacturerName,
+    Expression<int>? seriesId,
+    Expression<String>? seriesName,
+    Expression<int>? typeId,
+    Expression<String>? typeName,
+    Expression<int>? priceListCategoryId,
+    Expression<bool>? novelty,
+    Expression<bool>? popular,
+    Expression<bool>? canBuy,
+    Expression<DateTime>? createdAt,
+    Expression<DateTime>? updatedAt,
+  }) {
+    return RawValuesInsertable({
+      if (productCode != null) 'product_code': productCode,
+      if (brandId != null) 'brand_id': brandId,
+      if (brandName != null) 'brand_name': brandName,
+      if (brandSearchPriority != null)
+        'brand_search_priority': brandSearchPriority,
+      if (manufacturerId != null) 'manufacturer_id': manufacturerId,
+      if (manufacturerName != null) 'manufacturer_name': manufacturerName,
+      if (seriesId != null) 'series_id': seriesId,
+      if (seriesName != null) 'series_name': seriesName,
+      if (typeId != null) 'type_id': typeId,
+      if (typeName != null) 'type_name': typeName,
+      if (priceListCategoryId != null)
+        'price_list_category_id': priceListCategoryId,
+      if (novelty != null) 'novelty': novelty,
+      if (popular != null) 'popular': popular,
+      if (canBuy != null) 'can_buy': canBuy,
+      if (createdAt != null) 'created_at': createdAt,
+      if (updatedAt != null) 'updated_at': updatedAt,
+    });
+  }
+
+  ProductFacetsCompanion copyWith({
+    Value<int>? productCode,
+    Value<int?>? brandId,
+    Value<String?>? brandName,
+    Value<int>? brandSearchPriority,
+    Value<int?>? manufacturerId,
+    Value<String?>? manufacturerName,
+    Value<int?>? seriesId,
+    Value<String?>? seriesName,
+    Value<int?>? typeId,
+    Value<String?>? typeName,
+    Value<int?>? priceListCategoryId,
+    Value<bool>? novelty,
+    Value<bool>? popular,
+    Value<bool>? canBuy,
+    Value<DateTime>? createdAt,
+    Value<DateTime>? updatedAt,
+  }) {
+    return ProductFacetsCompanion(
+      productCode: productCode ?? this.productCode,
+      brandId: brandId ?? this.brandId,
+      brandName: brandName ?? this.brandName,
+      brandSearchPriority: brandSearchPriority ?? this.brandSearchPriority,
+      manufacturerId: manufacturerId ?? this.manufacturerId,
+      manufacturerName: manufacturerName ?? this.manufacturerName,
+      seriesId: seriesId ?? this.seriesId,
+      seriesName: seriesName ?? this.seriesName,
+      typeId: typeId ?? this.typeId,
+      typeName: typeName ?? this.typeName,
+      priceListCategoryId: priceListCategoryId ?? this.priceListCategoryId,
+      novelty: novelty ?? this.novelty,
+      popular: popular ?? this.popular,
+      canBuy: canBuy ?? this.canBuy,
+      createdAt: createdAt ?? this.createdAt,
+      updatedAt: updatedAt ?? this.updatedAt,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (productCode.present) {
+      map['product_code'] = Variable<int>(productCode.value);
+    }
+    if (brandId.present) {
+      map['brand_id'] = Variable<int>(brandId.value);
+    }
+    if (brandName.present) {
+      map['brand_name'] = Variable<String>(brandName.value);
+    }
+    if (brandSearchPriority.present) {
+      map['brand_search_priority'] = Variable<int>(brandSearchPriority.value);
+    }
+    if (manufacturerId.present) {
+      map['manufacturer_id'] = Variable<int>(manufacturerId.value);
+    }
+    if (manufacturerName.present) {
+      map['manufacturer_name'] = Variable<String>(manufacturerName.value);
+    }
+    if (seriesId.present) {
+      map['series_id'] = Variable<int>(seriesId.value);
+    }
+    if (seriesName.present) {
+      map['series_name'] = Variable<String>(seriesName.value);
+    }
+    if (typeId.present) {
+      map['type_id'] = Variable<int>(typeId.value);
+    }
+    if (typeName.present) {
+      map['type_name'] = Variable<String>(typeName.value);
+    }
+    if (priceListCategoryId.present) {
+      map['price_list_category_id'] = Variable<int>(priceListCategoryId.value);
+    }
+    if (novelty.present) {
+      map['novelty'] = Variable<bool>(novelty.value);
+    }
+    if (popular.present) {
+      map['popular'] = Variable<bool>(popular.value);
+    }
+    if (canBuy.present) {
+      map['can_buy'] = Variable<bool>(canBuy.value);
+    }
+    if (createdAt.present) {
+      map['created_at'] = Variable<DateTime>(createdAt.value);
+    }
+    if (updatedAt.present) {
+      map['updated_at'] = Variable<DateTime>(updatedAt.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('ProductFacetsCompanion(')
+          ..write('productCode: $productCode, ')
+          ..write('brandId: $brandId, ')
+          ..write('brandName: $brandName, ')
+          ..write('brandSearchPriority: $brandSearchPriority, ')
+          ..write('manufacturerId: $manufacturerId, ')
+          ..write('manufacturerName: $manufacturerName, ')
+          ..write('seriesId: $seriesId, ')
+          ..write('seriesName: $seriesName, ')
+          ..write('typeId: $typeId, ')
+          ..write('typeName: $typeName, ')
+          ..write('priceListCategoryId: $priceListCategoryId, ')
+          ..write('novelty: $novelty, ')
+          ..write('popular: $popular, ')
+          ..write('canBuy: $canBuy, ')
+          ..write('createdAt: $createdAt, ')
+          ..write('updatedAt: $updatedAt')
+          ..write(')'))
+        .toString();
+  }
+}
+
+class $ProductCategoryFacetsTable extends ProductCategoryFacets
+    with TableInfo<$ProductCategoryFacetsTable, ProductCategoryFacetData> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $ProductCategoryFacetsTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _idMeta = const VerificationMeta('id');
+  @override
+  late final GeneratedColumn<int> id = GeneratedColumn<int>(
+    'id',
+    aliasedName,
+    false,
+    hasAutoIncrement: true,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'PRIMARY KEY AUTOINCREMENT',
+    ),
+  );
+  static const VerificationMeta _productCodeMeta = const VerificationMeta(
+    'productCode',
+  );
+  @override
+  late final GeneratedColumn<int> productCode = GeneratedColumn<int>(
+    'product_code',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: true,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'REFERENCES products (code) ON DELETE CASCADE',
+    ),
+  );
+  static const VerificationMeta _categoryIdMeta = const VerificationMeta(
+    'categoryId',
+  );
+  @override
+  late final GeneratedColumn<int> categoryId = GeneratedColumn<int>(
+    'category_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _categoryNameMeta = const VerificationMeta(
+    'categoryName',
+  );
+  @override
+  late final GeneratedColumn<String> categoryName = GeneratedColumn<String>(
+    'category_name',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _createdAtMeta = const VerificationMeta(
+    'createdAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> createdAt = GeneratedColumn<DateTime>(
+    'created_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: false,
+    defaultValue: currentDateAndTime,
+  );
+  @override
+  List<GeneratedColumn> get $columns => [
+    id,
+    productCode,
+    categoryId,
+    categoryName,
+    createdAt,
+  ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'product_category_facets';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<ProductCategoryFacetData> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('id')) {
+      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
+    }
+    if (data.containsKey('product_code')) {
+      context.handle(
+        _productCodeMeta,
+        productCode.isAcceptableOrUnknown(
+          data['product_code']!,
+          _productCodeMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_productCodeMeta);
+    }
+    if (data.containsKey('category_id')) {
+      context.handle(
+        _categoryIdMeta,
+        categoryId.isAcceptableOrUnknown(data['category_id']!, _categoryIdMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_categoryIdMeta);
+    }
+    if (data.containsKey('category_name')) {
+      context.handle(
+        _categoryNameMeta,
+        categoryName.isAcceptableOrUnknown(
+          data['category_name']!,
+          _categoryNameMeta,
+        ),
+      );
+    }
+    if (data.containsKey('created_at')) {
+      context.handle(
+        _createdAtMeta,
+        createdAt.isAcceptableOrUnknown(data['created_at']!, _createdAtMeta),
+      );
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {id};
+  @override
+  List<Set<GeneratedColumn>> get uniqueKeys => [
+    {productCode, categoryId},
+  ];
+  @override
+  ProductCategoryFacetData map(
+    Map<String, dynamic> data, {
+    String? tablePrefix,
+  }) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return ProductCategoryFacetData(
+      id: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}id'],
+      )!,
+      productCode: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}product_code'],
+      )!,
+      categoryId: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}category_id'],
+      )!,
+      categoryName: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}category_name'],
+      ),
+      createdAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}created_at'],
+      )!,
+    );
+  }
+
+  @override
+  $ProductCategoryFacetsTable createAlias(String alias) {
+    return $ProductCategoryFacetsTable(attachedDatabase, alias);
+  }
+}
+
+class ProductCategoryFacetData extends DataClass
+    implements Insertable<ProductCategoryFacetData> {
+  final int id;
+  final int productCode;
+  final int categoryId;
+  final String? categoryName;
+  final DateTime createdAt;
+  const ProductCategoryFacetData({
+    required this.id,
+    required this.productCode,
+    required this.categoryId,
+    this.categoryName,
+    required this.createdAt,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['id'] = Variable<int>(id);
+    map['product_code'] = Variable<int>(productCode);
+    map['category_id'] = Variable<int>(categoryId);
+    if (!nullToAbsent || categoryName != null) {
+      map['category_name'] = Variable<String>(categoryName);
+    }
+    map['created_at'] = Variable<DateTime>(createdAt);
+    return map;
+  }
+
+  ProductCategoryFacetsCompanion toCompanion(bool nullToAbsent) {
+    return ProductCategoryFacetsCompanion(
+      id: Value(id),
+      productCode: Value(productCode),
+      categoryId: Value(categoryId),
+      categoryName: categoryName == null && nullToAbsent
+          ? const Value.absent()
+          : Value(categoryName),
+      createdAt: Value(createdAt),
+    );
+  }
+
+  factory ProductCategoryFacetData.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return ProductCategoryFacetData(
+      id: serializer.fromJson<int>(json['id']),
+      productCode: serializer.fromJson<int>(json['productCode']),
+      categoryId: serializer.fromJson<int>(json['categoryId']),
+      categoryName: serializer.fromJson<String?>(json['categoryName']),
+      createdAt: serializer.fromJson<DateTime>(json['createdAt']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'id': serializer.toJson<int>(id),
+      'productCode': serializer.toJson<int>(productCode),
+      'categoryId': serializer.toJson<int>(categoryId),
+      'categoryName': serializer.toJson<String?>(categoryName),
+      'createdAt': serializer.toJson<DateTime>(createdAt),
+    };
+  }
+
+  ProductCategoryFacetData copyWith({
+    int? id,
+    int? productCode,
+    int? categoryId,
+    Value<String?> categoryName = const Value.absent(),
+    DateTime? createdAt,
+  }) => ProductCategoryFacetData(
+    id: id ?? this.id,
+    productCode: productCode ?? this.productCode,
+    categoryId: categoryId ?? this.categoryId,
+    categoryName: categoryName.present ? categoryName.value : this.categoryName,
+    createdAt: createdAt ?? this.createdAt,
+  );
+  ProductCategoryFacetData copyWithCompanion(
+    ProductCategoryFacetsCompanion data,
+  ) {
+    return ProductCategoryFacetData(
+      id: data.id.present ? data.id.value : this.id,
+      productCode: data.productCode.present
+          ? data.productCode.value
+          : this.productCode,
+      categoryId: data.categoryId.present
+          ? data.categoryId.value
+          : this.categoryId,
+      categoryName: data.categoryName.present
+          ? data.categoryName.value
+          : this.categoryName,
+      createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('ProductCategoryFacetData(')
+          ..write('id: $id, ')
+          ..write('productCode: $productCode, ')
+          ..write('categoryId: $categoryId, ')
+          ..write('categoryName: $categoryName, ')
+          ..write('createdAt: $createdAt')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode =>
+      Object.hash(id, productCode, categoryId, categoryName, createdAt);
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is ProductCategoryFacetData &&
+          other.id == this.id &&
+          other.productCode == this.productCode &&
+          other.categoryId == this.categoryId &&
+          other.categoryName == this.categoryName &&
+          other.createdAt == this.createdAt);
+}
+
+class ProductCategoryFacetsCompanion
+    extends UpdateCompanion<ProductCategoryFacetData> {
+  final Value<int> id;
+  final Value<int> productCode;
+  final Value<int> categoryId;
+  final Value<String?> categoryName;
+  final Value<DateTime> createdAt;
+  const ProductCategoryFacetsCompanion({
+    this.id = const Value.absent(),
+    this.productCode = const Value.absent(),
+    this.categoryId = const Value.absent(),
+    this.categoryName = const Value.absent(),
+    this.createdAt = const Value.absent(),
+  });
+  ProductCategoryFacetsCompanion.insert({
+    this.id = const Value.absent(),
+    required int productCode,
+    required int categoryId,
+    this.categoryName = const Value.absent(),
+    this.createdAt = const Value.absent(),
+  }) : productCode = Value(productCode),
+       categoryId = Value(categoryId);
+  static Insertable<ProductCategoryFacetData> custom({
+    Expression<int>? id,
+    Expression<int>? productCode,
+    Expression<int>? categoryId,
+    Expression<String>? categoryName,
+    Expression<DateTime>? createdAt,
+  }) {
+    return RawValuesInsertable({
+      if (id != null) 'id': id,
+      if (productCode != null) 'product_code': productCode,
+      if (categoryId != null) 'category_id': categoryId,
+      if (categoryName != null) 'category_name': categoryName,
+      if (createdAt != null) 'created_at': createdAt,
+    });
+  }
+
+  ProductCategoryFacetsCompanion copyWith({
+    Value<int>? id,
+    Value<int>? productCode,
+    Value<int>? categoryId,
+    Value<String?>? categoryName,
+    Value<DateTime>? createdAt,
+  }) {
+    return ProductCategoryFacetsCompanion(
+      id: id ?? this.id,
+      productCode: productCode ?? this.productCode,
+      categoryId: categoryId ?? this.categoryId,
+      categoryName: categoryName ?? this.categoryName,
+      createdAt: createdAt ?? this.createdAt,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (id.present) {
+      map['id'] = Variable<int>(id.value);
+    }
+    if (productCode.present) {
+      map['product_code'] = Variable<int>(productCode.value);
+    }
+    if (categoryId.present) {
+      map['category_id'] = Variable<int>(categoryId.value);
+    }
+    if (categoryName.present) {
+      map['category_name'] = Variable<String>(categoryName.value);
+    }
+    if (createdAt.present) {
+      map['created_at'] = Variable<DateTime>(createdAt.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('ProductCategoryFacetsCompanion(')
+          ..write('id: $id, ')
+          ..write('productCode: $productCode, ')
+          ..write('categoryId: $categoryId, ')
+          ..write('categoryName: $categoryName, ')
+          ..write('createdAt: $createdAt')
+          ..write(')'))
+        .toString();
+  }
+}
+
 abstract class _$AppDatabase extends GeneratedDatabase {
   _$AppDatabase(QueryExecutor e) : super(e);
   $AppDatabaseManager get managers => $AppDatabaseManager(this);
@@ -12277,6 +13586,9 @@ abstract class _$AppDatabase extends GeneratedDatabase {
   late final $OrderJobsTable orderJobs = $OrderJobsTable(this);
   late final $WarehousesTable warehouses = $WarehousesTable(this);
   late final $SyncLogsTable syncLogs = $SyncLogsTable(this);
+  late final $ProductFacetsTable productFacets = $ProductFacetsTable(this);
+  late final $ProductCategoryFacetsTable productCategoryFacets =
+      $ProductCategoryFacetsTable(this);
   @override
   Iterable<TableInfo<Table, Object?>> get allTables =>
       allSchemaEntities.whereType<TableInfo<Table, Object?>>();
@@ -12301,6 +13613,8 @@ abstract class _$AppDatabase extends GeneratedDatabase {
     orderJobs,
     warehouses,
     syncLogs,
+    productFacets,
+    productCategoryFacets,
   ];
   @override
   StreamQueryUpdateRules get streamUpdateRules => const StreamQueryUpdateRules([
@@ -12324,6 +13638,20 @@ abstract class _$AppDatabase extends GeneratedDatabase {
         limitUpdateKind: UpdateKind.delete,
       ),
       result: [TableUpdate('order_jobs', kind: UpdateKind.delete)],
+    ),
+    WritePropagation(
+      on: TableUpdateQuery.onTableName(
+        'products',
+        limitUpdateKind: UpdateKind.delete,
+      ),
+      result: [TableUpdate('product_facets', kind: UpdateKind.delete)],
+    ),
+    WritePropagation(
+      on: TableUpdateQuery.onTableName(
+        'products',
+        limitUpdateKind: UpdateKind.delete,
+      ),
+      result: [TableUpdate('product_category_facets', kind: UpdateKind.delete)],
     ),
   ]);
 }
@@ -17844,6 +19172,55 @@ final class $$ProductsTableReferences
       manager.$state.copyWith(prefetchedData: cache),
     );
   }
+
+  static MultiTypedResultKey<$ProductFacetsTable, List<ProductFacetData>>
+  _productFacetsRefsTable(_$AppDatabase db) => MultiTypedResultKey.fromTable(
+    db.productFacets,
+    aliasName: $_aliasNameGenerator(
+      db.products.code,
+      db.productFacets.productCode,
+    ),
+  );
+
+  $$ProductFacetsTableProcessedTableManager get productFacetsRefs {
+    final manager = $$ProductFacetsTableTableManager(
+      $_db,
+      $_db.productFacets,
+    ).filter((f) => f.productCode.code.sqlEquals($_itemColumn<int>('code')!));
+
+    final cache = $_typedResult.readTableOrNull(_productFacetsRefsTable($_db));
+    return ProcessedTableManager(
+      manager.$state.copyWith(prefetchedData: cache),
+    );
+  }
+
+  static MultiTypedResultKey<
+    $ProductCategoryFacetsTable,
+    List<ProductCategoryFacetData>
+  >
+  _productCategoryFacetsRefsTable(_$AppDatabase db) =>
+      MultiTypedResultKey.fromTable(
+        db.productCategoryFacets,
+        aliasName: $_aliasNameGenerator(
+          db.products.code,
+          db.productCategoryFacets.productCode,
+        ),
+      );
+
+  $$ProductCategoryFacetsTableProcessedTableManager
+  get productCategoryFacetsRefs {
+    final manager = $$ProductCategoryFacetsTableTableManager(
+      $_db,
+      $_db.productCategoryFacets,
+    ).filter((f) => f.productCode.code.sqlEquals($_itemColumn<int>('code')!));
+
+    final cache = $_typedResult.readTableOrNull(
+      _productCategoryFacetsRefsTable($_db),
+    );
+    return ProcessedTableManager(
+      manager.$state.copyWith(prefetchedData: cache),
+    );
+  }
 }
 
 class $$ProductsTableFilterComposer
@@ -17992,6 +19369,57 @@ class $$ProductsTableFilterComposer
                 $removeJoinBuilderFromRootComposer,
           ),
     );
+    return f(composer);
+  }
+
+  Expression<bool> productFacetsRefs(
+    Expression<bool> Function($$ProductFacetsTableFilterComposer f) f,
+  ) {
+    final $$ProductFacetsTableFilterComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.code,
+      referencedTable: $db.productFacets,
+      getReferencedColumn: (t) => t.productCode,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$ProductFacetsTableFilterComposer(
+            $db: $db,
+            $table: $db.productFacets,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return f(composer);
+  }
+
+  Expression<bool> productCategoryFacetsRefs(
+    Expression<bool> Function($$ProductCategoryFacetsTableFilterComposer f) f,
+  ) {
+    final $$ProductCategoryFacetsTableFilterComposer composer =
+        $composerBuilder(
+          composer: this,
+          getCurrentColumn: (t) => t.code,
+          referencedTable: $db.productCategoryFacets,
+          getReferencedColumn: (t) => t.productCode,
+          builder:
+              (
+                joinBuilder, {
+                $addJoinBuilderToRootComposer,
+                $removeJoinBuilderFromRootComposer,
+              }) => $$ProductCategoryFacetsTableFilterComposer(
+                $db: $db,
+                $table: $db.productCategoryFacets,
+                $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+                joinBuilder: joinBuilder,
+                $removeJoinBuilderFromRootComposer:
+                    $removeJoinBuilderFromRootComposer,
+              ),
+        );
     return f(composer);
   }
 }
@@ -18241,6 +19669,57 @@ class $$ProductsTableAnnotationComposer
     );
     return f(composer);
   }
+
+  Expression<T> productFacetsRefs<T extends Object>(
+    Expression<T> Function($$ProductFacetsTableAnnotationComposer a) f,
+  ) {
+    final $$ProductFacetsTableAnnotationComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.code,
+      referencedTable: $db.productFacets,
+      getReferencedColumn: (t) => t.productCode,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$ProductFacetsTableAnnotationComposer(
+            $db: $db,
+            $table: $db.productFacets,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return f(composer);
+  }
+
+  Expression<T> productCategoryFacetsRefs<T extends Object>(
+    Expression<T> Function($$ProductCategoryFacetsTableAnnotationComposer a) f,
+  ) {
+    final $$ProductCategoryFacetsTableAnnotationComposer composer =
+        $composerBuilder(
+          composer: this,
+          getCurrentColumn: (t) => t.code,
+          referencedTable: $db.productCategoryFacets,
+          getReferencedColumn: (t) => t.productCode,
+          builder:
+              (
+                joinBuilder, {
+                $addJoinBuilderToRootComposer,
+                $removeJoinBuilderFromRootComposer,
+              }) => $$ProductCategoryFacetsTableAnnotationComposer(
+                $db: $db,
+                $table: $db.productCategoryFacets,
+                $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+                joinBuilder: joinBuilder,
+                $removeJoinBuilderFromRootComposer:
+                    $removeJoinBuilderFromRootComposer,
+              ),
+        );
+    return f(composer);
+  }
 }
 
 class $$ProductsTableTableManager
@@ -18256,7 +19735,11 @@ class $$ProductsTableTableManager
           $$ProductsTableUpdateCompanionBuilder,
           (ProductData, $$ProductsTableReferences),
           ProductData,
-          PrefetchHooks Function({bool stockItemsRefs})
+          PrefetchHooks Function({
+            bool stockItemsRefs,
+            bool productFacetsRefs,
+            bool productCategoryFacetsRefs,
+          })
         > {
   $$ProductsTableTableManager(_$AppDatabase db, $ProductsTable table)
     : super(
@@ -18377,37 +19860,89 @@ class $$ProductsTableTableManager
                 ),
               )
               .toList(),
-          prefetchHooksCallback: ({stockItemsRefs = false}) {
-            return PrefetchHooks(
-              db: db,
-              explicitlyWatchedTables: [if (stockItemsRefs) db.stockItems],
-              addJoins: null,
-              getPrefetchedDataCallback: (items) async {
-                return [
-                  if (stockItemsRefs)
-                    await $_getPrefetchedData<
-                      ProductData,
-                      $ProductsTable,
-                      StockItemData
-                    >(
-                      currentTable: table,
-                      referencedTable: $$ProductsTableReferences
-                          ._stockItemsRefsTable(db),
-                      managerFromTypedResult: (p0) => $$ProductsTableReferences(
-                        db,
-                        table,
-                        p0,
-                      ).stockItemsRefs,
-                      referencedItemsForCurrentItem: (item, referencedItems) =>
-                          referencedItems.where(
-                            (e) => e.productCode == item.code,
-                          ),
-                      typedResults: items,
-                    ),
-                ];
+          prefetchHooksCallback:
+              ({
+                stockItemsRefs = false,
+                productFacetsRefs = false,
+                productCategoryFacetsRefs = false,
+              }) {
+                return PrefetchHooks(
+                  db: db,
+                  explicitlyWatchedTables: [
+                    if (stockItemsRefs) db.stockItems,
+                    if (productFacetsRefs) db.productFacets,
+                    if (productCategoryFacetsRefs) db.productCategoryFacets,
+                  ],
+                  addJoins: null,
+                  getPrefetchedDataCallback: (items) async {
+                    return [
+                      if (stockItemsRefs)
+                        await $_getPrefetchedData<
+                          ProductData,
+                          $ProductsTable,
+                          StockItemData
+                        >(
+                          currentTable: table,
+                          referencedTable: $$ProductsTableReferences
+                              ._stockItemsRefsTable(db),
+                          managerFromTypedResult: (p0) =>
+                              $$ProductsTableReferences(
+                                db,
+                                table,
+                                p0,
+                              ).stockItemsRefs,
+                          referencedItemsForCurrentItem:
+                              (item, referencedItems) => referencedItems.where(
+                                (e) => e.productCode == item.code,
+                              ),
+                          typedResults: items,
+                        ),
+                      if (productFacetsRefs)
+                        await $_getPrefetchedData<
+                          ProductData,
+                          $ProductsTable,
+                          ProductFacetData
+                        >(
+                          currentTable: table,
+                          referencedTable: $$ProductsTableReferences
+                              ._productFacetsRefsTable(db),
+                          managerFromTypedResult: (p0) =>
+                              $$ProductsTableReferences(
+                                db,
+                                table,
+                                p0,
+                              ).productFacetsRefs,
+                          referencedItemsForCurrentItem:
+                              (item, referencedItems) => referencedItems.where(
+                                (e) => e.productCode == item.code,
+                              ),
+                          typedResults: items,
+                        ),
+                      if (productCategoryFacetsRefs)
+                        await $_getPrefetchedData<
+                          ProductData,
+                          $ProductsTable,
+                          ProductCategoryFacetData
+                        >(
+                          currentTable: table,
+                          referencedTable: $$ProductsTableReferences
+                              ._productCategoryFacetsRefsTable(db),
+                          managerFromTypedResult: (p0) =>
+                              $$ProductsTableReferences(
+                                db,
+                                table,
+                                p0,
+                              ).productCategoryFacetsRefs,
+                          referencedItemsForCurrentItem:
+                              (item, referencedItems) => referencedItems.where(
+                                (e) => e.productCode == item.code,
+                              ),
+                          typedResults: items,
+                        ),
+                    ];
+                  },
+                );
               },
-            );
-          },
         ),
       );
 }
@@ -18424,7 +19959,11 @@ typedef $$ProductsTableProcessedTableManager =
       $$ProductsTableUpdateCompanionBuilder,
       (ProductData, $$ProductsTableReferences),
       ProductData,
-      PrefetchHooks Function({bool stockItemsRefs})
+      PrefetchHooks Function({
+        bool stockItemsRefs,
+        bool productFacetsRefs,
+        bool productCategoryFacetsRefs,
+      })
     >;
 typedef $$OrdersTableCreateCompanionBuilder =
     OrdersCompanion Function({
@@ -21171,6 +22710,885 @@ typedef $$SyncLogsTableProcessedTableManager =
       SyncLogRow,
       PrefetchHooks Function()
     >;
+typedef $$ProductFacetsTableCreateCompanionBuilder =
+    ProductFacetsCompanion Function({
+      Value<int> productCode,
+      Value<int?> brandId,
+      Value<String?> brandName,
+      Value<int> brandSearchPriority,
+      Value<int?> manufacturerId,
+      Value<String?> manufacturerName,
+      Value<int?> seriesId,
+      Value<String?> seriesName,
+      Value<int?> typeId,
+      Value<String?> typeName,
+      Value<int?> priceListCategoryId,
+      Value<bool> novelty,
+      Value<bool> popular,
+      Value<bool> canBuy,
+      Value<DateTime> createdAt,
+      Value<DateTime> updatedAt,
+    });
+typedef $$ProductFacetsTableUpdateCompanionBuilder =
+    ProductFacetsCompanion Function({
+      Value<int> productCode,
+      Value<int?> brandId,
+      Value<String?> brandName,
+      Value<int> brandSearchPriority,
+      Value<int?> manufacturerId,
+      Value<String?> manufacturerName,
+      Value<int?> seriesId,
+      Value<String?> seriesName,
+      Value<int?> typeId,
+      Value<String?> typeName,
+      Value<int?> priceListCategoryId,
+      Value<bool> novelty,
+      Value<bool> popular,
+      Value<bool> canBuy,
+      Value<DateTime> createdAt,
+      Value<DateTime> updatedAt,
+    });
+
+final class $$ProductFacetsTableReferences
+    extends
+        BaseReferences<_$AppDatabase, $ProductFacetsTable, ProductFacetData> {
+  $$ProductFacetsTableReferences(
+    super.$_db,
+    super.$_table,
+    super.$_typedResult,
+  );
+
+  static $ProductsTable _productCodeTable(_$AppDatabase db) =>
+      db.products.createAlias(
+        $_aliasNameGenerator(db.productFacets.productCode, db.products.code),
+      );
+
+  $$ProductsTableProcessedTableManager get productCode {
+    final $_column = $_itemColumn<int>('product_code')!;
+
+    final manager = $$ProductsTableTableManager(
+      $_db,
+      $_db.products,
+    ).filter((f) => f.code.sqlEquals($_column));
+    final item = $_typedResult.readTableOrNull(_productCodeTable($_db));
+    if (item == null) return manager;
+    return ProcessedTableManager(
+      manager.$state.copyWith(prefetchedData: [item]),
+    );
+  }
+}
+
+class $$ProductFacetsTableFilterComposer
+    extends Composer<_$AppDatabase, $ProductFacetsTable> {
+  $$ProductFacetsTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<int> get brandId => $composableBuilder(
+    column: $table.brandId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get brandName => $composableBuilder(
+    column: $table.brandName,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get brandSearchPriority => $composableBuilder(
+    column: $table.brandSearchPriority,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get manufacturerId => $composableBuilder(
+    column: $table.manufacturerId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get manufacturerName => $composableBuilder(
+    column: $table.manufacturerName,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get seriesId => $composableBuilder(
+    column: $table.seriesId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get seriesName => $composableBuilder(
+    column: $table.seriesName,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get typeId => $composableBuilder(
+    column: $table.typeId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get typeName => $composableBuilder(
+    column: $table.typeName,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get priceListCategoryId => $composableBuilder(
+    column: $table.priceListCategoryId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<bool> get novelty => $composableBuilder(
+    column: $table.novelty,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<bool> get popular => $composableBuilder(
+    column: $table.popular,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<bool> get canBuy => $composableBuilder(
+    column: $table.canBuy,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get updatedAt => $composableBuilder(
+    column: $table.updatedAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  $$ProductsTableFilterComposer get productCode {
+    final $$ProductsTableFilterComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.productCode,
+      referencedTable: $db.products,
+      getReferencedColumn: (t) => t.code,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$ProductsTableFilterComposer(
+            $db: $db,
+            $table: $db.products,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+}
+
+class $$ProductFacetsTableOrderingComposer
+    extends Composer<_$AppDatabase, $ProductFacetsTable> {
+  $$ProductFacetsTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<int> get brandId => $composableBuilder(
+    column: $table.brandId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get brandName => $composableBuilder(
+    column: $table.brandName,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get brandSearchPriority => $composableBuilder(
+    column: $table.brandSearchPriority,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get manufacturerId => $composableBuilder(
+    column: $table.manufacturerId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get manufacturerName => $composableBuilder(
+    column: $table.manufacturerName,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get seriesId => $composableBuilder(
+    column: $table.seriesId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get seriesName => $composableBuilder(
+    column: $table.seriesName,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get typeId => $composableBuilder(
+    column: $table.typeId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get typeName => $composableBuilder(
+    column: $table.typeName,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get priceListCategoryId => $composableBuilder(
+    column: $table.priceListCategoryId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<bool> get novelty => $composableBuilder(
+    column: $table.novelty,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<bool> get popular => $composableBuilder(
+    column: $table.popular,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<bool> get canBuy => $composableBuilder(
+    column: $table.canBuy,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get updatedAt => $composableBuilder(
+    column: $table.updatedAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  $$ProductsTableOrderingComposer get productCode {
+    final $$ProductsTableOrderingComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.productCode,
+      referencedTable: $db.products,
+      getReferencedColumn: (t) => t.code,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$ProductsTableOrderingComposer(
+            $db: $db,
+            $table: $db.products,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+}
+
+class $$ProductFacetsTableAnnotationComposer
+    extends Composer<_$AppDatabase, $ProductFacetsTable> {
+  $$ProductFacetsTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<int> get brandId =>
+      $composableBuilder(column: $table.brandId, builder: (column) => column);
+
+  GeneratedColumn<String> get brandName =>
+      $composableBuilder(column: $table.brandName, builder: (column) => column);
+
+  GeneratedColumn<int> get brandSearchPriority => $composableBuilder(
+    column: $table.brandSearchPriority,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<int> get manufacturerId => $composableBuilder(
+    column: $table.manufacturerId,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get manufacturerName => $composableBuilder(
+    column: $table.manufacturerName,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<int> get seriesId =>
+      $composableBuilder(column: $table.seriesId, builder: (column) => column);
+
+  GeneratedColumn<String> get seriesName => $composableBuilder(
+    column: $table.seriesName,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<int> get typeId =>
+      $composableBuilder(column: $table.typeId, builder: (column) => column);
+
+  GeneratedColumn<String> get typeName =>
+      $composableBuilder(column: $table.typeName, builder: (column) => column);
+
+  GeneratedColumn<int> get priceListCategoryId => $composableBuilder(
+    column: $table.priceListCategoryId,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<bool> get novelty =>
+      $composableBuilder(column: $table.novelty, builder: (column) => column);
+
+  GeneratedColumn<bool> get popular =>
+      $composableBuilder(column: $table.popular, builder: (column) => column);
+
+  GeneratedColumn<bool> get canBuy =>
+      $composableBuilder(column: $table.canBuy, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get createdAt =>
+      $composableBuilder(column: $table.createdAt, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get updatedAt =>
+      $composableBuilder(column: $table.updatedAt, builder: (column) => column);
+
+  $$ProductsTableAnnotationComposer get productCode {
+    final $$ProductsTableAnnotationComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.productCode,
+      referencedTable: $db.products,
+      getReferencedColumn: (t) => t.code,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$ProductsTableAnnotationComposer(
+            $db: $db,
+            $table: $db.products,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+}
+
+class $$ProductFacetsTableTableManager
+    extends
+        RootTableManager<
+          _$AppDatabase,
+          $ProductFacetsTable,
+          ProductFacetData,
+          $$ProductFacetsTableFilterComposer,
+          $$ProductFacetsTableOrderingComposer,
+          $$ProductFacetsTableAnnotationComposer,
+          $$ProductFacetsTableCreateCompanionBuilder,
+          $$ProductFacetsTableUpdateCompanionBuilder,
+          (ProductFacetData, $$ProductFacetsTableReferences),
+          ProductFacetData,
+          PrefetchHooks Function({bool productCode})
+        > {
+  $$ProductFacetsTableTableManager(_$AppDatabase db, $ProductFacetsTable table)
+    : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$ProductFacetsTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$ProductFacetsTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$ProductFacetsTableAnnotationComposer($db: db, $table: table),
+          updateCompanionCallback:
+              ({
+                Value<int> productCode = const Value.absent(),
+                Value<int?> brandId = const Value.absent(),
+                Value<String?> brandName = const Value.absent(),
+                Value<int> brandSearchPriority = const Value.absent(),
+                Value<int?> manufacturerId = const Value.absent(),
+                Value<String?> manufacturerName = const Value.absent(),
+                Value<int?> seriesId = const Value.absent(),
+                Value<String?> seriesName = const Value.absent(),
+                Value<int?> typeId = const Value.absent(),
+                Value<String?> typeName = const Value.absent(),
+                Value<int?> priceListCategoryId = const Value.absent(),
+                Value<bool> novelty = const Value.absent(),
+                Value<bool> popular = const Value.absent(),
+                Value<bool> canBuy = const Value.absent(),
+                Value<DateTime> createdAt = const Value.absent(),
+                Value<DateTime> updatedAt = const Value.absent(),
+              }) => ProductFacetsCompanion(
+                productCode: productCode,
+                brandId: brandId,
+                brandName: brandName,
+                brandSearchPriority: brandSearchPriority,
+                manufacturerId: manufacturerId,
+                manufacturerName: manufacturerName,
+                seriesId: seriesId,
+                seriesName: seriesName,
+                typeId: typeId,
+                typeName: typeName,
+                priceListCategoryId: priceListCategoryId,
+                novelty: novelty,
+                popular: popular,
+                canBuy: canBuy,
+                createdAt: createdAt,
+                updatedAt: updatedAt,
+              ),
+          createCompanionCallback:
+              ({
+                Value<int> productCode = const Value.absent(),
+                Value<int?> brandId = const Value.absent(),
+                Value<String?> brandName = const Value.absent(),
+                Value<int> brandSearchPriority = const Value.absent(),
+                Value<int?> manufacturerId = const Value.absent(),
+                Value<String?> manufacturerName = const Value.absent(),
+                Value<int?> seriesId = const Value.absent(),
+                Value<String?> seriesName = const Value.absent(),
+                Value<int?> typeId = const Value.absent(),
+                Value<String?> typeName = const Value.absent(),
+                Value<int?> priceListCategoryId = const Value.absent(),
+                Value<bool> novelty = const Value.absent(),
+                Value<bool> popular = const Value.absent(),
+                Value<bool> canBuy = const Value.absent(),
+                Value<DateTime> createdAt = const Value.absent(),
+                Value<DateTime> updatedAt = const Value.absent(),
+              }) => ProductFacetsCompanion.insert(
+                productCode: productCode,
+                brandId: brandId,
+                brandName: brandName,
+                brandSearchPriority: brandSearchPriority,
+                manufacturerId: manufacturerId,
+                manufacturerName: manufacturerName,
+                seriesId: seriesId,
+                seriesName: seriesName,
+                typeId: typeId,
+                typeName: typeName,
+                priceListCategoryId: priceListCategoryId,
+                novelty: novelty,
+                popular: popular,
+                canBuy: canBuy,
+                createdAt: createdAt,
+                updatedAt: updatedAt,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map(
+                (e) => (
+                  e.readTable(table),
+                  $$ProductFacetsTableReferences(db, table, e),
+                ),
+              )
+              .toList(),
+          prefetchHooksCallback: ({productCode = false}) {
+            return PrefetchHooks(
+              db: db,
+              explicitlyWatchedTables: [],
+              addJoins:
+                  <
+                    T extends TableManagerState<
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic
+                    >
+                  >(state) {
+                    if (productCode) {
+                      state =
+                          state.withJoin(
+                                currentTable: table,
+                                currentColumn: table.productCode,
+                                referencedTable: $$ProductFacetsTableReferences
+                                    ._productCodeTable(db),
+                                referencedColumn: $$ProductFacetsTableReferences
+                                    ._productCodeTable(db)
+                                    .code,
+                              )
+                              as T;
+                    }
+
+                    return state;
+                  },
+              getPrefetchedDataCallback: (items) async {
+                return [];
+              },
+            );
+          },
+        ),
+      );
+}
+
+typedef $$ProductFacetsTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AppDatabase,
+      $ProductFacetsTable,
+      ProductFacetData,
+      $$ProductFacetsTableFilterComposer,
+      $$ProductFacetsTableOrderingComposer,
+      $$ProductFacetsTableAnnotationComposer,
+      $$ProductFacetsTableCreateCompanionBuilder,
+      $$ProductFacetsTableUpdateCompanionBuilder,
+      (ProductFacetData, $$ProductFacetsTableReferences),
+      ProductFacetData,
+      PrefetchHooks Function({bool productCode})
+    >;
+typedef $$ProductCategoryFacetsTableCreateCompanionBuilder =
+    ProductCategoryFacetsCompanion Function({
+      Value<int> id,
+      required int productCode,
+      required int categoryId,
+      Value<String?> categoryName,
+      Value<DateTime> createdAt,
+    });
+typedef $$ProductCategoryFacetsTableUpdateCompanionBuilder =
+    ProductCategoryFacetsCompanion Function({
+      Value<int> id,
+      Value<int> productCode,
+      Value<int> categoryId,
+      Value<String?> categoryName,
+      Value<DateTime> createdAt,
+    });
+
+final class $$ProductCategoryFacetsTableReferences
+    extends
+        BaseReferences<
+          _$AppDatabase,
+          $ProductCategoryFacetsTable,
+          ProductCategoryFacetData
+        > {
+  $$ProductCategoryFacetsTableReferences(
+    super.$_db,
+    super.$_table,
+    super.$_typedResult,
+  );
+
+  static $ProductsTable _productCodeTable(_$AppDatabase db) =>
+      db.products.createAlias(
+        $_aliasNameGenerator(
+          db.productCategoryFacets.productCode,
+          db.products.code,
+        ),
+      );
+
+  $$ProductsTableProcessedTableManager get productCode {
+    final $_column = $_itemColumn<int>('product_code')!;
+
+    final manager = $$ProductsTableTableManager(
+      $_db,
+      $_db.products,
+    ).filter((f) => f.code.sqlEquals($_column));
+    final item = $_typedResult.readTableOrNull(_productCodeTable($_db));
+    if (item == null) return manager;
+    return ProcessedTableManager(
+      manager.$state.copyWith(prefetchedData: [item]),
+    );
+  }
+}
+
+class $$ProductCategoryFacetsTableFilterComposer
+    extends Composer<_$AppDatabase, $ProductCategoryFacetsTable> {
+  $$ProductCategoryFacetsTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<int> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get categoryId => $composableBuilder(
+    column: $table.categoryId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get categoryName => $composableBuilder(
+    column: $table.categoryName,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  $$ProductsTableFilterComposer get productCode {
+    final $$ProductsTableFilterComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.productCode,
+      referencedTable: $db.products,
+      getReferencedColumn: (t) => t.code,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$ProductsTableFilterComposer(
+            $db: $db,
+            $table: $db.products,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+}
+
+class $$ProductCategoryFacetsTableOrderingComposer
+    extends Composer<_$AppDatabase, $ProductCategoryFacetsTable> {
+  $$ProductCategoryFacetsTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<int> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get categoryId => $composableBuilder(
+    column: $table.categoryId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get categoryName => $composableBuilder(
+    column: $table.categoryName,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  $$ProductsTableOrderingComposer get productCode {
+    final $$ProductsTableOrderingComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.productCode,
+      referencedTable: $db.products,
+      getReferencedColumn: (t) => t.code,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$ProductsTableOrderingComposer(
+            $db: $db,
+            $table: $db.products,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+}
+
+class $$ProductCategoryFacetsTableAnnotationComposer
+    extends Composer<_$AppDatabase, $ProductCategoryFacetsTable> {
+  $$ProductCategoryFacetsTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<int> get id =>
+      $composableBuilder(column: $table.id, builder: (column) => column);
+
+  GeneratedColumn<int> get categoryId => $composableBuilder(
+    column: $table.categoryId,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get categoryName => $composableBuilder(
+    column: $table.categoryName,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<DateTime> get createdAt =>
+      $composableBuilder(column: $table.createdAt, builder: (column) => column);
+
+  $$ProductsTableAnnotationComposer get productCode {
+    final $$ProductsTableAnnotationComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.productCode,
+      referencedTable: $db.products,
+      getReferencedColumn: (t) => t.code,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$ProductsTableAnnotationComposer(
+            $db: $db,
+            $table: $db.products,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+}
+
+class $$ProductCategoryFacetsTableTableManager
+    extends
+        RootTableManager<
+          _$AppDatabase,
+          $ProductCategoryFacetsTable,
+          ProductCategoryFacetData,
+          $$ProductCategoryFacetsTableFilterComposer,
+          $$ProductCategoryFacetsTableOrderingComposer,
+          $$ProductCategoryFacetsTableAnnotationComposer,
+          $$ProductCategoryFacetsTableCreateCompanionBuilder,
+          $$ProductCategoryFacetsTableUpdateCompanionBuilder,
+          (ProductCategoryFacetData, $$ProductCategoryFacetsTableReferences),
+          ProductCategoryFacetData,
+          PrefetchHooks Function({bool productCode})
+        > {
+  $$ProductCategoryFacetsTableTableManager(
+    _$AppDatabase db,
+    $ProductCategoryFacetsTable table,
+  ) : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$ProductCategoryFacetsTableFilterComposer(
+                $db: db,
+                $table: table,
+              ),
+          createOrderingComposer: () =>
+              $$ProductCategoryFacetsTableOrderingComposer(
+                $db: db,
+                $table: table,
+              ),
+          createComputedFieldComposer: () =>
+              $$ProductCategoryFacetsTableAnnotationComposer(
+                $db: db,
+                $table: table,
+              ),
+          updateCompanionCallback:
+              ({
+                Value<int> id = const Value.absent(),
+                Value<int> productCode = const Value.absent(),
+                Value<int> categoryId = const Value.absent(),
+                Value<String?> categoryName = const Value.absent(),
+                Value<DateTime> createdAt = const Value.absent(),
+              }) => ProductCategoryFacetsCompanion(
+                id: id,
+                productCode: productCode,
+                categoryId: categoryId,
+                categoryName: categoryName,
+                createdAt: createdAt,
+              ),
+          createCompanionCallback:
+              ({
+                Value<int> id = const Value.absent(),
+                required int productCode,
+                required int categoryId,
+                Value<String?> categoryName = const Value.absent(),
+                Value<DateTime> createdAt = const Value.absent(),
+              }) => ProductCategoryFacetsCompanion.insert(
+                id: id,
+                productCode: productCode,
+                categoryId: categoryId,
+                categoryName: categoryName,
+                createdAt: createdAt,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map(
+                (e) => (
+                  e.readTable(table),
+                  $$ProductCategoryFacetsTableReferences(db, table, e),
+                ),
+              )
+              .toList(),
+          prefetchHooksCallback: ({productCode = false}) {
+            return PrefetchHooks(
+              db: db,
+              explicitlyWatchedTables: [],
+              addJoins:
+                  <
+                    T extends TableManagerState<
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic
+                    >
+                  >(state) {
+                    if (productCode) {
+                      state =
+                          state.withJoin(
+                                currentTable: table,
+                                currentColumn: table.productCode,
+                                referencedTable:
+                                    $$ProductCategoryFacetsTableReferences
+                                        ._productCodeTable(db),
+                                referencedColumn:
+                                    $$ProductCategoryFacetsTableReferences
+                                        ._productCodeTable(db)
+                                        .code,
+                              )
+                              as T;
+                    }
+
+                    return state;
+                  },
+              getPrefetchedDataCallback: (items) async {
+                return [];
+              },
+            );
+          },
+        ),
+      );
+}
+
+typedef $$ProductCategoryFacetsTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AppDatabase,
+      $ProductCategoryFacetsTable,
+      ProductCategoryFacetData,
+      $$ProductCategoryFacetsTableFilterComposer,
+      $$ProductCategoryFacetsTableOrderingComposer,
+      $$ProductCategoryFacetsTableAnnotationComposer,
+      $$ProductCategoryFacetsTableCreateCompanionBuilder,
+      $$ProductCategoryFacetsTableUpdateCompanionBuilder,
+      (ProductCategoryFacetData, $$ProductCategoryFacetsTableReferences),
+      ProductCategoryFacetData,
+      PrefetchHooks Function({bool productCode})
+    >;
 
 class $AppDatabaseManager {
   final _$AppDatabase _db;
@@ -21217,4 +23635,8 @@ class $AppDatabaseManager {
       $$WarehousesTableTableManager(_db, _db.warehouses);
   $$SyncLogsTableTableManager get syncLogs =>
       $$SyncLogsTableTableManager(_db, _db.syncLogs);
+  $$ProductFacetsTableTableManager get productFacets =>
+      $$ProductFacetsTableTableManager(_db, _db.productFacets);
+  $$ProductCategoryFacetsTableTableManager get productCategoryFacets =>
+      $$ProductCategoryFacetsTableTableManager(_db, _db.productCategoryFacets);
 }

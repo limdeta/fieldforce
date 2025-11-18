@@ -166,14 +166,14 @@ class _ProductCatalogPageState extends State<ProductCatalogPage>
     }
 
     // Рекурсивно строим дерево, оставляя только нужные категории
-    Category? _filterRecursive(Category category) {
+    Category? filterRecursive(Category category) {
       if (!categoriesToShow.contains(category.id)) {
         return null;
       }
 
       // Фильтруем детей - оставляем только те, что в нашем наборе
       final filteredChildren = category.children
-          .map((child) => _filterRecursive(child))
+          .map((child) => filterRecursive(child))
           .where((child) => child != null)
           .cast<Category>()
           .toList();
@@ -192,7 +192,7 @@ class _ProductCatalogPageState extends State<ProductCatalogPage>
     }
 
     return categories
-        .map((category) => _filterRecursive(category))
+      .map((category) => filterRecursive(category))
         .where((category) => category != null)
         .cast<Category>()
         .toList();
@@ -350,8 +350,8 @@ class _ProductCatalogPageState extends State<ProductCatalogPage>
       foregroundColor: Colors.white,
       title: Row(
         mainAxisSize: MainAxisSize.max,
-        children: [
-          const Expanded(
+        children: const [
+          Expanded(
             child: Align(
               alignment: Alignment.centerLeft,
               child: Padding(
@@ -366,14 +366,6 @@ class _ProductCatalogPageState extends State<ProductCatalogPage>
               ),
             ),
           ),
-          SizedBox(
-            width: 56,
-            child: Center(
-              child: CatalogFilterButton(
-                onPressed: () => showCatalogFilterPlaceholder(context),
-              ),
-            ),
-          ),
         ],
       ),
       leading: IconButton(
@@ -382,7 +374,11 @@ class _ProductCatalogPageState extends State<ProductCatalogPage>
           Navigator.pushReplacementNamed(context, '/menu');
         },
       ),
-      actions: const [CatalogAppBarActions(showFilter: false)],
+      actions: const [
+        CatalogAppBarActions(
+          showFilter: false,
+        ),
+      ],
       bottom: PreferredSize(
         preferredSize: const Size.fromHeight(40),
         child: Container(
@@ -425,7 +421,7 @@ class _ProductCatalogPageState extends State<ProductCatalogPage>
       return _buildEmptyState();
     }
 
-    return FadeTransition(
+    final catalogContent = FadeTransition(
       opacity: _fadeAnimation,
       child: RefreshIndicator(
         onRefresh: () => _loadCategories(forceRefresh: true),
@@ -470,6 +466,20 @@ class _ProductCatalogPageState extends State<ProductCatalogPage>
           ],
         ),
       ),
+    );
+
+    return Stack(
+      children: [
+        catalogContent,
+        Positioned(
+          top: 0,
+          bottom: 0,
+          right: 0,
+          child: _FilterEdgeHandle(
+            onTrigger: () => showCatalogFilters(context),
+          ),
+        ),
+      ],
     );
   }
 
@@ -768,4 +778,76 @@ class _ProductCatalogPageState extends State<ProductCatalogPage>
     );
   }
 
+}
+
+class _FilterEdgeHandle extends StatefulWidget {
+  final VoidCallback onTrigger;
+
+  const _FilterEdgeHandle({required this.onTrigger});
+
+  @override
+  State<_FilterEdgeHandle> createState() => _FilterEdgeHandleState();
+}
+
+class _FilterEdgeHandleState extends State<_FilterEdgeHandle> {
+  bool _dragging = false;
+  bool _triggered = false;
+
+  void _reset() {
+    _dragging = false;
+    _triggered = false;
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final primaryColor = Theme.of(context).colorScheme.primary;
+    return GestureDetector(
+      behavior: HitTestBehavior.translucent,
+      onHorizontalDragStart: (_) {
+        _dragging = true;
+        _triggered = false;
+      },
+      onHorizontalDragUpdate: (details) {
+        if (!_dragging || _triggered) {
+          return;
+        }
+        if (details.primaryDelta != null && details.primaryDelta! < -12) {
+          _triggered = true;
+          widget.onTrigger();
+        }
+      },
+      onHorizontalDragEnd: (_) => _reset(),
+      onHorizontalDragCancel: _reset,
+      child: Container(
+        width: 28,
+        margin: const EdgeInsets.symmetric(vertical: 48),
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.centerLeft,
+            end: Alignment.centerRight,
+            colors: [
+              Colors.transparent,
+              primaryColor.withValues(alpha: 0.05),
+            ],
+          ),
+        ),
+        child: Align(
+          alignment: Alignment.centerRight,
+          child: Container(
+            width: 18,
+            height: 64,
+            decoration: BoxDecoration(
+              color: primaryColor.withValues(alpha: 0.08),
+              borderRadius: const BorderRadius.horizontal(left: Radius.circular(12)),
+            ),
+            child: const Icon(
+              Icons.tune,
+              size: 16,
+              color: Colors.black54,
+            ),
+          ),
+        ),
+      ),
+    );
+  }
 }
