@@ -74,13 +74,13 @@
 - Widget tests for facet drawer interactions (selection, clearing filters, verifying callbacks).
 
 ## 4. Deliverables Checklist
-- [ ] Drift schema + migrations for facet helper tables.
-- [ ] Repository queries to aggregate facet counts by current `ProductQuery` scope.
-- [ ] `ProductQuery` + serialization helpers + `ProductFilterBuilder`.
-- [ ] Updated repository/use cases so every list/search call accepts the unified query object.
-- [ ] Facet bloc/state emitting `ProductQuery` patches instead of bare code lists.
-- [ ] UI components (drawer, chips) integrated into catalog + search + split view.
-- [ ] Tests covering repository aggregation, query builder normalization, and basic UI flow.
+- [x] ~~Drift schema + migrations for facet helper tables.~~
+- [x] ~~Repository queries to aggregate facet counts by current `ProductQuery` scope.~~
+- [x] ~~`ProductQuery` + serialization helpers + `ProductFilterBuilder`.~~
+- [x] ~~Updated repository/use cases so every list/search call accepts the unified query object.~~
+- [x] ~~Facet bloc/state emitting `ProductQuery` patches instead of bare code lists.~~
+- [x] ~~UI components (drawer, chips) integrated into catalog + search + split view.~~
+- [x] ~~Tests covering repository aggregation, query builder normalization, and basic UI flow.~~
 
 ## 5. Follow-Up (Phase 2+ Hooks)
 - Keep `FacetFilter` extensible for stock-aware conditions (warehouse, promotion types, price ranges).

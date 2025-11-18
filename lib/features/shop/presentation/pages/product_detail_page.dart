@@ -231,208 +231,276 @@ class _ProductDetailPageState extends State<ProductDetailPage> {
             ),
           ),
 
-          Padding(
-            padding: const EdgeInsets.all(16),
+          Container(
+            color: Theme.of(context).colorScheme.surface,
+            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 24),
             child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // Название продукта
+                _buildHeroSection(context, product, productWithStock),
+                const SizedBox(height: 28),
+                _buildActionSection(context, productWithStock),
+                const SizedBox(height: 28),
+                _buildDescriptionSection(context, product),
+                const SizedBox(height: 24),
+                _buildFactsSection(context, product),
+                if (product.numericCharacteristics.isNotEmpty ||
+                    product.stringCharacteristics.isNotEmpty ||
+                    product.boolCharacteristics.isNotEmpty) ...[
+                  const SizedBox(height: 32),
+                  _buildCharacteristicsSection(context, product),
+                ],
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildHeroSection(
+    BuildContext context,
+    Product product,
+    ProductWithStock productWithStock,
+  ) {
+    final theme = Theme.of(context);
+
+    return _buildMagazineSection(
+      context: context,
+      backgroundColor: theme.colorScheme.surfaceVariant.withValues(alpha: 0.35),
+      accentColor: theme.colorScheme.primary,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            product.title,
+            style: theme.textTheme.headlineSmall?.copyWith(
+              fontWeight: FontWeight.w700,
+              height: 1.2,
+            ),
+          ),
+          const SizedBox(height: 8),
+          Wrap(
+            spacing: 12,
+            runSpacing: 4,
+            children: [
+              Text(
+                'КОД: ${product.code}',
+                style: theme.textTheme.titleSmall?.copyWith(
+                  fontWeight: FontWeight.w700,
+                  letterSpacing: 0.6,
+                ),
+              ),
+              if (product.vendorCode != null)
                 Text(
-                  product.title,
-                  style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                    fontWeight: FontWeight.w600,
+                  'АРТИКУЛ: ${product.vendorCode}',
+                  style: theme.textTheme.titleSmall?.copyWith(
+                    fontWeight: FontWeight.w700,
+                    letterSpacing: 0.6,
                   ),
                 ),
-
-                const SizedBox(height: 8),
-
-                // Код продукта
+            ],
+          ),
+          if (productWithStock.totalStock > 0) ...[
+            const SizedBox(height: 18),
+            Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(
+                  productWithStock.stockStatusColor.icon,
+                  size: 18,
+                  color: productWithStock.stockStatusColor.color,
+                ),
+                const SizedBox(width: 8),
                 Text(
-                  'Код: ${product.code}',
-                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                    color: Colors.grey.shade600,
+                  productWithStock.stockStatusText.toUpperCase(),
+                  style: theme.textTheme.labelMedium?.copyWith(
+                    letterSpacing: 0.8,
+                    color: productWithStock.stockStatusColor.color,
+                    fontWeight: FontWeight.bold,
                   ),
                 ),
-                
-                const SizedBox(height: 8),
-                
-                // Статус остатков - показываем только если есть реальные данные
-                // (totalStock > 0 означает что данные загружены, == 0 это заглушка)
-                if (productWithStock.totalStock > 0)
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                    decoration: BoxDecoration(
-                      color: productWithStock.stockStatusColor.color.withValues(alpha: 0.1),
-                      border: Border.all(color: productWithStock.stockStatusColor.color),
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Icon(
-                          productWithStock.stockStatusColor.icon,
-                          size: 16,
-                          color: productWithStock.stockStatusColor.color,
-                        ),
-                        const SizedBox(width: 4),
-                        Text(
-                          productWithStock.stockStatusText,
-                          style: TextStyle(
-                            color: productWithStock.stockStatusColor.color,
-                            fontWeight: FontWeight.w500,
-                          ),
-                        ),
-                      ],
+              ],
+            ),
+          ],
+          if (product.amountInPackage != null) ...[
+            const SizedBox(height: 16),
+            Text(
+              'Упаковка: ${product.amountInPackage} шт.',
+              style: theme.textTheme.bodyMedium?.copyWith(color: theme.hintColor),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+
+  Widget _buildActionSection(BuildContext context, ProductWithStock productWithStock) {
+    final theme = Theme.of(context);
+
+    return _buildMagazineSection(
+      context: context,
+      backgroundColor: theme.colorScheme.surface,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          StockItemSelectorWidget(
+            productCode: productWithStock.product.code,
+            selectedStockItem: _selectedStockItem,
+            onStockItemSelected: (stockItem) {
+              setState(() {
+                _selectedStockItem = stockItem;
+              });
+            },
+            showFullInfo: true,
+          ),
+          const SizedBox(height: 16),
+          _selectedStockItem != null
+              ? _buildPriceSectionFromStockItem(context, _selectedStockItem!)
+              : _buildPriceSection(context, productWithStock),
+          const SizedBox(height: 20),
+          if (_selectedStockItem != null && _selectedStockItem!.stock > 0)
+            BlocBuilder<CartBloc, CartState>(
+              builder: (context, state) {
+                int currentQuantity = _lastKnownQuantity;
+
+                if (state is CartLoaded) {
+                  final orderLine = state.orderLines.where(
+                    (line) =>
+                        line.productCode.toString() == productWithStock.product.code.toString(),
+                  ).firstOrNull;
+                  currentQuantity = orderLine?.quantity ?? 0;
+                  _lastKnownQuantity = currentQuantity;
+                }
+
+                return Align(
+                  alignment: Alignment.centerLeft,
+                  child: CartControlWidget(
+                    initialQuantity: currentQuantity,
+                    amountInPackage: productWithStock.product.amountInPackage,
+                    onAddToCart: () {
+                      context.read<CartBloc>().add(
+                            AddToCartEvent(
+                              productCode: productWithStock.product.code.toString(),
+                              quantity: 1,
+                            ),
+                          );
+                    },
+                    onQuantityChanged: (quantity) {
+                      context.read<CartBloc>().add(
+                            AddToCartEvent(
+                              productCode: productWithStock.product.code.toString(),
+                              quantity: quantity,
+                            ),
+                          );
+                    },
+                    showCartIcon: false,
+                  ),
+                );
+              },
+            )
+          else if (_selectedStockItem != null && _selectedStockItem!.stock == 0)
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.symmetric(vertical: 18),
+              decoration: BoxDecoration(
+                border: Border(
+                  top: BorderSide(color: theme.dividerColor),
+                  bottom: BorderSide(color: theme.dividerColor),
+                ),
+              ),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(Icons.info_outline, color: theme.hintColor),
+                  const SizedBox(width: 8),
+                  Text(
+                    'Нет на выбранном складе',
+                    style: theme.textTheme.bodyMedium?.copyWith(
+                      color: theme.hintColor,
+                      fontWeight: FontWeight.w600,
                     ),
                   ),
+                ],
+              ),
+            ),
+        ],
+      ),
+    );
+  }
 
-                // Вес/упаковка
-                if (product.amountInPackage != null)
-                  Padding(
-                    padding: const EdgeInsets.only(top: 8),
+  Widget _buildDescriptionSection(BuildContext context, Product product) {
+    final theme = Theme.of(context);
+
+    return _buildMagazineSection(
+      context: context,
+      backgroundColor: theme.colorScheme.surfaceVariant.withValues(alpha: 0.15),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          _buildSectionHeading(context, 'Описание'),
+          const SizedBox(height: 12),
+          Text(
+            product.description ?? 'Описание не указано',
+            style: theme.textTheme.bodyMedium?.copyWith(
+              color: theme.colorScheme.onSurfaceVariant,
+              height: 1.6,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildFactsSection(BuildContext context, Product product) {
+    final theme = Theme.of(context);
+    final facts = <MapEntry<String, String>>[
+      MapEntry('Код товара', product.code.toString()),
+      if (product.type != null) MapEntry('Тип', product.type!.name),
+      if (product.brand != null) MapEntry('Бренд', product.brand!.name),
+      if (product.manufacturer != null)
+        MapEntry('Производитель', product.manufacturer!.name),
+      if (product.amountInPackage != null)
+        MapEntry('В упаковке', '${product.amountInPackage} шт.'),
+      if (product.novelty) MapEntry('Статус', 'Новинка коллекции'),
+      if (product.popular) MapEntry('Популярность', 'Хит продаж'),
+    ];
+
+    return _buildMagazineSection(
+      context: context,
+      backgroundColor: theme.colorScheme.surface,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          _buildSectionHeading(context, 'Основные факты'),
+          const SizedBox(height: 12),
+          ...facts.map(
+            (fact) => Padding(
+              padding: const EdgeInsets.only(bottom: 8),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  SizedBox(
+                    width: 140,
                     child: Text(
-                      'В упаковке: ${product.amountInPackage} шт.',
-                      style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                        color: Colors.grey.shade600,
+                      fact.key.toUpperCase(),
+                      style: theme.textTheme.titleSmall?.copyWith(
+                        fontWeight: FontWeight.w700,
+                        letterSpacing: 0.8,
+                        color: theme.colorScheme.onSurfaceVariant,
                       ),
                     ),
                   ),
-
-                const SizedBox(height: 16),
-                
-                // Селектор склада
-                StockItemSelectorWidget(
-                  productCode: widget.productWithStock.product.code,
-                  selectedStockItem: _selectedStockItem,
-                  onStockItemSelected: (stockItem) {
-                    setState(() {
-                      _selectedStockItem = stockItem;
-                    });
-                  },
-                  showFullInfo: true,
-                ),
-
-                const SizedBox(height: 16),
-
-                _selectedStockItem != null 
-                  ? _buildPriceSectionFromStockItem(context, _selectedStockItem!)
-                  : _buildPriceSection(context, productWithStock),
-
-                const SizedBox(height: 24),
-
-                // Показываем управление корзиной только если склад выбран и есть остаток
-                if (_selectedStockItem != null && _selectedStockItem!.stock > 0) 
-                  BlocBuilder<CartBloc, CartState>(
-                    builder: (context, state) {
-                      int currentQuantity = _lastKnownQuantity; 
-                      
-                      if (state is CartLoaded) {
-                        final orderLine = state.orderLines.where(
-                          (line) => line.productCode.toString() == product.code.toString()
-                        ).firstOrNull;
-                        currentQuantity = orderLine?.quantity ?? 0;
-                        _lastKnownQuantity = currentQuantity;
-                      }
-                      
-                      return CartControlWidget(
-                        initialQuantity: currentQuantity,
-                        amountInPackage: product.amountInPackage,
-                        onAddToCart: () {
-                          // Добавляем товар в корзину через CartBloc
-                          context.read<CartBloc>().add(AddToCartEvent(
-                            productCode: product.code.toString(),
-                            quantity: 1,
-                          ));
-                        },
-                    onQuantityChanged: (quantity) {
-                      context.read<CartBloc>().add(AddToCartEvent(
-                        productCode: product.code.toString(),
-                        quantity: quantity,
-                      ));
-                    },
-                        showCartIcon: false, // В деталях продукта не показываем иконку корзины
-                      );
-                    },
-                  )
-                else if (_selectedStockItem != null && _selectedStockItem!.stock == 0)
-                  // Склад выбран, но товара нет
-                  Container(
-                    width: double.infinity,
-                    padding: const EdgeInsets.all(16),
-                    decoration: BoxDecoration(
-                      color: Colors.grey[200],
-                      borderRadius: BorderRadius.circular(8),
-                      border: Border.all(color: Colors.grey[400]!),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Text(
+                      fact.value,
+                      style: theme.textTheme.bodyMedium?.copyWith(
+                        color: theme.colorScheme.onSurface,
+                      ),
                     ),
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Icon(Icons.info_outline, color: Colors.grey[600]),
-                        const SizedBox(width: 8),
-                        Text(
-                          'Нет на складе',
-                          style: TextStyle(
-                            color: Colors.grey[600],
-                            fontWeight: FontWeight.w500,
-                          ),
-                        ),
-                      ],
-                    ),
-                  )
-                else
-                  // Склад еще не выбран (загрузка)
-                  const SizedBox.shrink(),
-
-                const SizedBox(height: 32),
-
-                const Divider(),
-
-                const SizedBox(height: 16),
-
-                // Заголовок описания
-                Text(
-                  'Описание',
-                  style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                    fontWeight: FontWeight.w600,
                   ),
-                ),
-
-                const SizedBox(height: 12),
-
-                Text(
-                  product.description ?? 'Описание не указано',
-                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                    color: Colors.grey.shade700,
-                    height: 1.5,
-                  ),
-                ),
-
-                const SizedBox(height: 24),
-
-                _buildInfoSection(
-                  context,
-                  'Характеристики',
-                  [
-                    'Код товара: ${product.code}',
-                    if (product.vendorCode != null) 'Артикул: ${product.vendorCode}',
-                    if (product.type != null) 'Тип: ${product.type!.name}',
-                    if (product.brand != null) 'Бренд: ${product.brand!.name}',
-                    if (product.manufacturer != null) 'Производитель: ${product.manufacturer!.name}',
-                    if (product.amountInPackage != null) 'В упаковке: ${product.amountInPackage} шт.',
-                    if (product.novelty) 'Новинка',
-                    if (product.popular) 'Популярный товар',
-                  ],
-                ),
-
-                // Характеристики продукта
-                if (product.numericCharacteristics.isNotEmpty ||
-                    product.stringCharacteristics.isNotEmpty ||
-                    product.boolCharacteristics.isNotEmpty)
-                  Padding(
-                    padding: const EdgeInsets.only(top: 16),
-                    child: _buildCharacteristicsSection(context, product),
-                  ),
-              ],
+                ],
+              ),
             ),
           ),
         ],
@@ -448,42 +516,79 @@ class _ProductDetailPageState extends State<ProductDetailPage> {
     ];
 
     if (allCharacteristics.isEmpty) return const SizedBox.shrink();
-
-    return _buildInfoSection(
-      context,
-      'Свойства',
-      allCharacteristics.map((char) {
-        if (char.adaptValue != null && char.adaptValue!.isNotEmpty) {
-          return '${char.attributeName}: ${char.adaptValue}';
-        } else if (char.value != null) {
-          return '${char.attributeName}: ${char.value}';
-        }
-        return char.attributeName;
-      }).toList(),
+    return _buildMagazineSection(
+      context: context,
+      backgroundColor: Theme.of(context).colorScheme.surface,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          _buildSectionHeading(context, 'Свойства и детали'),
+          const SizedBox(height: 16),
+          ...allCharacteristics.map((char) {
+            final String value = char.adaptValue?.isNotEmpty == true
+                ? char.adaptValue!
+                : (char.value?.toString() ?? '—');
+            return Padding(
+              padding: const EdgeInsets.only(bottom: 10),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  SizedBox(
+                    width: 140,
+                    child: Text(
+                      char.attributeName,
+                      style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                            fontWeight: FontWeight.w600,
+                            color: Theme.of(context).colorScheme.onSurface,
+                          ),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Text(
+                      value,
+                      style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                            color: Theme.of(context).colorScheme.onSurfaceVariant,
+                          ),
+                    ),
+                  ),
+                ],
+              ),
+            );
+          }),
+        ],
+      ),
     );
   }
 
-  Widget _buildInfoSection(BuildContext context, String title, List<String> items) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          title,
-          style: Theme.of(context).textTheme.titleMedium?.copyWith(
-            fontWeight: FontWeight.w600,
-          ),
-        ),
-        const SizedBox(height: 8),
-        ...items.map((item) => Padding(
-          padding: const EdgeInsets.only(bottom: 4),
-          child: Text(
-            item,
-            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-              color: const Color.fromARGB(255, 97, 97, 97),
-            ),
-          ),
-        )),
-      ],
+  Widget _buildSectionHeading(BuildContext context, String title) {
+    final theme = Theme.of(context);
+    return Text(
+      title.toUpperCase(),
+      style: theme.textTheme.titleMedium?.copyWith(
+        letterSpacing: 1.2,
+        fontWeight: FontWeight.w700,
+      ),
+    );
+  }
+
+  Widget _buildMagazineSection({
+    required BuildContext context,
+    required Widget child,
+    Color? backgroundColor,
+    Color? accentColor,
+  }) {
+    final theme = Theme.of(context);
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 22),
+      decoration: BoxDecoration(
+        color: backgroundColor ?? theme.colorScheme.surface,
+        border: accentColor == null
+            ? null
+            : Border(left: BorderSide(color: accentColor, width: 4)),
+      ),
+      child: child,
     );
   }
 
