@@ -85,6 +85,8 @@ void main() {
       ),
     );
 
+    await _insertFacetData(database, productJson);
+
     await database.into(database.stockItems).insert(
       StockItemsCompanion(
         id: const Value.absent(),
@@ -180,6 +182,8 @@ void main() {
         rawJson: Value(jsonEncode(productJson)),
       ),
     );
+
+    await _insertFacetData(database, productJson);
 
     await database.into(database.stockItems).insert(
       StockItemsCompanion(
@@ -295,4 +299,44 @@ class _FakeWarehouseRepository implements WarehouseRepository {
 
   @override
   Future<Either<Failure, void>> saveWarehouses(List<Warehouse> warehouses) async => const Right(null);
+}
+
+Future<void> _insertFacetData(AppDatabase database, Map<String, dynamic> json) async {
+  final brand = json['brand'] as Map<String, dynamic>?;
+  final manufacturer = json['manufacturer'] as Map<String, dynamic>?;
+  final series = json['series'] as Map<String, dynamic>?;
+  final type = json['type'] as Map<String, dynamic>?;
+
+  await database.into(database.productFacets).insert(
+    ProductFacetsCompanion(
+      productCode: Value(json['code'] as int),
+      brandId: Value(brand?['id'] as int?),
+      brandName: Value(brand?['name'] as String?),
+      brandSearchPriority: Value(brand?['search_priority'] as int? ?? 0),
+      manufacturerId: Value(manufacturer?['id'] as int?),
+      manufacturerName: Value(manufacturer?['name'] as String?),
+      seriesId: Value(series?['id'] as int?),
+      seriesName: Value(series?['name'] as String?),
+      typeId: Value(type?['id'] as int?),
+      typeName: Value(type?['name'] as String?),
+      novelty: Value(json['novelty'] as bool? ?? false),
+      popular: Value(json['popular'] as bool? ?? false),
+      canBuy: Value(json['canBuy'] as bool? ?? true),
+      createdAt: Value(DateTime.now()),
+      updatedAt: Value(DateTime.now()),
+    ),
+  );
+
+  final categories = json['categoriesInstock'] as List<dynamic>? ?? const [];
+  for (final category in categories.whereType<Map<String, dynamic>>()) {
+    await database.into(database.productCategoryFacets).insert(
+      ProductCategoryFacetsCompanion(
+        id: const Value.absent(),
+        productCode: Value(json['code'] as int),
+        categoryId: Value(category['id'] as int),
+        categoryName: Value(category['name'] as String?),
+        createdAt: Value(DateTime.now()),
+      ),
+    );
+  }
 }

@@ -142,32 +142,6 @@ class DriftFacetRepository implements FacetRepository {
         ));
       }
 
-      final priceCategoryValues = await _fetchIntFacet(
-        sql: '''
-          SELECT 
-            pf.price_list_category_id AS value_id,
-            pf.price_list_category_id AS value_name,
-            COUNT(*) AS value_count
-          FROM product_facets pf
-          ${parts.stockFilterJoin}
-          ${parts.categoryFilterJoin}
-          ${parts.whereClause}
-            AND pf.price_list_category_id IS NOT NULL
-          GROUP BY pf.price_list_category_id
-          ORDER BY value_id ASC
-        '''.trim(),
-        parts: parts,
-        selected: filter.priceCategoryIds,
-      );
-      if (priceCategoryValues.isNotEmpty) {
-        groups.add(FacetGroup(
-          key: 'priceCategories',
-          title: 'Прайс-категории',
-          type: FacetGroupType.list,
-          values: priceCategoryValues,
-        ));
-      }
-
 
       final noveltyCount = await _countFlag('novelty', parts);
       if (noveltyCount > 0) {
@@ -454,7 +428,6 @@ INNER JOIN (
     addIntFilter('pf.manufacturer_id', filter.manufacturerIds);
     addIntFilter('pf.series_id', filter.seriesIds);
     addIntFilter('pf.type_id', filter.typeIds);
-    addIntFilter('pf.price_list_category_id', filter.priceCategoryIds);
 
     if (filter.onlyNovelty) {
       where.write(' AND pf.novelty = 1');

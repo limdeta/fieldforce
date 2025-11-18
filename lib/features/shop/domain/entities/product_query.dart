@@ -1,4 +1,3 @@
-import 'package:collection/collection.dart';
 
 /// Unified DTO describing how product lists should be filtered and paginated.
 ///
@@ -15,7 +14,6 @@ class ProductQuery {
   final List<int> manufacturerIds;
   final List<int> seriesIds;
   final List<int> productTypeIds;
-  final List<int> priceCategoryIds;
   final bool onlyNovelty;
   final bool onlyPopular;
   final bool requireStock;
@@ -32,7 +30,6 @@ class ProductQuery {
     this.manufacturerIds = const <int>[],
     this.seriesIds = const <int>[],
     this.productTypeIds = const <int>[],
-    this.priceCategoryIds = const <int>[],
     this.onlyNovelty = false,
     this.onlyPopular = false,
     this.requireStock = true,
@@ -51,7 +48,6 @@ class ProductQuery {
       manufacturerIds.isNotEmpty ||
       seriesIds.isNotEmpty ||
       productTypeIds.isNotEmpty ||
-      priceCategoryIds.isNotEmpty ||
       (allowedProductCodes != null) ||
       onlyNovelty ||
       onlyPopular;
@@ -67,7 +63,6 @@ class ProductQuery {
     List<int>? manufacturerIds,
     List<int>? seriesIds,
     List<int>? productTypeIds,
-    List<int>? priceCategoryIds,
     bool? onlyNovelty,
     bool? onlyPopular,
     bool? requireStock,
@@ -86,7 +81,6 @@ class ProductQuery {
       manufacturerIds: manufacturerIds ?? this.manufacturerIds,
       seriesIds: seriesIds ?? this.seriesIds,
       productTypeIds: productTypeIds ?? this.productTypeIds,
-      priceCategoryIds: priceCategoryIds ?? this.priceCategoryIds,
       onlyNovelty: onlyNovelty ?? this.onlyNovelty,
       onlyPopular: onlyPopular ?? this.onlyPopular,
       requireStock: requireStock ?? this.requireStock,
@@ -105,7 +99,6 @@ class ProductQuery {
         'manufacturerIds': manufacturerIds,
         'seriesIds': seriesIds,
         'productTypeIds': productTypeIds,
-        'priceCategoryIds': priceCategoryIds,
         'onlyNovelty': onlyNovelty,
         'onlyPopular': onlyPopular,
         'requireStock': requireStock,
@@ -134,7 +127,6 @@ class ProductQuery {
       manufacturerIds: _readList(json['manufacturerIds']),
       seriesIds: _readList(json['seriesIds']),
       productTypeIds: _readList(json['productTypeIds']),
-      priceCategoryIds: _readList(json['priceCategoryIds']),
       onlyNovelty: json['onlyNovelty'] as bool? ?? false,
       onlyPopular: json['onlyPopular'] as bool? ?? false,
       requireStock: json['requireStock'] as bool? ?? true,
@@ -171,7 +163,6 @@ class ProductQuery {
     putList('manufacturerIds', manufacturerIds);
     putList('seriesIds', seriesIds);
     putList('productTypeIds', productTypeIds);
-    putList('priceCategoryIds', priceCategoryIds);
 
     if (onlyNovelty) params['onlyNovelty'] = 'true';
     if (onlyPopular) params['onlyPopular'] = 'true';
@@ -186,14 +177,13 @@ class ProductQuery {
     if (identical(this, other)) return true;
     if (other is! ProductQuery) return false;
     return searchText == other.searchText &&
-        baseCategoryId == other.baseCategoryId &&
-        const ListEquality<int>().equals(scopedCategoryIds, other.scopedCategoryIds) &&
-        _listsEqualNullable(allowedProductCodes, other.allowedProductCodes) &&
-        const ListEquality<int>().equals(brandIds, other.brandIds) &&
-        const ListEquality<int>().equals(manufacturerIds, other.manufacturerIds) &&
-        const ListEquality<int>().equals(seriesIds, other.seriesIds) &&
-        const ListEquality<int>().equals(productTypeIds, other.productTypeIds) &&
-        const ListEquality<int>().equals(priceCategoryIds, other.priceCategoryIds) &&
+      baseCategoryId == other.baseCategoryId &&
+      _listEquals(scopedCategoryIds, other.scopedCategoryIds) &&
+      _listsEqualNullable(allowedProductCodes, other.allowedProductCodes) &&
+      _listEquals(brandIds, other.brandIds) &&
+      _listEquals(manufacturerIds, other.manufacturerIds) &&
+      _listEquals(seriesIds, other.seriesIds) &&
+      _listEquals(productTypeIds, other.productTypeIds) &&
         onlyNovelty == other.onlyNovelty &&
         onlyPopular == other.onlyPopular &&
         requireStock == other.requireStock &&
@@ -206,13 +196,12 @@ class ProductQuery {
   int get hashCode => Object.hash(
         searchText,
         baseCategoryId,
-        const ListEquality<int>().hash(scopedCategoryIds),
+        _listHash(scopedCategoryIds),
         _nullableListHash(allowedProductCodes),
-        const ListEquality<int>().hash(brandIds),
-        const ListEquality<int>().hash(manufacturerIds),
-        const ListEquality<int>().hash(seriesIds),
-        const ListEquality<int>().hash(productTypeIds),
-        const ListEquality<int>().hash(priceCategoryIds),
+        _listHash(brandIds),
+        _listHash(manufacturerIds),
+        _listHash(seriesIds),
+        _listHash(productTypeIds),
         onlyNovelty,
         onlyPopular,
         requireStock,
@@ -223,17 +212,31 @@ class ProductQuery {
 
   @override
   String toString() {
-    return 'ProductQuery(searchText: $searchText, baseCategoryId: $baseCategoryId, scopedCategoryIds: $scopedCategoryIds, allowedProductCodes: $allowedProductCodes, brands: $brandIds, manufacturers: $manufacturerIds, series: $seriesIds, productTypes: $productTypeIds, priceCategories: $priceCategoryIds, onlyNovelty: $onlyNovelty, onlyPopular: $onlyPopular, requireStock: $requireStock, includeArchived: $includeArchived, offset: $offset, limit: $limit)';
+    return 'ProductQuery(searchText: $searchText, baseCategoryId: $baseCategoryId, scopedCategoryIds: $scopedCategoryIds, allowedProductCodes: $allowedProductCodes, brands: $brandIds, manufacturers: $manufacturerIds, series: $seriesIds, productTypes: $productTypeIds, onlyNovelty: $onlyNovelty, onlyPopular: $onlyPopular, requireStock: $requireStock, includeArchived: $includeArchived, offset: $offset, limit: $limit)';
   }
 }
 
 bool _listsEqualNullable(List<int>? a, List<int>? b) {
   if (identical(a, b)) return true;
   if (a == null || b == null) return a == null && b == null;
-  return const ListEquality<int>().equals(a, b);
+  return _listEquals(a, b);
 }
 
 int _nullableListHash(List<int>? value) {
   if (value == null) return 0;
-  return const ListEquality<int>().hash(value);
+  return _listHash(value);
+}
+
+bool _listEquals(List<int> a, List<int> b) {
+  if (identical(a, b)) return true;
+  if (a.length != b.length) return false;
+  for (var i = 0; i < a.length; i++) {
+    if (a[i] != b[i]) return false;
+  }
+  return true;
+}
+
+int _listHash(List<int> value) {
+  if (value.isEmpty) return 0;
+  return Object.hashAll(value);
 }

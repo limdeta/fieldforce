@@ -40,7 +40,6 @@ class MigrationV3Facets {
       final manufacturer = json['manufacturer'] as Map<String, dynamic>?;
       final series = json['series'] as Map<String, dynamic>?;
       final type = json['type'] as Map<String, dynamic>?;
-      final priceListCategoryId = json['priceListCategoryId'];
 
       await db.customStatement(
         '''
@@ -55,13 +54,12 @@ class MigrationV3Facets {
           series_name,
           type_id,
           type_name,
-          price_list_category_id,
           novelty,
           popular,
           can_buy,
           created_at,
           updated_at
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP);
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP);
         '''.trim(),
         [
           productCode,
@@ -74,7 +72,6 @@ class MigrationV3Facets {
           series?['name'],
           _safeInt(type?['id']),
           type?['name'],
-          _safeInt(priceListCategoryId),
           _boolToInt(json['novelty']),
           _boolToInt(json['popular']),
           _boolToInt(json['canBuy'], fallback: true),

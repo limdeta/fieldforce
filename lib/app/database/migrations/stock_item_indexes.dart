@@ -18,6 +18,9 @@ class StockItemIndexes {
     
     /// Частичный индекс для поиска товаров в наличии
     'CREATE INDEX IF NOT EXISTS idx_stock_availability ON stock_items(stock) WHERE stock > 0',
+
+    /// Новый индекс: фильтрация сперва по складу, затем по продукту, только для товаров в наличии
+    'CREATE INDEX IF NOT EXISTS idx_stock_warehouse_stock ON stock_items(warehouse_id, product_code) WHERE stock > 0',
     
     /// Индекс для ценовых запросов в каталоге
     'CREATE INDEX IF NOT EXISTS idx_stock_prices ON stock_items(offer_price, default_price)',

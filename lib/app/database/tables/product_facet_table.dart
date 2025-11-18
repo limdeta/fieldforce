@@ -17,7 +17,6 @@ class ProductFacets extends Table {
   TextColumn get seriesName => text().nullable()();
   IntColumn get typeId => integer().nullable()();
   TextColumn get typeName => text().nullable()();
-  IntColumn get priceListCategoryId => integer().nullable()();
   BoolColumn get novelty => boolean().withDefault(const Constant(false))();
   BoolColumn get popular => boolean().withDefault(const Constant(false))();
   BoolColumn get canBuy => boolean().withDefault(const Constant(true))();

@@ -131,7 +131,6 @@ class FacetFilterSheet extends StatelessWidget {
         !_listEquals(a.manufacturerIds, b.manufacturerIds) ||
         !_listEquals(a.seriesIds, b.seriesIds) ||
         !_listEquals(a.typeIds, b.typeIds) ||
-        !_listEquals(a.priceCategoryIds, b.priceCategoryIds) ||
         !_listEquals(a.selectedCategoryIds, b.selectedCategoryIds) ||
         a.onlyNovelty != b.onlyNovelty ||
         a.onlyPopular != b.onlyPopular;

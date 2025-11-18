@@ -59,7 +59,6 @@ class FacetFilter {
   final List<int> manufacturerIds;
   final List<int> seriesIds;
   final List<int> typeIds;
-  final List<int> priceCategoryIds;
   final bool onlyNovelty;
   final bool onlyPopular;
   final List<int>? restrictedProductCodes;
@@ -72,7 +71,6 @@ class FacetFilter {
     this.manufacturerIds = const [],
     this.seriesIds = const [],
     this.typeIds = const [],
-    this.priceCategoryIds = const [],
     this.onlyNovelty = false,
     this.onlyPopular = false,
     this.restrictedProductCodes,
@@ -86,7 +84,6 @@ class FacetFilter {
     List<int>? manufacturerIds,
     List<int>? seriesIds,
     List<int>? typeIds,
-    List<int>? priceCategoryIds,
     bool? onlyNovelty,
     bool? onlyPopular,
     Object? restrictedProductCodes = _facetCopySentinel,
@@ -99,7 +96,6 @@ class FacetFilter {
       manufacturerIds: manufacturerIds ?? this.manufacturerIds,
       seriesIds: seriesIds ?? this.seriesIds,
       typeIds: typeIds ?? this.typeIds,
-      priceCategoryIds: priceCategoryIds ?? this.priceCategoryIds,
       onlyNovelty: onlyNovelty ?? this.onlyNovelty,
       onlyPopular: onlyPopular ?? this.onlyPopular,
       restrictedProductCodes:
@@ -114,7 +110,6 @@ class FacetFilter {
       manufacturerIds.isEmpty &&
       seriesIds.isEmpty &&
       typeIds.isEmpty &&
-      priceCategoryIds.isEmpty &&
       selectedCategoryIds.isEmpty &&
       !onlyNovelty &&
       !onlyPopular &&

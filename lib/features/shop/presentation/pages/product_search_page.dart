@@ -420,7 +420,6 @@ class _ProductSearchPageState extends State<ProductSearchPage> {
       ..setManufacturerIds(_activeFacetFilter.manufacturerIds)
       ..setSeriesIds(_activeFacetFilter.seriesIds)
       ..setProductTypeIds(_activeFacetFilter.typeIds)
-      ..setPriceCategoryIds(_activeFacetFilter.priceCategoryIds)
       ..setOnlyNovelty(_activeFacetFilter.onlyNovelty)
       ..setOnlyPopular(_activeFacetFilter.onlyPopular)
       ..setScopedCategories(_effectiveScopedCategories());

@@ -12368,16 +12368,6 @@ class $ProductFacetsTable extends ProductFacets
     type: DriftSqlType.string,
     requiredDuringInsert: false,
   );
-  static const VerificationMeta _priceListCategoryIdMeta =
-      const VerificationMeta('priceListCategoryId');
-  @override
-  late final GeneratedColumn<int> priceListCategoryId = GeneratedColumn<int>(
-    'price_list_category_id',
-    aliasedName,
-    true,
-    type: DriftSqlType.int,
-    requiredDuringInsert: false,
-  );
   static const VerificationMeta _noveltyMeta = const VerificationMeta(
     'novelty',
   );
@@ -12457,7 +12447,6 @@ class $ProductFacetsTable extends ProductFacets
     seriesName,
     typeId,
     typeName,
-    priceListCategoryId,
     novelty,
     popular,
     canBuy,
@@ -12548,15 +12537,6 @@ class $ProductFacetsTable extends ProductFacets
         typeName.isAcceptableOrUnknown(data['type_name']!, _typeNameMeta),
       );
     }
-    if (data.containsKey('price_list_category_id')) {
-      context.handle(
-        _priceListCategoryIdMeta,
-        priceListCategoryId.isAcceptableOrUnknown(
-          data['price_list_category_id']!,
-          _priceListCategoryIdMeta,
-        ),
-      );
-    }
     if (data.containsKey('novelty')) {
       context.handle(
         _noveltyMeta,
@@ -12636,10 +12616,6 @@ class $ProductFacetsTable extends ProductFacets
         DriftSqlType.string,
         data['${effectivePrefix}type_name'],
       ),
-      priceListCategoryId: attachedDatabase.typeMapping.read(
-        DriftSqlType.int,
-        data['${effectivePrefix}price_list_category_id'],
-      ),
       novelty: attachedDatabase.typeMapping.read(
         DriftSqlType.bool,
         data['${effectivePrefix}novelty'],
@@ -12681,7 +12657,6 @@ class ProductFacetData extends DataClass
   final String? seriesName;
   final int? typeId;
   final String? typeName;
-  final int? priceListCategoryId;
   final bool novelty;
   final bool popular;
   final bool canBuy;
@@ -12698,7 +12673,6 @@ class ProductFacetData extends DataClass
     this.seriesName,
     this.typeId,
     this.typeName,
-    this.priceListCategoryId,
     required this.novelty,
     required this.popular,
     required this.canBuy,
@@ -12733,9 +12707,6 @@ class ProductFacetData extends DataClass
     }
     if (!nullToAbsent || typeName != null) {
       map['type_name'] = Variable<String>(typeName);
-    }
-    if (!nullToAbsent || priceListCategoryId != null) {
-      map['price_list_category_id'] = Variable<int>(priceListCategoryId);
     }
     map['novelty'] = Variable<bool>(novelty);
     map['popular'] = Variable<bool>(popular);
@@ -12773,9 +12744,6 @@ class ProductFacetData extends DataClass
       typeName: typeName == null && nullToAbsent
           ? const Value.absent()
           : Value(typeName),
-      priceListCategoryId: priceListCategoryId == null && nullToAbsent
-          ? const Value.absent()
-          : Value(priceListCategoryId),
       novelty: Value(novelty),
       popular: Value(popular),
       canBuy: Value(canBuy),
@@ -12802,9 +12770,6 @@ class ProductFacetData extends DataClass
       seriesName: serializer.fromJson<String?>(json['seriesName']),
       typeId: serializer.fromJson<int?>(json['typeId']),
       typeName: serializer.fromJson<String?>(json['typeName']),
-      priceListCategoryId: serializer.fromJson<int?>(
-        json['priceListCategoryId'],
-      ),
       novelty: serializer.fromJson<bool>(json['novelty']),
       popular: serializer.fromJson<bool>(json['popular']),
       canBuy: serializer.fromJson<bool>(json['canBuy']),
@@ -12826,7 +12791,6 @@ class ProductFacetData extends DataClass
       'seriesName': serializer.toJson<String?>(seriesName),
       'typeId': serializer.toJson<int?>(typeId),
       'typeName': serializer.toJson<String?>(typeName),
-      'priceListCategoryId': serializer.toJson<int?>(priceListCategoryId),
       'novelty': serializer.toJson<bool>(novelty),
       'popular': serializer.toJson<bool>(popular),
       'canBuy': serializer.toJson<bool>(canBuy),
@@ -12846,7 +12810,6 @@ class ProductFacetData extends DataClass
     Value<String?> seriesName = const Value.absent(),
     Value<int?> typeId = const Value.absent(),
     Value<String?> typeName = const Value.absent(),
-    Value<int?> priceListCategoryId = const Value.absent(),
     bool? novelty,
     bool? popular,
     bool? canBuy,
@@ -12867,9 +12830,6 @@ class ProductFacetData extends DataClass
     seriesName: seriesName.present ? seriesName.value : this.seriesName,
     typeId: typeId.present ? typeId.value : this.typeId,
     typeName: typeName.present ? typeName.value : this.typeName,
-    priceListCategoryId: priceListCategoryId.present
-        ? priceListCategoryId.value
-        : this.priceListCategoryId,
     novelty: novelty ?? this.novelty,
     popular: popular ?? this.popular,
     canBuy: canBuy ?? this.canBuy,
@@ -12898,9 +12858,6 @@ class ProductFacetData extends DataClass
           : this.seriesName,
       typeId: data.typeId.present ? data.typeId.value : this.typeId,
       typeName: data.typeName.present ? data.typeName.value : this.typeName,
-      priceListCategoryId: data.priceListCategoryId.present
-          ? data.priceListCategoryId.value
-          : this.priceListCategoryId,
       novelty: data.novelty.present ? data.novelty.value : this.novelty,
       popular: data.popular.present ? data.popular.value : this.popular,
       canBuy: data.canBuy.present ? data.canBuy.value : this.canBuy,
@@ -12922,7 +12879,6 @@ class ProductFacetData extends DataClass
           ..write('seriesName: $seriesName, ')
           ..write('typeId: $typeId, ')
           ..write('typeName: $typeName, ')
-          ..write('priceListCategoryId: $priceListCategoryId, ')
           ..write('novelty: $novelty, ')
           ..write('popular: $popular, ')
           ..write('canBuy: $canBuy, ')
@@ -12944,7 +12900,6 @@ class ProductFacetData extends DataClass
     seriesName,
     typeId,
     typeName,
-    priceListCategoryId,
     novelty,
     popular,
     canBuy,
@@ -12965,7 +12920,6 @@ class ProductFacetData extends DataClass
           other.seriesName == this.seriesName &&
           other.typeId == this.typeId &&
           other.typeName == this.typeName &&
-          other.priceListCategoryId == this.priceListCategoryId &&
           other.novelty == this.novelty &&
           other.popular == this.popular &&
           other.canBuy == this.canBuy &&
@@ -12984,7 +12938,6 @@ class ProductFacetsCompanion extends UpdateCompanion<ProductFacetData> {
   final Value<String?> seriesName;
   final Value<int?> typeId;
   final Value<String?> typeName;
-  final Value<int?> priceListCategoryId;
   final Value<bool> novelty;
   final Value<bool> popular;
   final Value<bool> canBuy;
@@ -13001,7 +12954,6 @@ class ProductFacetsCompanion extends UpdateCompanion<ProductFacetData> {
     this.seriesName = const Value.absent(),
     this.typeId = const Value.absent(),
     this.typeName = const Value.absent(),
-    this.priceListCategoryId = const Value.absent(),
     this.novelty = const Value.absent(),
     this.popular = const Value.absent(),
     this.canBuy = const Value.absent(),
@@ -13019,7 +12971,6 @@ class ProductFacetsCompanion extends UpdateCompanion<ProductFacetData> {
     this.seriesName = const Value.absent(),
     this.typeId = const Value.absent(),
     this.typeName = const Value.absent(),
-    this.priceListCategoryId = const Value.absent(),
     this.novelty = const Value.absent(),
     this.popular = const Value.absent(),
     this.canBuy = const Value.absent(),
@@ -13037,7 +12988,6 @@ class ProductFacetsCompanion extends UpdateCompanion<ProductFacetData> {
     Expression<String>? seriesName,
     Expression<int>? typeId,
     Expression<String>? typeName,
-    Expression<int>? priceListCategoryId,
     Expression<bool>? novelty,
     Expression<bool>? popular,
     Expression<bool>? canBuy,
@@ -13056,8 +13006,6 @@ class ProductFacetsCompanion extends UpdateCompanion<ProductFacetData> {
       if (seriesName != null) 'series_name': seriesName,
       if (typeId != null) 'type_id': typeId,
       if (typeName != null) 'type_name': typeName,
-      if (priceListCategoryId != null)
-        'price_list_category_id': priceListCategoryId,
       if (novelty != null) 'novelty': novelty,
       if (popular != null) 'popular': popular,
       if (canBuy != null) 'can_buy': canBuy,
@@ -13077,7 +13025,6 @@ class ProductFacetsCompanion extends UpdateCompanion<ProductFacetData> {
     Value<String?>? seriesName,
     Value<int?>? typeId,
     Value<String?>? typeName,
-    Value<int?>? priceListCategoryId,
     Value<bool>? novelty,
     Value<bool>? popular,
     Value<bool>? canBuy,
@@ -13095,7 +13042,6 @@ class ProductFacetsCompanion extends UpdateCompanion<ProductFacetData> {
       seriesName: seriesName ?? this.seriesName,
       typeId: typeId ?? this.typeId,
       typeName: typeName ?? this.typeName,
-      priceListCategoryId: priceListCategoryId ?? this.priceListCategoryId,
       novelty: novelty ?? this.novelty,
       popular: popular ?? this.popular,
       canBuy: canBuy ?? this.canBuy,
@@ -13137,9 +13083,6 @@ class ProductFacetsCompanion extends UpdateCompanion<ProductFacetData> {
     if (typeName.present) {
       map['type_name'] = Variable<String>(typeName.value);
     }
-    if (priceListCategoryId.present) {
-      map['price_list_category_id'] = Variable<int>(priceListCategoryId.value);
-    }
     if (novelty.present) {
       map['novelty'] = Variable<bool>(novelty.value);
     }
@@ -13171,7 +13114,6 @@ class ProductFacetsCompanion extends UpdateCompanion<ProductFacetData> {
           ..write('seriesName: $seriesName, ')
           ..write('typeId: $typeId, ')
           ..write('typeName: $typeName, ')
-          ..write('priceListCategoryId: $priceListCategoryId, ')
           ..write('novelty: $novelty, ')
           ..write('popular: $popular, ')
           ..write('canBuy: $canBuy, ')
@@ -22722,7 +22664,6 @@ typedef $$ProductFacetsTableCreateCompanionBuilder =
       Value<String?> seriesName,
       Value<int?> typeId,
       Value<String?> typeName,
-      Value<int?> priceListCategoryId,
       Value<bool> novelty,
       Value<bool> popular,
       Value<bool> canBuy,
@@ -22741,7 +22682,6 @@ typedef $$ProductFacetsTableUpdateCompanionBuilder =
       Value<String?> seriesName,
       Value<int?> typeId,
       Value<String?> typeName,
-      Value<int?> priceListCategoryId,
       Value<bool> novelty,
       Value<bool> popular,
       Value<bool> canBuy,
@@ -22829,11 +22769,6 @@ class $$ProductFacetsTableFilterComposer
 
   ColumnFilters<String> get typeName => $composableBuilder(
     column: $table.typeName,
-    builder: (column) => ColumnFilters(column),
-  );
-
-  ColumnFilters<int> get priceListCategoryId => $composableBuilder(
-    column: $table.priceListCategoryId,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -22940,11 +22875,6 @@ class $$ProductFacetsTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
-  ColumnOrderings<int> get priceListCategoryId => $composableBuilder(
-    column: $table.priceListCategoryId,
-    builder: (column) => ColumnOrderings(column),
-  );
-
   ColumnOrderings<bool> get novelty => $composableBuilder(
     column: $table.novelty,
     builder: (column) => ColumnOrderings(column),
@@ -23038,11 +22968,6 @@ class $$ProductFacetsTableAnnotationComposer
   GeneratedColumn<String> get typeName =>
       $composableBuilder(column: $table.typeName, builder: (column) => column);
 
-  GeneratedColumn<int> get priceListCategoryId => $composableBuilder(
-    column: $table.priceListCategoryId,
-    builder: (column) => column,
-  );
-
   GeneratedColumn<bool> get novelty =>
       $composableBuilder(column: $table.novelty, builder: (column) => column);
 
@@ -23120,7 +23045,6 @@ class $$ProductFacetsTableTableManager
                 Value<String?> seriesName = const Value.absent(),
                 Value<int?> typeId = const Value.absent(),
                 Value<String?> typeName = const Value.absent(),
-                Value<int?> priceListCategoryId = const Value.absent(),
                 Value<bool> novelty = const Value.absent(),
                 Value<bool> popular = const Value.absent(),
                 Value<bool> canBuy = const Value.absent(),
@@ -23137,7 +23061,6 @@ class $$ProductFacetsTableTableManager
                 seriesName: seriesName,
                 typeId: typeId,
                 typeName: typeName,
-                priceListCategoryId: priceListCategoryId,
                 novelty: novelty,
                 popular: popular,
                 canBuy: canBuy,
@@ -23156,7 +23079,6 @@ class $$ProductFacetsTableTableManager
                 Value<String?> seriesName = const Value.absent(),
                 Value<int?> typeId = const Value.absent(),
                 Value<String?> typeName = const Value.absent(),
-                Value<int?> priceListCategoryId = const Value.absent(),
                 Value<bool> novelty = const Value.absent(),
                 Value<bool> popular = const Value.absent(),
                 Value<bool> canBuy = const Value.absent(),
@@ -23173,7 +23095,6 @@ class $$ProductFacetsTableTableManager
                 seriesName: seriesName,
                 typeId: typeId,
                 typeName: typeName,
-                priceListCategoryId: priceListCategoryId,
                 novelty: novelty,
                 popular: popular,
                 canBuy: canBuy,

@@ -67,7 +67,6 @@ class ProductQueryBuilderSession {
   List<int> _manufacturerIds;
   List<int> _seriesIds;
   List<int> _productTypeIds;
-  List<int> _priceCategoryIds;
   bool _onlyNovelty;
   bool _onlyPopular;
   bool _requireStock;
@@ -86,7 +85,6 @@ class ProductQueryBuilderSession {
         _manufacturerIds = List<int>.from(seed.manufacturerIds),
         _seriesIds = List<int>.from(seed.seriesIds),
         _productTypeIds = List<int>.from(seed.productTypeIds),
-        _priceCategoryIds = List<int>.from(seed.priceCategoryIds),
         _onlyNovelty = seed.onlyNovelty,
         _onlyPopular = seed.onlyPopular,
         _requireStock = seed.requireStock,
@@ -139,11 +137,6 @@ class ProductQueryBuilderSession {
     return this;
   }
 
-  ProductQueryBuilderSession setPriceCategoryIds(List<int>? ids) {
-    _priceCategoryIds = _normalizeList(ids);
-    return this;
-  }
-
   ProductQueryBuilderSession setOnlyNovelty(bool value) {
     _onlyNovelty = value;
     if (value) {
@@ -193,7 +186,6 @@ class ProductQueryBuilderSession {
       manufacturerIds: List<int>.unmodifiable(_manufacturerIds),
       seriesIds: List<int>.unmodifiable(_seriesIds),
       productTypeIds: List<int>.unmodifiable(_productTypeIds),
-      priceCategoryIds: List<int>.unmodifiable(_priceCategoryIds),
       onlyNovelty: _onlyNovelty,
       onlyPopular: _onlyPopular,
       requireStock: _requireStock,

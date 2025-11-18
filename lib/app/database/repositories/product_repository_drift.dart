@@ -1,6 +1,7 @@
 // lib/app/database/repositories/product_repository_drift.dart
 
 import 'dart:convert';
+import 'package:fieldforce/app/config/app_config.dart';
 import 'package:fieldforce/app/database/app_database.dart';
 import 'package:fieldforce/app/database/mappers/product_mapper.dart';
 import 'package:fieldforce/app/database/mappers/product_facet_mapper.dart';
@@ -21,6 +22,7 @@ class DriftProductRepository implements ProductRepository {
   final WarehouseFilterService _warehouseFilterService = GetIt.instance<WarehouseFilterService>();
   
   static final Logger _logger = Logger('DriftProductRepository');
+  static const bool _logQueryPlanFlag = bool.fromEnvironment('CATALOG_LOG_PLAN', defaultValue: false);
 
   @override
   Future<Either<Failure, List<Product>>> getAllProducts() async {
@@ -139,6 +141,8 @@ class DriftProductRepository implements ProductRepository {
     ProductQuery query,
   ) async {
     try {
+      final totalStopwatch = Stopwatch()..start();
+
       if (query.limit <= 0) {
         _logger.fine('ProductQuery с limit<=0 — возвращаем пустой результат');
         return Right(ProductQueryResult<ProductWithStock>.empty(query));
@@ -154,29 +158,94 @@ class DriftProductRepository implements ProductRepository {
       }
 
       final scope = _resolveCategoryScope(query);
-      final hasAllowedCodes = query.allowedProductCodes != null;
-      final filterByCategory = scope.isNotEmpty;
+      final normalizedScope = scope.toList(growable: false);
+      final normalizedQuery = query.copyWith(scopedCategoryIds: normalizedScope);
+      final hasAllowedCodes = normalizedQuery.allowedProductCodes != null;
+      final filterByCategory = normalizedScope.isNotEmpty;
 
       if (!filterByCategory && !hasAllowedCodes) {
         _logger.fine('ProductQuery без категории и allowedProductCodes — возвращаем пустой результат');
-        return Right(ProductQueryResult<ProductWithStock>.empty(query));
+        return Right(ProductQueryResult<ProductWithStock>.empty(normalizedQuery));
       }
 
-      final matchingProducts = await _loadProductsForScope(
-        scope,
-        query,
-        filterByCategory: filterByCategory,
+      final _WarehouseConstraint warehouseConstraint;
+      if (normalizedQuery.requireStock) {
+        warehouseConstraint = await _resolveWarehouseConstraint();
+        if (warehouseConstraint.shouldReturnEmpty) {
+          _logger.fine('Фильтр складов вернул пустой набор — пустой результат');
+          return Right(ProductQueryResult<ProductWithStock>.empty(normalizedQuery));
+        }
+      } else {
+        warehouseConstraint = const _WarehouseConstraint(warehouseIds: null);
+      }
+
+      final sqlBuilder = _ProductQuerySqlBuilder(
+        query: normalizedQuery,
+        warehouseIds: normalizedQuery.requireStock ? warehouseConstraint.warehouseIds : null,
       );
-      if (matchingProducts.isEmpty) {
-        return Right(ProductQueryResult<ProductWithStock>.empty(query));
+
+      if (sqlBuilder.isEmptyResult) {
+        return Right(ProductQueryResult<ProductWithStock>.empty(normalizedQuery));
       }
 
-      if (query.requireStock) {
-        final result = await _buildResultWithStock(matchingProducts, query);
-        return Right(result);
+      if (_logger.isLoggable(Level.FINER)) {
+        _logger.finer('ProductQuery SQL builder for $normalizedQuery => ${sqlBuilder.debugDescription()}');
       }
 
-      final result = _buildResultWithoutStock(matchingProducts, query);
+      final codesStopwatch = Stopwatch()..start();
+      final _PagedProductCodes pageCodes = await _fetchPagedProductCodes(
+        sqlBuilder,
+        normalizedQuery,
+      );
+      _logger.info(
+        'ProductQuery: кодов=${pageCodes.codes.length} hasMore=${pageCodes.hasMore} time=${codesStopwatch.elapsedMilliseconds}ms query=${_summarizeQuery(normalizedQuery)}',
+      );
+
+      if (pageCodes.codes.isEmpty) {
+        return Right(ProductQueryResult<ProductWithStock>.empty(normalizedQuery));
+      }
+
+      final productStopwatch = Stopwatch()..start();
+      final productEntities = await _loadProductsByCodes(pageCodes.codes);
+      if (productEntities.isEmpty) {
+        return Right(ProductQueryResult<ProductWithStock>.empty(normalizedQuery));
+      }
+      _logger.info(
+        'ProductQuery: загрузка products=${productEntities.length} заняла ${productStopwatch.elapsedMilliseconds}ms query=${_summarizeQuery(normalizedQuery)}',
+      );
+
+      final Map<int, List<StockItemData>> stockByCode;
+      if (normalizedQuery.requireStock) {
+        final stockStopwatch = Stopwatch()..start();
+        stockByCode = await _loadStocksByCodes(
+          pageCodes.codes,
+          warehouseConstraint.warehouseIds,
+        );
+        _logger.info(
+          'ProductQuery: загрузка stock для ${stockByCode.length} товаров заняла ${stockStopwatch.elapsedMilliseconds}ms query=${_summarizeQuery(normalizedQuery)}',
+        );
+      } else {
+        stockByCode = const <int, List<StockItemData>>{};
+      }
+
+      final items = _buildProductWithStockList(
+        productEntities,
+        stockByCode,
+        normalizedQuery.requireStock,
+      );
+
+      final result = ProductQueryResult<ProductWithStock>(
+        items: items,
+        hasMore: pageCodes.hasMore,
+        offset: pageCodes.offset,
+        limit: pageCodes.limit,
+        appliedQuery: normalizedQuery,
+      );
+
+      _logger.info(
+        'ProductQuery: total=${totalStopwatch.elapsedMilliseconds}ms items=${items.length} hasMore=${result.hasMore} query=${_summarizeQuery(normalizedQuery)}',
+      );
+
       return Right(result);
     } catch (e, stackTrace) {
       _logger.severe('Ошибка выполнения ProductQuery: $query', e, stackTrace);
@@ -235,197 +304,7 @@ class DriftProductRepository implements ProductRepository {
     return const <int>{};
   }
 
-  Future<List<ProductData>> _loadProductsForScope(
-    Set<int> scopeCategoryIds,
-    ProductQuery query, {
-    required bool filterByCategory,
-  }) async {
-    final bool applyCategoryFilter = filterByCategory && scopeCategoryIds.isNotEmpty;
-    final allProductEntities = await _database.select(_database.products).get();
-    final allowedCodes = query.allowedProductCodes?.toSet();
-    final matchingProducts = <int, ProductData>{};
-
-    for (final entity in allProductEntities) {
-      if (allowedCodes != null && !allowedCodes.contains(entity.code)) {
-        continue;
-      }
-
-      try {
-        final productJson = jsonDecode(entity.rawJson) as Map<String, dynamic>;
-        final categoriesInstock =
-            productJson['categoriesInstock'] as List<dynamic>? ?? const <dynamic>[];
-        final productCategoryIds = categoriesInstock
-            .cast<Map<String, dynamic>>()
-            .map((cat) => cat['id'] as int?)
-            .whereType<int>()
-            .toSet();
-
-        if (applyCategoryFilter && productCategoryIds.intersection(scopeCategoryIds).isEmpty) {
-          continue;
-        }
-
-        matchingProducts[entity.code] = entity;
-      } catch (error) {
-        _logger.warning(
-          'Ошибка парсинга categoriesInstock для продукта ${entity.code}: $error',
-        );
-      }
-    }
-
-    final sortedProducts = matchingProducts.values.toList()
-      ..sort((a, b) => a.title.compareTo(b.title));
-    return sortedProducts;
-  }
-
-  ProductQueryResult<ProductWithStock> _buildResultWithoutStock(
-    List<ProductData> products,
-    ProductQuery query,
-  ) {
-    final paginated = _applyPagination(products, query);
-    if (paginated.isEmpty) {
-      return ProductQueryResult<ProductWithStock>.empty(query);
-    }
-
-    final items = paginated.map((entity) {
-      final productJson = jsonDecode(entity.rawJson) as Map<String, dynamic>;
-      final product = Product.fromJson(productJson);
-      return ProductWithStock(
-        product: product,
-        totalStock: 0,
-        maxPrice: 0,
-        minPrice: 0,
-        hasDiscounts: false,
-      );
-    }).toList(growable: false);
-
-    final hasMore = _hasMore(products.length, query, items.length);
-
-    return ProductQueryResult<ProductWithStock>(
-      items: items,
-      hasMore: hasMore,
-      offset: query.offset,
-      limit: query.limit,
-      appliedQuery: query,
-    );
-  }
-
-  Future<ProductQueryResult<ProductWithStock>> _buildResultWithStock(
-    List<ProductData> products,
-    ProductQuery query,
-  ) async {
-    if (products.isEmpty) {
-      return ProductQueryResult<ProductWithStock>.empty(query);
-    }
-
-    final filterResult = await _warehouseFilterService.resolveForCurrentSession(
-      bypassInDev: false,
-    );
-    List<int>? allowedWarehouseIds;
-
-    if (filterResult.devBypass) {
-      _logger.fine('ProductQuery: dev режим — пропускаем фильтрацию складов');
-    } else if (filterResult.failure != null) {
-      _logger.warning(
-        'ProductQuery: ошибка фильтра складов: ${filterResult.failure!.message}. Продолжаем без фильтрации.',
-      );
-    } else if (!filterResult.hasWarehouses) {
-      _logger.warning(
-        'ProductQuery: для региона ${filterResult.regionCode} не найдено складов. Возвращаем пустой результат.',
-      );
-      return ProductQueryResult<ProductWithStock>.empty(query);
-    } else {
-      allowedWarehouseIds = filterResult.warehouseIds;
-      _logger.fine(
-        'ProductQuery: применяем фильтр по ${allowedWarehouseIds.length} складам для региона ${filterResult.regionCode}',
-      );
-    }
-
-    final productCodes = products.map((p) => p.code).toList(growable: false);
-    final stockQuery = _database.select(_database.stockItems)
-      ..where((tbl) => tbl.productCode.isIn(productCodes))
-      ..where((tbl) => tbl.stock.isBiggerThanValue(0));
-
-    if (allowedWarehouseIds != null) {
-      stockQuery.where((tbl) => tbl.warehouseId.isIn(allowedWarehouseIds!));
-    }
-
-    final stockEntities = await stockQuery.get();
-    final stockByProduct = <int, List<StockItemData>>{};
-    for (final entity in stockEntities) {
-      stockByProduct.putIfAbsent(entity.productCode, () => <StockItemData>[])
-          .add(entity);
-    }
-
-    final availableProducts = products
-        .where((product) => (stockByProduct[product.code]?.isNotEmpty ?? false))
-        .toList(growable: false);
-
-    if (availableProducts.isEmpty) {
-      return ProductQueryResult<ProductWithStock>.empty(query);
-    }
-
-    final paginated = _applyPagination(availableProducts, query);
-    if (paginated.isEmpty) {
-      return ProductQueryResult<ProductWithStock>.empty(query);
-    }
-
-    final items = paginated.map((productEntity) {
-      final productJson = jsonDecode(productEntity.rawJson) as Map<String, dynamic>;
-      final product = Product.fromJson(productJson);
-      final stockItems = stockByProduct[productEntity.code] ?? const <StockItemData>[];
-
-      final totalStock = stockItems.fold<int>(0, (sum, item) => sum + item.stock);
-      final prices = stockItems
-          .map((item) => item.defaultPrice)
-          .where((price) => price > 0)
-          .toList(growable: false);
-      final hasDiscounts = stockItems.any(
-        (item) =>
-            item.offerPrice != null && item.offerPrice! > 0 && item.offerPrice! < item.defaultPrice,
-      );
-
-      final minPrice = prices.isEmpty ? 0 : prices.reduce((a, b) => a < b ? a : b);
-      final maxPrice = prices.isEmpty ? 0 : prices.reduce((a, b) => a > b ? a : b);
-
-      return ProductWithStock(
-        product: product,
-        totalStock: totalStock,
-        maxPrice: maxPrice,
-        minPrice: minPrice,
-        hasDiscounts: hasDiscounts,
-      );
-    }).toList(growable: false);
-
-    final hasMore = _hasMore(availableProducts.length, query, items.length);
-
-    return ProductQueryResult<ProductWithStock>(
-      items: items,
-      hasMore: hasMore,
-      offset: query.offset,
-      limit: query.limit,
-      appliedQuery: query,
-    );
-  }
-
-  List<ProductData> _applyPagination(List<ProductData> products, ProductQuery query) {
-    final offset = _safeOffset(query);
-    if (query.limit <= 0 || offset >= products.length) {
-      return const <ProductData>[];
-    }
-
-    return products.skip(offset).take(query.limit).toList(growable: false);
-  }
-
   int _safeOffset(ProductQuery query) => query.offset < 0 ? 0 : query.offset;
-
-  bool _hasMore(int totalItems, ProductQuery query, int returnedItems) {
-    if (returnedItems == 0) {
-      return false;
-    }
-    final offset = _safeOffset(query);
-    final consumed = offset + returnedItems;
-    return consumed < totalItems;
-  }
 
   @override
   Future<Either<Failure, List<Product>>> searchProductsWithFts(
@@ -447,15 +326,14 @@ class DriftProductRepository implements ProductRepository {
       final sanitizedQuery = _sanitizeFtsQuery(query);
       final lowerQuery = query.trim().toLowerCase();
 
-      String categoryFilter = '';
+      String categoryJoin = '';
+      String categoryCondition = '';
+      var includeCategoryTable = false;
       if (categoryIds != null && categoryIds.isNotEmpty) {
         final placeholders = List.filled(categoryIds.length, '?').join(',');
-        categoryFilter = '''
-          AND EXISTS (
-            SELECT 1 FROM json_each(json_extract(p.raw_json, '\$.categoriesInstock'))
-            WHERE CAST(json_extract(value, '\$.id') AS INTEGER) IN ($placeholders)
-          )
-        ''';
+        categoryJoin = 'INNER JOIN product_category_facets pcf ON pcf.product_code = p.code';
+        categoryCondition = ' AND pcf.category_id IN ($placeholders)';
+        includeCategoryTable = true;
       }
 
       String allowedFilter = '';
@@ -466,7 +344,7 @@ class DriftProductRepository implements ProductRepository {
 
       final results = await _database.customSelect(
         '''
-        SELECT 
+        SELECT DISTINCT
           p.code,
           p.raw_json,
           CASE
@@ -482,9 +360,10 @@ class DriftProductRepository implements ProductRepository {
             ELSE CAST(bm25(products_fts) * -10 AS INTEGER)
           END as relevance
         FROM products p
+        $categoryJoin
         INNER JOIN products_fts fts ON p.code = fts.product_code
         WHERE products_fts MATCH ?
-        $categoryFilter
+        $categoryCondition
         $allowedFilter
         ORDER BY relevance DESC, p.title ASC
         LIMIT ? OFFSET ?
@@ -503,7 +382,10 @@ class DriftProductRepository implements ProductRepository {
           Variable.withInt(limit),
           Variable.withInt(offset),
         ],
-        readsFrom: {_database.products},
+        readsFrom: {
+          _database.products,
+          if (includeCategoryTable) _database.productCategoryFacets,
+        },
       ).get();
 
       final productList = results.map((row) {
@@ -552,6 +434,185 @@ class DriftProductRepository implements ProductRepository {
     
     // Для FTS5: каждый токен с * для частичного совпадения
     return tokens.map((token) => '$token*').join(' ');
+  }
+
+  Future<_PagedProductCodes> _fetchPagedProductCodes(
+    _ProductQuerySqlBuilder builder,
+    ProductQuery query,
+  ) async {
+    final limit = query.limit;
+    final offset = _safeOffset(query);
+    final sql = builder.buildPagedCodesSql();
+    final variables = <Variable>[
+      ...builder.buildVariables(),
+      Variable<int>(limit + 1),
+      Variable<int>(offset),
+    ];
+
+    if (_shouldLogQueryPlan) {
+      await _logQueryPlan(sql, variables, builder.readsFrom(_database));
+    }
+
+    final rows = await _database.customSelect(
+      sql,
+      variables: variables,
+      readsFrom: builder.readsFrom(_database),
+    ).get();
+
+    final codes = rows
+        .map((row) => row.data['product_code'] as int?)
+        .whereType<int>()
+        .toList(growable: false);
+
+    final hasMore = codes.length > limit;
+    final effectiveCodes = hasMore ? codes.sublist(0, limit) : codes;
+
+    return _PagedProductCodes(
+      codes: effectiveCodes,
+      hasMore: hasMore,
+      offset: offset,
+      limit: limit,
+    );
+  }
+
+  Future<List<ProductData>> _loadProductsByCodes(List<int> codes) async {
+    if (codes.isEmpty) {
+      return const <ProductData>[];
+    }
+
+    final query = _database.select(_database.products)
+      ..where((tbl) => tbl.code.isIn(codes));
+    final rows = await query.get();
+    if (rows.isEmpty) {
+      return const <ProductData>[];
+    }
+
+    final byCode = <int, ProductData>{
+      for (final entity in rows) entity.code: entity,
+    };
+
+    final ordered = <ProductData>[];
+    for (final code in codes) {
+      final entity = byCode[code];
+      if (entity != null) {
+        ordered.add(entity);
+      }
+    }
+    return ordered;
+  }
+
+  Future<Map<int, List<StockItemData>>> _loadStocksByCodes(
+    List<int> productCodes,
+    List<int>? warehouseIds,
+  ) async {
+    if (productCodes.isEmpty) {
+      return const <int, List<StockItemData>>{};
+    }
+
+    final stockQuery = _database.select(_database.stockItems)
+      ..where((tbl) => tbl.productCode.isIn(productCodes))
+      ..where((tbl) => tbl.stock.isBiggerThanValue(0));
+
+    if (warehouseIds != null) {
+      stockQuery.where((tbl) => tbl.warehouseId.isIn(warehouseIds));
+    }
+
+    final stockEntities = await stockQuery.get();
+    final result = <int, List<StockItemData>>{};
+    for (final entity in stockEntities) {
+      result.putIfAbsent(entity.productCode, () => <StockItemData>[]).add(entity);
+    }
+    return result;
+  }
+
+  List<ProductWithStock> _buildProductWithStockList(
+    List<ProductData> products,
+    Map<int, List<StockItemData>> stockByCode,
+    bool includeStock,
+  ) {
+    return products.map((entity) {
+      final productJson = jsonDecode(entity.rawJson) as Map<String, dynamic>;
+      final product = Product.fromJson(productJson);
+
+      if (!includeStock) {
+        return ProductWithStock(
+          product: product,
+          totalStock: 0,
+          maxPrice: 0,
+          minPrice: 0,
+          hasDiscounts: false,
+        );
+      }
+
+      final stockItems = stockByCode[entity.code] ?? const <StockItemData>[];
+      if (stockItems.isEmpty) {
+        return ProductWithStock(
+          product: product,
+          totalStock: 0,
+          maxPrice: 0,
+          minPrice: 0,
+          hasDiscounts: false,
+        );
+      }
+
+      final totalStock = stockItems.fold<int>(0, (sum, item) => sum + item.stock);
+      final prices = stockItems
+          .map((item) => item.defaultPrice)
+          .where((price) => price > 0)
+          .toList(growable: false);
+      final hasDiscounts = stockItems.any(
+        (item) =>
+            item.offerPrice != null && item.offerPrice! > 0 && item.offerPrice! < item.defaultPrice,
+      );
+
+      final minPrice = prices.isEmpty ? 0 : prices.reduce((a, b) => a < b ? a : b);
+      final maxPrice = prices.isEmpty ? 0 : prices.reduce((a, b) => a > b ? a : b);
+
+      return ProductWithStock(
+        product: product,
+        totalStock: totalStock,
+        maxPrice: maxPrice,
+        minPrice: minPrice,
+        hasDiscounts: hasDiscounts,
+      );
+    }).toList(growable: false);
+  }
+
+  Future<_WarehouseConstraint> _resolveWarehouseConstraint() async {
+    try {
+      final filterResult = await _warehouseFilterService.resolveForCurrentSession(
+        bypassInDev: false,
+      );
+
+      if (filterResult.devBypass) {
+        _logger.fine('ProductQuery: dev режим — пропускаем фильтрацию складов');
+        return const _WarehouseConstraint(warehouseIds: null);
+      }
+
+      if (filterResult.failure != null) {
+        _logger.warning(
+          'ProductQuery: ошибка фильтра складов: ${filterResult.failure!.message}. Продолжаем без фильтрации.',
+        );
+        return const _WarehouseConstraint(warehouseIds: null);
+      }
+
+      if (!filterResult.hasWarehouses) {
+        _logger.warning(
+          'ProductQuery: для региона ${filterResult.regionCode} не найдено складов. Возвращаем пустой результат.',
+        );
+        return const _WarehouseConstraint(
+          warehouseIds: <int>[],
+          shouldReturnEmpty: true,
+        );
+      }
+
+      return _WarehouseConstraint(
+        warehouseIds: List<int>.from(filterResult.warehouseIds),
+      );
+    } catch (error, stackTrace) {
+      _logger.severe('ProductQuery: не удалось определить фильтр складов', error, stackTrace);
+      return const _WarehouseConstraint(warehouseIds: null);
+    }
   }
 
   @override
@@ -769,4 +830,223 @@ class DriftProductRepository implements ProductRepository {
       );
     });
   }
+
+  bool get _shouldLogQueryPlan => _logQueryPlanFlag || AppConfig.enableDebugTools;
+
+  Future<void> _logQueryPlan(
+    String sql,
+    List<Variable> variables,
+    Set<TableInfo<Table, dynamic>> readsFrom,
+  ) async {
+    final normalizedSql = _stripTrailingSemicolon(sql);
+    try {
+      final planRows = await _database.customSelect(
+        'EXPLAIN QUERY PLAN $normalizedSql',
+        variables: variables,
+        readsFrom: readsFrom,
+      ).get();
+
+      for (final row in planRows) {
+        final selectId = row.data['selectid'];
+        final fromIdx = row.data['from'];
+        final detail = row.data['detail'];
+        _logger.info('CATALOG PLAN: selectId=$selectId from=$fromIdx detail=$detail');
+      }
+    } catch (error, stackTrace) {
+      _logger.warning('Не удалось получить план запроса каталога', error, stackTrace);
+    }
+  }
 }
+
+String _summarizeQuery(ProductQuery query) {
+  final scope = query.scopedCategoryIds.isNotEmpty
+      ? '[${query.scopedCategoryIds.take(3).join(',')}${query.scopedCategoryIds.length > 3 ? '…' : ''}]'
+      : '[]';
+  final allowed = query.allowedProductCodes == null
+      ? 'null'
+      : '[${query.allowedProductCodes!.take(3).join(',')}${query.allowedProductCodes!.length > 3 ? '…' : ''}]';
+  return 'base=${query.baseCategoryId} scope=$scope allowed=$allowed limit=${query.limit} offset=${query.offset} stock=${query.requireStock}';
+}
+
+String _stripTrailingSemicolon(String sql) {
+  var normalized = sql.trimRight();
+  while (normalized.endsWith(';')) {
+    normalized = normalized.substring(0, normalized.length - 1).trimRight();
+  }
+  return normalized;
+}
+
+class _PagedProductCodes {
+  const _PagedProductCodes({
+    required this.codes,
+    required this.hasMore,
+    required this.offset,
+    required this.limit,
+  });
+
+  final List<int> codes;
+  final bool hasMore;
+  final int offset;
+  final int limit;
+}
+
+class _ProductQuerySqlBuilder {
+  _ProductQuerySqlBuilder({
+    required ProductQuery query,
+    List<int>? warehouseIds,
+  }) : _parts = _buildParts(query, warehouseIds);
+
+  final _ProductQuerySqlParts _parts;
+
+  bool get isEmptyResult => _parts.isEmptyResult;
+
+  String buildPagedCodesSql() => '''
+SELECT p.code AS product_code
+FROM products p
+JOIN product_facets pf ON pf.product_code = p.code
+WHERE ${_parts.whereClause}
+ORDER BY p.title COLLATE NOCASE, p.code
+LIMIT ? OFFSET ?;
+''';
+
+  List<Variable> buildVariables() => _parts.buildVariables();
+
+  String debugDescription() {
+    return 'where="${_parts.whereClause}" categoryFilter=${_parts.requiresCategoryFilter} stockFilter=${_parts.requiresStockFilter} args=${_parts.arguments}';
+  }
+
+  Set<TableInfo<Table, dynamic>> readsFrom(AppDatabase db) {
+    final tables = <TableInfo<Table, dynamic>>{db.productFacets, db.products};
+    if (_parts.requiresCategoryFilter) {
+      tables.add(db.productCategoryFacets);
+    }
+    if (_parts.requiresStockFilter) {
+      tables.add(db.stockItems);
+    }
+    return tables;
+  }
+
+  static _ProductQuerySqlParts _buildParts(
+    ProductQuery query,
+    List<int>? warehouseIds,
+  ) {
+    final where = <String>[];
+    final whereArguments = <dynamic>[];
+    var requiresCategoryFilter = false;
+    var requiresStockFilter = false;
+
+    if (!query.includeArchived) {
+      where.add('pf.can_buy = 1');
+    }
+
+    if (query.allowedProductCodes != null) {
+      final codes = query.allowedProductCodes!;
+      if (codes.isEmpty) {
+        return _ProductQuerySqlParts.empty();
+      }
+      where.add('pf.product_code IN (${_placeholders(codes.length)})');
+      whereArguments.addAll(codes);
+    }
+
+    final categoryIds = query.scopedCategoryIds;
+    if (categoryIds.isNotEmpty) {
+      requiresCategoryFilter = true;
+      final placeholders = _placeholders(categoryIds.length);
+      where.add(
+        'EXISTS (SELECT 1 FROM product_category_facets pcf WHERE pcf.product_code = pf.product_code AND pcf.category_id IN ($placeholders))',
+      );
+      whereArguments.addAll(categoryIds);
+    }
+
+    void addIntFilter(String column, List<int> values) {
+      if (values.isEmpty) return;
+      where.add('$column IN (${_placeholders(values.length)})');
+      whereArguments.addAll(values);
+    }
+
+    addIntFilter('pf.brand_id', query.brandIds);
+    addIntFilter('pf.manufacturer_id', query.manufacturerIds);
+    addIntFilter('pf.series_id', query.seriesIds);
+    addIntFilter('pf.type_id', query.productTypeIds);
+
+    if (query.onlyNovelty) {
+      where.add('pf.novelty = 1');
+    }
+    if (query.onlyPopular) {
+      where.add('pf.popular = 1');
+    }
+
+    if (query.requireStock) {
+      requiresStockFilter = true;
+      final buffer = StringBuffer()
+        ..write('EXISTS (SELECT 1 FROM stock_items si WHERE si.product_code = pf.product_code AND si.stock > 0');
+      if (warehouseIds != null) {
+        if (warehouseIds.isEmpty) {
+          return _ProductQuerySqlParts.empty();
+        }
+        buffer.write(' AND si.warehouse_id IN (${_placeholders(warehouseIds.length)})');
+        whereArguments.addAll(warehouseIds);
+      }
+      buffer.write(')');
+      where.add(buffer.toString());
+    }
+
+    if (where.isEmpty) {
+      where.add('1 = 1');
+    }
+
+    return _ProductQuerySqlParts(
+      whereClause: where.join(' AND '),
+      arguments: [...whereArguments],
+      requiresCategoryFilter: requiresCategoryFilter,
+      requiresStockFilter: requiresStockFilter,
+      isEmptyResult: false,
+    );
+  }
+}
+
+class _ProductQuerySqlParts {
+  const _ProductQuerySqlParts({
+    required this.whereClause,
+    required this.arguments,
+    required this.requiresCategoryFilter,
+    required this.requiresStockFilter,
+    required this.isEmptyResult,
+  });
+
+  final String whereClause;
+  final List<dynamic> arguments;
+  final bool requiresCategoryFilter;
+  final bool requiresStockFilter;
+  final bool isEmptyResult;
+
+  List<Variable> buildVariables() {
+    return arguments.map((value) {
+      if (value is int) return Variable<int>(value);
+      if (value is num) return Variable<int>(value.toInt());
+      if (value is bool) return Variable<bool>(value);
+      if (value is String) return Variable<String>(value);
+      throw UnsupportedError('Unsupported SQL argument: $value');
+    }).toList(growable: false);
+  }
+
+  factory _ProductQuerySqlParts.empty() => const _ProductQuerySqlParts(
+        whereClause: '1 = 0',
+        arguments: <dynamic>[],
+        requiresCategoryFilter: false,
+        requiresStockFilter: false,
+        isEmptyResult: true,
+      );
+}
+
+class _WarehouseConstraint {
+  const _WarehouseConstraint({
+    required this.warehouseIds,
+    this.shouldReturnEmpty = false,
+  });
+
+  final List<int>? warehouseIds;
+  final bool shouldReturnEmpty;
+}
+
+String _placeholders(int count) => List.filled(count, '?').join(', ');

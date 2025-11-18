@@ -316,11 +316,6 @@ class FacetFilterBloc extends Bloc<FacetFilterEvent, FacetFilterState> {
       case 'types':
         final updated = _toggleListValue(filter.typeIds, rawValue);
         return updated == null ? filter : filter.copyWith(typeIds: updated);
-      case 'priceCategories':
-        final updated = _toggleListValue(filter.priceCategoryIds, rawValue);
-        return updated == null
-            ? filter
-            : filter.copyWith(priceCategoryIds: updated);
       case 'categories':
         final value = _readInt(rawValue);
         if (value == null || !filter.scopeCategoryIds.contains(value)) {
@@ -345,7 +340,6 @@ class FacetFilterBloc extends Bloc<FacetFilterEvent, FacetFilterState> {
       manufacturerIds: const <int>[],
       seriesIds: const <int>[],
       typeIds: const <int>[],
-      priceCategoryIds: const <int>[],
       selectedCategoryIds: const <int>[],
       onlyNovelty: false,
       onlyPopular: false,
@@ -386,8 +380,6 @@ class FacetFilterBloc extends Bloc<FacetFilterEvent, FacetFilterState> {
         return id != null && filter.seriesIds.contains(id);
       case 'types':
         return id != null && filter.typeIds.contains(id);
-      case 'priceCategories':
-        return id != null && filter.priceCategoryIds.contains(id);
       case 'categories':
         return id != null && filter.selectedCategoryIds.contains(id);
       case 'novelty':
@@ -439,6 +431,6 @@ class FacetFilterBloc extends Bloc<FacetFilterEvent, FacetFilterState> {
   }
 
   String _filterSummary(FacetFilter filter) {
-    return 'brands=${filter.brandIds.length}/manufacturers=${filter.manufacturerIds.length}/series=${filter.seriesIds.length}/types=${filter.typeIds.length}/priceCategories=${filter.priceCategoryIds.length}/categories=${filter.selectedCategoryIds.length}/novelty=${filter.onlyNovelty}/popular=${filter.onlyPopular}';
+    return 'brands=${filter.brandIds.length}/manufacturers=${filter.manufacturerIds.length}/series=${filter.seriesIds.length}/types=${filter.typeIds.length}/categories=${filter.selectedCategoryIds.length}/novelty=${filter.onlyNovelty}/popular=${filter.onlyPopular}';
   }
 }

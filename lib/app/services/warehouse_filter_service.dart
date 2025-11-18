@@ -41,9 +41,16 @@ class WarehouseFilterService {
   static final Logger _logger = Logger('WarehouseFilterService');
 
   final WarehouseRepository _warehouseRepository;
+  WarehouseFilterResult? _cachedResult;
+  String? _cachedRegionCode;
 
   WarehouseFilterService({required WarehouseRepository warehouseRepository})
       : _warehouseRepository = warehouseRepository;
+
+  void invalidateCache() {
+    _cachedResult = null;
+    _cachedRegionCode = null;
+  }
 
   /// Определяет список складов, которые принадлежат региону активной торговой точки.
   ///
@@ -51,6 +58,12 @@ class WarehouseFilterService {
   /// В случае ошибки при загрузке складов возвращается пустой список с заполненным `failure`.
   Future<WarehouseFilterResult> resolveForCurrentSession({bool bypassInDev = true}) async {
     final regionCode = await _determineRegionCode();
+    final useCache = !bypassInDev;
+
+    if (useCache && _cachedResult != null && _cachedRegionCode == regionCode) {
+      _logger.fine('WarehouseFilterService: используем кеш складов для региона $regionCode');
+      return _cachedResult!;
+    }
 
     if (bypassInDev && AppConfig.isDev) {
       _logger.fine('Dev режим — пропускаем фильтрацию складов для региона $regionCode');
@@ -63,7 +76,7 @@ class WarehouseFilterService {
 
     final warehousesResult = await _warehouseRepository.getWarehousesByRegion(regionCode);
 
-    return warehousesResult.fold(
+    final result = warehousesResult.fold(
       (failure) {
         _logger.warning('Не удалось загрузить склады для региона $regionCode: ${failure.message}');
         return WarehouseFilterResult(
@@ -80,6 +93,13 @@ class WarehouseFilterService {
         );
       },
     );
+
+    if (useCache && result.failure == null) {
+      _cachedResult = result;
+      _cachedRegionCode = regionCode;
+    }
+
+    return result;
   }
 
   Future<String> _determineRegionCode() async {

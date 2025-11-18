@@ -47,7 +47,6 @@ class SearchProductsUseCase {
         query.manufacturerIds.isNotEmpty ||
         query.seriesIds.isNotEmpty ||
         query.productTypeIds.isNotEmpty ||
-        query.priceCategoryIds.isNotEmpty ||
         query.onlyNovelty ||
         query.onlyPopular;
 

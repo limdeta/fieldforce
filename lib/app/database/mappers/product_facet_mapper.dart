@@ -17,7 +17,6 @@ class ProductFacetMapper {
       seriesName: Value(product.series?.name),
       typeId: Value(product.type?.id),
       typeName: Value(product.type?.name),
-      priceListCategoryId: Value(product.priceListCategoryId),
       novelty: Value(product.novelty),
       popular: Value(product.popular),
       canBuy: Value(product.canBuy),

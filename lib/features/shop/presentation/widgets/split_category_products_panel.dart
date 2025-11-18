@@ -338,7 +338,7 @@ class _SplitCategoryProductsPanelState extends State<SplitCategoryProductsPanel>
     }
 
     final queryResult = result.getOrElse(() => ProductQueryResult<ProductWithStock>.empty(pageQuery));
-    final newProducts = queryResult.items;
+    final newProducts = List<ProductWithStock>.from(queryResult.items);
     final previousLength = _products.length;
 
     setState(() {
@@ -623,9 +623,9 @@ class _SplitCategoryProductsPanelState extends State<SplitCategoryProductsPanel>
                 ),
           ),
           const SizedBox(height: 2),
-          if (category.count > 0)
+          if (category.count > 0 || _filteredProductCount != null)
             Text(
-              'Товаров: ${category.count}',
+              _buildCountLabel(category, _filteredProductCount),
               style: Theme.of(context).textTheme.bodySmall?.copyWith(
                     color: Theme.of(context).colorScheme.primary,
                     fontWeight: FontWeight.w500,
@@ -639,6 +639,17 @@ class _SplitCategoryProductsPanelState extends State<SplitCategoryProductsPanel>
       ),
     );
   }
+
+  String _buildCountLabel(Category category, int? filteredCount) {
+    if (filteredCount == null) {
+      return 'Товаров: ${category.count}';
+    }
+
+    final totalSuffix = category.count > 0 ? ' из ${category.count}' : '';
+    return 'Товаров: $filteredCount$totalSuffix';
+  }
+
+  int? get _filteredProductCount => _allowedProductCodes?.length;
 
   Widget _buildErrorBanner(BuildContext context, String message) {
     return Container(
