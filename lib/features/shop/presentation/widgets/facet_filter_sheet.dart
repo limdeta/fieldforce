@@ -8,7 +8,10 @@ import 'package:fieldforce/features/shop/presentation/bloc/facet_filter_event.da
 import 'package:fieldforce/features/shop/presentation/bloc/facet_filter_state.dart';
 
 class FacetFilterSheet extends StatelessWidget {
-  const FacetFilterSheet({super.key});
+  const FacetFilterSheet({super.key, this.showHeader = true, this.borderRadius});
+
+  final bool showHeader;
+  final BorderRadiusGeometry? borderRadius;
 
   @override
   Widget build(BuildContext context) {
@@ -70,25 +73,25 @@ class FacetFilterSheet extends StatelessWidget {
           return Material(
             color: theme.colorScheme.surface,
             clipBehavior: Clip.antiAlias,
-            borderRadius: const BorderRadius.horizontal(left: Radius.circular(20)),
+            borderRadius: borderRadius ?? const BorderRadius.horizontal(left: Radius.circular(20)),
             child: Column(
               children: [
-                _SheetHeader(
-                  isApplying: state.isApplying,
-                  onClose: () => Navigator.of(context).maybePop(),
-                ),
-                AnimatedSwitcher(
-                  duration: const Duration(milliseconds: 250),
-                  child: state.isApplying
-                      ? const Padding(
-                          key: ValueKey('apply-progress'),
-                          padding: EdgeInsets.only(bottom: 4),
-                          child: SizedBox(
-                            height: 2,
-                            child: LinearProgressIndicator(),
-                          ),
-                        )
-                      : const SizedBox.shrink(key: ValueKey('apply-progress-hidden')),
+                if (showHeader)
+                  _SheetHeader(
+                    isApplying: state.isApplying,
+                    onClose: () => Navigator.of(context).maybePop(),
+                  ),
+                Padding(
+                  padding: const EdgeInsets.only(bottom: 4),
+                  child: SizedBox(
+                    height: 3,
+                    child: AnimatedSwitcher(
+                      duration: const Duration(milliseconds: 250),
+                      child: state.isApplying
+                          ? const LinearProgressIndicator(key: ValueKey('apply-progress'))
+                          : const SizedBox(key: ValueKey('apply-progress-hidden')),
+                    ),
+                  ),
                 ),
                 body,
                 if (state.applyError != null)

@@ -14,6 +14,7 @@ class FacetFilterSwipeOverlay extends StatelessWidget {
     this.edgeWidth = 28,
     this.enabled = true,
     this.blocOverride,
+    this.onOpenFilters,
   });
 
   final Widget child;
@@ -21,6 +22,7 @@ class FacetFilterSwipeOverlay extends StatelessWidget {
   final double edgeWidth;
   final bool enabled;
   final FacetFilterBloc? blocOverride;
+  final VoidCallback? onOpenFilters;
 
   @override
   Widget build(BuildContext context) {
@@ -58,6 +60,10 @@ class FacetFilterSwipeOverlay extends StatelessWidget {
   }
 
   void _openFilters(BuildContext context, FacetFilterBloc? bloc) {
+    if (onOpenFilters != null) {
+      onOpenFilters!();
+      return;
+    }
     showCatalogFilters(
       context,
       categoryId: categoryId,
