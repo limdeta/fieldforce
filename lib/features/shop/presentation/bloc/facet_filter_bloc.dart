@@ -5,6 +5,7 @@ import 'package:fieldforce/features/shop/domain/usecases/get_facets_usecase.dart
 import 'package:fieldforce/features/shop/domain/usecases/resolve_facet_product_codes_usecase.dart';
 import 'package:fieldforce/features/shop/presentation/bloc/facet_filter_event.dart';
 import 'package:fieldforce/features/shop/presentation/bloc/facet_filter_state.dart';
+import 'package:fieldforce/features/shop/presentation/helpers/facet_key_parser.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:logging/logging.dart';
 
@@ -331,6 +332,31 @@ class FacetFilterBloc extends Bloc<FacetFilterEvent, FacetFilterState> {
     String groupKey,
     Object rawValue,
   ) {
+    // Phase 3.1: проверяем динамические характеристики
+    if (FacetKeyParser.isDynamicCharacteristic(groupKey)) {
+      final attrId = FacetKeyParser.parseAttributeId(groupKey);
+      if (attrId == null) return filter;
+      
+      final current = Map<int, List<dynamic>>.from(filter.selectedCharacteristics);
+      final currentValues = List<dynamic>.from(current[attrId] ?? []);
+      
+      // Toggle значение
+      if (currentValues.contains(rawValue)) {
+        currentValues.remove(rawValue);
+      } else {
+        currentValues.add(rawValue);
+      }
+      
+      if (currentValues.isEmpty) {
+        current.remove(attrId);
+      } else {
+        current[attrId] = currentValues;
+      }
+      
+      return filter.copyWith(selectedCharacteristics: current);
+    }
+    
+    // Existing static facet handling
     switch (groupKey) {
       case 'brands':
         final updated = _toggleListValue(filter.brandIds, rawValue);
@@ -371,6 +397,7 @@ class FacetFilterBloc extends Bloc<FacetFilterEvent, FacetFilterState> {
       seriesIds: const <int>[],
       typeIds: const <int>[],
       selectedCategoryIds: const <int>[],
+      selectedCharacteristics: const <int, List<dynamic>>{},
       onlyNovelty: false,
       onlyPopular: false
     );
@@ -399,6 +426,13 @@ class FacetFilterBloc extends Bloc<FacetFilterEvent, FacetFilterState> {
   }
 
   bool _isValueSelected(String groupKey, Object value, FacetFilter filter) {
+    // Phase 3.1: проверяем динамические характеристики
+    if (FacetKeyParser.isDynamicCharacteristic(groupKey)) {
+      final attrId = FacetKeyParser.parseAttributeId(groupKey);
+      if (attrId == null) return false;
+      return filter.selectedCharacteristics[attrId]?.contains(value) ?? false;
+    }
+    
     final id = value is int ? value : null;
     switch (groupKey) {
       case 'brands':

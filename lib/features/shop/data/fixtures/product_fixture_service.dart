@@ -100,7 +100,24 @@ class ProductFixtureService {
     ],
     "numericCharacteristics": [],
     "stringCharacteristics": [],
-    "boolCharacteristics": [],
+    "boolCharacteristics": [
+      {
+        "attributeId": 1,
+        "attributeName": "Водостойкая",
+        "id": 101,
+        "type": "bool",
+        "value": true,
+        "adaptValue": "Да"
+      },
+      {
+        "attributeId": 2,
+        "attributeName": "Морозостойкая",
+        "id": 102,
+        "type": "bool",
+        "value": false,
+        "adaptValue": "Нет"
+      }
+    ],
     "stockItems": [
       {
         "id": 1,
@@ -161,7 +178,32 @@ class ProductFixtureService {
     ],
     "numericCharacteristics": [],
     "stringCharacteristics": [],
-    "boolCharacteristics": [],
+    "boolCharacteristics": [
+      {
+        "attributeId": 1,
+        "attributeName": "Водостойкая",
+        "id": 103,
+        "type": "bool",
+        "value": true,
+        "adaptValue": "Да"
+      },
+      {
+        "attributeId": 2,
+        "attributeName": "Морозостойкая",
+        "id": 104,
+        "type": "bool",
+        "value": true,
+        "adaptValue": "Да"
+      },
+      {
+        "attributeId": 3,
+        "attributeName": "Быстросохнущая",
+        "id": 105,
+        "type": "bool",
+        "value": false,
+        "adaptValue": "Нет"
+      }
+    ],
     "stockItems": [
       {
         "id": 2,

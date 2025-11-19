@@ -161,10 +161,20 @@ class FacetFilterSheet extends StatelessWidget {
         !_listEquals(a.typeIds, b.typeIds) ||
         !_listEquals(a.selectedCategoryIds, b.selectedCategoryIds) ||
         a.onlyNovelty != b.onlyNovelty ||
-        a.onlyPopular != b.onlyPopular;
+        a.onlyPopular != b.onlyPopular ||
+        !_mapEquals(a.selectedCharacteristics, b.selectedCharacteristics);
   }
 
   bool _listEquals(List<int> a, List<int> b) => listEquals(a, b);
+
+  bool _mapEquals(Map<int, List<dynamic>> a, Map<int, List<dynamic>> b) {
+    if (a.length != b.length) return false;
+    for (final key in a.keys) {
+      if (!b.containsKey(key)) return false;
+      if (!listEquals(a[key], b[key])) return false;
+    }
+    return true;
+  }
 }
 
 class _ApplyingIndicator extends StatelessWidget {

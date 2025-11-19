@@ -21,6 +21,7 @@ import 'tables/work_day_table.dart';
 import 'tables/category_table.dart';
 import 'tables/product_table.dart';
 import 'tables/product_facet_table.dart';
+import 'tables/product_characteristic_facet_table.dart';
 import 'tables/order_table.dart';
 import 'tables/order_line_table.dart';
 import 'tables/stock_item_table.dart';
@@ -56,6 +57,7 @@ final Logger _dbLogger = Logger('AppDatabase');
   SyncLogs,
   ProductFacets,
   ProductCategoryFacets,
+  ProductCharacteristicFacets,
 ])
 class AppDatabase extends _$AppDatabase {
   AppDatabase() : super(_openConnection('app_database.db'));
@@ -65,7 +67,7 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase.forTesting(DatabaseConnection super.connection);
 
   @override
-  int get schemaVersion => 9; // v9: consolidated baseline migration
+  int get schemaVersion => 10; // v10: добавлена таблица product_characteristic_facets
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -82,6 +84,23 @@ class AppDatabase extends _$AppDatabase {
     },
     onUpgrade: (Migrator m, int from, int to) async {
       _dbLogger.info('🔄 Миграция БД с версии $from на $to');
+      
+      if (from < 10) {
+        // Создаём таблицу product_characteristic_facets
+        await m.createTable(productCharacteristicFacets);
+        
+        // Создаём индексы для оптимизации агрегаций
+        await customStatement(
+          'CREATE INDEX IF NOT EXISTS idx_pcf_attribute_type '
+          'ON product_characteristic_facets(attribute_id, char_type);',
+        );
+        await customStatement(
+          'CREATE INDEX IF NOT EXISTS idx_pcf_bool_value '
+          'ON product_characteristic_facets(attribute_id, bool_value) '
+          "WHERE char_type = 'bool';",
+        );
+        _dbLogger.info('✅ Создана таблица product_characteristic_facets с индексами');
+      }
       
       if (from < schemaVersion) {
         await InitialSchemaMigration.resetCatalogAndSetup(this);

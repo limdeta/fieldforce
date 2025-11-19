@@ -827,16 +827,29 @@ class DriftProductRepository implements ProductRepository {
         .go();
 
     final categoryCompanions = ProductFacetMapper.toCategoryCompanions(product);
-    if (categoryCompanions.isEmpty) {
-      return;
+    if (categoryCompanions.isNotEmpty) {
+      await _database.batch((batch) {
+        batch.insertAll(
+          _database.productCategoryFacets,
+          categoryCompanions,
+        );
+      });
     }
 
-    await _database.batch((batch) {
-      batch.insertAll(
-        _database.productCategoryFacets,
-        categoryCompanions,
-      );
-    });
+    // Phase 3.1: сохраняем характеристики для фасетов
+    await (_database.delete(_database.productCharacteristicFacets)
+          ..where((tbl) => tbl.productCode.equals(product.code)))
+        .go();
+
+    final characteristicCompanions = ProductFacetMapper.toCharacteristicCompanions(product);
+    if (characteristicCompanions.isNotEmpty) {
+      await _database.batch((batch) {
+        batch.insertAll(
+          _database.productCharacteristicFacets,
+          characteristicCompanions,
+        );
+      });
+    }
   }
 
   bool get _shouldLogQueryPlan => _logQueryPlanFlag || AppConfig.enableDebugTools;

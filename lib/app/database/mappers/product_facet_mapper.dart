@@ -40,4 +40,32 @@ class ProductFacetMapper {
       );
     }).toList();
   }
+
+  /// Создаёт companions для характеристик продукта (bool, string, numeric).
+  /// Phase 3.1: реализована поддержка только bool характеристик.
+  static List<ProductCharacteristicFacetsCompanion> toCharacteristicCompanions(Product product) {
+    final companions = <ProductCharacteristicFacetsCompanion>[];
+    
+    // Bool characteristics
+    for (final char in product.boolCharacteristics) {
+      companions.add(
+        ProductCharacteristicFacetsCompanion(
+          productCode: Value(product.code),
+          attributeId: Value(char.attributeId),
+          attributeName: Value(char.attributeName),
+          charType: const Value('bool'),
+          boolValue: Value(char.value == true ? 1 : 0),
+          stringValue: const Value.absent(),
+          numericValue: const Value.absent(),
+          adaptValue: Value(char.adaptValue),
+          createdAt: Value(DateTime.now()),
+        ),
+      );
+    }
+    
+    // TODO Phase 3.2: String characteristics
+    // TODO Phase 3.3: Numeric characteristics
+    
+    return companions;
+  }
 }

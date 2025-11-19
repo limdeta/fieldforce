@@ -59,6 +59,12 @@ class FacetFilter {
   final List<int> typeIds;
   final bool onlyNovelty;
   final bool onlyPopular;
+  
+  /// Phase 3: динамические характеристики (attributeId -> list of values)
+  /// Для bool: values = [true] или [false] или [true, false]
+  /// Для string: values = [valueId1, valueId2, ...]
+  /// Для numeric: values = [minValue, maxValue]
+  final Map<int, List<dynamic>> selectedCharacteristics;
 
   const FacetFilter({
     this.baseCategoryId,
@@ -70,6 +76,7 @@ class FacetFilter {
     this.typeIds = const [],
     this.onlyNovelty = false,
     this.onlyPopular = false,
+    this.selectedCharacteristics = const {},
   });
 
   FacetFilter copyWith({
@@ -82,6 +89,7 @@ class FacetFilter {
     List<int>? typeIds,
     bool? onlyNovelty,
     bool? onlyPopular,
+    Map<int, List<dynamic>>? selectedCharacteristics,
   }) {
     return FacetFilter(
       baseCategoryId: baseCategoryId ?? this.baseCategoryId,
@@ -93,6 +101,7 @@ class FacetFilter {
       typeIds: typeIds ?? this.typeIds,
       onlyNovelty: onlyNovelty ?? this.onlyNovelty,
       onlyPopular: onlyPopular ?? this.onlyPopular,
+      selectedCharacteristics: selectedCharacteristics ?? this.selectedCharacteristics,
     );
   }
 
@@ -102,6 +111,18 @@ class FacetFilter {
       seriesIds.isEmpty &&
       typeIds.isEmpty &&
       selectedCategoryIds.isEmpty &&
+      selectedCharacteristics.isEmpty &&
       !onlyNovelty &&
       !onlyPopular;
+  
+  /// Проверяет, есть ли контекст для показа динамических фасетов.
+  /// Без контекста (пустой поиск + нет фильтров) динамические фасеты не показываем.
+  bool get hasFilteringContext =>
+      baseCategoryId != null ||
+      brandIds.isNotEmpty ||
+      manufacturerIds.isNotEmpty ||
+      seriesIds.isNotEmpty ||
+      typeIds.isNotEmpty ||
+      onlyNovelty ||
+      onlyPopular;
 }

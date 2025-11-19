@@ -177,6 +177,12 @@ class DriftFacetRepository implements FacetRepository {
         ));
       }
 
+      // Phase 3.1: Динамические bool характеристики
+      if (filter.hasFilteringContext) {
+        final boolCharGroups = await _fetchBoolCharacteristics(parts, filter);
+        groups.addAll(boolCharGroups);
+      }
+
       return Right(groups);
     } catch (e, stackTrace) {
       _logger.severe('Ошибка при расчёте фасетов', e, stackTrace);
@@ -232,20 +238,81 @@ class DriftFacetRepository implements FacetRepository {
           ? 'INNER JOIN product_category_facets pcf ON pcf.product_code = pf.product_code'
           : '';
 
-      final rows = await _database.customSelect(
-        '''
+      // Phase 3.1: добавляем фильтрацию по характеристикам
+      final charJoins = StringBuffer();
+      final charVariables = <Variable>[];
+      
+      if (filter.selectedCharacteristics.isNotEmpty) {
+        var charIndex = 0;
+        for (final entry in filter.selectedCharacteristics.entries) {
+          final attrId = entry.key;
+          final values = entry.value;
+          if (values.isEmpty) continue;
+          
+          final alias = 'pcf_char_$charIndex';
+          charJoins.write('''
+            INNER JOIN product_characteristic_facets $alias 
+              ON $alias.product_code = pf.product_code 
+              AND $alias.attribute_id = ? 
+              AND $alias.char_type = 'bool' 
+              AND $alias.bool_value IN (${_placeholders(values.length)})
+          ''');
+          charVariables.add(Variable.withInt(attrId));
+          charVariables.addAll(values.map((v) => Variable.withInt(v == true ? 1 : 0)));
+          charIndex++;
+        }
+      }
+
+      // ВАЖНО: порядок переменных должен соответствовать порядку плейсхолдеров в SQL!
+      // parts.arguments содержит: [warehouseIds..., categoryIds..., otherFilters...]
+      // Нам нужно вставить charVariables между warehouseIds и остальными
+      final partsVars = parts.buildVariables();
+      final List<Variable> allVariables;
+      
+      if (charVariables.isEmpty) {
+        allVariables = partsVars;
+      } else {
+        // Определяем сколько переменных для складов (если они есть)
+        final warehouseCount = warehouseConstraint.warehouseIds?.length ?? 0;
+        
+        if (warehouseCount > 0) {
+          // Переменные: [warehouse1, warehouse2, ..., <ВСТАВИТЬ CHAR>, category1, category2, ...]
+          allVariables = [
+            ...partsVars.sublist(0, warehouseCount),
+            ...charVariables,
+            ...partsVars.sublist(warehouseCount),
+          ];
+        } else {
+          // Нет переменных для складов, вставляем char переменные в начало
+          allVariables = [
+            ...charVariables,
+            ...partsVars,
+          ];
+        }
+      }
+
+      final sql = '''
         SELECT DISTINCT pf.product_code AS product_code
         FROM product_facets pf
         ${parts.stockFilterJoin}
         $joinClause
+        $charJoins
         ${parts.whereClause}
         ORDER BY pf.product_code ASC
-        '''.trim(),
-        variables: parts.buildVariables(),
+        '''.trim();
+
+      _logger.info('resolveProductCodes SQL:\n$sql');
+      _logger.info('resolveProductCodes variables: ${allVariables.map((v) => v.value).toList()}');
+      _logger.info('resolveProductCodes selectedCharacteristics: ${filter.selectedCharacteristics}');
+
+      final rows = await _database.customSelect(
+        sql,
+        variables: allVariables,
         readsFrom: {
           _database.productFacets,
           if (parts.requiresCategoryJoin) _database.productCategoryFacets,
           if (parts.requiresStockJoin) _database.stockItems,
+          if (filter.selectedCharacteristics.isNotEmpty) _database.productCharacteristicFacets,
         },
       ).get();
 
@@ -319,6 +386,100 @@ class DriftFacetRepository implements FacetRepository {
     if (rows.isEmpty) return 0;
     return (rows.first.data['cnt'] as num?)?.toInt() ?? 0;
   }
+
+  /// Phase 3.1: Агрегация булевых характеристик для фасетов
+  Future<List<FacetGroup>> _fetchBoolCharacteristics(
+    _FacetSqlParts parts,
+    FacetFilter filter,
+  ) async {
+    final sql = '''
+      SELECT 
+        pcf_char.attribute_id,
+        pcf_char.attribute_name,
+        pcf_char.bool_value,
+        pcf_char.adapt_value,
+        COUNT(*) AS value_count
+      FROM product_characteristic_facets pcf_char
+      INNER JOIN product_facets pf ON pf.product_code = pcf_char.product_code
+      ${parts.stockFilterJoin}
+      ${parts.categoryFilterJoin}
+      ${parts.whereClause}
+        AND pcf_char.char_type = 'bool'
+      GROUP BY pcf_char.attribute_id, pcf_char.attribute_name, pcf_char.bool_value
+      ORDER BY pcf_char.attribute_name, pcf_char.bool_value DESC
+    '''.trim();
+
+    final rows = await _database.customSelect(
+      sql,
+      variables: parts.buildVariables(),
+      readsFrom: {
+        _database.productCharacteristicFacets,
+        _database.productFacets,
+        if (parts.requiresCategoryJoin) _database.productCategoryFacets,
+        if (parts.requiresStockJoin) _database.stockItems,
+      },
+    ).get();
+
+    // Группируем по attributeId
+    final Map<int, _CharacteristicAgg> grouped = {};
+    for (final row in rows) {
+      final attrId = row.data['attribute_id'] as int;
+      final attrName = row.data['attribute_name'] as String;
+      final boolValue = (row.data['bool_value'] as int?) == 1;
+      final adaptValue = row.data['adapt_value'] as String?;
+      final count = row.data['value_count'] as int;
+      
+      grouped.putIfAbsent(attrId, () => _CharacteristicAgg(attrId, attrName));
+      grouped[attrId]!.values[boolValue] = _CharValue(
+        boolValue ? (adaptValue ?? 'Да') : (adaptValue ?? 'Нет'),
+        boolValue,
+        count,
+      );
+    }
+
+    // Преобразуем в FacetGroup
+    final groups = <FacetGroup>[];
+    for (final agg in grouped.values) {
+      if (agg.values.isEmpty) continue;
+      
+      final selected = filter.selectedCharacteristics[agg.attributeId] ?? [];
+      final values = agg.values.entries.map((e) {
+        return FacetValue(
+          value: e.key,
+          label: e.value.label,
+          count: e.value.count,
+          selected: selected.contains(e.key),
+        );
+      }).toList();
+      
+      groups.add(FacetGroup(
+        key: 'attr[${agg.attributeId}]',
+        title: agg.attributeName,
+        type: FacetGroupType.toggle,
+        values: values,
+      ));
+    }
+
+    return groups;
+  }
+}
+
+/// Вспомогательный класс для группировки характеристик
+class _CharacteristicAgg {
+  final int attributeId;
+  final String attributeName;
+  final Map<bool, _CharValue> values = {};
+  
+  _CharacteristicAgg(this.attributeId, this.attributeName);
+}
+
+/// Вспомогательный класс для значения характеристики
+class _CharValue {
+  final String label;
+  final bool value;
+  final int count;
+  
+  _CharValue(this.label, this.value, this.count);
 }
 
 class _FacetSqlParts {

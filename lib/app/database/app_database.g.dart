@@ -13502,6 +13502,631 @@ class ProductCategoryFacetsCompanion
   }
 }
 
+class $ProductCharacteristicFacetsTable extends ProductCharacteristicFacets
+    with
+        TableInfo<
+          $ProductCharacteristicFacetsTable,
+          ProductCharacteristicFacetData
+        > {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $ProductCharacteristicFacetsTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _productCodeMeta = const VerificationMeta(
+    'productCode',
+  );
+  @override
+  late final GeneratedColumn<int> productCode = GeneratedColumn<int>(
+    'product_code',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: true,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'REFERENCES products (code) ON DELETE CASCADE',
+    ),
+  );
+  static const VerificationMeta _attributeIdMeta = const VerificationMeta(
+    'attributeId',
+  );
+  @override
+  late final GeneratedColumn<int> attributeId = GeneratedColumn<int>(
+    'attribute_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _attributeNameMeta = const VerificationMeta(
+    'attributeName',
+  );
+  @override
+  late final GeneratedColumn<String> attributeName = GeneratedColumn<String>(
+    'attribute_name',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _charTypeMeta = const VerificationMeta(
+    'charType',
+  );
+  @override
+  late final GeneratedColumn<String> charType = GeneratedColumn<String>(
+    'char_type',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _boolValueMeta = const VerificationMeta(
+    'boolValue',
+  );
+  @override
+  late final GeneratedColumn<int> boolValue = GeneratedColumn<int>(
+    'bool_value',
+    aliasedName,
+    true,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _stringValueMeta = const VerificationMeta(
+    'stringValue',
+  );
+  @override
+  late final GeneratedColumn<int> stringValue = GeneratedColumn<int>(
+    'string_value',
+    aliasedName,
+    true,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _numericValueMeta = const VerificationMeta(
+    'numericValue',
+  );
+  @override
+  late final GeneratedColumn<double> numericValue = GeneratedColumn<double>(
+    'numeric_value',
+    aliasedName,
+    true,
+    type: DriftSqlType.double,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _adaptValueMeta = const VerificationMeta(
+    'adaptValue',
+  );
+  @override
+  late final GeneratedColumn<String> adaptValue = GeneratedColumn<String>(
+    'adapt_value',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _createdAtMeta = const VerificationMeta(
+    'createdAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> createdAt = GeneratedColumn<DateTime>(
+    'created_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: false,
+    defaultValue: currentDateAndTime,
+  );
+  @override
+  List<GeneratedColumn> get $columns => [
+    productCode,
+    attributeId,
+    attributeName,
+    charType,
+    boolValue,
+    stringValue,
+    numericValue,
+    adaptValue,
+    createdAt,
+  ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'product_characteristic_facets';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<ProductCharacteristicFacetData> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('product_code')) {
+      context.handle(
+        _productCodeMeta,
+        productCode.isAcceptableOrUnknown(
+          data['product_code']!,
+          _productCodeMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_productCodeMeta);
+    }
+    if (data.containsKey('attribute_id')) {
+      context.handle(
+        _attributeIdMeta,
+        attributeId.isAcceptableOrUnknown(
+          data['attribute_id']!,
+          _attributeIdMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_attributeIdMeta);
+    }
+    if (data.containsKey('attribute_name')) {
+      context.handle(
+        _attributeNameMeta,
+        attributeName.isAcceptableOrUnknown(
+          data['attribute_name']!,
+          _attributeNameMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_attributeNameMeta);
+    }
+    if (data.containsKey('char_type')) {
+      context.handle(
+        _charTypeMeta,
+        charType.isAcceptableOrUnknown(data['char_type']!, _charTypeMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_charTypeMeta);
+    }
+    if (data.containsKey('bool_value')) {
+      context.handle(
+        _boolValueMeta,
+        boolValue.isAcceptableOrUnknown(data['bool_value']!, _boolValueMeta),
+      );
+    }
+    if (data.containsKey('string_value')) {
+      context.handle(
+        _stringValueMeta,
+        stringValue.isAcceptableOrUnknown(
+          data['string_value']!,
+          _stringValueMeta,
+        ),
+      );
+    }
+    if (data.containsKey('numeric_value')) {
+      context.handle(
+        _numericValueMeta,
+        numericValue.isAcceptableOrUnknown(
+          data['numeric_value']!,
+          _numericValueMeta,
+        ),
+      );
+    }
+    if (data.containsKey('adapt_value')) {
+      context.handle(
+        _adaptValueMeta,
+        adaptValue.isAcceptableOrUnknown(data['adapt_value']!, _adaptValueMeta),
+      );
+    }
+    if (data.containsKey('created_at')) {
+      context.handle(
+        _createdAtMeta,
+        createdAt.isAcceptableOrUnknown(data['created_at']!, _createdAtMeta),
+      );
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {productCode, attributeId};
+  @override
+  ProductCharacteristicFacetData map(
+    Map<String, dynamic> data, {
+    String? tablePrefix,
+  }) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return ProductCharacteristicFacetData(
+      productCode: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}product_code'],
+      )!,
+      attributeId: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}attribute_id'],
+      )!,
+      attributeName: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}attribute_name'],
+      )!,
+      charType: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}char_type'],
+      )!,
+      boolValue: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}bool_value'],
+      ),
+      stringValue: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}string_value'],
+      ),
+      numericValue: attachedDatabase.typeMapping.read(
+        DriftSqlType.double,
+        data['${effectivePrefix}numeric_value'],
+      ),
+      adaptValue: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}adapt_value'],
+      ),
+      createdAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}created_at'],
+      )!,
+    );
+  }
+
+  @override
+  $ProductCharacteristicFacetsTable createAlias(String alias) {
+    return $ProductCharacteristicFacetsTable(attachedDatabase, alias);
+  }
+}
+
+class ProductCharacteristicFacetData extends DataClass
+    implements Insertable<ProductCharacteristicFacetData> {
+  /// Код продукта (FK)
+  final int productCode;
+
+  /// ID атрибута (например, ID для "Водостойкая")
+  final int attributeId;
+
+  /// Название атрибута (для отображения в UI)
+  final String attributeName;
+
+  /// Тип характеристики: 'bool', 'string', 'numeric'
+  final String charType;
+
+  /// Значение для bool характеристик (0 = false, 1 = true, NULL для других типов)
+  final int? boolValue;
+
+  /// Значение для string характеристик (ID из справочника, NULL для других типов)
+  final int? stringValue;
+
+  /// Значение для numeric характеристик (число, NULL для других типов)
+  final double? numericValue;
+
+  /// Человекочитаемое значение (например, "Да", "Красный", "500 мл")
+  final String? adaptValue;
+
+  /// Временные метки
+  final DateTime createdAt;
+  const ProductCharacteristicFacetData({
+    required this.productCode,
+    required this.attributeId,
+    required this.attributeName,
+    required this.charType,
+    this.boolValue,
+    this.stringValue,
+    this.numericValue,
+    this.adaptValue,
+    required this.createdAt,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['product_code'] = Variable<int>(productCode);
+    map['attribute_id'] = Variable<int>(attributeId);
+    map['attribute_name'] = Variable<String>(attributeName);
+    map['char_type'] = Variable<String>(charType);
+    if (!nullToAbsent || boolValue != null) {
+      map['bool_value'] = Variable<int>(boolValue);
+    }
+    if (!nullToAbsent || stringValue != null) {
+      map['string_value'] = Variable<int>(stringValue);
+    }
+    if (!nullToAbsent || numericValue != null) {
+      map['numeric_value'] = Variable<double>(numericValue);
+    }
+    if (!nullToAbsent || adaptValue != null) {
+      map['adapt_value'] = Variable<String>(adaptValue);
+    }
+    map['created_at'] = Variable<DateTime>(createdAt);
+    return map;
+  }
+
+  ProductCharacteristicFacetsCompanion toCompanion(bool nullToAbsent) {
+    return ProductCharacteristicFacetsCompanion(
+      productCode: Value(productCode),
+      attributeId: Value(attributeId),
+      attributeName: Value(attributeName),
+      charType: Value(charType),
+      boolValue: boolValue == null && nullToAbsent
+          ? const Value.absent()
+          : Value(boolValue),
+      stringValue: stringValue == null && nullToAbsent
+          ? const Value.absent()
+          : Value(stringValue),
+      numericValue: numericValue == null && nullToAbsent
+          ? const Value.absent()
+          : Value(numericValue),
+      adaptValue: adaptValue == null && nullToAbsent
+          ? const Value.absent()
+          : Value(adaptValue),
+      createdAt: Value(createdAt),
+    );
+  }
+
+  factory ProductCharacteristicFacetData.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return ProductCharacteristicFacetData(
+      productCode: serializer.fromJson<int>(json['productCode']),
+      attributeId: serializer.fromJson<int>(json['attributeId']),
+      attributeName: serializer.fromJson<String>(json['attributeName']),
+      charType: serializer.fromJson<String>(json['charType']),
+      boolValue: serializer.fromJson<int?>(json['boolValue']),
+      stringValue: serializer.fromJson<int?>(json['stringValue']),
+      numericValue: serializer.fromJson<double?>(json['numericValue']),
+      adaptValue: serializer.fromJson<String?>(json['adaptValue']),
+      createdAt: serializer.fromJson<DateTime>(json['createdAt']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'productCode': serializer.toJson<int>(productCode),
+      'attributeId': serializer.toJson<int>(attributeId),
+      'attributeName': serializer.toJson<String>(attributeName),
+      'charType': serializer.toJson<String>(charType),
+      'boolValue': serializer.toJson<int?>(boolValue),
+      'stringValue': serializer.toJson<int?>(stringValue),
+      'numericValue': serializer.toJson<double?>(numericValue),
+      'adaptValue': serializer.toJson<String?>(adaptValue),
+      'createdAt': serializer.toJson<DateTime>(createdAt),
+    };
+  }
+
+  ProductCharacteristicFacetData copyWith({
+    int? productCode,
+    int? attributeId,
+    String? attributeName,
+    String? charType,
+    Value<int?> boolValue = const Value.absent(),
+    Value<int?> stringValue = const Value.absent(),
+    Value<double?> numericValue = const Value.absent(),
+    Value<String?> adaptValue = const Value.absent(),
+    DateTime? createdAt,
+  }) => ProductCharacteristicFacetData(
+    productCode: productCode ?? this.productCode,
+    attributeId: attributeId ?? this.attributeId,
+    attributeName: attributeName ?? this.attributeName,
+    charType: charType ?? this.charType,
+    boolValue: boolValue.present ? boolValue.value : this.boolValue,
+    stringValue: stringValue.present ? stringValue.value : this.stringValue,
+    numericValue: numericValue.present ? numericValue.value : this.numericValue,
+    adaptValue: adaptValue.present ? adaptValue.value : this.adaptValue,
+    createdAt: createdAt ?? this.createdAt,
+  );
+  ProductCharacteristicFacetData copyWithCompanion(
+    ProductCharacteristicFacetsCompanion data,
+  ) {
+    return ProductCharacteristicFacetData(
+      productCode: data.productCode.present
+          ? data.productCode.value
+          : this.productCode,
+      attributeId: data.attributeId.present
+          ? data.attributeId.value
+          : this.attributeId,
+      attributeName: data.attributeName.present
+          ? data.attributeName.value
+          : this.attributeName,
+      charType: data.charType.present ? data.charType.value : this.charType,
+      boolValue: data.boolValue.present ? data.boolValue.value : this.boolValue,
+      stringValue: data.stringValue.present
+          ? data.stringValue.value
+          : this.stringValue,
+      numericValue: data.numericValue.present
+          ? data.numericValue.value
+          : this.numericValue,
+      adaptValue: data.adaptValue.present
+          ? data.adaptValue.value
+          : this.adaptValue,
+      createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('ProductCharacteristicFacetData(')
+          ..write('productCode: $productCode, ')
+          ..write('attributeId: $attributeId, ')
+          ..write('attributeName: $attributeName, ')
+          ..write('charType: $charType, ')
+          ..write('boolValue: $boolValue, ')
+          ..write('stringValue: $stringValue, ')
+          ..write('numericValue: $numericValue, ')
+          ..write('adaptValue: $adaptValue, ')
+          ..write('createdAt: $createdAt')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(
+    productCode,
+    attributeId,
+    attributeName,
+    charType,
+    boolValue,
+    stringValue,
+    numericValue,
+    adaptValue,
+    createdAt,
+  );
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is ProductCharacteristicFacetData &&
+          other.productCode == this.productCode &&
+          other.attributeId == this.attributeId &&
+          other.attributeName == this.attributeName &&
+          other.charType == this.charType &&
+          other.boolValue == this.boolValue &&
+          other.stringValue == this.stringValue &&
+          other.numericValue == this.numericValue &&
+          other.adaptValue == this.adaptValue &&
+          other.createdAt == this.createdAt);
+}
+
+class ProductCharacteristicFacetsCompanion
+    extends UpdateCompanion<ProductCharacteristicFacetData> {
+  final Value<int> productCode;
+  final Value<int> attributeId;
+  final Value<String> attributeName;
+  final Value<String> charType;
+  final Value<int?> boolValue;
+  final Value<int?> stringValue;
+  final Value<double?> numericValue;
+  final Value<String?> adaptValue;
+  final Value<DateTime> createdAt;
+  final Value<int> rowid;
+  const ProductCharacteristicFacetsCompanion({
+    this.productCode = const Value.absent(),
+    this.attributeId = const Value.absent(),
+    this.attributeName = const Value.absent(),
+    this.charType = const Value.absent(),
+    this.boolValue = const Value.absent(),
+    this.stringValue = const Value.absent(),
+    this.numericValue = const Value.absent(),
+    this.adaptValue = const Value.absent(),
+    this.createdAt = const Value.absent(),
+    this.rowid = const Value.absent(),
+  });
+  ProductCharacteristicFacetsCompanion.insert({
+    required int productCode,
+    required int attributeId,
+    required String attributeName,
+    required String charType,
+    this.boolValue = const Value.absent(),
+    this.stringValue = const Value.absent(),
+    this.numericValue = const Value.absent(),
+    this.adaptValue = const Value.absent(),
+    this.createdAt = const Value.absent(),
+    this.rowid = const Value.absent(),
+  }) : productCode = Value(productCode),
+       attributeId = Value(attributeId),
+       attributeName = Value(attributeName),
+       charType = Value(charType);
+  static Insertable<ProductCharacteristicFacetData> custom({
+    Expression<int>? productCode,
+    Expression<int>? attributeId,
+    Expression<String>? attributeName,
+    Expression<String>? charType,
+    Expression<int>? boolValue,
+    Expression<int>? stringValue,
+    Expression<double>? numericValue,
+    Expression<String>? adaptValue,
+    Expression<DateTime>? createdAt,
+    Expression<int>? rowid,
+  }) {
+    return RawValuesInsertable({
+      if (productCode != null) 'product_code': productCode,
+      if (attributeId != null) 'attribute_id': attributeId,
+      if (attributeName != null) 'attribute_name': attributeName,
+      if (charType != null) 'char_type': charType,
+      if (boolValue != null) 'bool_value': boolValue,
+      if (stringValue != null) 'string_value': stringValue,
+      if (numericValue != null) 'numeric_value': numericValue,
+      if (adaptValue != null) 'adapt_value': adaptValue,
+      if (createdAt != null) 'created_at': createdAt,
+      if (rowid != null) 'rowid': rowid,
+    });
+  }
+
+  ProductCharacteristicFacetsCompanion copyWith({
+    Value<int>? productCode,
+    Value<int>? attributeId,
+    Value<String>? attributeName,
+    Value<String>? charType,
+    Value<int?>? boolValue,
+    Value<int?>? stringValue,
+    Value<double?>? numericValue,
+    Value<String?>? adaptValue,
+    Value<DateTime>? createdAt,
+    Value<int>? rowid,
+  }) {
+    return ProductCharacteristicFacetsCompanion(
+      productCode: productCode ?? this.productCode,
+      attributeId: attributeId ?? this.attributeId,
+      attributeName: attributeName ?? this.attributeName,
+      charType: charType ?? this.charType,
+      boolValue: boolValue ?? this.boolValue,
+      stringValue: stringValue ?? this.stringValue,
+      numericValue: numericValue ?? this.numericValue,
+      adaptValue: adaptValue ?? this.adaptValue,
+      createdAt: createdAt ?? this.createdAt,
+      rowid: rowid ?? this.rowid,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (productCode.present) {
+      map['product_code'] = Variable<int>(productCode.value);
+    }
+    if (attributeId.present) {
+      map['attribute_id'] = Variable<int>(attributeId.value);
+    }
+    if (attributeName.present) {
+      map['attribute_name'] = Variable<String>(attributeName.value);
+    }
+    if (charType.present) {
+      map['char_type'] = Variable<String>(charType.value);
+    }
+    if (boolValue.present) {
+      map['bool_value'] = Variable<int>(boolValue.value);
+    }
+    if (stringValue.present) {
+      map['string_value'] = Variable<int>(stringValue.value);
+    }
+    if (numericValue.present) {
+      map['numeric_value'] = Variable<double>(numericValue.value);
+    }
+    if (adaptValue.present) {
+      map['adapt_value'] = Variable<String>(adaptValue.value);
+    }
+    if (createdAt.present) {
+      map['created_at'] = Variable<DateTime>(createdAt.value);
+    }
+    if (rowid.present) {
+      map['rowid'] = Variable<int>(rowid.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('ProductCharacteristicFacetsCompanion(')
+          ..write('productCode: $productCode, ')
+          ..write('attributeId: $attributeId, ')
+          ..write('attributeName: $attributeName, ')
+          ..write('charType: $charType, ')
+          ..write('boolValue: $boolValue, ')
+          ..write('stringValue: $stringValue, ')
+          ..write('numericValue: $numericValue, ')
+          ..write('adaptValue: $adaptValue, ')
+          ..write('createdAt: $createdAt, ')
+          ..write('rowid: $rowid')
+          ..write(')'))
+        .toString();
+  }
+}
+
 abstract class _$AppDatabase extends GeneratedDatabase {
   _$AppDatabase(QueryExecutor e) : super(e);
   $AppDatabaseManager get managers => $AppDatabaseManager(this);
@@ -13531,6 +14156,8 @@ abstract class _$AppDatabase extends GeneratedDatabase {
   late final $ProductFacetsTable productFacets = $ProductFacetsTable(this);
   late final $ProductCategoryFacetsTable productCategoryFacets =
       $ProductCategoryFacetsTable(this);
+  late final $ProductCharacteristicFacetsTable productCharacteristicFacets =
+      $ProductCharacteristicFacetsTable(this);
   @override
   Iterable<TableInfo<Table, Object?>> get allTables =>
       allSchemaEntities.whereType<TableInfo<Table, Object?>>();
@@ -13557,6 +14184,7 @@ abstract class _$AppDatabase extends GeneratedDatabase {
     syncLogs,
     productFacets,
     productCategoryFacets,
+    productCharacteristicFacets,
   ];
   @override
   StreamQueryUpdateRules get streamUpdateRules => const StreamQueryUpdateRules([
@@ -13594,6 +14222,15 @@ abstract class _$AppDatabase extends GeneratedDatabase {
         limitUpdateKind: UpdateKind.delete,
       ),
       result: [TableUpdate('product_category_facets', kind: UpdateKind.delete)],
+    ),
+    WritePropagation(
+      on: TableUpdateQuery.onTableName(
+        'products',
+        limitUpdateKind: UpdateKind.delete,
+      ),
+      result: [
+        TableUpdate('product_characteristic_facets', kind: UpdateKind.delete),
+      ],
     ),
   ]);
 }
@@ -19163,6 +19800,34 @@ final class $$ProductsTableReferences
       manager.$state.copyWith(prefetchedData: cache),
     );
   }
+
+  static MultiTypedResultKey<
+    $ProductCharacteristicFacetsTable,
+    List<ProductCharacteristicFacetData>
+  >
+  _productCharacteristicFacetsRefsTable(_$AppDatabase db) =>
+      MultiTypedResultKey.fromTable(
+        db.productCharacteristicFacets,
+        aliasName: $_aliasNameGenerator(
+          db.products.code,
+          db.productCharacteristicFacets.productCode,
+        ),
+      );
+
+  $$ProductCharacteristicFacetsTableProcessedTableManager
+  get productCharacteristicFacetsRefs {
+    final manager = $$ProductCharacteristicFacetsTableTableManager(
+      $_db,
+      $_db.productCharacteristicFacets,
+    ).filter((f) => f.productCode.code.sqlEquals($_itemColumn<int>('code')!));
+
+    final cache = $_typedResult.readTableOrNull(
+      _productCharacteristicFacetsRefsTable($_db),
+    );
+    return ProcessedTableManager(
+      manager.$state.copyWith(prefetchedData: cache),
+    );
+  }
 }
 
 class $$ProductsTableFilterComposer
@@ -19356,6 +20021,35 @@ class $$ProductsTableFilterComposer
               }) => $$ProductCategoryFacetsTableFilterComposer(
                 $db: $db,
                 $table: $db.productCategoryFacets,
+                $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+                joinBuilder: joinBuilder,
+                $removeJoinBuilderFromRootComposer:
+                    $removeJoinBuilderFromRootComposer,
+              ),
+        );
+    return f(composer);
+  }
+
+  Expression<bool> productCharacteristicFacetsRefs(
+    Expression<bool> Function(
+      $$ProductCharacteristicFacetsTableFilterComposer f,
+    )
+    f,
+  ) {
+    final $$ProductCharacteristicFacetsTableFilterComposer composer =
+        $composerBuilder(
+          composer: this,
+          getCurrentColumn: (t) => t.code,
+          referencedTable: $db.productCharacteristicFacets,
+          getReferencedColumn: (t) => t.productCode,
+          builder:
+              (
+                joinBuilder, {
+                $addJoinBuilderToRootComposer,
+                $removeJoinBuilderFromRootComposer,
+              }) => $$ProductCharacteristicFacetsTableFilterComposer(
+                $db: $db,
+                $table: $db.productCharacteristicFacets,
                 $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
                 joinBuilder: joinBuilder,
                 $removeJoinBuilderFromRootComposer:
@@ -19662,6 +20356,35 @@ class $$ProductsTableAnnotationComposer
         );
     return f(composer);
   }
+
+  Expression<T> productCharacteristicFacetsRefs<T extends Object>(
+    Expression<T> Function(
+      $$ProductCharacteristicFacetsTableAnnotationComposer a,
+    )
+    f,
+  ) {
+    final $$ProductCharacteristicFacetsTableAnnotationComposer composer =
+        $composerBuilder(
+          composer: this,
+          getCurrentColumn: (t) => t.code,
+          referencedTable: $db.productCharacteristicFacets,
+          getReferencedColumn: (t) => t.productCode,
+          builder:
+              (
+                joinBuilder, {
+                $addJoinBuilderToRootComposer,
+                $removeJoinBuilderFromRootComposer,
+              }) => $$ProductCharacteristicFacetsTableAnnotationComposer(
+                $db: $db,
+                $table: $db.productCharacteristicFacets,
+                $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+                joinBuilder: joinBuilder,
+                $removeJoinBuilderFromRootComposer:
+                    $removeJoinBuilderFromRootComposer,
+              ),
+        );
+    return f(composer);
+  }
 }
 
 class $$ProductsTableTableManager
@@ -19681,6 +20404,7 @@ class $$ProductsTableTableManager
             bool stockItemsRefs,
             bool productFacetsRefs,
             bool productCategoryFacetsRefs,
+            bool productCharacteristicFacetsRefs,
           })
         > {
   $$ProductsTableTableManager(_$AppDatabase db, $ProductsTable table)
@@ -19807,6 +20531,7 @@ class $$ProductsTableTableManager
                 stockItemsRefs = false,
                 productFacetsRefs = false,
                 productCategoryFacetsRefs = false,
+                productCharacteristicFacetsRefs = false,
               }) {
                 return PrefetchHooks(
                   db: db,
@@ -19814,6 +20539,8 @@ class $$ProductsTableTableManager
                     if (stockItemsRefs) db.stockItems,
                     if (productFacetsRefs) db.productFacets,
                     if (productCategoryFacetsRefs) db.productCategoryFacets,
+                    if (productCharacteristicFacetsRefs)
+                      db.productCharacteristicFacets,
                   ],
                   addJoins: null,
                   getPrefetchedDataCallback: (items) async {
@@ -19881,6 +20608,27 @@ class $$ProductsTableTableManager
                               ),
                           typedResults: items,
                         ),
+                      if (productCharacteristicFacetsRefs)
+                        await $_getPrefetchedData<
+                          ProductData,
+                          $ProductsTable,
+                          ProductCharacteristicFacetData
+                        >(
+                          currentTable: table,
+                          referencedTable: $$ProductsTableReferences
+                              ._productCharacteristicFacetsRefsTable(db),
+                          managerFromTypedResult: (p0) =>
+                              $$ProductsTableReferences(
+                                db,
+                                table,
+                                p0,
+                              ).productCharacteristicFacetsRefs,
+                          referencedItemsForCurrentItem:
+                              (item, referencedItems) => referencedItems.where(
+                                (e) => e.productCode == item.code,
+                              ),
+                          typedResults: items,
+                        ),
                     ];
                   },
                 );
@@ -19905,6 +20653,7 @@ typedef $$ProductsTableProcessedTableManager =
         bool stockItemsRefs,
         bool productFacetsRefs,
         bool productCategoryFacetsRefs,
+        bool productCharacteristicFacetsRefs,
       })
     >;
 typedef $$OrdersTableCreateCompanionBuilder =
@@ -23510,6 +24259,442 @@ typedef $$ProductCategoryFacetsTableProcessedTableManager =
       ProductCategoryFacetData,
       PrefetchHooks Function({bool productCode})
     >;
+typedef $$ProductCharacteristicFacetsTableCreateCompanionBuilder =
+    ProductCharacteristicFacetsCompanion Function({
+      required int productCode,
+      required int attributeId,
+      required String attributeName,
+      required String charType,
+      Value<int?> boolValue,
+      Value<int?> stringValue,
+      Value<double?> numericValue,
+      Value<String?> adaptValue,
+      Value<DateTime> createdAt,
+      Value<int> rowid,
+    });
+typedef $$ProductCharacteristicFacetsTableUpdateCompanionBuilder =
+    ProductCharacteristicFacetsCompanion Function({
+      Value<int> productCode,
+      Value<int> attributeId,
+      Value<String> attributeName,
+      Value<String> charType,
+      Value<int?> boolValue,
+      Value<int?> stringValue,
+      Value<double?> numericValue,
+      Value<String?> adaptValue,
+      Value<DateTime> createdAt,
+      Value<int> rowid,
+    });
+
+final class $$ProductCharacteristicFacetsTableReferences
+    extends
+        BaseReferences<
+          _$AppDatabase,
+          $ProductCharacteristicFacetsTable,
+          ProductCharacteristicFacetData
+        > {
+  $$ProductCharacteristicFacetsTableReferences(
+    super.$_db,
+    super.$_table,
+    super.$_typedResult,
+  );
+
+  static $ProductsTable _productCodeTable(_$AppDatabase db) =>
+      db.products.createAlias(
+        $_aliasNameGenerator(
+          db.productCharacteristicFacets.productCode,
+          db.products.code,
+        ),
+      );
+
+  $$ProductsTableProcessedTableManager get productCode {
+    final $_column = $_itemColumn<int>('product_code')!;
+
+    final manager = $$ProductsTableTableManager(
+      $_db,
+      $_db.products,
+    ).filter((f) => f.code.sqlEquals($_column));
+    final item = $_typedResult.readTableOrNull(_productCodeTable($_db));
+    if (item == null) return manager;
+    return ProcessedTableManager(
+      manager.$state.copyWith(prefetchedData: [item]),
+    );
+  }
+}
+
+class $$ProductCharacteristicFacetsTableFilterComposer
+    extends Composer<_$AppDatabase, $ProductCharacteristicFacetsTable> {
+  $$ProductCharacteristicFacetsTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<int> get attributeId => $composableBuilder(
+    column: $table.attributeId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get attributeName => $composableBuilder(
+    column: $table.attributeName,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get charType => $composableBuilder(
+    column: $table.charType,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get boolValue => $composableBuilder(
+    column: $table.boolValue,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get stringValue => $composableBuilder(
+    column: $table.stringValue,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<double> get numericValue => $composableBuilder(
+    column: $table.numericValue,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get adaptValue => $composableBuilder(
+    column: $table.adaptValue,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  $$ProductsTableFilterComposer get productCode {
+    final $$ProductsTableFilterComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.productCode,
+      referencedTable: $db.products,
+      getReferencedColumn: (t) => t.code,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$ProductsTableFilterComposer(
+            $db: $db,
+            $table: $db.products,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+}
+
+class $$ProductCharacteristicFacetsTableOrderingComposer
+    extends Composer<_$AppDatabase, $ProductCharacteristicFacetsTable> {
+  $$ProductCharacteristicFacetsTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<int> get attributeId => $composableBuilder(
+    column: $table.attributeId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get attributeName => $composableBuilder(
+    column: $table.attributeName,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get charType => $composableBuilder(
+    column: $table.charType,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get boolValue => $composableBuilder(
+    column: $table.boolValue,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get stringValue => $composableBuilder(
+    column: $table.stringValue,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<double> get numericValue => $composableBuilder(
+    column: $table.numericValue,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get adaptValue => $composableBuilder(
+    column: $table.adaptValue,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  $$ProductsTableOrderingComposer get productCode {
+    final $$ProductsTableOrderingComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.productCode,
+      referencedTable: $db.products,
+      getReferencedColumn: (t) => t.code,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$ProductsTableOrderingComposer(
+            $db: $db,
+            $table: $db.products,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+}
+
+class $$ProductCharacteristicFacetsTableAnnotationComposer
+    extends Composer<_$AppDatabase, $ProductCharacteristicFacetsTable> {
+  $$ProductCharacteristicFacetsTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<int> get attributeId => $composableBuilder(
+    column: $table.attributeId,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get attributeName => $composableBuilder(
+    column: $table.attributeName,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get charType =>
+      $composableBuilder(column: $table.charType, builder: (column) => column);
+
+  GeneratedColumn<int> get boolValue =>
+      $composableBuilder(column: $table.boolValue, builder: (column) => column);
+
+  GeneratedColumn<int> get stringValue => $composableBuilder(
+    column: $table.stringValue,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<double> get numericValue => $composableBuilder(
+    column: $table.numericValue,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get adaptValue => $composableBuilder(
+    column: $table.adaptValue,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<DateTime> get createdAt =>
+      $composableBuilder(column: $table.createdAt, builder: (column) => column);
+
+  $$ProductsTableAnnotationComposer get productCode {
+    final $$ProductsTableAnnotationComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.productCode,
+      referencedTable: $db.products,
+      getReferencedColumn: (t) => t.code,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$ProductsTableAnnotationComposer(
+            $db: $db,
+            $table: $db.products,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+}
+
+class $$ProductCharacteristicFacetsTableTableManager
+    extends
+        RootTableManager<
+          _$AppDatabase,
+          $ProductCharacteristicFacetsTable,
+          ProductCharacteristicFacetData,
+          $$ProductCharacteristicFacetsTableFilterComposer,
+          $$ProductCharacteristicFacetsTableOrderingComposer,
+          $$ProductCharacteristicFacetsTableAnnotationComposer,
+          $$ProductCharacteristicFacetsTableCreateCompanionBuilder,
+          $$ProductCharacteristicFacetsTableUpdateCompanionBuilder,
+          (
+            ProductCharacteristicFacetData,
+            $$ProductCharacteristicFacetsTableReferences,
+          ),
+          ProductCharacteristicFacetData,
+          PrefetchHooks Function({bool productCode})
+        > {
+  $$ProductCharacteristicFacetsTableTableManager(
+    _$AppDatabase db,
+    $ProductCharacteristicFacetsTable table,
+  ) : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$ProductCharacteristicFacetsTableFilterComposer(
+                $db: db,
+                $table: table,
+              ),
+          createOrderingComposer: () =>
+              $$ProductCharacteristicFacetsTableOrderingComposer(
+                $db: db,
+                $table: table,
+              ),
+          createComputedFieldComposer: () =>
+              $$ProductCharacteristicFacetsTableAnnotationComposer(
+                $db: db,
+                $table: table,
+              ),
+          updateCompanionCallback:
+              ({
+                Value<int> productCode = const Value.absent(),
+                Value<int> attributeId = const Value.absent(),
+                Value<String> attributeName = const Value.absent(),
+                Value<String> charType = const Value.absent(),
+                Value<int?> boolValue = const Value.absent(),
+                Value<int?> stringValue = const Value.absent(),
+                Value<double?> numericValue = const Value.absent(),
+                Value<String?> adaptValue = const Value.absent(),
+                Value<DateTime> createdAt = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => ProductCharacteristicFacetsCompanion(
+                productCode: productCode,
+                attributeId: attributeId,
+                attributeName: attributeName,
+                charType: charType,
+                boolValue: boolValue,
+                stringValue: stringValue,
+                numericValue: numericValue,
+                adaptValue: adaptValue,
+                createdAt: createdAt,
+                rowid: rowid,
+              ),
+          createCompanionCallback:
+              ({
+                required int productCode,
+                required int attributeId,
+                required String attributeName,
+                required String charType,
+                Value<int?> boolValue = const Value.absent(),
+                Value<int?> stringValue = const Value.absent(),
+                Value<double?> numericValue = const Value.absent(),
+                Value<String?> adaptValue = const Value.absent(),
+                Value<DateTime> createdAt = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => ProductCharacteristicFacetsCompanion.insert(
+                productCode: productCode,
+                attributeId: attributeId,
+                attributeName: attributeName,
+                charType: charType,
+                boolValue: boolValue,
+                stringValue: stringValue,
+                numericValue: numericValue,
+                adaptValue: adaptValue,
+                createdAt: createdAt,
+                rowid: rowid,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map(
+                (e) => (
+                  e.readTable(table),
+                  $$ProductCharacteristicFacetsTableReferences(db, table, e),
+                ),
+              )
+              .toList(),
+          prefetchHooksCallback: ({productCode = false}) {
+            return PrefetchHooks(
+              db: db,
+              explicitlyWatchedTables: [],
+              addJoins:
+                  <
+                    T extends TableManagerState<
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic
+                    >
+                  >(state) {
+                    if (productCode) {
+                      state =
+                          state.withJoin(
+                                currentTable: table,
+                                currentColumn: table.productCode,
+                                referencedTable:
+                                    $$ProductCharacteristicFacetsTableReferences
+                                        ._productCodeTable(db),
+                                referencedColumn:
+                                    $$ProductCharacteristicFacetsTableReferences
+                                        ._productCodeTable(db)
+                                        .code,
+                              )
+                              as T;
+                    }
+
+                    return state;
+                  },
+              getPrefetchedDataCallback: (items) async {
+                return [];
+              },
+            );
+          },
+        ),
+      );
+}
+
+typedef $$ProductCharacteristicFacetsTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AppDatabase,
+      $ProductCharacteristicFacetsTable,
+      ProductCharacteristicFacetData,
+      $$ProductCharacteristicFacetsTableFilterComposer,
+      $$ProductCharacteristicFacetsTableOrderingComposer,
+      $$ProductCharacteristicFacetsTableAnnotationComposer,
+      $$ProductCharacteristicFacetsTableCreateCompanionBuilder,
+      $$ProductCharacteristicFacetsTableUpdateCompanionBuilder,
+      (
+        ProductCharacteristicFacetData,
+        $$ProductCharacteristicFacetsTableReferences,
+      ),
+      ProductCharacteristicFacetData,
+      PrefetchHooks Function({bool productCode})
+    >;
 
 class $AppDatabaseManager {
   final _$AppDatabase _db;
@@ -23560,4 +24745,10 @@ class $AppDatabaseManager {
       $$ProductFacetsTableTableManager(_db, _db.productFacets);
   $$ProductCategoryFacetsTableTableManager get productCategoryFacets =>
       $$ProductCategoryFacetsTableTableManager(_db, _db.productCategoryFacets);
+  $$ProductCharacteristicFacetsTableTableManager
+  get productCharacteristicFacets =>
+      $$ProductCharacteristicFacetsTableTableManager(
+        _db,
+        _db.productCharacteristicFacets,
+      );
 }
