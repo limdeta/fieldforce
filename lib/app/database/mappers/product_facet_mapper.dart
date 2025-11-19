@@ -42,7 +42,9 @@ class ProductFacetMapper {
   }
 
   /// Создаёт companions для характеристик продукта (bool, string, numeric).
-  /// Phase 3.1: реализована поддержка только bool характеристик.
+  /// Phase 3.1: bool характеристики
+  /// Phase 3.2: string характеристики
+  /// Phase 3.3: numeric характеристики
   static List<ProductCharacteristicFacetsCompanion> toCharacteristicCompanions(Product product) {
     final companions = <ProductCharacteristicFacetsCompanion>[];
     
@@ -63,8 +65,39 @@ class ProductFacetMapper {
       );
     }
     
-    // TODO Phase 3.2: String characteristics
-    // TODO Phase 3.3: Numeric characteristics
+    // String characteristics (Phase 3.2)
+    for (final char in product.stringCharacteristics) {
+      companions.add(
+        ProductCharacteristicFacetsCompanion(
+          productCode: Value(product.code),
+          attributeId: Value(char.attributeId),
+          attributeName: Value(char.attributeName),
+          charType: const Value('string'),
+          boolValue: const Value.absent(),
+          stringValue: Value(char.value as int), // ID значения из справочника
+          numericValue: const Value.absent(),
+          adaptValue: Value(char.adaptValue), // Человекочитаемое название
+          createdAt: Value(DateTime.now()),
+        ),
+      );
+    }
+    
+    // Numeric characteristics (Phase 3.3)
+    for (final char in product.numericCharacteristics) {
+      companions.add(
+        ProductCharacteristicFacetsCompanion(
+          productCode: Value(product.code),
+          attributeId: Value(char.attributeId),
+          attributeName: Value(char.attributeName),
+          charType: const Value('numeric'),
+          boolValue: const Value.absent(),
+          stringValue: const Value.absent(),
+          numericValue: Value(char.value as double?), // Числовое значение
+          adaptValue: Value(char.adaptValue), // Единица измерения или описание
+          createdAt: Value(DateTime.now()),
+        ),
+      );
+    }
     
     return companions;
   }

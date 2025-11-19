@@ -127,7 +127,7 @@ class ProductProtobufConverter {
       id: pbChar.id,
       type: 'string',
       value: pbChar.value,
-      adaptValue: null,
+      adaptValue: pbChar.hasAdaptValue() ? pbChar.adaptValue : null,
     );
   }
 
@@ -138,7 +138,7 @@ class ProductProtobufConverter {
       id: pbChar.id,
       type: 'bool',
       value: pbChar.value,
-      adaptValue: null,
+      adaptValue: null, // BoolCharacteristic не имеет adaptValue в protobuf схеме
     );
   }
 }

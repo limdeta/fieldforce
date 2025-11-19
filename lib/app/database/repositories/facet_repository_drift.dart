@@ -178,9 +178,17 @@ class DriftFacetRepository implements FacetRepository {
       }
 
       // Phase 3.1: Динамические bool характеристики
+      // Phase 3.2: Динамические string характеристики
+      // Phase 3.3: Динамические numeric характеристики
       if (filter.hasFilteringContext) {
         final boolCharGroups = await _fetchBoolCharacteristics(parts, filter);
         groups.addAll(boolCharGroups);
+        
+        final stringCharGroups = await _fetchStringCharacteristics(parts, filter);
+        groups.addAll(stringCharGroups);
+        
+        final numericCharGroups = await _fetchNumericCharacteristics(parts, filter);
+        groups.addAll(numericCharGroups);
       }
 
       return Right(groups);
@@ -238,7 +246,7 @@ class DriftFacetRepository implements FacetRepository {
           ? 'INNER JOIN product_category_facets pcf ON pcf.product_code = pf.product_code'
           : '';
 
-      // Phase 3.1: добавляем фильтрацию по характеристикам
+      // Phase 3.1-3.2: добавляем фильтрацию по характеристикам (bool и string)
       final charJoins = StringBuffer();
       final charVariables = <Variable>[];
       
@@ -250,15 +258,44 @@ class DriftFacetRepository implements FacetRepository {
           if (values.isEmpty) continue;
           
           final alias = 'pcf_char_$charIndex';
-          charJoins.write('''
+          
+          // Определяем тип характеристики по первому значению
+          final firstValue = values.first;
+          if (firstValue is bool) {
+            // Bool characteristic
+            charJoins.write('''
             INNER JOIN product_characteristic_facets $alias 
               ON $alias.product_code = pf.product_code 
               AND $alias.attribute_id = ? 
               AND $alias.char_type = 'bool' 
               AND $alias.bool_value IN (${_placeholders(values.length)})
           ''');
-          charVariables.add(Variable.withInt(attrId));
-          charVariables.addAll(values.map((v) => Variable.withInt(v == true ? 1 : 0)));
+            charVariables.add(Variable.withInt(attrId));
+            charVariables.addAll(values.map((v) => Variable.withInt(v == true ? 1 : 0)));
+          } else if (firstValue is int) {
+            // String characteristic (value = ID из справочника)
+            charJoins.write('''
+            INNER JOIN product_characteristic_facets $alias 
+              ON $alias.product_code = pf.product_code 
+              AND $alias.attribute_id = ? 
+              AND $alias.char_type = 'string' 
+              AND $alias.string_value IN (${_placeholders(values.length)})
+          ''');
+            charVariables.add(Variable.withInt(attrId));
+            charVariables.addAll(values.map((v) => Variable.withInt(v as int)));
+          } else if (firstValue is num) {
+            // Numeric characteristic: список значений [value1, value2, ...]
+            charJoins.write('''
+            INNER JOIN product_characteristic_facets $alias 
+              ON $alias.product_code = pf.product_code 
+              AND $alias.attribute_id = ? 
+              AND $alias.char_type = 'numeric' 
+              AND $alias.numeric_value IN (${_placeholders(values.length)})
+          ''');
+            charVariables.add(Variable.withInt(attrId));
+            charVariables.addAll(values.map((v) => Variable.withReal((v as num).toDouble())));
+          }
+          
           charIndex++;
         }
       }
@@ -300,10 +337,6 @@ class DriftFacetRepository implements FacetRepository {
         ${parts.whereClause}
         ORDER BY pf.product_code ASC
         '''.trim();
-
-      _logger.info('resolveProductCodes SQL:\n$sql');
-      _logger.info('resolveProductCodes variables: ${allVariables.map((v) => v.value).toList()}');
-      _logger.info('resolveProductCodes selectedCharacteristics: ${filter.selectedCharacteristics}');
 
       final rows = await _database.customSelect(
         sql,
@@ -462,6 +495,181 @@ class DriftFacetRepository implements FacetRepository {
 
     return groups;
   }
+
+  /// Агрегация string характеристик (Phase 3.2)
+  /// Ограничиваем топ-20 значений на атрибут из-за возможного большого количества вариантов
+  Future<List<FacetGroup>> _fetchStringCharacteristics(
+    _FacetSqlParts parts,
+    FacetFilter filter,
+  ) async {
+    // Используем ROW_NUMBER() для ограничения количества значений на атрибут
+    final sql = '''
+      WITH ranked_values AS (
+        SELECT 
+          pcf_char.attribute_id,
+          pcf_char.attribute_name,
+          pcf_char.string_value,
+          pcf_char.adapt_value,
+          COUNT(*) AS value_count,
+          ROW_NUMBER() OVER (
+            PARTITION BY pcf_char.attribute_id 
+            ORDER BY COUNT(*) DESC
+          ) AS rn
+        FROM product_characteristic_facets pcf_char
+        INNER JOIN product_facets pf ON pf.product_code = pcf_char.product_code
+        ${parts.stockFilterJoin}
+        ${parts.categoryFilterJoin}
+        ${parts.whereClause}
+          AND pcf_char.char_type = 'string'
+          AND pcf_char.string_value IS NOT NULL
+        GROUP BY pcf_char.attribute_id, pcf_char.attribute_name, pcf_char.string_value, pcf_char.adapt_value
+      )
+      SELECT 
+        attribute_id,
+        attribute_name,
+        string_value,
+        adapt_value,
+        value_count
+      FROM ranked_values
+      WHERE rn <= 20
+      ORDER BY attribute_name, value_count DESC
+    '''.trim();
+
+    final rows = await _database.customSelect(
+      sql,
+      variables: parts.buildVariables(),
+      readsFrom: {
+        _database.productCharacteristicFacets,
+        _database.productFacets,
+        if (parts.requiresCategoryJoin) _database.productCategoryFacets,
+        if (parts.requiresStockJoin) _database.stockItems,
+      },
+    ).get();
+
+    // Группируем по attributeId
+    final Map<int, _StringCharacteristicAgg> grouped = {};
+    for (final row in rows) {
+      final attrId = row.data['attribute_id'] as int;
+      final attrName = row.data['attribute_name'] as String;
+      final stringValue = row.data['string_value'] as int;
+      final adaptValue = row.data['adapt_value'] as String?;
+      final count = row.data['value_count'] as int;
+      
+      if (adaptValue == null || adaptValue.isEmpty || adaptValue == 'null') {
+        continue; // Пропускаем значения без человекочитаемого названия
+      }
+      
+      grouped.putIfAbsent(
+        attrId, 
+        () => _StringCharacteristicAgg(attrId, attrName),
+      );
+      grouped[attrId]!.addValue(stringValue, adaptValue, count);
+    }
+
+    // Преобразуем в FacetGroup
+    final groups = <FacetGroup>[];
+    for (final agg in grouped.values) {
+      if (agg.values.isEmpty) continue;
+      
+      final selected = filter.selectedCharacteristics[agg.attributeId] ?? [];
+      final values = agg.values.map((v) {
+        return FacetValue(
+          value: v.stringValue,
+          label: v.adaptValue,
+          count: v.count,
+          selected: selected.contains(v.stringValue),
+        );
+      }).toList();
+      
+      groups.add(FacetGroup(
+        key: 'attr[${agg.attributeId}]',
+        title: agg.attributeName,
+        type: FacetGroupType.list, // String = list с чекбоксами
+        values: values,
+      ));
+    }
+
+    return groups;
+  }
+
+  /// Агрегация numeric характеристик (Phase 3.3)
+  /// Показываем список уникальных значений с чекбоксами (как string характеристики)
+  Future<List<FacetGroup>> _fetchNumericCharacteristics(
+    _FacetSqlParts parts,
+    FacetFilter filter,
+  ) async {
+    final sql = '''
+      SELECT 
+        pcf_char.attribute_id,
+        pcf_char.attribute_name,
+        pcf_char.numeric_value,
+        pcf_char.adapt_value,
+        COUNT(*) AS value_count
+      FROM product_characteristic_facets pcf_char
+      INNER JOIN product_facets pf ON pf.product_code = pcf_char.product_code
+      ${parts.stockFilterJoin}
+      ${parts.categoryFilterJoin}
+      ${parts.whereClause}
+        AND pcf_char.char_type = 'numeric'
+        AND pcf_char.numeric_value IS NOT NULL
+      GROUP BY pcf_char.attribute_id, pcf_char.attribute_name, pcf_char.numeric_value, pcf_char.adapt_value
+      ORDER BY pcf_char.attribute_name, pcf_char.numeric_value
+    '''.trim();
+
+    final rows = await _database.customSelect(
+      sql,
+      variables: parts.buildVariables(),
+      readsFrom: {
+        _database.productCharacteristicFacets,
+        _database.productFacets,
+        if (parts.requiresCategoryJoin) _database.productCategoryFacets,
+        if (parts.requiresStockJoin) _database.stockItems,
+      },
+    ).get();
+
+    // Группируем по attributeId
+    final Map<int, _NumericCharacteristicAgg> grouped = {};
+    for (final row in rows) {
+      final attrId = row.data['attribute_id'] as int;
+      final attrName = row.data['attribute_name'] as String;
+      final numericValue = row.data['numeric_value'] as double;
+      final adaptValue = row.data['adapt_value'] as String?; // Единица измерения
+      final count = row.data['value_count'] as int;
+      
+      grouped.putIfAbsent(
+        attrId, 
+        () => _NumericCharacteristicAgg(attrId, attrName, adaptValue),
+      );
+      grouped[attrId]!.addValue(numericValue, count);
+    }
+
+    // Преобразуем в FacetGroup
+    final groups = <FacetGroup>[];
+    for (final agg in grouped.values) {
+      if (agg.values.isEmpty) continue;
+      
+      final selected = filter.selectedCharacteristics[agg.attributeId] ?? [];
+      final unit = agg.unit?.isNotEmpty == true ? ' ${agg.unit}' : '';
+      
+      final values = agg.values.map((v) {
+        return FacetValue(
+          value: v.numericValue,
+          label: '${v.numericValue.toStringAsFixed(1)}$unit',
+          count: v.count,
+          selected: selected.contains(v.numericValue),
+        );
+      }).toList();
+      
+      groups.add(FacetGroup(
+        key: 'attr[${agg.attributeId}]',
+        title: agg.attributeName,
+        type: FacetGroupType.list, // Список чекбоксов, как у string
+        values: values,
+      ));
+    }
+
+    return groups;
+  }
 }
 
 /// Вспомогательный класс для группировки характеристик
@@ -480,6 +688,50 @@ class _CharValue {
   final int count;
   
   _CharValue(this.label, this.value, this.count);
+}
+
+/// Вспомогательный класс для группировки string характеристик (Phase 3.2)
+class _StringCharacteristicAgg {
+  final int attributeId;
+  final String attributeName;
+  final List<_StringCharValue> values = [];
+  
+  _StringCharacteristicAgg(this.attributeId, this.attributeName);
+  
+  void addValue(int stringValue, String adaptValue, int count) {
+    values.add(_StringCharValue(stringValue, adaptValue, count));
+  }
+}
+
+/// Вспомогательный класс для значения string характеристики
+class _StringCharValue {
+  final int stringValue;
+  final String adaptValue;
+  final int count;
+  
+  _StringCharValue(this.stringValue, this.adaptValue, this.count);
+}
+
+/// Вспомогательный класс для группировки numeric характеристик (Phase 3.3)
+class _NumericCharacteristicAgg {
+  final int attributeId;
+  final String attributeName;
+  final String? unit; // Единица измерения из adaptValue
+  final List<_NumericCharValue> values = [];
+  
+  _NumericCharacteristicAgg(this.attributeId, this.attributeName, this.unit);
+  
+  void addValue(double numericValue, int count) {
+    values.add(_NumericCharValue(numericValue, count));
+  }
+}
+
+/// Вспомогательный класс для значения numeric характеристики
+class _NumericCharValue {
+  final double numericValue;
+  final int count;
+  
+  _NumericCharValue(this.numericValue, this.count);
 }
 
 class _FacetSqlParts {

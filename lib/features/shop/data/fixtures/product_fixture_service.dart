@@ -98,8 +98,42 @@ class ProductFixtureService {
         "name": "Эмали НЦ"
       }
     ],
-    "numericCharacteristics": [],
-    "stringCharacteristics": [],
+    "numericCharacteristics": [
+      {
+        "attributeId": 50,
+        "attributeName": "Вес",
+        "id": 5001,
+        "type": "numeric",
+        "value": 0.5,
+        "adaptValue": "кг"
+      },
+      {
+        "attributeId": 51,
+        "attributeName": "Объем",
+        "id": 5101,
+        "type": "numeric",
+        "value": 1.0,
+        "adaptValue": "л"
+      }
+    ],
+    "stringCharacteristics": [
+      {
+        "attributeId": 25,
+        "attributeName": "Цвет",
+        "id": 1001,
+        "type": "string",
+        "value": 1001,
+        "adaptValue": "Красный"
+      },
+      {
+        "attributeId": 26,
+        "attributeName": "Размер",
+        "id": 2001,
+        "type": "string",
+        "value": 2001,
+        "adaptValue": "Средний"
+      }
+    ],
     "boolCharacteristics": [
       {
         "attributeId": 1,
@@ -176,8 +210,50 @@ class ProductFixtureService {
         "name": "Эмали НЦ"
       }
     ],
-    "numericCharacteristics": [],
-    "stringCharacteristics": [],
+    "numericCharacteristics": [
+      {
+        "attributeId": 50,
+        "attributeName": "Вес",
+        "id": 5002,
+        "type": "numeric",
+        "value": 0.8,
+        "adaptValue": "кг"
+      },
+      {
+        "attributeId": 51,
+        "attributeName": "Объем",
+        "id": 5102,
+        "type": "numeric",
+        "value": 1.5,
+        "adaptValue": "л"
+      }
+    ],
+    "stringCharacteristics": [
+      {
+        "attributeId": 25,
+        "attributeName": "Цвет",
+        "id": 1002,
+        "type": "string",
+        "value": 1002,
+        "adaptValue": "Синий"
+      },
+      {
+        "attributeId": 26,
+        "attributeName": "Размер",
+        "id": 2002,
+        "type": "string",
+        "value": 2002,
+        "adaptValue": "Большой"
+      },
+      {
+        "attributeId": 27,
+        "attributeName": "Тип упаковки",
+        "id": 3001,
+        "type": "string",
+        "value": 3001,
+        "adaptValue": "Банка"
+      }
+    ],
     "boolCharacteristics": [
       {
         "attributeId": 1,
