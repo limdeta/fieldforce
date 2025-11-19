@@ -428,12 +428,7 @@ class DriftCategoryRepository implements CategoryRepository {
       return rows.map((row) => row.id).toList();
     }
 
-    final filterResult = await _warehouseFilterService.resolveForCurrentSession(bypassInDev: false);
-
-    if (filterResult.devBypass) {
-      _logger.fine('Dev режим — расчёт категорий выполняется без фильтрации складов');
-      return null;
-    }
+    final filterResult = await _warehouseFilterService.resolveForCurrentSession();
 
     if (filterResult.failure != null) {
       _logger.warning(

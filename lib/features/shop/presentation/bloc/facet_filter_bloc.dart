@@ -32,6 +32,7 @@ class FacetFilterBloc extends Bloc<FacetFilterEvent, FacetFilterState> {
 
   static const int _globalCacheKey = -1;
   final Map<int, FacetFilter> _appliedFiltersCache = <int, FacetFilter>{};
+  final Map<int, List<int>?> _allowedProductCodesCache = <int, List<int>?>{};
 
   int _cacheKey(int? categoryId) => categoryId ?? _globalCacheKey;
 
@@ -73,23 +74,26 @@ class FacetFilterBloc extends Bloc<FacetFilterEvent, FacetFilterState> {
         _logger.warning(
           'Failed to resolve category scope for $categoryId: $message',
         );
+        final fallbackWorking = state.workingFilter.copyWith(
+          baseCategoryId: categoryId,
+          scopeCategoryIds: [categoryId],
+          selectedCategoryIds: const <int>[],
+        );
+
         emit(
           state.copyWith(
             isLoading: false,
             errorMessage: message,
             categoryId: categoryId,
             groups: const <FacetGroup>[],
-            workingFilter: state.workingFilter.copyWith(
-              baseCategoryId: categoryId,
-              scopeCategoryIds: [categoryId],
-              selectedCategoryIds: const <int>[],
-            ),
+            workingFilter: fallbackWorking,
             appliedFilter: state.appliedFilter.copyWith(
               baseCategoryId: categoryId,
               scopeCategoryIds: [categoryId],
               selectedCategoryIds: const <int>[],
             ),
             hasLoadedOnce: true,
+            allowedProductCodes: _allowedProductCodesCache[_cacheKey(categoryId)],
           ),
         );
         return;
@@ -109,6 +113,7 @@ class FacetFilterBloc extends Bloc<FacetFilterEvent, FacetFilterState> {
       baseCategoryId: categoryId,
       scopeCategoryIds: scopeIds.toList(growable: false),
     );
+    final cachedAllowedCodes = _allowedProductCodesCache[cacheKey];
 
     if (cachedFilter != null) {
       _logger.info(
@@ -135,6 +140,7 @@ class FacetFilterBloc extends Bloc<FacetFilterEvent, FacetFilterState> {
           groups: const <FacetGroup>[],
           appliedBadges: const <FacetSelectionBadge>[],
           hasLoadedOnce: true,
+          allowedProductCodes: cachedAllowedCodes,
         ),
       );
       return;
@@ -156,6 +162,7 @@ class FacetFilterBloc extends Bloc<FacetFilterEvent, FacetFilterState> {
         groups: groups,
         appliedBadges: badges,
         hasLoadedOnce: true,
+        allowedProductCodes: cachedAllowedCodes,
       ),
     );
 
@@ -225,11 +232,34 @@ class FacetFilterBloc extends Bloc<FacetFilterEvent, FacetFilterState> {
       'Applying facet filter for category=$categoryId -> ${_filterSummary(state.workingFilter)}',
     );
 
+    if (state.workingFilter.isEmpty) {
+      _logger.info('Facet filter cleared for category=$categoryId, skipping heavy resolve');
+      final clearedFilter = state.workingFilter;
+      final clearedGroupsResult = await _getFacetsUseCase(clearedFilter);
+      final clearedGroups = clearedGroupsResult.fold(
+        (_) => _syncGroupSelections(state.groups, clearedFilter),
+        (groups) => _syncGroupSelections(groups, clearedFilter),
+      );
+      final cacheKey = _cacheKey(categoryId);
+      _appliedFiltersCache[cacheKey] = clearedFilter;
+      _allowedProductCodesCache[cacheKey] = null;
+      emit(
+        state.copyWith(
+          isApplying: false,
+          appliedFilter: clearedFilter,
+          workingFilter: clearedFilter,
+          groups: clearedGroups,
+          appliedBadges: const <FacetSelectionBadge>[],
+          applyError: null,
+          allowedProductCodes: null,
+        ),
+      );
+      return;
+    }
+
     emit(state.copyWith(isApplying: true, resetApplyError: true));
 
-    final resolveResult = await _resolveFacetProductCodesUseCase(
-      state.workingFilter,
-    );
+    final resolveResult = await _resolveFacetProductCodesUseCase(state.workingFilter);
     if (resolveResult.isLeft()) {
       final failure = resolveResult.fold((l) => l, (_) => null);
       _logger.warning(
@@ -245,17 +275,13 @@ class FacetFilterBloc extends Bloc<FacetFilterEvent, FacetFilterState> {
     }
 
     final codes = resolveResult.getOrElse(() => const <int>[]);
-    final normalizedCodes = state.workingFilter.isEmpty
-        ? null
-        : List<int>.unmodifiable(codes);
+    final normalizedCodes = List<int>.unmodifiable(codes);
 
     _logger.info(
-      'Resolved allowed product codes for category=$categoryId: ${normalizedCodes?.length ?? 0}',
+      'Resolved allowed product codes for category=$categoryId: ${normalizedCodes.length}',
     );
 
-    final appliedFilter = state.workingFilter.copyWith(
-      restrictedProductCodes: normalizedCodes,
-    );
+    final appliedFilter = state.workingFilter;
 
     final facetsResult = await _getFacetsUseCase(state.workingFilter);
     final refreshedGroups = facetsResult.fold(
@@ -266,6 +292,7 @@ class FacetFilterBloc extends Bloc<FacetFilterEvent, FacetFilterState> {
 
     final cacheKey = _cacheKey(categoryId);
     _appliedFiltersCache[cacheKey] = appliedFilter;
+    _allowedProductCodesCache[cacheKey] = normalizedCodes;
 
     emit(
       state.copyWith(
@@ -275,6 +302,7 @@ class FacetFilterBloc extends Bloc<FacetFilterEvent, FacetFilterState> {
         groups: refreshedGroups,
         appliedBadges: refreshedBadges,
         applyError: null,
+        allowedProductCodes: normalizedCodes,
       ),
     );
 
@@ -295,6 +323,8 @@ class FacetFilterBloc extends Bloc<FacetFilterEvent, FacetFilterState> {
       state.copyWith(workingFilter: state.appliedFilter, groups: syncedGroups),
     );
   }
+
+  
 
   FacetFilter _updateFilterForValue(
     FacetFilter filter,
@@ -342,8 +372,7 @@ class FacetFilterBloc extends Bloc<FacetFilterEvent, FacetFilterState> {
       typeIds: const <int>[],
       selectedCategoryIds: const <int>[],
       onlyNovelty: false,
-      onlyPopular: false,
-      restrictedProductCodes: null,
+      onlyPopular: false
     );
   }
 

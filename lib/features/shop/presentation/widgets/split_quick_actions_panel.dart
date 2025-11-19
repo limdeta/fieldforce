@@ -70,12 +70,12 @@ class _SplitQuickActionsPanelState extends State<SplitQuickActionsPanel>
       right: 8,
       child: Material(
         elevation: 4,
-        borderRadius: BorderRadius.circular(24),
+        borderRadius: BorderRadius.zero,
         color: theme.colorScheme.surface,
         child: AnimatedContainer(
           duration: const Duration(milliseconds: 200),
           curve: Curves.easeInOut,
-          padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 4),
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
           child: Row(
             mainAxisSize: MainAxisSize.min,
             children: [
@@ -144,12 +144,12 @@ class _SplitQuickActionsPanelState extends State<SplitQuickActionsPanel>
       clipBehavior: Clip.none,
       children: [
         IconButton(
-          icon: Icon(icon, size: 20),
-          iconSize: 20,
-          padding: const EdgeInsets.all(8),
+          icon: Icon(icon, size: 24),
+          iconSize: 24,
+          padding: const EdgeInsets.all(12),
           constraints: const BoxConstraints(
-            minWidth: 36,
-            minHeight: 36,
+            minWidth: 48,
+            minHeight: 48,
           ),
           tooltip: tooltip,
           onPressed: onPressed,
@@ -190,14 +190,14 @@ class _SplitQuickActionsPanelState extends State<SplitQuickActionsPanel>
         duration: const Duration(milliseconds: 200),
         child: Icon(
           _isExpanded ? Icons.close : Icons.menu,
-          size: 20,
+          size: 26,
         ),
       ),
-      iconSize: 20,
-      padding: const EdgeInsets.all(8),
+      iconSize: 26,
+      padding: const EdgeInsets.all(12),
       constraints: const BoxConstraints(
-        minWidth: 36,
-        minHeight: 36,
+        minWidth: 52,
+        minHeight: 52,
       ),
       tooltip: _isExpanded ? 'Свернуть' : 'Меню',
       onPressed: _toggleExpand,

@@ -160,57 +160,53 @@ class ProductCardShowcase extends StatelessWidget {
   }
 
   Product _createTestProduct() {
-    return Product(
-      title: 'Нитроэмаль Расцвет НЦ-132КП С золотисто-желтая 0.7 кг',
-      barcodes: ['4605365042182'],
-      code: 102969,
-      bcode: 44759,
-      catalogId: 44759,
-      novelty: false,
-      popular: true,
-      isMarked: false,
-      brand: Brand(
-        searchPriority: 0,
-        id: 328,
-        name: 'Расцвет',
-        adaptedName: null,
-      ),
-      images: [],
-      amountInPackage: 14,
-      vendorCode: '4605365042182',
-      categoriesInstock: [],
-      numericCharacteristics: [],
-      stringCharacteristics: [],
-      boolCharacteristics: [],
-      canBuy: true,
-    );
+    return Product.fromJson({
+      'title': 'Нитроэмаль Расцвет НЦ-132КП С золотисто-желтая 0.7 кг',
+      'barcodes': ['4605365042182'],
+      'code': 102969,
+      'bcode': 44759,
+      'catalogId': 44759,
+      'novelty': false,
+      'popular': true,
+      'isMarked': false,
+      'brand': {
+        'search_priority': 0,
+        'id': 328,
+        'name': 'Расцвет',
+      },
+      'images': const [],
+      'amountInPackage': 14,
+      'vendorCode': '4605365042182',
+      'categoriesInstock': const [],
+      'numericCharacteristics': const [],
+      'stringCharacteristics': const [],
+      'boolCharacteristics': const [],
+    });
   }
 
   Product _createTestProduct2() {
-    return Product(
-      title: 'Краска акриловая белая 1.5 кг',
-      barcodes: ['1234567890123'],
-      code: 123456,
-      bcode: 12345,
-      catalogId: 12345,
-      novelty: true,
-      popular: false,
-      isMarked: false,
-      brand: Brand(
-        searchPriority: 0,
-        id: 123,
-        name: 'ProPaint',
-        adaptedName: null,
-      ),
-      images: [],
-      amountInPackage: 6,
-      vendorCode: '1234567890123',
-      categoriesInstock: [],
-      numericCharacteristics: [],
-      stringCharacteristics: [],
-      boolCharacteristics: [],
-      canBuy: true,
-    );
+    return Product.fromJson({
+      'title': 'Краска акриловая белая 1.5 кг',
+      'barcodes': ['1234567890123'],
+      'code': 123456,
+      'bcode': 12345,
+      'catalogId': 12345,
+      'novelty': true,
+      'popular': false,
+      'isMarked': false,
+      'brand': {
+        'search_priority': 0,
+        'id': 123,
+        'name': 'ProPaint',
+      },
+      'images': const [],
+      'amountInPackage': 6,
+      'vendorCode': '1234567890123',
+      'categoriesInstock': const [],
+      'numericCharacteristics': const [],
+      'stringCharacteristics': const [],
+      'boolCharacteristics': const [],
+    });
   }
 
   ProductWithStock _createTestProductWithStock(Product product) {

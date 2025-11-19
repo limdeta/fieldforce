@@ -14,9 +14,6 @@ abstract class ProductRepository {
   /// Получить продукт по ID
   Future<Either<Failure, Product?>> getProductById(int id);
 
-  /// Получить продукт по catalogId (ID из бекенда)  
-  Future<Either<Failure, Product?>> getProductByCatalogId(int catalogId);
-
   /// Получить продукт по коду товара
   Future<Either<Failure, Product?>> getProductByCode(int code);
 
@@ -50,8 +47,8 @@ abstract class ProductRepository {
   /// Обновить продукт
   Future<Either<Failure, void>> updateProduct(Product product);
 
-  /// Удалить продукт
-  Future<Either<Failure, void>> deleteProduct(int catalogId);
+  /// Удалить продукт по коду
+  Future<Either<Failure, void>> deleteProduct(int code);
 
   /// Удалить все продукты
   Future<Either<Failure, void>> deleteAllProducts();

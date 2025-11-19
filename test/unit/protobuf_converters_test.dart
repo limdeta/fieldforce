@@ -17,6 +17,7 @@ void main() {
         isMarked: true,
         novelty: true,
         popular: false,
+        catalogId: 555,
         priceListCategoryId: 100,
         canBuy: true,
         description: 'Описание тестового продукта',
@@ -34,9 +35,26 @@ void main() {
       expect(domainProduct.isMarked, isTrue);
       expect(domainProduct.novelty, isTrue);
       expect(domainProduct.popular, isFalse);
-      expect(domainProduct.catalogId, equals(100));
+      expect(domainProduct.catalogId, equals(555));
+      expect(domainProduct.priceListCategoryId, equals(100));
       expect(domainProduct.canBuy, isTrue);
       expect(domainProduct.description, equals('Описание тестового продукта'));
+    });
+
+    test('ProductProtobufConverter treats missing canBuy flag as purchasable', () {
+      // Arrange
+      final pbProduct = pb.Product(
+        code: 555,
+        bcode: 777,
+        title: 'Без canBuy',
+      );
+      expect(pbProduct.hasCanBuy(), isFalse);
+
+      // Act
+      final domainProduct = ProductProtobufConverter.fromProtobuf(pbProduct);
+
+      // Assert
+      expect(domainProduct.canBuy, isTrue);
     });
 
     test('StockItemProtobufConverter преобразует protobuf RegionalStockItem в domain StockItem', () {
@@ -51,6 +69,7 @@ void main() {
       final pbStockItem = stock_pb.RegionalStockItem(
         id: 555,
         productCode: 12345,
+        stock: 9999,
         warehouse: pbWarehouse,
         publicStock: 'available',
         multiplicity: 10,
@@ -67,7 +86,7 @@ void main() {
       expect(domainStockItem.warehouseName, equals('Центральный склад'));
       expect(domainStockItem.warehouseVendorId, equals('vendor123'));
       expect(domainStockItem.isPickUpPoint, isFalse);
-      expect(domainStockItem.stock, equals(9999)); // 'available' парсится в 9999
+      expect(domainStockItem.stock, equals(9999));
       expect(domainStockItem.multiplicity, equals(10));
       expect(domainStockItem.publicStock, equals('available'));
       expect(domainStockItem.defaultPrice, equals(199900));
@@ -95,27 +114,27 @@ void main() {
       expect(domainProducts.last.canBuy, isFalse);
     });
 
-    test('StockItemProtobufConverter парсит разные типы publicStock', () {
-      // Arrange & Act & Assert
-      expect(StockItemProtobufConverter.fromProtobuf(
-        stock_pb.RegionalStockItem(publicStock: 'available', regionalBasePrice: 1000)
-      ).stock, equals(9999));
+    test('StockItemProtobufConverter сохраняет numeric stock независимо от publicStock', () {
+      final cases = [
+        {'label': 'available', 'stock': 9999},
+        {'label': 'limited', 'stock': 5},
+        {'label': '42', 'stock': 42},
+        {'label': '', 'stock': 0},
+        {'label': 'invalid', 'stock': 13},
+      ];
 
-      expect(StockItemProtobufConverter.fromProtobuf(
-        stock_pb.RegionalStockItem(publicStock: 'limited', regionalBasePrice: 1000)
-      ).stock, equals(5));
-
-      expect(StockItemProtobufConverter.fromProtobuf(
-        stock_pb.RegionalStockItem(publicStock: '42', regionalBasePrice: 1000)
-      ).stock, equals(42));
-
-      expect(StockItemProtobufConverter.fromProtobuf(
-        stock_pb.RegionalStockItem(publicStock: '', regionalBasePrice: 1000)
-      ).stock, equals(0));
-
-      expect(StockItemProtobufConverter.fromProtobuf(
-        stock_pb.RegionalStockItem(publicStock: 'invalid', regionalBasePrice: 1000)
-      ).stock, equals(0));
+      for (final testCase in cases) {
+        final stockItem = StockItemProtobufConverter.fromProtobuf(
+          stock_pb.RegionalStockItem(
+            productCode: 1,
+            stock: testCase['stock'] as int,
+            publicStock: testCase['label'] as String,
+            regionalBasePrice: 1000,
+          ),
+        );
+        expect(stockItem.stock, equals(testCase['stock']));
+        expect(stockItem.publicStock, equals(testCase['label']));
+      }
     });
   });
 }

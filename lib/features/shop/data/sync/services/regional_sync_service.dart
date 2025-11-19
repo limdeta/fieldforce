@@ -183,6 +183,7 @@ class RegionalSyncService {
 
   /// Конвертирует protobuf Product в ProductInfo
   ProductInfo convertProductToInfo(Product pbProduct) {
+    final canBuy = pbProduct.hasCanBuy() ? pbProduct.canBuy : true;
     return ProductInfo(
       code: pbProduct.code,
       bcode: pbProduct.bcode,
@@ -193,7 +194,7 @@ class RegionalSyncService {
       novelty: pbProduct.novelty,
       popular: pbProduct.popular,
       amountInPackage: pbProduct.amountInPackage,
-      canBuy: pbProduct.canBuy,
+      canBuy: canBuy,
       brandName: pbProduct.hasBrand() ? pbProduct.brand.name : null,
       manufacturerName: pbProduct.hasManufacturer() ? pbProduct.manufacturer.name : null,
       categoryName: pbProduct.hasCategory() ? pbProduct.category.name : null,

@@ -20,6 +20,7 @@ import 'package:fieldforce/features/shop/presentation/bloc/facet_filter_state.da
 import 'package:fieldforce/features/shop/presentation/pages/product_detail_page.dart';
 import 'package:fieldforce/features/shop/presentation/widgets/catalog_app_bar_actions.dart';
 import 'package:fieldforce/features/shop/presentation/widgets/facet_filter_scope.dart';
+import 'package:fieldforce/features/shop/presentation/widgets/facet_filter_swipe_overlay.dart';
 import 'package:fieldforce/features/shop/presentation/widgets/facet_filter_summary_bar.dart';
 import 'package:fieldforce/features/shop/presentation/widgets/product_catalog_card_widget.dart';
 import 'package:fieldforce/shared/widgets/cached_network_image_widget.dart';
@@ -206,10 +207,10 @@ class _CategoryProductsPageState extends State<CategoryProductsPage> {
 
   Future<void> _loadProductsInternal({required bool reset}) async {
     _logger.info('🔄 _loadProductsInternal: categoryId=${widget.category.id}, name="${widget.category.name}", reset=$reset, offset=$_currentOffset, limit=$_limit');
-  final filterResult = await _warehouseFilterService.resolveForCurrentSession(bypassInDev: false);
-    _logger.info('🔄 _loadProductsInternal: активный регион=${filterResult.regionCode}, devBypass=${filterResult.devBypass}, warehouses=${filterResult.warehouses.length}');
+    final filterResult = await _warehouseFilterService.resolveForCurrentSession();
+    _logger.info('🔄 _loadProductsInternal: активный регион=${filterResult.regionCode}, warehouses=${filterResult.warehouses.length}');
 
-    if (!filterResult.devBypass && !filterResult.hasWarehouses) {
+    if (!filterResult.hasWarehouses) {
       setState(() {
         _isLoading = false;
         _error = 'Для региона ${filterResult.regionCode} нет доступных складов. Выполните синхронизацию данных.';
@@ -301,16 +302,20 @@ class _CategoryProductsPageState extends State<CategoryProductsPage> {
   Widget build(BuildContext context) {
     return FacetFilterScope(
       categoryId: widget.category.id,
-      child: BlocListener<FacetFilterBloc, FacetFilterState>(
-        listenWhen: (previous, current) =>
-            !_areCodeListsEqual(
-              previous.appliedFilter.restrictedProductCodes,
-              current.appliedFilter.restrictedProductCodes,
+      child: Builder(
+        builder: (scopedContext) {
+          final facetBloc = FacetFilterScope.maybeBlocOf(scopedContext)!;
+          return BlocListener<FacetFilterBloc, FacetFilterState>(
+            bloc: facetBloc,
+            listenWhen: (previous, current) =>
+                !_areCodeListsEqual(
+                  previous.allowedProductCodes,
+                  current.allowedProductCodes,
+                ),
+            listener: (context, state) => _onAllowedProductCodesChanged(
+              state.allowedProductCodes,
             ),
-        listener: (context, state) => _onAllowedProductCodesChanged(
-          state.appliedFilter.restrictedProductCodes,
-        ),
-        child: Scaffold(
+            child: Scaffold(
           appBar: AppBar(
         title: Text(
           widget.category.name,
@@ -367,8 +372,14 @@ class _CategoryProductsPageState extends State<CategoryProductsPage> {
           const HomeIconButton(),
         ],
       ),
-          body: _buildBody(),
-        ),
+              body: FacetFilterSwipeOverlay(
+                categoryId: widget.category.id,
+                blocOverride: facetBloc,
+                child: _buildBody(),
+              ),
+            ),
+          );
+        },
       ),
     );
   }

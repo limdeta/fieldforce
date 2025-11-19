@@ -186,14 +186,7 @@ class DriftFacetRepository implements FacetRepository {
 
   Future<_WarehouseConstraint> _resolveWarehouseConstraint() async {
     try {
-      final filterResult = await _warehouseFilterService.resolveForCurrentSession(
-        bypassInDev: false,
-      );
-
-      if (filterResult.devBypass) {
-        _logger.fine('Facets: dev режим — пропускаем фильтр складов');
-        return const _WarehouseConstraint(warehouseIds: null);
-      }
+      final filterResult = await _warehouseFilterService.resolveForCurrentSession();
 
       if (filterResult.failure != null) {
         _logger.warning(
@@ -363,7 +356,7 @@ class _FacetSqlBuilder {
     FacetFilter filter, {
     List<int>? warehouseIds,
   }) {
-    final where = StringBuffer('WHERE pf.can_buy = 1');
+    final where = StringBuffer('WHERE 1 = 1');
     final args = <dynamic>[];
     var requiresCategoryJoin = false;
     var requiresStockJoin = false;
@@ -390,23 +383,6 @@ INNER JOIN (
 ) pf_stock ON pf_stock.product_code = pf.product_code
 ''';
       args.addAll(warehouseIds);
-    }
-
-    if (filter.restrictedProductCodes != null) {
-      final codes = filter.restrictedProductCodes!;
-      if (codes.isEmpty) {
-        return _FacetSqlParts(
-          whereClause: 'WHERE 1 = 0',
-          categoryFilterJoin: '',
-          stockFilterJoin: stockJoinClause,
-          arguments: const [],
-          requiresCategoryJoin: false,
-          requiresStockJoin: requiresStockJoin,
-          isEmptyResult: true,
-        );
-      }
-      where.write(' AND pf.product_code IN (${_placeholders(codes.length)})');
-      args.addAll(codes);
     }
 
     final categoryIds = filter.selectedCategoryIds.isNotEmpty

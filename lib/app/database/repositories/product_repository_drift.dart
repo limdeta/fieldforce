@@ -188,6 +188,17 @@ class DriftProductRepository implements ProductRepository {
         return Right(ProductQueryResult<ProductWithStock>.empty(normalizedQuery));
       }
 
+      if (_logger.isLoggable(Level.INFO)) {
+        _logger.info(
+          'ProductQuery debug: scoped=${normalizedScope.take(8).toList()} '
+          'allowedCount=${normalizedQuery.allowedProductCodes?.length ?? 0} '
+          'requireStock=${normalizedQuery.requireStock} '
+          'warehouses=${warehouseConstraint.warehouseIds ?? 'ALL'} '
+          'where="${sqlBuilder.whereClause}" '
+          'args=${_formatSqlArguments(sqlBuilder.arguments)}',
+        );
+      }
+
       if (_logger.isLoggable(Level.FINER)) {
         _logger.finer('ProductQuery SQL builder for $normalizedQuery => ${sqlBuilder.debugDescription()}');
       }
@@ -464,6 +475,10 @@ class DriftProductRepository implements ProductRepository {
         .whereType<int>()
         .toList(growable: false);
 
+    if (codes.isEmpty && _logger.isLoggable(Level.INFO)) {
+      _logger.info('ProductQuery SQL returned 0 product codes for where="${builder.whereClause}"');
+    }
+
     final hasMore = codes.length > limit;
     final effectiveCodes = hasMore ? codes.sublist(0, limit) : codes;
 
@@ -580,14 +595,7 @@ class DriftProductRepository implements ProductRepository {
 
   Future<_WarehouseConstraint> _resolveWarehouseConstraint() async {
     try {
-      final filterResult = await _warehouseFilterService.resolveForCurrentSession(
-        bypassInDev: false,
-      );
-
-      if (filterResult.devBypass) {
-        _logger.fine('ProductQuery: dev режим — пропускаем фильтрацию складов');
-        return const _WarehouseConstraint(warehouseIds: null);
-      }
+      final filterResult = await _warehouseFilterService.resolveForCurrentSession();
 
       if (filterResult.failure != null) {
         _logger.warning(
@@ -899,6 +907,10 @@ class _ProductQuerySqlBuilder {
   final _ProductQuerySqlParts _parts;
 
   bool get isEmptyResult => _parts.isEmptyResult;
+  String get whereClause => _parts.whereClause;
+  List<dynamic> get arguments => List<dynamic>.unmodifiable(_parts.arguments);
+  bool get requiresCategoryFilter => _parts.requiresCategoryFilter;
+  bool get requiresStockFilter => _parts.requiresStockFilter;
 
   String buildPagedCodesSql() => '''
 SELECT p.code AS product_code
@@ -934,10 +946,6 @@ LIMIT ? OFFSET ?;
     final whereArguments = <dynamic>[];
     var requiresCategoryFilter = false;
     var requiresStockFilter = false;
-
-    if (!query.includeArchived) {
-      where.add('pf.can_buy = 1');
-    }
 
     if (query.allowedProductCodes != null) {
       final codes = query.allowedProductCodes!;
@@ -1003,6 +1011,19 @@ LIMIT ? OFFSET ?;
       isEmptyResult: false,
     );
   }
+}
+
+String _formatSqlArguments(List<dynamic> args) {
+  if (args.isEmpty) return '[]';
+  const maxItems = 10;
+  final buffer = <String>[];
+  for (var i = 0; i < args.length && i < maxItems; i++) {
+    buffer.add(args[i].toString());
+  }
+  if (args.length > maxItems) {
+    buffer.add('…(+${args.length - maxItems})');
+  }
+  return '[${buffer.join(', ')}]';
 }
 
 class _ProductQuerySqlParts {

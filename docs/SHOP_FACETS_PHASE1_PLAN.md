@@ -12,7 +12,7 @@
    - Add lightweight materialized tables for fast grouping (e.g., `product_facets_brand`, `product_facets_category`) populated during sync from `Product` entities.
    - Maintain triggers/DAO methods to sync facet tables alongside main product inserts/updates.
 2. **Repository layer + query pipeline**
-   - Introduce a unified `ProductQuery` (a superset of the current `FacetFilter`) describing all knobs that influence product retrieval: search text, base/scope categories, brand/manufacturer/type selections, novelty/popular switches, restricted product codes, promo/warehouse flags, etc.
+   - Introduce a unified `ProductQuery` (a superset of the current `FacetFilter`) describing all knobs that influence product retrieval: search text, base/scope categories, brand/manufacturer/type selections, novelty/popular switches, resolved/allowed product code caches, promo/warehouse flags, etc.
    - Add a `ProductFilterBuilder` service (client-side analogue of backend `FilterService`) that normalizes UI input, merges facet selections, and produces a `ProductQuery` instance + its serialized form (URL/query params) for both Drift queries and remote API calls.
    - Extend `ProductRepository` (local + remote implementations) so every product-listing entry point goes through a single `getProducts(ProductQuery query)` pipeline. `FacetRepository` remains focused on bucket aggregation but now consumes the same `ProductQuery` for consistent scoping.
 3. **Use cases**
@@ -45,7 +45,7 @@
 
 ### 3.2 Domain Layer
 1. **Entities/value objects**
-   - `ProductQuery` (new) living in `lib/features/shop/domain/entities/product_query.dart`: wraps search text, pagination, base/scope categories, facet selections, promo/warehouse/price flags, and `restrictedProductCodes`. Must support `copyWith`, `toJson`, `fromJson`, and `toUriParams()`.
+   - `ProductQuery` (new) living in `lib/features/shop/domain/entities/product_query.dart`: wraps search text, pagination, base/scope categories, facet selections, promo/warehouse/price flags, and resolved product code caches. Must support `copyWith`, `toJson`, `fromJson`, and `toUriParams()`.
    - `FacetFilter` now becomes a convenience view over `ProductQuery` (or is merged—depends on code reuse). `FacetGroup`, `FacetValue`, etc. stay in `facet.dart`.
 2. **Repository contracts**
    - `FacetRepository`: `Future<Either<Failure, List<FacetGroup>>> getFacetGroups(ProductQuery query);` and `Future<Either<Failure, List<int>>> resolveProductCodes(ProductQuery query);` so facets always operate on the same scope.

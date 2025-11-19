@@ -77,6 +77,19 @@ class FacetFilterSheet extends StatelessWidget {
                   isApplying: state.isApplying,
                   onClose: () => Navigator.of(context).maybePop(),
                 ),
+                AnimatedSwitcher(
+                  duration: const Duration(milliseconds: 250),
+                  child: state.isApplying
+                      ? const Padding(
+                          key: ValueKey('apply-progress'),
+                          padding: EdgeInsets.only(bottom: 4),
+                          child: SizedBox(
+                            height: 2,
+                            child: LinearProgressIndicator(),
+                          ),
+                        )
+                      : const SizedBox.shrink(key: ValueKey('apply-progress-hidden')),
+                ),
                 body,
                 if (state.applyError != null)
                   Padding(
@@ -101,16 +114,28 @@ class FacetFilterSheet extends StatelessWidget {
                       const SizedBox(width: 12),
                       Expanded(
                         child: ElevatedButton(
+                          style: ElevatedButton.styleFrom(
+                            minimumSize: const Size.fromHeight(48),
+                          ).copyWith(
+                            backgroundColor: MaterialStateProperty.resolveWith((states) {
+                              if (state.isApplying) {
+                                return theme.colorScheme.primary;
+                              }
+                              return null;
+                            }),
+                          ),
                           onPressed: canApply
                               ? () => context.read<FacetFilterBloc>().add(const FacetFilterApplied())
                               : null,
-                          child: state.isApplying
-                              ? const SizedBox(
-                                  height: 20,
-                                  width: 20,
-                                  child: CircularProgressIndicator(strokeWidth: 2),
-                                )
-                              : const Text('Применить'),
+                          child: AnimatedSwitcher(
+                            duration: const Duration(milliseconds: 200),
+                            child: state.isApplying
+                                ? _ApplyingIndicator(theme: theme)
+                                : const Text(
+                                    'Применить',
+                                    key: ValueKey('apply-label'),
+                                  ),
+                          ),
                         ),
                       ),
                     ],
@@ -137,6 +162,37 @@ class FacetFilterSheet extends StatelessWidget {
   }
 
   bool _listEquals(List<int> a, List<int> b) => listEquals(a, b);
+}
+
+class _ApplyingIndicator extends StatelessWidget {
+  final ThemeData theme;
+
+  const _ApplyingIndicator({required this.theme});
+
+  @override
+  Widget build(BuildContext context) {
+    final indicatorColor = theme.colorScheme.onPrimary;
+    return Row(
+      key: const ValueKey('apply-progress-indicator'),
+      mainAxisAlignment: MainAxisAlignment.center,
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        SizedBox(
+          height: 18,
+          width: 18,
+          child: CircularProgressIndicator(
+            strokeWidth: 2,
+            valueColor: AlwaysStoppedAnimation<Color>(indicatorColor),
+          ),
+        ),
+        const SizedBox(width: 8),
+        Text(
+          'Применяем...',
+          style: TextStyle(color: indicatorColor, fontWeight: FontWeight.w600),
+        ),
+      ],
+    );
+  }
 }
 
 class _SheetHeader extends StatelessWidget {

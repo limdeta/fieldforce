@@ -20,6 +20,7 @@ class ProductProtobufConverter {
     }
     
     final catalogId = pbProduct.hasCatalogId() ? pbProduct.catalogId : 0;
+    final canBuy = pbProduct.hasCanBuy() ? pbProduct.canBuy : true;
     
     return Product(
       title: pbProduct.title,
@@ -48,7 +49,7 @@ class ProductProtobufConverter {
       numericCharacteristics: pbProduct.numericCharacteristics.map(_convertNumericCharacteristic).toList(),
       stringCharacteristics: pbProduct.stringCharacteristics.map(_convertStringCharacteristic).toList(),
       boolCharacteristics: pbProduct.boolCharacteristics.map(_convertBoolCharacteristic).toList(),
-      canBuy: pbProduct.canBuy,
+      canBuy: canBuy,
     );
   }
 

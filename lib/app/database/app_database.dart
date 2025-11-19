@@ -27,13 +27,7 @@ import 'tables/stock_item_table.dart';
 import 'tables/warehouse_table.dart';
 import 'tables/order_job_table.dart';
 import 'tables/sync_log_table.dart';
-import 'migrations/migration_v2_fts5.dart';
-import 'migrations/migration_v3_facets.dart';
-import 'migrations/migration_v4_catalog_perf.dart';
-import 'migrations/migration_v5_catalog_facets.dart';
-import 'migrations/migration_v6_stock_indexes.dart';
-import 'migrations/migration_v7_product_title_index.dart';
-import 'migrations/migration_v8_remove_price_category_facets.dart';
+import 'migrations/initial_schema_migration.dart';
 
 part 'app_database.g.dart';
 
@@ -71,7 +65,7 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase.forTesting(DatabaseConnection super.connection);
 
   @override
-  int get schemaVersion => 8; // v8 убирает price-category фасеты
+  int get schemaVersion => 9; // v9: consolidated baseline migration
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -80,17 +74,7 @@ class AppDatabase extends _$AppDatabase {
       await m.createAll();
       
       // Создаём FTS5 таблицу и триггеры (миграция v2)
-      await MigrationV2Fts5.createFtsTable(this);
-      await MigrationV2Fts5.createFtsTriggers(this);
-
-      // Создаём вспомогательные таблицы для фасетного поиска (v3)
-      await MigrationV3Facets.rebuildFacets(this);
-      await MigrationV4CatalogPerf.apply(this);
-      await MigrationV6StockIndexes.apply(this);
-      await MigrationV7ProductTitleIndex.apply(this);
-      await MigrationV8RemovePriceCategoryFacets.apply(this);
-      await MigrationV5CatalogFacets.rebuild(this);
-      await MigrationV4CatalogPerf.apply(this);
+      await InitialSchemaMigration.setup(this);
       
       // Включаем foreign key constraints
       await customStatement('PRAGMA foreign_keys = ON');
@@ -99,36 +83,8 @@ class AppDatabase extends _$AppDatabase {
     onUpgrade: (Migrator m, int from, int to) async {
       _dbLogger.info('🔄 Миграция БД с версии $from на $to');
       
-      // Миграция v1 -> v2: добавление FTS5 для поиска продуктов
-      if (from < 2 && to >= 2) {
-        await MigrationV2Fts5.migrate(this);
-      }
-
-      // Миграция v2 -> v3: создаём таблицы фасетов и заполняем
-      if (from < 3 && to >= 3) {
-        await m.createTable(productFacets);
-        await m.createTable(productCategoryFacets);
-        await MigrationV3Facets.rebuildFacets(this);
-      }
-
-      if (from < 4 && to >= 4) {
-        await MigrationV4CatalogPerf.apply(this);
-      }
-
-      if (from < 5 && to >= 5) {
-        await MigrationV5CatalogFacets.rebuild(this);
-      }
-
-      if (from < 6 && to >= 6) {
-        await MigrationV6StockIndexes.apply(this);
-      }
-
-      if (from < 7 && to >= 7) {
-        await MigrationV7ProductTitleIndex.apply(this);
-      }
-
-      if (from < 8 && to >= 8) {
-        await MigrationV8RemovePriceCategoryFacets.apply(this);
+      if (from < schemaVersion) {
+        await InitialSchemaMigration.resetCatalogAndSetup(this);
       }
       
       _dbLogger.info('✅ БД обновлена до версии $to');

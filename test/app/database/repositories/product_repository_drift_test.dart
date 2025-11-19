@@ -261,7 +261,7 @@ class _WarehouseFilterServiceStub extends WarehouseFilterService {
   _WarehouseFilterServiceStub() : super(warehouseRepository: _FakeWarehouseRepository());
 
   @override
-  Future<WarehouseFilterResult> resolveForCurrentSession({bool bypassInDev = true}) async {
+  Future<WarehouseFilterResult> resolveForCurrentSession() async {
     return WarehouseFilterResult(
       regionCode: 'TEST',
       warehouses: [

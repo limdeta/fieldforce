@@ -26,6 +26,7 @@ class FacetFilterState extends Equatable {
   final FacetFilter workingFilter;
   final FacetFilter appliedFilter;
   final List<FacetSelectionBadge> appliedBadges;
+  final List<int>? allowedProductCodes;
   final String? errorMessage;
   final String? applyError;
   final bool hasLoadedOnce;
@@ -38,6 +39,7 @@ class FacetFilterState extends Equatable {
     this.workingFilter = const FacetFilter(),
     this.appliedFilter = const FacetFilter(),
     this.appliedBadges = const [],
+    this.allowedProductCodes,
     this.errorMessage,
     this.applyError,
     this.hasLoadedOnce = false,
@@ -53,6 +55,7 @@ class FacetFilterState extends Equatable {
     FacetFilter? workingFilter,
     FacetFilter? appliedFilter,
     List<FacetSelectionBadge>? appliedBadges,
+    Object? allowedProductCodes = _copySentinel,
     String? errorMessage,
     String? applyError,
     bool? hasLoadedOnce,
@@ -67,6 +70,9 @@ class FacetFilterState extends Equatable {
       workingFilter: workingFilter ?? this.workingFilter,
       appliedFilter: appliedFilter ?? this.appliedFilter,
       appliedBadges: appliedBadges ?? this.appliedBadges,
+      allowedProductCodes: identical(allowedProductCodes, _copySentinel)
+          ? this.allowedProductCodes
+          : allowedProductCodes as List<int>?,
       errorMessage: resetError ? null : (errorMessage ?? this.errorMessage),
       applyError: resetApplyError ? null : (applyError ?? this.applyError),
       hasLoadedOnce: hasLoadedOnce ?? this.hasLoadedOnce,
@@ -82,6 +88,7 @@ class FacetFilterState extends Equatable {
         workingFilter,
         appliedFilter,
         appliedBadges,
+        allowedProductCodes,
         errorMessage,
         applyError,
         hasLoadedOnce,

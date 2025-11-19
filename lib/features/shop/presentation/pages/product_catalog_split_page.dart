@@ -13,6 +13,7 @@ import 'package:fieldforce/features/shop/presentation/widgets/split_quick_action
 import 'package:fieldforce/features/shop/presentation/bloc/facet_filter_bloc.dart';
 import 'package:fieldforce/features/shop/presentation/bloc/facet_filter_state.dart';
 import 'package:fieldforce/features/shop/presentation/widgets/facet_filter_scope.dart';
+import 'package:fieldforce/features/shop/presentation/widgets/facet_filter_swipe_overlay.dart';
 
 /// Альтернативная страница каталога в формате сплит-экрана.
 class ProductCatalogSplitPage extends StatefulWidget {
@@ -357,86 +358,116 @@ class _ProductCatalogSplitPageState extends State<ProductCatalogSplitPage> {
   Widget build(BuildContext context) {
     return FacetFilterScope(
       categoryId: _selectedCategoryId,
-      child: BlocListener<FacetFilterBloc, FacetFilterState>(
-        listenWhen: (previous, current) =>
-            !_areCodeListsEqual(
-              previous.appliedFilter.restrictedProductCodes,
-              current.appliedFilter.restrictedProductCodes,
+      child: Builder(
+        builder: (scopedContext) {
+          final facetBloc = FacetFilterScope.maybeBlocOf(scopedContext)!;
+          return BlocListener<FacetFilterBloc, FacetFilterState>(
+            bloc: facetBloc,
+            listenWhen: (previous, current) =>
+                !_areCodeListsEqual(
+                  previous.allowedProductCodes,
+                  current.allowedProductCodes,
+                ),
+            listener: (context, state) => _onFacetCodesChanged(
+              state.allowedProductCodes,
             ),
-        listener: (context, state) => _onFacetCodesChanged(
-          state.appliedFilter.restrictedProductCodes,
-        ),
-        child: Scaffold(
-          body: Stack(
-            children: [
-              // Основной контент без AppBar
-              LayoutBuilder(
-            builder: (context, constraints) {
-              final width = constraints.maxWidth;
-              final mediaQuery = MediaQuery.of(context);
-              final height = constraints.maxHeight.isFinite
-                  ? constraints.maxHeight
-                  : mediaQuery.size.height;
-              final isPortrait = mediaQuery.orientation == Orientation.portrait;
-              final bool useVerticalLayout = isPortrait || width < _compactWidthBreakpoint;
+            child: Scaffold(
+              body: FacetFilterSwipeOverlay(
+                categoryId: _selectedCategoryId,
+                blocOverride: facetBloc,
+                child: Stack(
+                  children: [
+                    // Основной контент без AppBar
+                    LayoutBuilder(
+                      builder: (context, constraints) {
+                        final width = constraints.maxWidth;
+                        final mediaQuery = MediaQuery.of(context);
+                        final height = constraints.maxHeight.isFinite
+                            ? constraints.maxHeight
+                            : mediaQuery.size.height;
+                        final isPortrait = mediaQuery.orientation == Orientation.portrait;
+                        final bool useVerticalLayout =
+                            isPortrait || width < _compactWidthBreakpoint;
 
-              if (width <= 0) {
-                return const SizedBox.shrink();
-              }
+                        if (width <= 0) {
+                          return const SizedBox.shrink();
+                        }
 
-              if (useVerticalLayout) {
-                final topFlex = (_verticalSplitRatio.clamp(_minSplitRatio, _maxSplitRatio) * 1000).round();
-                final bottomFlex = 1000 - topFlex;
+                        if (useVerticalLayout) {
+                          final topFlex =
+                              (_verticalSplitRatio.clamp(_minSplitRatio, _maxSplitRatio) * 1000)
+                                  .round();
+                          final bottomFlex = 1000 - topFlex;
 
-            return Column(
-              children: [
-                Expanded(
-                  flex: topFlex,
-                  child: _buildCategoryPanel(context, isVertical: true, isTopPanel: true),
+                          return Column(
+                            children: [
+                              Expanded(
+                                flex: topFlex,
+                                child: _buildCategoryPanel(
+                                  context,
+                                  isVertical: true,
+                                  isTopPanel: true,
+                                ),
+                              ),
+                              _buildVerticalDivider(height),
+                              Expanded(
+                                flex: bottomFlex,
+                                child: _buildProductsPanel(
+                                  isVertical: true,
+                                  isTopPanel: false,
+                                ),
+                              ),
+                            ],
+                          );
+                        }
+
+                        final leftFlex =
+                            (_horizontalSplitRatio.clamp(_minSplitRatio, _maxSplitRatio) * 1000)
+                                .round();
+                        final rightFlex = 1000 - leftFlex;
+
+                        return Row(
+                          children: [
+                            Expanded(
+                              flex: leftFlex,
+                              child: _buildCategoryPanel(
+                                context,
+                                isVertical: false,
+                                isTopPanel: true,
+                              ),
+                            ),
+                            _buildHorizontalDivider(width),
+                            Expanded(
+                              flex: rightFlex,
+                              child: _buildProductsPanel(
+                                isVertical: false,
+                                isTopPanel: true,
+                              ),
+                            ),
+                          ],
+                        );
+                      },
+                    ),
+                    // Плавающая панель быстрых действий
+                    Builder(
+                      builder: (quickActionsContext) {
+                        return SplitQuickActionsPanel(
+                          categoryId: _selectedCategoryId,
+                          onFilterPressed: () => showCatalogFilters(
+                            quickActionsContext,
+                            categoryId: _selectedCategoryId,
+                            blocOverride:
+                                FacetFilterScope.maybeBlocOf(quickActionsContext),
+                          ),
+                        );
+                      },
+                    ),
+                  ],
                 ),
-                _buildVerticalDivider(height),
-                Expanded(
-                  flex: bottomFlex,
-                  child: _buildProductsPanel(isVertical: true, isTopPanel: false),
-                ),
-              ],
-            );
-          }
-
-          final leftFlex = (_horizontalSplitRatio.clamp(_minSplitRatio, _maxSplitRatio) * 1000).round();
-          final rightFlex = 1000 - leftFlex;
-
-          return Row(
-            children: [
-              Expanded(
-                flex: leftFlex,
-                child: _buildCategoryPanel(context, isVertical: false, isTopPanel: true),
               ),
-              _buildHorizontalDivider(width),
-              Expanded(
-                flex: rightFlex,
-                child: _buildProductsPanel(isVertical: false, isTopPanel: true),
-              ),
-            ],
+            ),
           );
         },
-      ),
-      // Плавающая панель быстрых действий
-          Builder(
-            builder: (quickActionsContext) {
-              return SplitQuickActionsPanel(
-                categoryId: _selectedCategoryId,
-                onFilterPressed: () => showCatalogFilters(
-                  quickActionsContext,
-                  categoryId: _selectedCategoryId,
-                  blocOverride: FacetFilterScope.maybeBlocOf(quickActionsContext),
-                ),
-              );
-            },
-          ),
-            ],
-          ),
-        ),
       ),
     );
   }

@@ -49,8 +49,6 @@ class FacetGroup {
 }
 
 /// DTO с выбранными фильтрами для расчёта фасетов
-const _facetCopySentinel = Object();
-
 class FacetFilter {
   final int? baseCategoryId;
   final List<int> scopeCategoryIds;
@@ -61,7 +59,6 @@ class FacetFilter {
   final List<int> typeIds;
   final bool onlyNovelty;
   final bool onlyPopular;
-  final List<int>? restrictedProductCodes;
 
   const FacetFilter({
     this.baseCategoryId,
@@ -73,7 +70,6 @@ class FacetFilter {
     this.typeIds = const [],
     this.onlyNovelty = false,
     this.onlyPopular = false,
-    this.restrictedProductCodes,
   });
 
   FacetFilter copyWith({
@@ -86,7 +82,6 @@ class FacetFilter {
     List<int>? typeIds,
     bool? onlyNovelty,
     bool? onlyPopular,
-    Object? restrictedProductCodes = _facetCopySentinel,
   }) {
     return FacetFilter(
       baseCategoryId: baseCategoryId ?? this.baseCategoryId,
@@ -98,10 +93,6 @@ class FacetFilter {
       typeIds: typeIds ?? this.typeIds,
       onlyNovelty: onlyNovelty ?? this.onlyNovelty,
       onlyPopular: onlyPopular ?? this.onlyPopular,
-      restrictedProductCodes:
-          identical(restrictedProductCodes, _facetCopySentinel)
-              ? this.restrictedProductCodes
-              : restrictedProductCodes as List<int>?,
     );
   }
 
@@ -112,6 +103,5 @@ class FacetFilter {
       typeIds.isEmpty &&
       selectedCategoryIds.isEmpty &&
       !onlyNovelty &&
-      !onlyPopular &&
-      (restrictedProductCodes == null);
+      !onlyPopular;
 }

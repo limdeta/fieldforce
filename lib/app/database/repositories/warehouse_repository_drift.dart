@@ -80,7 +80,11 @@ class DriftWarehouseRepository implements WarehouseRepository {
       final query = _database.select(_database.warehouses)
         ..where((tbl) => tbl.regionCode.equals(regionCode));
       final rows = await query.get();
-      return Right(WarehouseMapper.fromDataList(rows));
+      final warehouses = WarehouseMapper.fromDataList(rows);
+      _logger.info(
+        'DriftWarehouseRepository: найдено ${warehouses.length} складов для региона $regionCode (ids=${warehouses.map((w) => w.id).toList()})',
+      );
+      return Right(warehouses);
     } catch (e, st) {
       _logger.severe('Ошибка получения складов региона $regionCode', e, st);
       return Left(DatabaseFailure('Ошибка получения складов: $e'));

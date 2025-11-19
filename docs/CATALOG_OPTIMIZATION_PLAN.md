@@ -4,13 +4,13 @@ This document outlines incremental improvements for the offline catalog stack. I
 
 ## Tier 1 — High impact, low disruption
 
-1. **Add a warehouse-centric stock index** *(COMPLETE — migration v6)*
-   - Implemented via `idx_stock_warehouse_stock` (see `MigrationV6StockIndexes`); removes full scans in the `stock_items` subquery used by both product paging and facet resolution. Result: "first page" delay shrank dramatically for large categories.
+1. **Add a warehouse-centric stock index** *(COMPLETE — baseline schema)*
+   - Implemented via `idx_stock_warehouse_stock` in `InitialSchemaMigration`; removes full scans in the `stock_items` subquery used by both product paging and facet resolution. Result: "first page" delay shrank dramatically for large categories.
 2. **Cache warehouse filter decisions per session** *(COMPLETE — `WarehouseFilterService` cache)*
    - The session-level cache now keeps the last `WarehouseFilterResult` (invalidated on logout/region change), eliminating redundant DB/DI hops every time `_loadProducts` or the facet sheet runs.
 3. **Log/monitor query plans in dev builds** *(COMPLETE — `CATALOG_LOG_PLAN` flag & instrumentation)*
    - Added `EXPLAIN QUERY PLAN` logging to `_ProductQuerySqlBuilder`, gated by `--dart-define=CATALOG_LOG_PLAN` (works in prod) so we can verify indexes and catch regressions quickly.
-4. **Cover ORDER BY with a products index** *(COMPLETE — migration v7)*
+4. **Cover ORDER BY with a products index** *(COMPLETE — baseline schema)*
    - Introduced `idx_products_title_nocase (title COLLATE NOCASE, code)` and rewrote the catalog paging SQL to stream directly from `products`. This removed the temp B-tree sort that caused 10–15 s stalls.
 
 ## Tier 2 — Medium effort, clear payoff

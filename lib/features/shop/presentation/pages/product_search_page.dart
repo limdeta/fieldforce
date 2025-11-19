@@ -17,6 +17,7 @@ import 'package:fieldforce/features/shop/presentation/pages/product_detail_page.
 import 'package:fieldforce/features/shop/presentation/widgets/catalog_app_bar_actions.dart';
 import 'package:fieldforce/features/shop/presentation/widgets/facet_filter_scope.dart';
 import 'package:fieldforce/features/shop/presentation/widgets/facet_filter_summary_bar.dart';
+import 'package:fieldforce/features/shop/presentation/widgets/facet_filter_swipe_overlay.dart';
 import 'package:fieldforce/features/shop/presentation/widgets/product_catalog_card_widget.dart';
 import 'package:fieldforce/shared/presentation/widgets/home_icon_button.dart';
 
@@ -43,6 +44,7 @@ class _ProductSearchPageState extends State<ProductSearchPage> {
   String? _error;
   FacetFilter _activeFacetFilter = const FacetFilter();
   bool _hasAppliedFacetFilters = false;
+  List<int>? _allowedProductCodes;
 
   // Отслеживаем выбранные StockItem для каждого продукта
   final Map<int, StockItem> _selectedStockItems = {};
@@ -94,7 +96,7 @@ class _ProductSearchPageState extends State<ProductSearchPage> {
     });
 
     final restrictedCodesCount =
-        _activeFacetFilter.restrictedProductCodes?.length ?? 0;
+      _allowedProductCodes?.length ?? 0;
     _logger.info(
       'Глобальный поиск: "$trimmedQuery" (restricted=$restrictedCodesCount, facets=${_activeFacetFilter.isEmpty ? 'none' : 'active'})',
     );
@@ -144,10 +146,15 @@ class _ProductSearchPageState extends State<ProductSearchPage> {
               BlocListener<FacetFilterBloc, FacetFilterState>(
                 listenWhen: (previous, current) =>
                     previous.appliedFilter != current.appliedFilter ||
-                    previous.hasActiveFilters != current.hasActiveFilters,
+                    previous.hasActiveFilters != current.hasActiveFilters ||
+                    !_areCodeListsEqual(
+                      previous.allowedProductCodes,
+                      current.allowedProductCodes,
+                    ),
                 listener: (context, state) => _onFacetFilterUpdated(
                   state.appliedFilter,
                   state.hasActiveFilters,
+                  state.allowedProductCodes,
                 ),
               ),
             ],
@@ -176,7 +183,11 @@ class _ProductSearchPageState extends State<ProductSearchPage> {
                   const HomeIconButton(),
                 ],
               ),
-              body: _buildBody(),
+              body: FacetFilterSwipeOverlay(
+                blocOverride: facetBloc,
+                categoryId: null,
+                child: _buildBody(),
+              ),
             ),
           );
         },
@@ -376,15 +387,16 @@ class _ProductSearchPageState extends State<ProductSearchPage> {
   void _onFacetFilterUpdated(
     FacetFilter filter,
     bool hasActiveBadges,
+    List<int>? allowedCodes,
   ) {
-    final restrictedCodesCount =
-        filter.restrictedProductCodes?.length ?? 0;
+    final restrictedCodesCount = allowedCodes?.length ?? 0;
     _logger.fine(
       'Facet filter обновлён: empty=${filter.isEmpty}, onlyNovelty=${filter.onlyNovelty}, onlyPopular=${filter.onlyPopular}, badges=$hasActiveBadges, codes=$restrictedCodesCount',
     );
     setState(() {
       _activeFacetFilter = filter;
       _hasAppliedFacetFilters = hasActiveBadges;
+      _allowedProductCodes = allowedCodes;
     });
     final hasFacetCriteria = hasActiveBadges || restrictedCodesCount > 0;
     final currentQuery = _searchController.text.trim();
@@ -400,7 +412,7 @@ class _ProductSearchPageState extends State<ProductSearchPage> {
   }
 
   bool _hasActiveFacetCriteria() {
-    final restrictedCodes = _activeFacetFilter.restrictedProductCodes;
+    final restrictedCodes = _allowedProductCodes;
     final hasRestrictedCodes =
         restrictedCodes != null && restrictedCodes.isNotEmpty;
     return hasRestrictedCodes || _hasAppliedFacetFilters;
@@ -411,7 +423,7 @@ class _ProductSearchPageState extends State<ProductSearchPage> {
       searchText: searchText,
       categoryId: _activeFacetFilter.baseCategoryId,
       scopedCategoryIds: _effectiveScopedCategories(),
-      allowedProductCodes: _activeFacetFilter.restrictedProductCodes,
+      allowedProductCodes: _allowedProductCodes,
       limit: 50,
     );
 
@@ -434,5 +446,15 @@ class _ProductSearchPageState extends State<ProductSearchPage> {
     return _activeFacetFilter.scopeCategoryIds.isEmpty
         ? null
         : _activeFacetFilter.scopeCategoryIds;
+  }
+
+  bool _areCodeListsEqual(List<int>? a, List<int>? b) {
+    if (identical(a, b)) return true;
+    if (a == null || b == null) return a == null && b == null;
+    if (a.length != b.length) return false;
+    for (var i = 0; i < a.length; i++) {
+      if (a[i] != b[i]) return false;
+    }
+    return true;
   }
 }

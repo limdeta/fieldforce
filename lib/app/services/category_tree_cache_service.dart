@@ -25,7 +25,7 @@ class CategoryTreeCacheService {
         _cacheDuration = cacheDuration;
 
   Future<Either<Failure, List<Category>>> getTreeForCurrentRegion({bool forceRefresh = false}) async {
-    final filterResult = await _warehouseFilterService.resolveForCurrentSession(bypassInDev: false);
+    final filterResult = await _warehouseFilterService.resolveForCurrentSession();
     final regionCode = filterResult.regionCode.isNotEmpty
         ? filterResult.regionCode
         : AppConfig.defaultRegionCode;

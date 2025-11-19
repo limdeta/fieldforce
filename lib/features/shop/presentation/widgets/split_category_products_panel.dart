@@ -285,8 +285,8 @@ class _SplitCategoryProductsPanelState extends State<SplitCategoryProductsPanel>
   }) async {
     _logger.info('🔄 Split: загрузка товаров для категории $categoryName ($categoryId), reset=$reset offset=$_currentOffset');
 
-    final filterResult = await _warehouseFilterService.resolveForCurrentSession(bypassInDev: false);
-    if (!filterResult.devBypass && !filterResult.hasWarehouses) {
+    final filterResult = await _warehouseFilterService.resolveForCurrentSession();
+    if (!filterResult.hasWarehouses) {
       if (!mounted) return;
       setState(() {
         _isLoading = false;

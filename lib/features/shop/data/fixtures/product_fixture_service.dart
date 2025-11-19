@@ -1,10 +1,10 @@
 // lib/features/shop/data/fixtures/product_fixture_service.dart
 
 import 'package:flutter/services.dart';
+import 'package:fieldforce/features/shop/data/fixtures/fixture_warehouses.dart';
 import 'package:fieldforce/features/shop/data/services/product_parsing_service.dart';
 import 'package:fieldforce/features/shop/domain/entities/product.dart';
 import 'package:fieldforce/features/shop/domain/entities/stock_item.dart';
-import 'package:fieldforce/features/shop/domain/entities/warehouse.dart' as warehouse_entity;
 import 'package:fieldforce/features/shop/domain/repositories/stock_item_repository.dart';
 import 'package:fieldforce/features/shop/domain/repositories/warehouse_repository.dart';
 import 'package:fieldforce/app/database/app_database.dart';
@@ -28,58 +28,6 @@ class ProductFixtureService {
   final ProductParsingService _parsingService = ProductParsingService();
 
   ProductFixtureService();
-
-  static const List<_FixtureWarehouse> _fixtureWarehouses = [
-    _FixtureWarehouse(
-      id: 1,
-      name: 'Основной склад',
-      vendorId: 'P3V_MAIN',
-      regionCode: 'P3V',
-      isPickUpPoint: false,
-    ),
-    _FixtureWarehouse(
-      id: 2,
-      name: 'ПВЗ Центральный',
-      vendorId: 'P3V_PICKUP',
-      regionCode: 'P3V',
-      isPickUpPoint: true,
-    ),
-    _FixtureWarehouse(
-      id: 3,
-      name: 'Склад Юг',
-      vendorId: 'P3V_SOUTH',
-      regionCode: 'P3V',
-      isPickUpPoint: false,
-    ),
-    _FixtureWarehouse(
-      id: 101,
-      name: 'Камчатка Центральный',
-      vendorId: 'K3V_MAIN',
-      regionCode: 'K3V',
-      isPickUpPoint: false,
-    ),
-    _FixtureWarehouse(
-      id: 102,
-      name: 'Камчатка ПВЗ',
-      vendorId: 'K3V_PICKUP',
-      regionCode: 'K3V',
-      isPickUpPoint: true,
-    ),
-    _FixtureWarehouse(
-      id: 201,
-      name: 'Магадан Центральный',
-      vendorId: 'M3V_MAIN',
-      regionCode: 'M3V',
-      isPickUpPoint: false,
-    ),
-    _FixtureWarehouse(
-      id: 202,
-      name: 'Магадан ПВЗ',
-      vendorId: 'M3V_PICKUP',
-      regionCode: 'M3V',
-      isPickUpPoint: true,
-    ),
-  ];
 
   /// Загружает продукты в зависимости от типа фикстуры
   Future<Either<Failure, List<Product>>> loadProducts(ProductFixtureType fixtureType) async {
@@ -327,29 +275,29 @@ class ProductFixtureService {
     switch (product.code) {
       case 170094: // Туалетная бумага YOKO
         stockItems.addAll([
-          _createStockItem(product, _fixtureWarehouseById(1), 25, 12000), // 120 руб
+          _createStockItem(product, fixtureWarehouseById(1), 25, 12000), // 120 руб
         ]);
         break;
         
       case 102969: // Нитроэмаль золотисто-желтая  
         stockItems.addAll([
-          _createStockItem(product, _fixtureWarehouseById(1), 15, 8500),  // 85 руб
-          _createStockItem(product, _fixtureWarehouseById(2), 3, 9000),   // 90 руб (дороже в ПВЗ)
+          _createStockItem(product, fixtureWarehouseById(1), 15, 8500),  // 85 руб
+          _createStockItem(product, fixtureWarehouseById(2), 3, 9000),   // 90 руб (дороже в ПВЗ)
         ]);
         break;
         
       case 102970: // Нитроэмаль синяя
         stockItems.addAll([
-          _createStockItem(product, _fixtureWarehouseById(1), 22, 8500),  // 85 руб
-          _createStockItem(product, _fixtureWarehouseById(2), 12, 8800),  // 88 руб
-          _createStockItem(product, _fixtureWarehouseById(3), 5, 8200),   // 82 руб (дешевле на южном складе)
+          _createStockItem(product, fixtureWarehouseById(1), 22, 8500),  // 85 руб
+          _createStockItem(product, fixtureWarehouseById(2), 12, 8800),  // 88 руб
+          _createStockItem(product, fixtureWarehouseById(3), 5, 8200),   // 82 руб (дешевле на южном складе)
         ]);
         break;
         
       case 102971: // Нитроэмаль красная
         stockItems.addAll([
-          _createStockItem(product, _fixtureWarehouseById(1), 18, 8500),  // 85 руб
-          _createStockItem(product, _fixtureWarehouseById(3), 7, 8200),   // 82 руб
+          _createStockItem(product, fixtureWarehouseById(1), 18, 8500),  // 85 руб
+          _createStockItem(product, fixtureWarehouseById(3), 7, 8200),   // 82 руб
           // НЕТ в ПВЗ Центральный - для тестирования разных складов
         ]);
         break;
@@ -357,7 +305,7 @@ class ProductFixtureService {
       default:
         // Для неизвестных товаров - простая схема
         stockItems.addAll([
-          _createStockItem(product, _fixtureWarehouseById(1), 10, 10000), // 100 руб
+          _createStockItem(product, fixtureWarehouseById(1), 10, 10000), // 100 руб
         ]);
     }
 
@@ -369,7 +317,7 @@ class ProductFixtureService {
   /// Вспомогательный метод для создания StockItem
   StockItem _createStockItem(
     Product product,
-    _FixtureWarehouse warehouse,
+    FixtureWarehouseData warehouse,
     int stock,
     int price,
   ) {
@@ -399,7 +347,7 @@ class ProductFixtureService {
       required bool forceInStock,
     }) {
       if (stockItems.isEmpty) {
-        final fallbackWarehouse = _fixtureWarehouseByRegion('P3V');
+        final fallbackWarehouse = fixtureWarehouseByRegion('P3V');
         stockItems.add(
           _createStockItem(
             product,
@@ -416,7 +364,7 @@ class ProductFixtureService {
       }
 
       for (final region in const ['P3V', 'K3V', 'M3V']) {
-        final warehouse = _fixtureWarehouseByRegion(region);
+        final warehouse = fixtureWarehouseByRegion(region);
         final hasRegion = stockItems.any((item) => item.warehouseId == warehouse.id);
 
         if (!hasRegion) {
@@ -447,18 +395,7 @@ class ProductFixtureService {
 
   Future<void> _ensureFixtureWarehouses() async {
     final warehouseRepository = GetIt.instance<WarehouseRepository>();
-    final now = DateTime.now();
-  final warehouses = _fixtureWarehouses
-    .map((fixture) => warehouse_entity.Warehouse(
-              id: fixture.id,
-              name: fixture.name,
-              vendorId: fixture.vendorId,
-              regionCode: fixture.regionCode,
-              isPickUpPoint: fixture.isPickUpPoint,
-              createdAt: now,
-              updatedAt: now,
-            ))
-        .toList();
+    final warehouses = buildFixtureWarehouses();
 
     final result = await warehouseRepository.saveWarehouses(warehouses);
     result.fold(
@@ -467,51 +404,4 @@ class ProductFixtureService {
     );
   }
 
-  _FixtureWarehouse _fixtureWarehouseById(int id) {
-    try {
-      return _fixtureWarehouses.firstWhere((warehouse) => warehouse.id == id);
-    } catch (error) {
-      _logger.warning('⚠️ Фикстурный склад с id=$id не найден, используем первый по умолчанию');
-      return _fixtureWarehouses.first;
-    }
-  }
-
-  _FixtureWarehouse _fixtureWarehouseByRegion(String regionCode, {bool preferPickUp = false}) {
-    final candidates = _fixtureWarehouses
-        .where((warehouse) => warehouse.regionCode == regionCode)
-        .toList();
-
-    if (candidates.isEmpty) {
-      _logger.warning('⚠️ Фикстурный склад для региона $regionCode не найден, используем первый по умолчанию');
-      return _fixtureWarehouses.first;
-    }
-
-    if (preferPickUp) {
-      return candidates.firstWhere(
-        (warehouse) => warehouse.isPickUpPoint,
-        orElse: () => candidates.first,
-      );
-    }
-
-    return candidates.firstWhere(
-      (warehouse) => !warehouse.isPickUpPoint,
-      orElse: () => candidates.first,
-    );
-  }
-}
-
-class _FixtureWarehouse {
-  final int id;
-  final String name;
-  final String vendorId;
-  final String regionCode;
-  final bool isPickUpPoint;
-
-  const _FixtureWarehouse({
-    required this.id,
-    required this.name,
-    required this.vendorId,
-    required this.regionCode,
-    required this.isPickUpPoint,
-  });
 }

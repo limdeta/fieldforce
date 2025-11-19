@@ -17,12 +17,7 @@ class DriftStockItemRepository implements StockItemRepository {
   final WarehouseFilterService _warehouseFilterService = GetIt.instance<WarehouseFilterService>();
 
   Future<List<int>?> _resolveAllowedWarehouseIds(String logContext) async {
-    final filterResult = await _warehouseFilterService.resolveForCurrentSession(bypassInDev: false);
-
-    if (filterResult.devBypass) {
-      _logger.fine('$logContext: dev режим — фильтрация складов отключена');
-      return null;
-    }
+    final filterResult = await _warehouseFilterService.resolveForCurrentSession();
 
     if (filterResult.failure != null) {
       _logger.warning(
