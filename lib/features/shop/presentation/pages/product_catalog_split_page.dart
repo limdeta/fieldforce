@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'dart:async';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:get_it/get_it.dart';
 import 'package:logging/logging.dart';
@@ -13,7 +14,8 @@ import 'package:fieldforce/features/shop/presentation/bloc/facet_filter_event.da
 import 'package:fieldforce/features/shop/presentation/bloc/facet_filter_state.dart';
 import 'package:fieldforce/features/shop/presentation/widgets/app_side_menu.dart';
 import 'package:fieldforce/features/shop/presentation/widgets/facet_filter_scope.dart';
-import 'package:fieldforce/features/shop/presentation/widgets/facet_filter_swipe_overlay.dart';
+import 'package:fieldforce/features/shop/presentation/widgets/facet_filter_sheet.dart';
+import 'package:fieldforce/features/shop/presentation/widgets/facet_filter_constants.dart';
 
 /// Альтернативная страница каталога в формате сплит-экрана.
 class ProductCatalogSplitPage extends StatefulWidget {
@@ -31,12 +33,15 @@ class _ProductCatalogSplitPageState extends State<ProductCatalogSplitPage> {
       GetIt.instance<CategoryTreeCacheService>();
   final CatalogSplitStateStore _stateStore = CatalogSplitStateStore.instance;
   List<int>? _activeFacetProductCodes;
-  bool _isSideMenuOpen = false;
+  late final ValueNotifier<bool> _sideMenuOpenNotifier;
 
   late double _horizontalSplitRatio;
   late double _verticalSplitRatio;
 
   final TextEditingController _searchController = TextEditingController();
+  final FocusNode _categorySearchFocusNode = FocusNode();
+  final FocusNode _productsSearchFocusNode = FocusNode();
+  String _lastFocusedSearch = 'category';
   late final ScrollController _categoryScrollController;
 
   List<Category> _categories = <Category>[];
@@ -65,12 +70,19 @@ class _ProductCatalogSplitPageState extends State<ProductCatalogSplitPage> {
     _selectedCategoryId = _stateStore.selectedCategoryId;
     _selectedStockItems.addAll(_stateStore.selectedStockItems);
     _searchController.text = _stateStore.searchQuery;
+    _categorySearchFocusNode.addListener(() {
+      if (_categorySearchFocusNode.hasFocus) _lastFocusedSearch = 'category';
+    });
+    _productsSearchFocusNode.addListener(() {
+      if (_productsSearchFocusNode.hasFocus) _lastFocusedSearch = 'products';
+    });
 
     _categoryScrollController = ScrollController(
       initialScrollOffset: _stateStore.categoryPanelScrollOffset,
     )..addListener(_onCategoryScroll);
 
     _loadCategories();
+    _sideMenuOpenNotifier = ValueNotifier<bool>(false);
   }
 
   @override
@@ -87,6 +99,9 @@ class _ProductCatalogSplitPageState extends State<ProductCatalogSplitPage> {
     _categoryScrollController.removeListener(_onCategoryScroll);
     _categoryScrollController.dispose();
     _searchController.dispose();
+    _sideMenuOpenNotifier.dispose();
+    _categorySearchFocusNode.dispose();
+    _productsSearchFocusNode.dispose();
     super.dispose();
   }
 
@@ -110,17 +125,24 @@ class _ProductCatalogSplitPageState extends State<ProductCatalogSplitPage> {
   }
 
   void _toggleSideMenu(FacetFilterBloc bloc, {bool? open}) {
-    final shouldOpen = open ?? !_isSideMenuOpen;
-    if (shouldOpen == _isSideMenuOpen) {
+    final shouldOpen = open ?? !_sideMenuOpenNotifier.value;
+    if (shouldOpen == _sideMenuOpenNotifier.value) {
       return;
     }
-    setState(() {
-      _isSideMenuOpen = shouldOpen;
-    });
-    if (shouldOpen) {
-      bloc.add(const FacetFilterSheetOpened());
+      _sideMenuOpenNotifier.value = shouldOpen;
+      if (shouldOpen) {
+        bloc.add(const FacetFilterSheetOpened());
+        FocusScope.of(context).unfocus();
     } else {
       bloc.add(const FacetFilterEditingCancelled());
+      Future.delayed(kFacetFilterFocusDelay, () {
+        if (!mounted) return;
+        if (_lastFocusedSearch == 'products') {
+          _productsSearchFocusNode.requestFocus();
+        } else {
+          _categorySearchFocusNode.requestFocus();
+        }
+      });
     }
   }
 
@@ -389,14 +411,50 @@ class _ProductCatalogSplitPageState extends State<ProductCatalogSplitPage> {
               state.allowedProductCodes,
             ),
             child: Scaffold(
-              body: FacetFilterSwipeOverlay(
-                categoryId: _selectedCategoryId,
-                blocOverride: facetBloc,
-                onOpenFilters: () => _toggleSideMenu(facetBloc, open: true),
-                child: Stack(
+              appBar: MediaQuery.of(context).orientation == Orientation.portrait
+                  ? AppBar(
+                      title: const Text('Каталог'),
+                      actions: [
+                        IconButton(
+                          icon: const Icon(Icons.filter_alt_outlined),
+                          tooltip: 'Фильтры',
+                          onPressed: () {
+                            FocusScope.of(context).unfocus();
+                            showModalBottomSheet(
+                              context: context,
+                              isScrollControlled: true,
+                              useSafeArea: true,
+                              shape: const RoundedRectangleBorder(
+                                borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+                              ),
+                              builder: (ctx) => BlocProvider.value(
+                                value: facetBloc,
+                                child: FacetFilterSheet(),
+                              ),
+                            ).then((_) {
+                              Future.delayed(kFacetFilterFocusDelay, () {
+                                if (!mounted) return;
+                                if (_lastFocusedSearch == 'products') {
+                                  _productsSearchFocusNode.requestFocus();
+                                } else {
+                                  _categorySearchFocusNode.requestFocus();
+                                }
+                              });
+                            });
+                          },
+                        ),
+                      ],
+                    )
+                  : null,
+              body: Stack(
                   children: [
                     // Основной контент без AppBar
-                    LayoutBuilder(
+                    Padding(
+                      padding: EdgeInsets.only(
+                        right: (MediaQuery.of(context).viewPadding.right > MediaQuery.of(context).viewPadding.left ? MediaQuery.of(context).viewPadding.right + 32 : 0),
+                        left: (MediaQuery.of(context).viewPadding.left > MediaQuery.of(context).viewPadding.right ? MediaQuery.of(context).viewPadding.left + 32 : 0),
+                      ),
+                      child: LayoutBuilder(
                       builder: (context, constraints) {
                         final width = constraints.maxWidth;
                         final mediaQuery = MediaQuery.of(context);
@@ -465,30 +523,55 @@ class _ProductCatalogSplitPageState extends State<ProductCatalogSplitPage> {
                           ],
                         );
                       },
-                    ),
-                    IgnorePointer(
-                      ignoring: !_isSideMenuOpen,
-                      child: AnimatedOpacity(
-                        opacity: _isSideMenuOpen ? 0.32 : 0,
-                        duration: const Duration(milliseconds: 200),
-                        child: GestureDetector(
-                          behavior: HitTestBehavior.opaque,
-                          onTap: () => _toggleSideMenu(facetBloc, open: false),
-                          child: Container(color: Colors.black54),
-                        ),
                       ),
                     ),
-                    AppSideMenu(
-                      isOpen: _isSideMenuOpen,
-                      onToggle: () => _toggleSideMenu(facetBloc),
-                      facetBloc: facetBloc,
-                      showFilters: true,
+                    ValueListenableBuilder<bool>(
+                      valueListenable: _sideMenuOpenNotifier,
+                      builder: (context, isOpen, _) {
+                        return IgnorePointer(
+                          ignoring: !isOpen,
+                          child: AnimatedOpacity(
+                            opacity: isOpen ? 0.32 : 0,
+                            duration: isOpen ? kFacetFilterAnimationDuration : Duration.zero,
+                            child: GestureDetector(
+                              behavior: HitTestBehavior.opaque,
+                              onTap: () => _toggleSideMenu(facetBloc, open: false),
+                              child: Container(color: Colors.black54),
+                            ),
+                          ),
+                        );
+                      },
                     ),
-                  ],
-                ),
-              ),
-            ),
-          );
+                    ValueListenableBuilder<bool>(
+                      valueListenable: _sideMenuOpenNotifier,
+                      builder: (context, isOpen, _) {
+                        return AppSideMenu(
+                          isOpen: isOpen,
+                          onToggle: () => _toggleSideMenu(facetBloc),
+                          facetBloc: facetBloc,
+                          showFilters: true,
+                          horizontalGap: 48.0,
+                          animationDuration: Duration.zero,
+                        );
+                      },
+                    ),
+                    // FAB in landscape mode to open/close facets
+                    if (MediaQuery.of(context).orientation != Orientation.portrait)
+                      Positioned(
+                        left: 16 + MediaQuery.of(context).viewPadding.left + 12,
+                        bottom: 16 + MediaQuery.of(context).viewPadding.bottom,
+                        child: FloatingActionButton(
+                          heroTag: 'facet-fab',
+                          mini: true,
+                          onPressed: () => _toggleSideMenu(facetBloc, open: !_sideMenuOpenNotifier.value),
+                          backgroundColor: Theme.of(context).colorScheme.primary,
+                          child: const Icon(Icons.filter_alt_outlined),
+                        ),
+                      ),
+                  ], // children
+                ), // Stack
+              ), // Scaffold
+            ); // return BlocListener
         },
       ),
     );
@@ -508,7 +591,8 @@ class _ProductCatalogSplitPageState extends State<ProductCatalogSplitPage> {
 
     // Отступы для безопасной зоны - только для верхней панели в вертикальном режиме
     final topPadding = (isVertical && isTopPanel) ? mediaQuery.padding.top : 0.0;
-    final bottomPadding = isVertical ? 0.0 : mediaQuery.padding.bottom;
+    const double bottomExtra = 72.0; // extra space at bottom to allow comfortable scroll beyond last item
+    final bottomPadding = mediaQuery.viewPadding.bottom + bottomExtra;
 
     return Column(
       children: [
@@ -523,6 +607,7 @@ class _ProductCatalogSplitPageState extends State<ProductCatalogSplitPage> {
           ),
           child: TextField(
             controller: _searchController,
+            focusNode: _categorySearchFocusNode,
             onChanged: _onSearchChanged,
             style: const TextStyle(fontSize: 14),
             decoration: InputDecoration(
@@ -742,6 +827,7 @@ class _ProductCatalogSplitPageState extends State<ProductCatalogSplitPage> {
       isVertical: isVertical,
       isTopPanel: isTopPanel,
       allowedProductCodes: _activeFacetProductCodes,
+      productSearchFocusNode: _productsSearchFocusNode,
     );
   }
 

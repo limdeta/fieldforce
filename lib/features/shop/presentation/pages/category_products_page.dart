@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
+import 'package:flutter/scheduler.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:get_it/get_it.dart';
 import 'package:logging/logging.dart';
@@ -21,7 +22,8 @@ import 'package:fieldforce/features/shop/presentation/bloc/facet_filter_state.da
 import 'package:fieldforce/features/shop/presentation/pages/product_detail_page.dart';
 import 'package:fieldforce/features/shop/presentation/widgets/app_side_menu.dart';
 import 'package:fieldforce/features/shop/presentation/widgets/facet_filter_scope.dart';
-import 'package:fieldforce/features/shop/presentation/widgets/facet_filter_swipe_overlay.dart';
+import 'package:fieldforce/features/shop/presentation/widgets/facet_filter_sheet.dart';
+import 'package:fieldforce/features/shop/presentation/widgets/facet_filter_constants.dart';
 import 'package:fieldforce/features/shop/presentation/widgets/facet_filter_summary_bar.dart';
 import 'package:fieldforce/features/shop/presentation/widgets/product_catalog_card_widget.dart';
 import 'package:fieldforce/shared/widgets/cached_network_image_widget.dart';
@@ -48,6 +50,7 @@ class _CategoryProductsPageState extends State<CategoryProductsPage> {
   final WarehouseFilterService _warehouseFilterService = GetIt.instance<WarehouseFilterService>();
 
   final TextEditingController _searchController = TextEditingController();
+    final FocusNode _searchFocusNode = FocusNode();
   Timer? _searchDebounce;
   
   List<ProductWithStock> _products = [];
@@ -63,7 +66,7 @@ class _CategoryProductsPageState extends State<CategoryProductsPage> {
   final Set<int> _prefetchedProductCodes = <int>{};
   List<int>? _allowedProductCodes;
   late ProductQuery _baseProductQuery;
-  bool _isSideMenuOpen = false;
+  late final ValueNotifier<bool> _sideMenuOpenNotifier;
 
   
   // Отслеживаем выбранные StockItem для каждого продукта
@@ -84,6 +87,7 @@ class _CategoryProductsPageState extends State<CategoryProductsPage> {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       context.read<CartBloc>().add(const LoadCartEvent());
     });
+    _sideMenuOpenNotifier = ValueNotifier<bool>(false);
   }
 
   @override
@@ -91,6 +95,8 @@ class _CategoryProductsPageState extends State<CategoryProductsPage> {
     _searchDebounce?.cancel();
     _scrollController.dispose();
     _searchController.dispose();
+    _searchFocusNode.dispose();
+    _sideMenuOpenNotifier.dispose();
     super.dispose();
   }
 
@@ -120,17 +126,19 @@ class _CategoryProductsPageState extends State<CategoryProductsPage> {
   }
 
   void _toggleSideMenu(FacetFilterBloc bloc, {bool? open}) {
-    final shouldOpen = open ?? !_isSideMenuOpen;
-    if (shouldOpen == _isSideMenuOpen) {
+    final shouldOpen = open ?? !_sideMenuOpenNotifier.value;
+    if (shouldOpen == _sideMenuOpenNotifier.value) {
       return;
     }
-    setState(() {
-      _isSideMenuOpen = shouldOpen;
-    });
+    _sideMenuOpenNotifier.value = shouldOpen;
     if (shouldOpen) {
       bloc.add(const FacetFilterSheetOpened());
+      FocusScope.of(context).unfocus();
     } else {
       bloc.add(const FacetFilterEditingCancelled());
+      Future.delayed(kFacetFilterFocusDelay, () {
+        if (mounted) _searchFocusNode.requestFocus();
+      });
     }
   }
 
@@ -328,23 +336,60 @@ class _CategoryProductsPageState extends State<CategoryProductsPage> {
                   previous.allowedProductCodes,
                   current.allowedProductCodes,
                 ),
-            listener: (context, state) => _onAllowedProductCodesChanged(
-              state.allowedProductCodes,
-            ),
+            listener: (context, state) => _onAllowedProductCodesChanged(state.allowedProductCodes),
             child: Scaffold(
-              body: FacetFilterSwipeOverlay(
-                categoryId: widget.category.id,
-                blocOverride: facetBloc,
-                onOpenFilters: () => _toggleSideMenu(facetBloc, open: true),
-                child: Stack(
-                  children: [
-                    _buildBody(),
-                    // Затемнение при открытом меню
-                    IgnorePointer(
-                      ignoring: !_isSideMenuOpen,
+              appBar: MediaQuery.of(context).orientation == Orientation.portrait
+                  ? AppBar(
+                      title: Text(widget.category.name),
+                      actions: [
+                        IconButton(
+                          icon: const Icon(Icons.filter_alt_outlined),
+                          tooltip: 'Фильтры',
+                          onPressed: () {
+                            FocusScope.of(context).unfocus();
+                            showModalBottomSheet(
+                            context: context,
+                            isScrollControlled: true,
+                            useSafeArea: true,
+                            shape: const RoundedRectangleBorder(
+                              borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+                            ),
+                            builder: (ctx) => BlocProvider.value(
+                              value: facetBloc,
+                              child: FacetFilterSheet(),
+                            ),
+                            ).then((_) {
+                              SchedulerBinding.instance.addPostFrameCallback((_) {
+                                Future.delayed(kFacetFilterFocusDelay, () {
+                                  if (mounted) _searchFocusNode.requestFocus();
+                                });
+                              });
+                            });
+                          },
+                        ),
+                      ],
+                    )
+                  : null,
+              body: Stack(
+                children: [
+                  Padding(
+                    padding: EdgeInsets.only(
+                      right: (MediaQuery.of(context).viewPadding.right > MediaQuery.of(context).viewPadding.left
+                          ? MediaQuery.of(context).viewPadding.right + 16
+                          : 0),
+                      left: (MediaQuery.of(context).viewPadding.left > MediaQuery.of(context).viewPadding.right
+                          ? MediaQuery.of(context).viewPadding.left + 16
+                          : 0),
+                    ),
+                    child: _buildBody(),
+                  ),
+                  ValueListenableBuilder<bool>(
+                    valueListenable: _sideMenuOpenNotifier,
+                    builder: (context, isOpen, _) => IgnorePointer(
+                      ignoring: !isOpen,
                       child: AnimatedOpacity(
-                        opacity: _isSideMenuOpen ? 0.32 : 0,
-                        duration: const Duration(milliseconds: 200),
+                        opacity: isOpen ? 0.32 : 0,
+                        duration: isOpen ? kFacetFilterAnimationDuration : Duration.zero,
                         child: GestureDetector(
                           behavior: HitTestBehavior.opaque,
                           onTap: () => _toggleSideMenu(facetBloc, open: false),
@@ -352,15 +397,30 @@ class _CategoryProductsPageState extends State<CategoryProductsPage> {
                         ),
                       ),
                     ),
-                    // Выдвижное меню с фильтрами
-                    AppSideMenu(
-                      isOpen: _isSideMenuOpen,
-                      onToggle: () => _toggleSideMenu(facetBloc),
-                      facetBloc: facetBloc,
-                      showFilters: true,
+                  ),
+                  ValueListenableBuilder<bool>(
+                    valueListenable: _sideMenuOpenNotifier,
+                    builder: (context, isOpen, _) => AppSideMenu(
+                      isOpen: isOpen,
+                    onToggle: () => _toggleSideMenu(facetBloc),
+                    facetBloc: facetBloc,
+                    showFilters: true,
+                    animationDuration: Duration.zero,
                     ),
-                  ],
-                ),
+                  ),
+                  if (MediaQuery.of(context).orientation != Orientation.portrait)
+                    Positioned(
+                      left: 16 + MediaQuery.of(context).viewPadding.left,
+                      bottom: 16 + MediaQuery.of(context).viewPadding.bottom,
+                      child: FloatingActionButton(
+                        heroTag: 'facet-fab',
+                        mini: true,
+                        onPressed: () => _toggleSideMenu(facetBloc, open: !_sideMenuOpenNotifier.value),
+                        backgroundColor: Theme.of(context).colorScheme.primary,
+                        child: const Icon(Icons.filter_alt_outlined),
+                      ),
+                    ),
+                ],
               ),
             ),
           );
@@ -371,7 +431,6 @@ class _CategoryProductsPageState extends State<CategoryProductsPage> {
 
   Widget _buildBody() {
     final theme = Theme.of(context);
-    final mediaQuery = MediaQuery.of(context);
     final bool showSearchResults = _searchController.text.trim().isNotEmpty;
     final List<ProductWithStock> displayProducts = showSearchResults ? _searchResults : _products;
     
@@ -382,12 +441,13 @@ class _CategoryProductsPageState extends State<CategoryProductsPage> {
           color: theme.colorScheme.surface,
           padding: EdgeInsets.fromLTRB(
             12,
-            12 + mediaQuery.padding.top, // Добавляем отступ сверху
+            (MediaQuery.of(context).orientation == Orientation.portrait ? 12 : 12 + MediaQuery.of(context).padding.top),
             12,
             8,
           ),
           child: TextField(
             controller: _searchController,
+            focusNode: _searchFocusNode,
             onChanged: _onSearchChanged,
             decoration: InputDecoration(
               hintText: 'Поиск по товарам',
@@ -495,7 +555,12 @@ class _CategoryProductsPageState extends State<CategoryProductsPage> {
       onRefresh: _loadProducts,
       child: ListView.builder(
         controller: _scrollController,
-        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 12),
+          padding: EdgeInsets.fromLTRB(
+            12,
+            (MediaQuery.of(context).orientation == Orientation.portrait ? 12 : 12 + MediaQuery.of(context).padding.top),
+            12,
+            8 + MediaQuery.of(context).viewInsets.bottom,
+          ),
         itemCount: displayProducts.length + (_hasMore && !showSearchResults ? 1 : 0),
         itemBuilder: (context, index) {
           if (index == displayProducts.length) {

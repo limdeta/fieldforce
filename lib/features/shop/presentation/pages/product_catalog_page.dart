@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:get_it/get_it.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:logging/logging.dart';
 import 'package:fieldforce/app/services/category_tree_cache_service.dart';
 import 'package:fieldforce/features/shop/domain/entities/category.dart';
@@ -7,7 +8,8 @@ import 'package:fieldforce/features/shop/presentation/widgets/app_side_menu.dart
 import 'package:fieldforce/features/shop/presentation/bloc/facet_filter_bloc.dart';
 import 'package:fieldforce/features/shop/presentation/bloc/facet_filter_event.dart';
 import 'package:fieldforce/features/shop/presentation/widgets/facet_filter_scope.dart';
-import 'package:fieldforce/features/shop/presentation/widgets/facet_filter_swipe_overlay.dart';
+import 'package:fieldforce/features/shop/presentation/widgets/facet_filter_sheet.dart';
+import 'package:fieldforce/features/shop/presentation/widgets/facet_filter_constants.dart';
 import 'category_products_page.dart';
 
 class ProductCatalogPage extends StatefulWidget {
@@ -28,10 +30,11 @@ class _ProductCatalogPageState extends State<ProductCatalogPage>
   String? _error;
   final Set<int> _expandedCategories = {};
   final TextEditingController _searchController = TextEditingController();
+  final FocusNode _searchFocusNode = FocusNode();
   String _searchQuery = '';
   late AnimationController _animationController;
   late Animation<double> _fadeAnimation;
-  bool _isSideMenuOpen = false;
+  late final ValueNotifier<bool> _sideMenuOpenNotifier;
 
   // Популярные категории для быстрого доступа
   final List<String> _popularCategoryNames = ['work', 'in', 'progress'];
@@ -47,11 +50,14 @@ class _ProductCatalogPageState extends State<ProductCatalogPage>
       CurvedAnimation(parent: _animationController, curve: Curves.easeInOut),
     );
   _loadCategories();
+  _sideMenuOpenNotifier = ValueNotifier<bool>(false);
   }
 
   @override
   void dispose() {
     _searchController.dispose();
+    _searchFocusNode.dispose();
+    _sideMenuOpenNotifier.dispose();
     _animationController.dispose();
     super.dispose();
   }
@@ -214,19 +220,24 @@ class _ProductCatalogPageState extends State<ProductCatalogPage>
   }
 
   void _toggleSideMenu(FacetFilterBloc bloc, {bool? open}) {
-    final shouldOpen = open ?? !_isSideMenuOpen;
-    if (shouldOpen == _isSideMenuOpen) {
+    final shouldOpen = open ?? !_sideMenuOpenNotifier.value;
+    if (shouldOpen == _sideMenuOpenNotifier.value) {
       return;
     }
-    setState(() {
-      _isSideMenuOpen = shouldOpen;
-    });
+    _sideMenuOpenNotifier.value = shouldOpen;
     if (shouldOpen) {
       bloc.add(const FacetFilterSheetOpened());
+      FocusScope.of(context).unfocus();
     } else {
       bloc.add(const FacetFilterEditingCancelled());
+        Future.delayed(kFacetFilterFocusDelay, () {
+          if (mounted) _searchFocusNode.requestFocus();
+        });
     }
   }
+
+    // Re-focus helper removed — revert to simple delayed re-focus to match
+    // original behavior.
 
   void _onCategoryTap(Category category) {
     Navigator.of(context).push(
@@ -366,42 +377,99 @@ class _ProductCatalogPageState extends State<ProductCatalogPage>
             );
           }
 
-          return Scaffold(
-            backgroundColor: Colors.white,
-            body: FacetFilterSwipeOverlay(
-              categoryId: null,
-              blocOverride: facetBloc,
-              onOpenFilters: () => _toggleSideMenu(facetBloc, open: true),
-              child: Stack(
+              return Scaffold(
+                backgroundColor: Colors.white,
+                appBar: MediaQuery.of(context).orientation == Orientation.portrait
+                    ? AppBar(
+                        title: const Text('Каталог'),
+                        actions: [
+                          IconButton(
+                            icon: const Icon(Icons.filter_alt_outlined),
+                            tooltip: 'Фильтры',
+                            onPressed: () {
+                              // Dismiss keyboard first to avoid simultaneous
+                              // keyboard animation and menu opening.
+                              FocusScope.of(context).unfocus();
+                              showModalBottomSheet(
+                                context: context,
+                                isScrollControlled: true,
+                                useSafeArea: true,
+                                shape: const RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+                                ),
+                                builder: (ctx) => BlocProvider.value(
+                                  value: facetBloc,
+                                  child: FacetFilterSheet(),
+                                ),
+                              ).then((_) {
+                                Future.delayed(kFacetFilterFocusDelay, () {
+                                  if (mounted) _searchFocusNode.requestFocus();
+                                });
+                              });
+                            },
+                          ),
+                        ],
+                      )
+                    : null,
+                body: Stack(
                 children: [
-                  _buildBody(),
-                  // Затемнение при открытом меню
-                  IgnorePointer(
-                    ignoring: !_isSideMenuOpen,
-                    child: AnimatedOpacity(
-                      opacity: _isSideMenuOpen ? 0.32 : 0,
-                      duration: const Duration(milliseconds: 200),
-                      child: GestureDetector(
-                        behavior: HitTestBehavior.opaque,
-                        onTap: () => _toggleSideMenu(facetBloc, open: false),
-                        child: Container(color: Colors.black54),
+                  Padding(
+                    padding: EdgeInsets.only(
+                      right: (MediaQuery.of(context).viewPadding.right > MediaQuery.of(context).viewPadding.left
+                          ? MediaQuery.of(context).viewPadding.right + 16
+                          : 0),
+                      left: (MediaQuery.of(context).viewPadding.left > MediaQuery.of(context).viewPadding.right
+                          ? MediaQuery.of(context).viewPadding.left + 16
+                          : 0),
+                    ),
+                    child: _buildBody(),
+                  ),
+                  // Затемнение при открытом меню — обёрнуто в ValueListenableBuilder
+                  ValueListenableBuilder<bool>(
+                    valueListenable: _sideMenuOpenNotifier,
+                    builder: (context, isOpen, _) => IgnorePointer(
+                      ignoring: !isOpen,
+                      child: AnimatedOpacity(
+                        opacity: isOpen ? 0.32 : 0,
+                        duration: isOpen ? kFacetFilterAnimationDuration : Duration.zero,
+                        child: GestureDetector(
+                          behavior: HitTestBehavior.opaque,
+                          onTap: () => _toggleSideMenu(facetBloc, open: false),
+                          child: Container(color: Colors.black54),
+                        ),
                       ),
                     ),
                   ),
                   // Выдвижное меню без фильтров (нет категории)
-                  AppSideMenu(
-                    isOpen: _isSideMenuOpen,
-                    onToggle: () => _toggleSideMenu(facetBloc),
-                    facetBloc: facetBloc,
-                    showFilters: false,
+                  ValueListenableBuilder<bool>(
+                    valueListenable: _sideMenuOpenNotifier,
+                    builder: (context, isOpen, _) => AppSideMenu(
+                      isOpen: isOpen,
+                      onToggle: () => _toggleSideMenu(facetBloc),
+                      facetBloc: facetBloc,
+                      showFilters: false,
+                      animationDuration: Duration.zero,
+                    ),
                   ),
-                ],
-              ),
-            ),
-          );
-        },
-      ),
-    );
+                  // Landscape FAB for opening filters
+                  if (MediaQuery.of(context).orientation != Orientation.portrait)
+                    Positioned(
+                      left: 16 + MediaQuery.of(context).viewPadding.left,
+                      bottom: 16 + MediaQuery.of(context).viewPadding.bottom,
+                      child: FloatingActionButton(
+                        heroTag: 'facet-fab',
+                        mini: true,
+                        onPressed: () => _toggleSideMenu(facetBloc, open: !_sideMenuOpenNotifier.value),
+                        backgroundColor: Theme.of(context).colorScheme.primary,
+                        child: const Icon(Icons.filter_alt_outlined),
+                      ),
+                    ),
+                  ], // children
+                ), // Stack
+              ); // Scaffold
+            }, // builder
+          ), // Builder
+        ); // FacetFilterScope
   }
 
   Widget _buildBody() {
@@ -411,15 +479,18 @@ class _ProductCatalogPageState extends State<ProductCatalogPage>
       children: [
         // Поисковая строка с учётом safe area
         Container(
-          color: Colors.white,
-          padding: EdgeInsets.fromLTRB(
+                color: Colors.white,
+                padding: EdgeInsets.fromLTRB(
             8,
-            8 + mediaQuery.padding.top, // Добавляем отступ сверху
+            // Avoid extra top padding when AppBar is present (portrait); only
+            // add system status bar padding when we're in overlay/no-AppBar layout.
+            (MediaQuery.of(context).orientation == Orientation.portrait ? 8 : 8 + mediaQuery.padding.top),
             8,
             8,
           ),
           child: TextField(
             controller: _searchController,
+            focusNode: _searchFocusNode,
             onChanged: _onSearchChanged,
             decoration: InputDecoration(
               hintText: 'Поиск по категориям...',
@@ -510,6 +581,7 @@ class _ProductCatalogPageState extends State<ProductCatalogPage>
                 ),
               ),
             ),
+            SliverToBoxAdapter(child: SizedBox(height: 72 + MediaQuery.of(context).viewPadding.bottom + MediaQuery.of(context).viewInsets.bottom)),
           ],
         ),
       ),
@@ -815,74 +887,3 @@ class _ProductCatalogPageState extends State<ProductCatalogPage>
 
 }
 
-class _FilterEdgeHandle extends StatefulWidget {
-  final VoidCallback onTrigger;
-
-  const _FilterEdgeHandle({required this.onTrigger});
-
-  @override
-  State<_FilterEdgeHandle> createState() => _FilterEdgeHandleState();
-}
-
-class _FilterEdgeHandleState extends State<_FilterEdgeHandle> {
-  bool _dragging = false;
-  bool _triggered = false;
-
-  void _reset() {
-    _dragging = false;
-    _triggered = false;
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final primaryColor = Theme.of(context).colorScheme.primary;
-    return GestureDetector(
-      behavior: HitTestBehavior.translucent,
-      onHorizontalDragStart: (_) {
-        _dragging = true;
-        _triggered = false;
-      },
-      onHorizontalDragUpdate: (details) {
-        if (!_dragging || _triggered) {
-          return;
-        }
-        if (details.primaryDelta != null && details.primaryDelta! < -12) {
-          _triggered = true;
-          widget.onTrigger();
-        }
-      },
-      onHorizontalDragEnd: (_) => _reset(),
-      onHorizontalDragCancel: _reset,
-      child: Container(
-        width: 28,
-        margin: const EdgeInsets.symmetric(vertical: 48),
-        decoration: BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.centerLeft,
-            end: Alignment.centerRight,
-            colors: [
-              Colors.transparent,
-              primaryColor.withValues(alpha: 0.05),
-            ],
-          ),
-        ),
-        child: Align(
-          alignment: Alignment.centerRight,
-          child: Container(
-            width: 18,
-            height: 64,
-            decoration: BoxDecoration(
-              color: primaryColor.withValues(alpha: 0.08),
-              borderRadius: const BorderRadius.horizontal(left: Radius.circular(12)),
-            ),
-            child: const Icon(
-              Icons.tune,
-              size: 16,
-              color: Colors.black54,
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-}

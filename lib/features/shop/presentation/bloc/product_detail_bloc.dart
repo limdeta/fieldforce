@@ -23,7 +23,7 @@ class ProductDetailBloc extends Bloc<ProductDetailEvent, ProductDetailState> {
   ) async {
     emit(ProductDetailLoading());
 
-    final result = await _productRepository.getProductByCatalogId(event.productId);
+    final result = await _productRepository.getProductById(event.productId);
 
     result.fold(
       (failure) {

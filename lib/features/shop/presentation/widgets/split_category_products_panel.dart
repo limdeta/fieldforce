@@ -32,6 +32,7 @@ class SplitCategoryProductsPanel extends StatefulWidget {
   final bool isVertical; // Для определения safe area padding
   final bool isTopPanel; // Для определения, применять ли top padding
   final List<int>? allowedProductCodes;
+  final FocusNode? productSearchFocusNode;
 
   const SplitCategoryProductsPanel({
     super.key,
@@ -41,6 +42,7 @@ class SplitCategoryProductsPanel extends StatefulWidget {
     this.isVertical = true,
     this.isTopPanel = true,
     this.allowedProductCodes,
+    this.productSearchFocusNode,
   });
 
   @override
@@ -59,6 +61,8 @@ class _SplitCategoryProductsPanelState extends State<SplitCategoryProductsPanel>
 
   final ScrollController _scrollController = ScrollController();
   final TextEditingController _productSearchController = TextEditingController();
+  final FocusNode _internalProductSearchFocusNode = FocusNode();
+  FocusNode get _productSearchFocusNode => widget.productSearchFocusNode ?? _internalProductSearchFocusNode;
   Timer? _searchDebounce;
   
   List<ProductWithStock> _products = <ProductWithStock>[];
@@ -122,6 +126,10 @@ class _SplitCategoryProductsPanelState extends State<SplitCategoryProductsPanel>
     _scrollController.removeListener(_onScroll);
     _scrollController.dispose();
     _productSearchController.dispose();
+    // Dispose internal focus node only if parent didn't provide one
+    if (widget.productSearchFocusNode == null) {
+      _internalProductSearchFocusNode.dispose();
+    }
     super.dispose();
   }
 
@@ -431,7 +439,8 @@ class _SplitCategoryProductsPanelState extends State<SplitCategoryProductsPanel>
     
     // Отступы для безопасной зоны - только для верхней панели в вертикальном режиме
     final topPadding = (widget.isVertical && widget.isTopPanel) ? mediaQuery.padding.top : 0.0;
-    final bottomPadding = widget.isVertical ? 0.0 : mediaQuery.padding.bottom;
+    const double bottomExtra = 72.0; // extra space below the list so last item can be scrolled above overlays
+    final bottomPadding = mediaQuery.viewPadding.bottom + mediaQuery.viewInsets.bottom + bottomExtra;
     
     // Определяем какой список показывать
     final bool showSearchResults = _productSearchController.text.trim().isNotEmpty;
@@ -450,6 +459,7 @@ class _SplitCategoryProductsPanelState extends State<SplitCategoryProductsPanel>
           ),
           child: TextField(
             controller: _productSearchController,
+            focusNode: _productSearchFocusNode,
             onChanged: _onProductSearchChanged,
             style: const TextStyle(fontSize: 14),
             decoration: InputDecoration(

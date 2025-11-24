@@ -1,10 +1,12 @@
 // lib/features/shop/presentation/widgets/app_side_menu.dart
 
 import 'package:flutter/material.dart';
+import 'dart:math' as math;
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:fieldforce/features/shop/presentation/bloc/cart_bloc.dart';
 import 'package:fieldforce/features/shop/presentation/bloc/facet_filter_bloc.dart';
 import 'package:fieldforce/features/shop/presentation/widgets/facet_filter_sheet.dart';
+import 'package:fieldforce/features/shop/presentation/widgets/facet_filter_constants.dart';
 
 /// Переиспользуемое выдвижное боковое меню для навигации и фильтров
 class AppSideMenu extends StatefulWidget {
@@ -14,12 +16,16 @@ class AppSideMenu extends StatefulWidget {
     required this.onToggle,
     required this.facetBloc,
     this.showFilters = true,
+    this.horizontalGap = 16.0,
+    this.animationDuration = kFacetFilterAnimationDuration,
   });
 
   final bool isOpen;
   final VoidCallback onToggle;
   final FacetFilterBloc facetBloc;
   final bool showFilters;
+  final double horizontalGap;
+  final Duration animationDuration;
 
   @override
   State<AppSideMenu> createState() => _AppSideMenuState();
@@ -27,45 +33,80 @@ class AppSideMenu extends StatefulWidget {
 
 class _AppSideMenuState extends State<AppSideMenu> {
   static const double _menuWidth = 360;
-  static const double _handleWidth = 36;
-  static const double _handleHeight = 120;
-  static const double _handlePeek = 42;
 
   @override
   Widget build(BuildContext context) {
-    final panelWidth = _menuWidth + _handleWidth;
-    final closedRight = -(panelWidth - _handlePeek);
+    final mq = MediaQuery.of(context);
+    final screenWidth = mq.size.width;
+    final isLandscape = mq.orientation == Orientation.landscape;
 
-    return AnimatedPositioned(
-      duration: const Duration(milliseconds: 260),
-      curve: Curves.easeInOut,
+    // Use viewPadding to account for system UI that may overlay our content
+    // (navigation bar, insets, etc). viewPadding provides the raw system
+    // insets which is better for avoiding overlap with the OS chrome.
+    final leftInset = mq.viewPadding.left; // system left inset
+    final rightInset = mq.viewPadding.right; // system right inset (navigation)
+    final sideGap = widget.horizontalGap; // small buffer from system UI, configurable
+    // Determine maximum available width between system insets so we never
+    // allow the side menu to overlap the Android nav/menus.
+    final maxAvailableWidth = math.max(0.0, screenWidth - leftInset - rightInset - (sideGap * 2));
+    final double panelWidth = isLandscape
+      ? math.min(math.min(screenWidth * 0.9, 900), maxAvailableWidth)
+      : _menuWidth; // in landscape use up to 90% of screen or cap to 900
+
+    final closedRight = -panelWidth;
+    final closedLeft = screenWidth + 10; // offscreen to the right
+
+    // Respect system UI paddings (status bar, navigation bar) to avoid
+    // overlapping Android navigation/menu areas. Clamp the openLeft to
+    // stay within the safe area horizontally.
+    // leftInset/rightInset/sideGap defined above
+    final minLeft = (leftInset + sideGap).clamp(0.0, screenWidth);
+    final maxLeft = (screenWidth - panelWidth - rightInset - sideGap).clamp(0.0, screenWidth);
+    // Ensure clamping min/max are valid: clamp() will throw if min > max.
+    final clampLower = math.min(minLeft, maxLeft);
+    final clampUpper = math.max(minLeft, maxLeft);
+    double openLeftComputed = ((screenWidth - panelWidth) / 2);
+    // On devices where system UI (navigation) is present on one side more than
+    // the other, prefer to shift the menu to avoid overlapping that UI.
+    if (isLandscape) {
+      if (rightInset > leftInset) {
+        // Align to the right side, leaving gap
+        openLeftComputed = (screenWidth - rightInset - sideGap - panelWidth);
+      } else if (leftInset > rightInset) {
+        // Align to the left side, leaving gap
+        openLeftComputed = leftInset + sideGap;
+      }
+    }
+    final openLeft = openLeftComputed.clamp(clampLower, clampUpper);
+
+    if (widget.animationDuration.inMilliseconds > 0) {
+      return AnimatedPositioned(
+        duration: widget.animationDuration,
+        curve: Curves.easeOut,
       top: 0,
       bottom: 0,
-      right: widget.isOpen ? 0 : closedRight,
+      left: isLandscape ? (widget.isOpen ? openLeft : closedLeft) : null,
+      right: isLandscape ? null : (widget.isOpen ? (rightInset + sideGap) : closedRight),
+      width: panelWidth,
+        child: SafeArea(
+        child: Material(
+          color: Colors.transparent,
+          child: _buildMenuContent(),
+        ),
+      ),
+      );
+    }
+
+    return Positioned(
+      top: 0,
+      bottom: 0,
+      left: isLandscape ? (widget.isOpen ? openLeft : closedLeft) : null,
+      right: isLandscape ? null : (widget.isOpen ? (rightInset + sideGap) : closedRight),
       width: panelWidth,
       child: SafeArea(
         child: Material(
           color: Colors.transparent,
-          child: Row(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              SizedBox(
-                width: _handleWidth,
-                child: Align(
-                  alignment: Alignment.center,
-                  child: _SideMenuHandle(
-                    width: _handleWidth,
-                    height: _handleHeight,
-                    isOpen: widget.isOpen,
-                    onToggle: widget.onToggle,
-                  ),
-                ),
-              ),
-              Expanded(
-                child: _buildMenuContent(),
-              ),
-            ],
-          ),
+          child: _buildMenuContent(),
         ),
       ),
     );
@@ -204,91 +245,4 @@ class _CartIconButton extends StatelessWidget {
   }
 }
 
-class _SideMenuHandle extends StatefulWidget {
-  const _SideMenuHandle({
-    required this.width,
-    required this.height,
-    required this.isOpen,
-    required this.onToggle,
-  });
-
-  final double width;
-  final double height;
-  final bool isOpen;
-  final VoidCallback onToggle;
-
-  @override
-  State<_SideMenuHandle> createState() => _SideMenuHandleState();
-}
-
-class _SideMenuHandleState extends State<_SideMenuHandle> {
-  double _dragDelta = 0;
-
-  void _resetDrag() => _dragDelta = 0;
-
-  bool _shouldToggle(double velocity) {
-    const threshold = 40.0;
-    const velocityThreshold = 400.0;
-    if (widget.isOpen) {
-      return _dragDelta > threshold || velocity > velocityThreshold;
-    }
-    return _dragDelta < -threshold || velocity < -velocityThreshold;
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    return Material(
-      color: Colors.transparent,
-      child: GestureDetector(
-        behavior: HitTestBehavior.opaque,
-        onTap: widget.onToggle,
-        onHorizontalDragStart: (_) => _resetDrag(),
-        onHorizontalDragUpdate: (details) => _dragDelta += details.primaryDelta ?? 0,
-        onHorizontalDragEnd: (details) {
-          if (_shouldToggle(details.primaryVelocity ?? 0)) {
-            widget.onToggle();
-          }
-          _resetDrag();
-        },
-        onHorizontalDragCancel: _resetDrag,
-        child: Container(
-          width: widget.width,
-          height: widget.height,
-          decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: const BorderRadius.only(
-              topLeft: Radius.circular(9),
-              bottomLeft: Radius.circular(9),
-            ),
-            border: Border.all(color: theme.dividerColor.withValues(alpha: 0.3)),
-            boxShadow: const [
-              BoxShadow(
-                blurRadius: 6,
-                offset: Offset(-2, 2),
-                color: Colors.black26,
-              ),
-            ],
-          ),
-          child: Center(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: List.generate(3, (index) {
-                final gripWidth = (widget.width - 12).clamp(12, widget.width).toDouble();
-                return Container(
-                  width: gripWidth,
-                  height: 4,
-                  margin: EdgeInsets.symmetric(vertical: index == 1 ? 5 : 4),
-                  decoration: BoxDecoration(
-                    color: Colors.grey.shade600,
-                    borderRadius: BorderRadius.circular(2),
-                  ),
-                );
-              }),
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-}
+// Removed `_SideMenuHandle` - app now uses AppBar FAB for opening filters
