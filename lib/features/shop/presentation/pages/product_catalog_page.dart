@@ -3,7 +3,11 @@ import 'package:get_it/get_it.dart';
 import 'package:logging/logging.dart';
 import 'package:fieldforce/app/services/category_tree_cache_service.dart';
 import 'package:fieldforce/features/shop/domain/entities/category.dart';
-import 'package:fieldforce/features/shop/presentation/widgets/catalog_app_bar_actions.dart';
+import 'package:fieldforce/features/shop/presentation/widgets/app_side_menu.dart';
+import 'package:fieldforce/features/shop/presentation/bloc/facet_filter_bloc.dart';
+import 'package:fieldforce/features/shop/presentation/bloc/facet_filter_event.dart';
+import 'package:fieldforce/features/shop/presentation/widgets/facet_filter_scope.dart';
+import 'package:fieldforce/features/shop/presentation/widgets/facet_filter_swipe_overlay.dart';
 import 'category_products_page.dart';
 
 class ProductCatalogPage extends StatefulWidget {
@@ -27,6 +31,7 @@ class _ProductCatalogPageState extends State<ProductCatalogPage>
   String _searchQuery = '';
   late AnimationController _animationController;
   late Animation<double> _fadeAnimation;
+  bool _isSideMenuOpen = false;
 
   // Популярные категории для быстрого доступа
   final List<String> _popularCategoryNames = ['work', 'in', 'progress'];
@@ -208,6 +213,21 @@ class _ProductCatalogPageState extends State<ProductCatalogPage>
     });
   }
 
+  void _toggleSideMenu(FacetFilterBloc bloc, {bool? open}) {
+    final shouldOpen = open ?? !_isSideMenuOpen;
+    if (shouldOpen == _isSideMenuOpen) {
+      return;
+    }
+    setState(() {
+      _isSideMenuOpen = shouldOpen;
+    });
+    if (shouldOpen) {
+      bloc.add(const FacetFilterSheetOpened());
+    } else {
+      bloc.add(const FacetFilterEditingCancelled());
+    }
+  }
+
   void _onCategoryTap(Category category) {
     Navigator.of(context).push(
       MaterialPageRoute(
@@ -333,63 +353,86 @@ class _ProductCatalogPageState extends State<ProductCatalogPage>
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: Colors.white,
-  appBar: _buildAppBar(),
-  body: _buildBody(),
+    return FacetFilterScope(
+      categoryId: null, // Нет категории на этом экране
+      child: Builder(
+        builder: (scopedContext) {
+          final facetBloc = FacetFilterScope.maybeBlocOf(scopedContext);
+          if (facetBloc == null) {
+            return const Scaffold(
+              body: Center(
+                child: Text('Ошибка: FacetFilterBloc не найден'),
+              ),
+            );
+          }
+
+          return Scaffold(
+            backgroundColor: Colors.white,
+            body: FacetFilterSwipeOverlay(
+              categoryId: null,
+              blocOverride: facetBloc,
+              onOpenFilters: () => _toggleSideMenu(facetBloc, open: true),
+              child: Stack(
+                children: [
+                  _buildBody(),
+                  // Затемнение при открытом меню
+                  IgnorePointer(
+                    ignoring: !_isSideMenuOpen,
+                    child: AnimatedOpacity(
+                      opacity: _isSideMenuOpen ? 0.32 : 0,
+                      duration: const Duration(milliseconds: 200),
+                      child: GestureDetector(
+                        behavior: HitTestBehavior.opaque,
+                        onTap: () => _toggleSideMenu(facetBloc, open: false),
+                        child: Container(color: Colors.black54),
+                      ),
+                    ),
+                  ),
+                  // Выдвижное меню без фильтров (нет категории)
+                  AppSideMenu(
+                    isOpen: _isSideMenuOpen,
+                    onToggle: () => _toggleSideMenu(facetBloc),
+                    facetBloc: facetBloc,
+                    showFilters: false,
+                  ),
+                ],
+              ),
+            ),
+          );
+        },
+      ),
     );
   }
 
-  PreferredSizeWidget _buildAppBar() {
-    return AppBar(
-      elevation: 0,
-      toolbarHeight: 50,
-      centerTitle: false,
-      titleSpacing: 0,
-
-      foregroundColor: Colors.white,
-      title: Row(
-        mainAxisSize: MainAxisSize.max,
-        children: const [
-          Expanded(
-            child: Align(
-              alignment: Alignment.centerLeft,
-              child: Padding(
-                padding: EdgeInsets.only(left: 4),
-                child: Text(
-                  'Каталог товаров',
-                  style: TextStyle(
-                    fontWeight: FontWeight.bold,
-                    fontSize: 20,
-                  ),
-                ),
-              ),
-            ),
+  Widget _buildBody() {
+    final mediaQuery = MediaQuery.of(context);
+    
+    return Column(
+      children: [
+        // Поисковая строка с учётом safe area
+        Container(
+          color: Colors.white,
+          padding: EdgeInsets.fromLTRB(
+            8,
+            8 + mediaQuery.padding.top, // Добавляем отступ сверху
+            8,
+            8,
           ),
-        ],
-      ),
-      leading: IconButton(
-        icon: const Icon(Icons.arrow_back),
-        onPressed: () {
-          Navigator.pushReplacementNamed(context, '/menu');
-        },
-      ),
-      actions: const [
-        CatalogAppBarActions(
-          showFilter: false,
-        ),
-      ],
-      bottom: PreferredSize(
-        preferredSize: const Size.fromHeight(40),
-        child: Container(
-          // Reduced horizontal padding to bring the search field closer to the screen edges
-          padding: const EdgeInsets.fromLTRB(8, 0, 8, 8),
           child: TextField(
             controller: _searchController,
             onChanged: _onSearchChanged,
             decoration: InputDecoration(
               hintText: 'Поиск по категориям...',
               prefixIcon: const Icon(Icons.search, color: Color.fromARGB(255, 100, 100, 100)),
+              suffixIcon: _searchController.text.isNotEmpty
+                  ? IconButton(
+                      onPressed: () {
+                        _searchController.clear();
+                        _onSearchChanged('');
+                      },
+                      icon: const Icon(Icons.clear),
+                    )
+                  : null,
               filled: true,
               fillColor: Colors.grey.shade100,
               border: const OutlineInputBorder(
@@ -400,11 +443,15 @@ class _ProductCatalogPageState extends State<ProductCatalogPage>
             ),
           ),
         ),
-      ),
+        // Контент
+        Expanded(
+          child: _buildCategoryContent(),
+        ),
+      ],
     );
   }
 
-  Widget _buildBody() {
+  Widget _buildCategoryContent() {
     if (_isLoading) {
       return const Center(
         child: CircularProgressIndicator(
@@ -468,19 +515,7 @@ class _ProductCatalogPageState extends State<ProductCatalogPage>
       ),
     );
 
-    return Stack(
-      children: [
-        catalogContent,
-        Positioned(
-          top: 0,
-          bottom: 0,
-          right: 0,
-          child: _FilterEdgeHandle(
-            onTrigger: () => showCatalogFilters(context),
-          ),
-        ),
-      ],
-    );
+    return catalogContent;
   }
 
   Widget _buildPopularCategories() {

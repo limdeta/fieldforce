@@ -1,4 +1,3 @@
-# Facets Phase 3 — Dynamic Characteristics Filters
 
 ## 1. Анализ текущего состояния
 

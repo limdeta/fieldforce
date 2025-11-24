@@ -12,14 +12,14 @@ import 'package:fieldforce/features/shop/domain/entities/stock_item.dart';
 import 'package:fieldforce/features/shop/domain/usecases/search_products_usecase.dart';
 import 'package:fieldforce/features/shop/presentation/bloc/cart_bloc.dart';
 import 'package:fieldforce/features/shop/presentation/bloc/facet_filter_bloc.dart';
+import 'package:fieldforce/features/shop/presentation/bloc/facet_filter_event.dart';
 import 'package:fieldforce/features/shop/presentation/bloc/facet_filter_state.dart';
 import 'package:fieldforce/features/shop/presentation/pages/product_detail_page.dart';
-import 'package:fieldforce/features/shop/presentation/widgets/catalog_app_bar_actions.dart';
+import 'package:fieldforce/features/shop/presentation/widgets/app_side_menu.dart';
 import 'package:fieldforce/features/shop/presentation/widgets/facet_filter_scope.dart';
 import 'package:fieldforce/features/shop/presentation/widgets/facet_filter_summary_bar.dart';
 import 'package:fieldforce/features/shop/presentation/widgets/facet_filter_swipe_overlay.dart';
 import 'package:fieldforce/features/shop/presentation/widgets/product_catalog_card_widget.dart';
-import 'package:fieldforce/shared/presentation/widgets/home_icon_button.dart';
 
 /// Страница глобального поиска товаров по всему каталогу
 class ProductSearchPage extends StatefulWidget {
@@ -45,6 +45,7 @@ class _ProductSearchPageState extends State<ProductSearchPage> {
   FacetFilter _activeFacetFilter = const FacetFilter();
   bool _hasAppliedFacetFilters = false;
   List<int>? _allowedProductCodes;
+  bool _isSideMenuOpen = false;
 
   // Отслеживаем выбранные StockItem для каждого продукта
   final Map<int, StockItem> _selectedStockItems = {};
@@ -134,13 +135,36 @@ class _ProductSearchPageState extends State<ProductSearchPage> {
     });
   }
 
+  void _toggleSideMenu(FacetFilterBloc bloc, {bool? open}) {
+    final shouldOpen = open ?? !_isSideMenuOpen;
+    if (shouldOpen == _isSideMenuOpen) {
+      return;
+    }
+    setState(() {
+      _isSideMenuOpen = shouldOpen;
+    });
+    if (shouldOpen) {
+      bloc.add(const FacetFilterSheetOpened());
+    } else {
+      bloc.add(const FacetFilterEditingCancelled());
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return FacetFilterScope(
       categoryId: null,
       child: Builder(
-        builder: (scopeContext) {
-          final facetBloc = FacetFilterScope.maybeBlocOf(scopeContext);
+        builder: (scopedContext) {
+          final facetBloc = FacetFilterScope.maybeBlocOf(scopedContext);
+          if (facetBloc == null) {
+            return const Scaffold(
+              body: Center(
+                child: Text('Ошибка: FacetFilterBloc не найден'),
+              ),
+            );
+          }
+          
           return MultiBlocListener(
             listeners: [
               BlocListener<FacetFilterBloc, FacetFilterState>(
@@ -159,34 +183,35 @@ class _ProductSearchPageState extends State<ProductSearchPage> {
               ),
             ],
             child: Scaffold(
-              appBar: AppBar(
-                title: const Text(
-                  'Поиск товаров',
-                  style: TextStyle(fontWeight: FontWeight.w600, fontSize: 20),
-                ),
-                elevation: 0,
-                backgroundColor: Colors.black,
-                foregroundColor: Colors.white,
-                actions: [
-                  CatalogFilterButton(
-                    categoryId: null,
-                    onPressed: () => showCatalogFilters(
-                      scopeContext,
-                      blocOverride: facetBloc,
-                    ),
-                  ),
-                  IconButton(
-                    icon: const Icon(Icons.shopping_cart),
-                    onPressed: () => Navigator.pushNamed(context, '/cart'),
-                    tooltip: 'Корзина',
-                  ),
-                  const HomeIconButton(),
-                ],
-              ),
               body: FacetFilterSwipeOverlay(
                 blocOverride: facetBloc,
                 categoryId: null,
-                child: _buildBody(),
+                onOpenFilters: () => _toggleSideMenu(facetBloc, open: true),
+                child: Stack(
+                  children: [
+                    _buildBody(),
+                    // Затемнение при открытом меню
+                    IgnorePointer(
+                      ignoring: !_isSideMenuOpen,
+                      child: AnimatedOpacity(
+                        opacity: _isSideMenuOpen ? 0.32 : 0,
+                        duration: const Duration(milliseconds: 200),
+                        child: GestureDetector(
+                          behavior: HitTestBehavior.opaque,
+                          onTap: () => _toggleSideMenu(facetBloc, open: false),
+                          child: Container(color: Colors.black54),
+                        ),
+                      ),
+                    ),
+                    // Выдвижное меню
+                    AppSideMenu(
+                      isOpen: _isSideMenuOpen,
+                      onToggle: () => _toggleSideMenu(facetBloc),
+                      facetBloc: facetBloc,
+                      showFilters: true,
+                    ),
+                  ],
+                ),
               ),
             ),
           );
@@ -197,13 +222,19 @@ class _ProductSearchPageState extends State<ProductSearchPage> {
 
   Widget _buildBody() {
     final theme = Theme.of(context);
+    final mediaQuery = MediaQuery.of(context);
 
     return Column(
       children: [
-        // Поисковая строка
+        // Поисковая строка с учётом safe area
         Container(
           color: theme.colorScheme.surface,
-          padding: const EdgeInsets.all(16),
+          padding: EdgeInsets.fromLTRB(
+            16,
+            16 + mediaQuery.padding.top, // Добавляем отступ сверху
+            16,
+            16,
+          ),
           child: TextField(
             controller: _searchController,
             onChanged: _onSearchChanged,

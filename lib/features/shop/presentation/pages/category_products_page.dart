@@ -16,15 +16,15 @@ import 'package:fieldforce/features/shop/domain/usecases/get_category_products_u
 import 'package:fieldforce/features/shop/domain/usecases/search_products_usecase.dart';
 import 'package:fieldforce/features/shop/presentation/bloc/cart_bloc.dart';
 import 'package:fieldforce/features/shop/presentation/bloc/facet_filter_bloc.dart';
+import 'package:fieldforce/features/shop/presentation/bloc/facet_filter_event.dart';
 import 'package:fieldforce/features/shop/presentation/bloc/facet_filter_state.dart';
 import 'package:fieldforce/features/shop/presentation/pages/product_detail_page.dart';
-import 'package:fieldforce/features/shop/presentation/widgets/catalog_app_bar_actions.dart';
+import 'package:fieldforce/features/shop/presentation/widgets/app_side_menu.dart';
 import 'package:fieldforce/features/shop/presentation/widgets/facet_filter_scope.dart';
 import 'package:fieldforce/features/shop/presentation/widgets/facet_filter_swipe_overlay.dart';
 import 'package:fieldforce/features/shop/presentation/widgets/facet_filter_summary_bar.dart';
 import 'package:fieldforce/features/shop/presentation/widgets/product_catalog_card_widget.dart';
 import 'package:fieldforce/shared/widgets/cached_network_image_widget.dart';
-import 'package:fieldforce/shared/presentation/widgets/home_icon_button.dart';
 
 /// Страница списка продуктов для выбранной категории
 class CategoryProductsPage extends StatefulWidget {
@@ -63,6 +63,7 @@ class _CategoryProductsPageState extends State<CategoryProductsPage> {
   final Set<int> _prefetchedProductCodes = <int>{};
   List<int>? _allowedProductCodes;
   late ProductQuery _baseProductQuery;
+  bool _isSideMenuOpen = false;
 
   
   // Отслеживаем выбранные StockItem для каждого продукта
@@ -116,6 +117,21 @@ class _CategoryProductsPageState extends State<CategoryProductsPage> {
       if (a[i] != b[i]) return false;
     }
     return true;
+  }
+
+  void _toggleSideMenu(FacetFilterBloc bloc, {bool? open}) {
+    final shouldOpen = open ?? !_isSideMenuOpen;
+    if (shouldOpen == _isSideMenuOpen) {
+      return;
+    }
+    setState(() {
+      _isSideMenuOpen = shouldOpen;
+    });
+    if (shouldOpen) {
+      bloc.add(const FacetFilterSheetOpened());
+    } else {
+      bloc.add(const FacetFilterEditingCancelled());
+    }
   }
 
   void _onScroll() {
@@ -316,66 +332,35 @@ class _CategoryProductsPageState extends State<CategoryProductsPage> {
               state.allowedProductCodes,
             ),
             child: Scaffold(
-          appBar: AppBar(
-        title: Text(
-          widget.category.name,
-          style: const TextStyle(
-            fontWeight: FontWeight.w600,
-            fontSize: 20,
-          ),
-        ),
-        elevation: 0,
-        backgroundColor: Colors.black,
-        foregroundColor: Colors.white,
-        actions: [
-          // Показываем количество товаров в категории
-          if (widget.category.count > 0)
-            Padding(
-              padding: const EdgeInsets.only(right: 8.0),
-              child: Center(
-                child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                  decoration: BoxDecoration(
-                    color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.1),
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: Text(
-                    '${widget.category.count}',
-                    style: TextStyle(
-                      color: Theme.of(context).colorScheme.primary,
-                      fontWeight: FontWeight.w600,
-                      fontSize: 12,
-                    ),
-                  ),
-                ),
-              ),
-            ),
-            Builder(
-              builder: (buttonContext) {
-                return CatalogFilterButton(
-                  categoryId: widget.category.id,
-                  onPressed: () => showCatalogFilters(
-                    buttonContext,
-                    categoryId: widget.category.id,
-                    blocOverride: FacetFilterScope.maybeBlocOf(buttonContext),
-                  ),
-                );
-              },
-            ),
-          // Кнопка корзины
-          IconButton(
-            icon: const Icon(Icons.shopping_cart),
-            onPressed: () => Navigator.pushNamed(context, '/cart'),
-            tooltip: 'Корзина',
-          ),
-          // Кнопка домой (скрывается автоматически если уже на домашней странице)
-          const HomeIconButton(),
-        ],
-      ),
               body: FacetFilterSwipeOverlay(
                 categoryId: widget.category.id,
                 blocOverride: facetBloc,
-                child: _buildBody(),
+                onOpenFilters: () => _toggleSideMenu(facetBloc, open: true),
+                child: Stack(
+                  children: [
+                    _buildBody(),
+                    // Затемнение при открытом меню
+                    IgnorePointer(
+                      ignoring: !_isSideMenuOpen,
+                      child: AnimatedOpacity(
+                        opacity: _isSideMenuOpen ? 0.32 : 0,
+                        duration: const Duration(milliseconds: 200),
+                        child: GestureDetector(
+                          behavior: HitTestBehavior.opaque,
+                          onTap: () => _toggleSideMenu(facetBloc, open: false),
+                          child: Container(color: Colors.black54),
+                        ),
+                      ),
+                    ),
+                    // Выдвижное меню с фильтрами
+                    AppSideMenu(
+                      isOpen: _isSideMenuOpen,
+                      onToggle: () => _toggleSideMenu(facetBloc),
+                      facetBloc: facetBloc,
+                      showFilters: true,
+                    ),
+                  ],
+                ),
               ),
             ),
           );
@@ -386,15 +371,21 @@ class _CategoryProductsPageState extends State<CategoryProductsPage> {
 
   Widget _buildBody() {
     final theme = Theme.of(context);
+    final mediaQuery = MediaQuery.of(context);
     final bool showSearchResults = _searchController.text.trim().isNotEmpty;
     final List<ProductWithStock> displayProducts = showSearchResults ? _searchResults : _products;
     
     return Column(
       children: [
-        // Поисковая строка
+        // Поисковая строка с учётом safe area
         Container(
           color: theme.colorScheme.surface,
-          padding: const EdgeInsets.fromLTRB(12, 12, 12, 8),
+          padding: EdgeInsets.fromLTRB(
+            12,
+            12 + mediaQuery.padding.top, // Добавляем отступ сверху
+            12,
+            8,
+          ),
           child: TextField(
             controller: _searchController,
             onChanged: _onSearchChanged,
