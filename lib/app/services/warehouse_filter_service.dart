@@ -155,42 +155,10 @@ class WarehouseFilterService {
     String regionCode,
     WarehouseFilterResult result,
   ) async {
-    if (!AppConfig.isDev || result.failure != null || !result.hasWarehouses) {
-      return result;
-    }
-
-    final hasRealWarehouses = result.warehouses.any(
-      (warehouse) => !_fixtureVendorIds.contains(warehouse.vendorId),
-    );
-
-    if (hasRealWarehouses) {
-      return result;
-    }
-
-    _logger.warning(
-      'WarehouseFilterService: обнаружены только фикстурные склады для региона $regionCode. Удаляем их и ждём реальную синхронизацию.',
-    );
-
-    final clearResult = await _warehouseRepository.clearWarehousesByRegion(regionCode);
-    if (clearResult.isLeft()) {
-      clearResult.fold(
-        (failure) => _logger.severe(
-          'WarehouseFilterService: не удалось удалить фикстурные склады региона $regionCode: ${failure.message}',
-        ),
-        (_) {},
-      );
-      return result;
-    }
-
-    final refreshed = await _warehouseRepository.getWarehousesByRegion(regionCode);
-    final refreshedResult = _buildResult(regionCode, refreshed);
-    if (!refreshedResult.hasWarehouses) {
-      _logger.info(
-        'WarehouseFilterService: фикстурные склады для региона $regionCode удалены. Запустите импорт, чтобы получить реальные данные.',
-      );
-    }
-
-    return refreshedResult;
+    // Dev режим: фикстуры сосуществуют с реальными данными, не удаляем их
+    // Prod режим: фикстур не должно быть вообще
+    // При реальной синхронизации новые данные перезапишут фикстуры через saveWarehouses
+    return result;
   }
 
 }

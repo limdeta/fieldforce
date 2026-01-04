@@ -105,67 +105,43 @@ class OrderFixtureService {
   }
 
   Future<List<OrderLine>> _buildFixtureLines({required int orderId}) async {
-    final productRequests = <int, int>{1001: 2, 1002: 1};
     final lines = <OrderLine>[];
 
-    for (final entry in productRequests.entries) {
-      final productCode = entry.key;
-      final quantity = entry.value;
-
-      final stockItemsResult =
-          await _stockItemRepository.getStockItemsByProductCode(productCode);
-      final stockItem = stockItemsResult.fold((failure) {
-        _logger.warning(
-          'Не удалось получить остатки для продукта $productCode: ${failure.message}',
-        );
-        return null;
-      }, (stockItems) {
-        if (stockItems.isEmpty) {
-          return null;
-        }
-        // выбираем первый склад с наличием > 0, иначе первый доступный
-        final prioritized = stockItems.firstWhere(
-          (item) => item.stock > 0,
-          orElse: () => stockItems.first,
-        );
-        return prioritized;
-      });
-
-      if (stockItem == null) {
-        continue;
-      }
-
-      lines.add(
-        OrderLine.create(
-          orderId: orderId,
-          stockItem: stockItem,
-          quantity: quantity,
-          pricePerUnit: stockItem.availablePrice ?? stockItem.defaultPrice,
-        ),
-      );
-    }
-
-    if (lines.isEmpty) {
-      final fallbackResult = await _stockItemRepository.getAvailableStockItems();
-      fallbackResult.fold(
-        (failure) => _logger.severe(
+    // Используем динамический поиск доступных остатков вместо хардкода продуктов
+    final fallbackResult = await _stockItemRepository.getAvailableStockItems();
+    
+    await fallbackResult.fold(
+      (failure) {
+        _logger.severe(
           'Не удалось получить доступные остатки для фикстурных заказов: ${failure.message}',
-        ),
-        (stockItems) {
-          if (stockItems.isNotEmpty) {
-            final stockItem = stockItems.first;
-            lines.add(
-              OrderLine.create(
-                orderId: orderId,
-                stockItem: stockItem,
-                quantity: 1,
-                pricePerUnit: stockItem.availablePrice ?? stockItem.defaultPrice,
-              ),
-            );
-          }
-        },
-      );
-    }
+        );
+      },
+      (stockItems) {
+        if (stockItems.isEmpty) {
+          _logger.warning('Нет доступных остатков для создания фикстурных заказов');
+          return;
+        }
+
+        // Берем первые 2-3 продукта для разнообразия
+        final itemsToUse = stockItems.take(3).toList();
+        
+        for (int i = 0; i < itemsToUse.length; i++) {
+          final stockItem = itemsToUse[i];
+          final quantity = i == 0 ? 2 : 1; // Первый товар - 2 шт, остальные - по 1
+          
+          lines.add(
+            OrderLine.create(
+              orderId: orderId,
+              stockItem: stockItem,
+              quantity: quantity,
+              pricePerUnit: stockItem.availablePrice ?? stockItem.defaultPrice,
+            ),
+          );
+        }
+        
+        _logger.info('Создано ${lines.length} строк заказа из доступных остатков');
+      },
+    );
 
     return lines;
   }

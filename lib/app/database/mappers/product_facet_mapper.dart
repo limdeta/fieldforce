@@ -84,6 +84,10 @@ class ProductFacetMapper {
     
     // Numeric characteristics (Phase 3.3)
     for (final char in product.numericCharacteristics) {
+      final double? numericVal = char.value != null 
+          ? (char.value is num ? (char.value as num).toDouble() : null)
+          : null;
+      
       companions.add(
         ProductCharacteristicFacetsCompanion(
           productCode: Value(product.code),
@@ -92,8 +96,8 @@ class ProductFacetMapper {
           charType: const Value('numeric'),
           boolValue: const Value.absent(),
           stringValue: const Value.absent(),
-          numericValue: Value(char.value as double?), // Числовое значение
-          adaptValue: Value(char.adaptValue), // Единица измерения или описание
+          numericValue: Value(numericVal),
+          adaptValue: Value(char.adaptValue),
           createdAt: Value(DateTime.now()),
         ),
       );
