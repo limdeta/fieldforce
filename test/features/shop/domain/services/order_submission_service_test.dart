@@ -16,7 +16,7 @@ class _FakeOrderApiService implements OrderApiService {
   Map<String, dynamic>? lastPayload;
 
   @override
-  Future<Either<Failure, void>> submitOrder(Map<String, dynamic> orderJson) async {
+  Future<Either<Failure, int?>> submitOrder(Map<String, dynamic> orderJson) async {
     lastPayload = orderJson;
     if (failure != null) {
       return Left(failure!);

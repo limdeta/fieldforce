@@ -14,6 +14,7 @@ import 'package:fieldforce/app/services/warehouse_filter_service.dart';
 import 'package:fieldforce/features/shop/data/repositories/order_job_repository_impl.dart';
 import 'package:fieldforce/features/shop/data/repositories/order_repository_drift.dart';
 import 'package:fieldforce/features/shop/data/services/mock_order_api_service.dart';
+import 'package:fieldforce/features/shop/data/services/real_order_api_service.dart';
 import 'package:fieldforce/features/shop/data/services/product_parsing_service.dart';
 import 'package:fieldforce/features/shop/data/sync/repositories/protobuf_sync_repository.dart';
 import 'package:fieldforce/features/shop/data/sync/services/outlet_pricing_sync_service.dart';
@@ -96,7 +97,9 @@ void registerShopDependencies(GetIt getIt) {
       () => OrderJobRepositoryImpl(getIt<AppDatabase>()),
     )
     ..registerLazySingleton<OrderApiService>(
-      () => MockOrderApiService(),
+      () => AppConfig.isProd
+          ? RealOrderApiService(sessionManager: getIt<SessionManager>())
+          : MockOrderApiService(),
     )
     ..registerLazySingleton<OrderSubmissionService>(
       () => OrderSubmissionService(apiService: getIt<OrderApiService>()),

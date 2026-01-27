@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:math';
 
 import 'package:fieldforce/features/shop/domain/services/order_api_service.dart';
 import 'package:fieldforce/shared/either.dart';
@@ -14,9 +15,10 @@ class MockOrderApiService implements OrderApiService {
   final Duration _responseDelay;
 
   @override
-  Future<Either<Failure, void>> submitOrder(Map<String, dynamic> orderJson) async {
-    _logger.info('Mock submit order ${orderJson['id'] ?? orderJson['orderId']}');
+  Future<Either<Failure, int?>> submitOrder(Map<String, dynamic> orderJson) async {
+    _logger.info('Mock submit order ${orderJson['mobileOrderId']}');
     await Future.delayed(_responseDelay);
-    return const Right(null);
+    // Mock возвращает фикстивный serverId
+    return Right(Random().nextInt(10000) + 1000);
   }
 }

@@ -89,6 +89,7 @@ class OrderFixtureService {
     }
 
     final order = Order(
+      serverId: null,  // Фикстурные заказы не отправлены на бэкенд
       creator: employee,
       outlet: tradingPoint,
       lines: lines,

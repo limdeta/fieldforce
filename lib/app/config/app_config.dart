@@ -120,6 +120,18 @@ class AppConfig {
     }
   }
 
+  // Orders API (mobile endpoint)
+  static String get ordersApiUrl {
+    switch (_environment) {
+      case Environment.dev:
+        return 'http://$_devApiHost/v1_api/mobile-sync/orders';
+      case Environment.prod:
+        return 'https://api.instock-dv.ru/v1_api/mobile-sync/orders';
+      case Environment.test:
+        return ''; // Tests use MockOrderApiService
+    }
+  }
+
   // Regional Sync (утром, 1 раз в день)
   static String regionalSyncUrl(String regionCode) {
     return '$mobileSyncApiUrl/regional/$regionCode';

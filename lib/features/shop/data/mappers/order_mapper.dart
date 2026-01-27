@@ -16,6 +16,7 @@ class OrderMapper {
     
     return OrdersCompanion.insert(
       id: order.id != null ? Value(order.id!) : const Value.absent(),
+      serverId: Value(order.serverId),
       creatorId: order.creator.id,
       outletId: order.outlet.id!,
       state: order.state.value,
@@ -51,6 +52,7 @@ class OrderMapper {
 
     return Order(
       id: orderEntity.id,
+      serverId: orderEntity.serverId,
       creator: creator,
       outlet: outlet,
       lines: orderLines, // уже преобразованные OrderLine

@@ -412,7 +412,7 @@ class TestOrderApiService implements OrderApiService {
   }
 
   @override
-  Future<Either<Failure, void>> submitOrder(Map<String, dynamic> orderJson) async {
+  Future<Either<Failure, int?>> submitOrder(Map<String, dynamic> orderJson) async {
     sentPayloads.add(orderJson);
     if (_responses.isEmpty) {
       return const Right(null);

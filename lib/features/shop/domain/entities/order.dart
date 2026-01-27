@@ -9,6 +9,7 @@ import 'employee.dart';
 class Order extends Equatable {
   static const Object _noUpdate = Object();
   final int? id;
+  final int? serverId;  // ID заказа на бэкенде (null пока не отправлен и не подтверждён)
   final Employee creator;
   final TradingPoint outlet;
   final List<OrderLine> lines;
@@ -26,6 +27,7 @@ class Order extends Equatable {
 
   const Order({
     this.id,
+    this.serverId,
     required this.creator,
     required this.outlet,
     required this.lines,
@@ -49,6 +51,7 @@ class Order extends Equatable {
   }) {
     final now = DateTime.now();
     return Order(
+      serverId: null,  // Заказ ещё не отправлен на бэкенд
       creator: creator,
       outlet: outlet,
       lines: const [],
@@ -307,58 +310,32 @@ class Order extends Equatable {
   }
 
   /// Представление заказа в формате JSON для отправки во внешнее API
+  /// Упрощенный формат - только необходимые поля для бекенда
   Map<String, dynamic> toApiPayload() {
     return {
-      'id': id,
-      'state': state.value,
-      'creator': {
-        'id': creator.id,
-        'fullName': creator.fullName,
-        'role': creator.role.name,
-      },
-      'outlet': {
-        'id': outlet.id,
-        'externalId': outlet.externalId,
-        'name': outlet.name,
-        'inn': outlet.inn,
-      },
+      'mobileOrderId': id,  // Локальный ID для идемпотентности
+      'outletId': outlet.id,
       'comment': comment,
       'name': name,
       'isPickup': isPickup,
       'approvedDeliveryDay': approvedDeliveryDay?.toIso8601String(),
       'approvedAssemblyDay': approvedAssemblyDay?.toIso8601String(),
-      'withRealization': withRealization,
       'paymentKind': {
         'payment': paymentKind.paymentCode,
         'method': paymentKind.methodCode,
         'payOnReceive': paymentKind.payOnReceive,
-        'documentName': paymentKind.documentLabel,
-        // Поля для обратной совместимости со старым контрактом
-        'type': paymentKind.paymentCode,
-        'details': paymentKind.methodCode,
-        'isCashPayment': paymentKind.isCash,
-        'isCardPayment': false,
-        'isOnCredit': paymentKind.payOnReceive,
-        'microNaming': paymentKind.microLabel,
       },
-      'totals': {
-        'cost': totalCost,
-        'baseCost': totalBaseCost,
-        'saving': totalSaving,
-        'quantity': totalQuantity,
-        'itemCount': itemCount,
-      },
-      'lines': lines.map((line) => line.toApiPayload()).toList(),
-      'failureReason': failureReason,
-      'timestamps': {
-        'createdAt': createdAt.toIso8601String(),
-        'updatedAt': updatedAt.toIso8601String(),
-      },
+      'lines': lines.map((line) => {
+        'stockItemId': line.stockItem.id,
+        'quantity': line.quantity,
+        'price': line.pricePerUnit,
+      }).toList(),
     };
   }
 
   Order copyWith({
     int? id,
+    Object? serverId = _noUpdate,
     Employee? creator,
     TradingPoint? outlet,
     List<OrderLine>? lines,
@@ -376,6 +353,7 @@ class Order extends Equatable {
   }) {
     return Order(
       id: id ?? this.id,
+      serverId: identical(serverId, _noUpdate) ? this.serverId : serverId as int?,
       creator: creator ?? this.creator,
       outlet: outlet ?? this.outlet,
       lines: lines ?? this.lines,
@@ -396,6 +374,7 @@ class Order extends Equatable {
   @override
   List<Object?> get props => [
         id,
+        serverId,
         creator,
         outlet,
         lines,

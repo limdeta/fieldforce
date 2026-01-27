@@ -8,7 +8,7 @@ import 'package:fieldforce/shared/failures.dart';
 abstract class OrderApiService {
   /// Отправляет заказ на внешнюю систему.
   ///
-  /// Возвращает `Right(void)` при успешной отправке.
+  /// Возвращает `Right(int?)` с serverId при успешной отправке.
   /// В противном случае возвращает `Left(Failure)` с описанием ошибки.
-  Future<Either<Failure, void>> submitOrder(Map<String, dynamic> orderJson);
+  Future<Either<Failure, int?>> submitOrder(Map<String, dynamic> orderJson);
 }

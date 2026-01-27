@@ -53,9 +53,10 @@ class OrderSubmissionService {
         }
         return Left(failure);
       },
-      (_) {
-        final confirmedOrder = pendingOrder.confirm();
-        _logger.info('OrderSubmissionService: заказ успешно подтверждён');
+      (serverId) {
+        // Сохраняем serverId и переводим в confirmed
+        final confirmedOrder = pendingOrder.copyWith(serverId: serverId).confirm();
+        _logger.info('OrderSubmissionService: заказ успешно подтверждён, serverId=$serverId');
         return Right(confirmedOrder);
       },
     );

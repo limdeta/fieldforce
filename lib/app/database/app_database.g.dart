@@ -7979,6 +7979,17 @@ class $OrdersTable extends Orders with TableInfo<$OrdersTable, OrderEntity> {
       'PRIMARY KEY AUTOINCREMENT',
     ),
   );
+  static const VerificationMeta _serverIdMeta = const VerificationMeta(
+    'serverId',
+  );
+  @override
+  late final GeneratedColumn<int> serverId = GeneratedColumn<int>(
+    'server_id',
+    aliasedName,
+    true,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+  );
   static const VerificationMeta _creatorIdMeta = const VerificationMeta(
     'creatorId',
   );
@@ -8196,6 +8207,7 @@ class $OrdersTable extends Orders with TableInfo<$OrdersTable, OrderEntity> {
   @override
   List<GeneratedColumn> get $columns => [
     id,
+    serverId,
     creatorId,
     outletId,
     state,
@@ -8228,6 +8240,12 @@ class $OrdersTable extends Orders with TableInfo<$OrdersTable, OrderEntity> {
     final data = instance.toColumns(true);
     if (data.containsKey('id')) {
       context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
+    }
+    if (data.containsKey('server_id')) {
+      context.handle(
+        _serverIdMeta,
+        serverId.isAcceptableOrUnknown(data['server_id']!, _serverIdMeta),
+      );
     }
     if (data.containsKey('creator_id')) {
       context.handle(
@@ -8381,6 +8399,10 @@ class $OrdersTable extends Orders with TableInfo<$OrdersTable, OrderEntity> {
         DriftSqlType.int,
         data['${effectivePrefix}id'],
       )!,
+      serverId: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}server_id'],
+      ),
       creatorId: attachedDatabase.typeMapping.read(
         DriftSqlType.int,
         data['${effectivePrefix}creator_id'],
@@ -8460,6 +8482,7 @@ class $OrdersTable extends Orders with TableInfo<$OrdersTable, OrderEntity> {
 
 class OrderEntity extends DataClass implements Insertable<OrderEntity> {
   final int id;
+  final int? serverId;
   final int creatorId;
   final int outletId;
   final String state;
@@ -8479,6 +8502,7 @@ class OrderEntity extends DataClass implements Insertable<OrderEntity> {
   final DateTime updatedAt;
   const OrderEntity({
     required this.id,
+    this.serverId,
     required this.creatorId,
     required this.outletId,
     required this.state,
@@ -8501,6 +8525,9 @@ class OrderEntity extends DataClass implements Insertable<OrderEntity> {
   Map<String, Expression> toColumns(bool nullToAbsent) {
     final map = <String, Expression>{};
     map['id'] = Variable<int>(id);
+    if (!nullToAbsent || serverId != null) {
+      map['server_id'] = Variable<int>(serverId);
+    }
     map['creator_id'] = Variable<int>(creatorId);
     map['outlet_id'] = Variable<int>(outletId);
     map['state'] = Variable<String>(state);
@@ -8538,6 +8565,9 @@ class OrderEntity extends DataClass implements Insertable<OrderEntity> {
   OrdersCompanion toCompanion(bool nullToAbsent) {
     return OrdersCompanion(
       id: Value(id),
+      serverId: serverId == null && nullToAbsent
+          ? const Value.absent()
+          : Value(serverId),
       creatorId: Value(creatorId),
       outletId: Value(outletId),
       state: Value(state),
@@ -8577,6 +8607,7 @@ class OrderEntity extends DataClass implements Insertable<OrderEntity> {
     serializer ??= driftRuntimeOptions.defaultSerializer;
     return OrderEntity(
       id: serializer.fromJson<int>(json['id']),
+      serverId: serializer.fromJson<int?>(json['serverId']),
       creatorId: serializer.fromJson<int>(json['creatorId']),
       outletId: serializer.fromJson<int>(json['outletId']),
       state: serializer.fromJson<String>(json['state']),
@@ -8605,6 +8636,7 @@ class OrderEntity extends DataClass implements Insertable<OrderEntity> {
     serializer ??= driftRuntimeOptions.defaultSerializer;
     return <String, dynamic>{
       'id': serializer.toJson<int>(id),
+      'serverId': serializer.toJson<int?>(serverId),
       'creatorId': serializer.toJson<int>(creatorId),
       'outletId': serializer.toJson<int>(outletId),
       'state': serializer.toJson<String>(state),
@@ -8627,6 +8659,7 @@ class OrderEntity extends DataClass implements Insertable<OrderEntity> {
 
   OrderEntity copyWith({
     int? id,
+    Value<int?> serverId = const Value.absent(),
     int? creatorId,
     int? outletId,
     String? state,
@@ -8646,6 +8679,7 @@ class OrderEntity extends DataClass implements Insertable<OrderEntity> {
     DateTime? updatedAt,
   }) => OrderEntity(
     id: id ?? this.id,
+    serverId: serverId.present ? serverId.value : this.serverId,
     creatorId: creatorId ?? this.creatorId,
     outletId: outletId ?? this.outletId,
     state: state ?? this.state,
@@ -8675,6 +8709,7 @@ class OrderEntity extends DataClass implements Insertable<OrderEntity> {
   OrderEntity copyWithCompanion(OrdersCompanion data) {
     return OrderEntity(
       id: data.id.present ? data.id.value : this.id,
+      serverId: data.serverId.present ? data.serverId.value : this.serverId,
       creatorId: data.creatorId.present ? data.creatorId.value : this.creatorId,
       outletId: data.outletId.present ? data.outletId.value : this.outletId,
       state: data.state.present ? data.state.value : this.state,
@@ -8717,6 +8752,7 @@ class OrderEntity extends DataClass implements Insertable<OrderEntity> {
   String toString() {
     return (StringBuffer('OrderEntity(')
           ..write('id: $id, ')
+          ..write('serverId: $serverId, ')
           ..write('creatorId: $creatorId, ')
           ..write('outletId: $outletId, ')
           ..write('state: $state, ')
@@ -8741,6 +8777,7 @@ class OrderEntity extends DataClass implements Insertable<OrderEntity> {
   @override
   int get hashCode => Object.hash(
     id,
+    serverId,
     creatorId,
     outletId,
     state,
@@ -8764,6 +8801,7 @@ class OrderEntity extends DataClass implements Insertable<OrderEntity> {
       identical(this, other) ||
       (other is OrderEntity &&
           other.id == this.id &&
+          other.serverId == this.serverId &&
           other.creatorId == this.creatorId &&
           other.outletId == this.outletId &&
           other.state == this.state &&
@@ -8785,6 +8823,7 @@ class OrderEntity extends DataClass implements Insertable<OrderEntity> {
 
 class OrdersCompanion extends UpdateCompanion<OrderEntity> {
   final Value<int> id;
+  final Value<int?> serverId;
   final Value<int> creatorId;
   final Value<int> outletId;
   final Value<String> state;
@@ -8804,6 +8843,7 @@ class OrdersCompanion extends UpdateCompanion<OrderEntity> {
   final Value<DateTime> updatedAt;
   const OrdersCompanion({
     this.id = const Value.absent(),
+    this.serverId = const Value.absent(),
     this.creatorId = const Value.absent(),
     this.outletId = const Value.absent(),
     this.state = const Value.absent(),
@@ -8824,6 +8864,7 @@ class OrdersCompanion extends UpdateCompanion<OrderEntity> {
   });
   OrdersCompanion.insert({
     this.id = const Value.absent(),
+    this.serverId = const Value.absent(),
     required int creatorId,
     required int outletId,
     required String state,
@@ -8848,6 +8889,7 @@ class OrdersCompanion extends UpdateCompanion<OrderEntity> {
        updatedAt = Value(updatedAt);
   static Insertable<OrderEntity> custom({
     Expression<int>? id,
+    Expression<int>? serverId,
     Expression<int>? creatorId,
     Expression<int>? outletId,
     Expression<String>? state,
@@ -8868,6 +8910,7 @@ class OrdersCompanion extends UpdateCompanion<OrderEntity> {
   }) {
     return RawValuesInsertable({
       if (id != null) 'id': id,
+      if (serverId != null) 'server_id': serverId,
       if (creatorId != null) 'creator_id': creatorId,
       if (outletId != null) 'outlet_id': outletId,
       if (state != null) 'state': state,
@@ -8892,6 +8935,7 @@ class OrdersCompanion extends UpdateCompanion<OrderEntity> {
 
   OrdersCompanion copyWith({
     Value<int>? id,
+    Value<int?>? serverId,
     Value<int>? creatorId,
     Value<int>? outletId,
     Value<String>? state,
@@ -8912,6 +8956,7 @@ class OrdersCompanion extends UpdateCompanion<OrderEntity> {
   }) {
     return OrdersCompanion(
       id: id ?? this.id,
+      serverId: serverId ?? this.serverId,
       creatorId: creatorId ?? this.creatorId,
       outletId: outletId ?? this.outletId,
       state: state ?? this.state,
@@ -8937,6 +8982,9 @@ class OrdersCompanion extends UpdateCompanion<OrderEntity> {
     final map = <String, Expression>{};
     if (id.present) {
       map['id'] = Variable<int>(id.value);
+    }
+    if (serverId.present) {
+      map['server_id'] = Variable<int>(serverId.value);
     }
     if (creatorId.present) {
       map['creator_id'] = Variable<int>(creatorId.value);
@@ -9000,6 +9048,7 @@ class OrdersCompanion extends UpdateCompanion<OrderEntity> {
   String toString() {
     return (StringBuffer('OrdersCompanion(')
           ..write('id: $id, ')
+          ..write('serverId: $serverId, ')
           ..write('creatorId: $creatorId, ')
           ..write('outletId: $outletId, ')
           ..write('state: $state, ')
@@ -20659,6 +20708,7 @@ typedef $$ProductsTableProcessedTableManager =
 typedef $$OrdersTableCreateCompanionBuilder =
     OrdersCompanion Function({
       Value<int> id,
+      Value<int?> serverId,
       required int creatorId,
       required int outletId,
       required String state,
@@ -20680,6 +20730,7 @@ typedef $$OrdersTableCreateCompanionBuilder =
 typedef $$OrdersTableUpdateCompanionBuilder =
     OrdersCompanion Function({
       Value<int> id,
+      Value<int?> serverId,
       Value<int> creatorId,
       Value<int> outletId,
       Value<String> state,
@@ -20787,6 +20838,11 @@ class $$OrdersTableFilterComposer
   });
   ColumnFilters<int> get id => $composableBuilder(
     column: $table.id,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get serverId => $composableBuilder(
+    column: $table.serverId,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -20976,6 +21032,11 @@ class $$OrdersTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<int> get serverId => $composableBuilder(
+    column: $table.serverId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   ColumnOrderings<String> get state => $composableBuilder(
     column: $table.state,
     builder: (column) => ColumnOrderings(column),
@@ -21110,6 +21171,9 @@ class $$OrdersTableAnnotationComposer
   });
   GeneratedColumn<int> get id =>
       $composableBuilder(column: $table.id, builder: (column) => column);
+
+  GeneratedColumn<int> get serverId =>
+      $composableBuilder(column: $table.serverId, builder: (column) => column);
 
   GeneratedColumn<String> get state =>
       $composableBuilder(column: $table.state, builder: (column) => column);
@@ -21306,6 +21370,7 @@ class $$OrdersTableTableManager
           updateCompanionCallback:
               ({
                 Value<int> id = const Value.absent(),
+                Value<int?> serverId = const Value.absent(),
                 Value<int> creatorId = const Value.absent(),
                 Value<int> outletId = const Value.absent(),
                 Value<String> state = const Value.absent(),
@@ -21325,6 +21390,7 @@ class $$OrdersTableTableManager
                 Value<DateTime> updatedAt = const Value.absent(),
               }) => OrdersCompanion(
                 id: id,
+                serverId: serverId,
                 creatorId: creatorId,
                 outletId: outletId,
                 state: state,
@@ -21346,6 +21412,7 @@ class $$OrdersTableTableManager
           createCompanionCallback:
               ({
                 Value<int> id = const Value.absent(),
+                Value<int?> serverId = const Value.absent(),
                 required int creatorId,
                 required int outletId,
                 required String state,
@@ -21365,6 +21432,7 @@ class $$OrdersTableTableManager
                 required DateTime updatedAt,
               }) => OrdersCompanion.insert(
                 id: id,
+                serverId: serverId,
                 creatorId: creatorId,
                 outletId: outletId,
                 state: state,

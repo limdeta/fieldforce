@@ -6,6 +6,9 @@ import 'trading_point_entity_table.dart';
 class Orders extends Table {
   IntColumn get id => integer().autoIncrement()();
   
+  // ID заказа на бэкенде (отсутствует для неотправленных заказов)
+  IntColumn get serverId => integer().nullable()();
+  
   // Ссылка на создателя заказа (сотрудника)
   IntColumn get creatorId => integer().references(Employees, #id)();
   

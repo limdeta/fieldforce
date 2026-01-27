@@ -113,8 +113,38 @@ class OrderSubmissionQueueService implements JobQueueService<OrderSubmissionJob>
     Failure failure,
   ) async {
     final attempts = record.attempts;
-    final reachedLimit = attempts >= _maxAttempts;
 
+    // ValidationFailure - возвращаем заказ в draft без retry
+    if (failure is ValidationFailure) {
+      _logger.warning(
+        'Job ${record.job.id} failed due to validation: ${failure.message}. Returning order to draft.',
+      );
+      final draftOrder = order.returnToDraft().updateComment(
+        'Ошибка: ${failure.message}',
+      );
+      await _orderRepository.saveOrder(draftOrder);
+
+      await _repository.updateStatus(
+        record.job.id,
+        JobStatus.failed,
+        attempts: attempts,
+        failureReason: failure.message,
+      );
+      await _repository.delete(record.job.id);
+      return;
+    }
+
+    // AuthFailure - возможно нужен logout (пока просто логируем)
+    if (failure is AuthFailure) {
+      _logger.severe(
+        'Job ${record.job.id} failed due to auth error: ${failure.message}. Order may need manual review.',
+        failure,
+      );
+      // TODO: Реализовать автоматический logout или уведомление пользователя
+    }
+
+    // Достигли лимита попыток для network/unknown errors
+    final reachedLimit = attempts >= _maxAttempts;
     if (reachedLimit) {
       _logger.severe(
         'Job ${record.job.id} reached max attempts ($_maxAttempts). Marking order ${order.id} as error.',
@@ -129,9 +159,11 @@ class OrderSubmissionQueueService implements JobQueueService<OrderSubmissionJob>
         attempts: attempts,
         failureReason: failure.message,
       );
+      await _repository.delete(record.job.id);
       return;
     }
 
+    // Retry для network/unknown errors
     _logger.warning(
       // ignore: unnecessary_brace_in_string_interps
       'Job ${record.job.id} failed on attempt $attempts/${_maxAttempts}: ${failure.message}. Scheduling retry.',
